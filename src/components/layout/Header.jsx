@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { logout } from '../../redux/slices/authSlice';
+import { getProfile } from '../../redux/actions/authActions';
 import {
   HiBars3,
   HiBell,
@@ -22,6 +23,35 @@ const Header = ({ sidebarOpen, setSidebarOpen }) => {
   const leads = useSelector((state) => state.leads?.leads || []);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [notificationDropdownOpen, setNotificationDropdownOpen] = useState(false);
+
+  // Debug user data and refresh if needed
+  React.useEffect(() => {
+    console.log('🔍 Header - User data:', user);
+    console.log('🔍 Header - User keys:', user ? Object.keys(user) : 'No user');
+    console.log('🔍 Header - firstName:', user?.firstName);
+    console.log('🔍 Header - lastName:', user?.lastName);
+    console.log('🔍 Header - fullName:', user?.fullName);
+    console.log('🔍 Header - role:', user?.role);
+    
+    // Check localStorage for user data
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      try {
+        const parsedUser = JSON.parse(storedUser);
+        console.log('🔍 Header - Stored user data:', parsedUser);
+        console.log('🔍 Header - Stored user firstName:', parsedUser?.firstName);
+        console.log('🔍 Header - Stored user lastName:', parsedUser?.lastName);
+      } catch (error) {
+        console.error('❌ Error parsing stored user data:', error);
+      }
+    }
+    
+    // If user exists but firstName/lastName are missing, try to refresh profile
+    if (user && (!user.firstName || !user.lastName)) {
+      console.log('🔄 Refreshing user profile due to missing name data');
+      dispatch(getProfile());
+    }
+  }, [user, dispatch]);
 
   // Generate breadcrumbs from current path
   const generateBreadcrumbs = () => {
@@ -332,10 +362,14 @@ const Header = ({ sidebarOpen, setSidebarOpen }) => {
                 )}
                 <div className="hidden md:block text-left">
                   <p className="text-sm font-medium text-gray-900">
-                    {user?.fullName || `${user?.firstName} ${user?.lastName}` || 'User'}
+                    {user?.fullName || 
+                     (user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : null) ||
+                     user?.firstName ||
+                     user?.email ||
+                     'Admin User'}
                   </p>
                   <p className="text-xs text-gray-500 capitalize">
-                    {user?.role || 'user'}
+                    {user?.role || 'super_admin'}
                   </p>
                 </div>
                 <HiChevronDown className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${profileDropdownOpen ? 'rotate-180' : ''}`} />

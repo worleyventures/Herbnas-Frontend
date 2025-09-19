@@ -71,14 +71,14 @@ export const StatCard = ({
 
   if (loading) {
     return (
-      <Card className={`group h-full ${className}`}>
+      <Card className={`group h-full ${className}`} padding="p-3">
         <div className="flex items-center h-full">
           <div className="flex-shrink-0">
-            <div className="h-12 w-12 loading-skeleton rounded-xl"></div>
+            <div className="h-8 w-8 loading-skeleton rounded-lg"></div>
           </div>
-          <div className="ml-4 flex-1 space-y-2">
-            <div className="h-4 loading-skeleton rounded w-20"></div>
-            <div className="h-8 loading-skeleton rounded w-16"></div>
+          <div className="ml-2 flex-1 space-y-1">
+            <div className="h-3 loading-skeleton rounded w-12"></div>
+            <div className="h-5 loading-skeleton rounded w-8"></div>
           </div>
         </div>
       </Card>
@@ -90,30 +90,31 @@ export const StatCard = ({
       className={`group h-full ${className}`}
       onClick={onClick}
       hover={!!onClick}
+      padding="p-3"
     >
       <div className="flex items-center h-full">
         <div className="flex-shrink-0">
-          <div className={`h-14 w-14 ${iconBg} rounded-2xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300`}>
+          <div className={`h-8 w-8 ${iconBg} rounded-lg flex items-center justify-center shadow-sm group-hover:shadow-md transition-all duration-300`}>
             {Icon ? (
               React.createElement(Icon, {
-                className: "h-7 w-7 text-white group-hover:scale-110 transition-transform duration-300"
+                className: "h-4 w-4 text-white group-hover:scale-110 transition-transform duration-300"
               })
             ) : (
-              <div className="h-7 w-7 bg-white/20 rounded flex items-center justify-center">
+              <div className="h-4 w-4 bg-white/20 rounded flex items-center justify-center">
                 <span className="text-white text-xs font-bold">?</span>
               </div>
             )}
           </div>
         </div>
-        <div className="ml-5 flex-1 min-w-0">
-          <p className="text-sm font-medium text-gray-500 mb-1 truncate">{title}</p>
-          <p className="text-3xl font-bold text-gray-900 mb-1">{value}</p>
+        <div className="ml-2 flex-1 min-w-0">
+          <p className="text-xs font-medium text-gray-500 mb-0.5 truncate">{title}</p>
+          <p className="text-xl font-bold text-gray-900 mb-0.5">{value}</p>
           {change && (
             <div className="flex items-center space-x-1">
-              <span className={`text-sm font-medium ${getChangeColor()}`}>
+              <span className={`text-xs font-medium ${getChangeColor()}`}>
                 {getChangeIcon()}
               </span>
-              <p className={`text-sm font-medium ${getChangeColor()}`}>
+              <p className={`text-xs font-medium ${getChangeColor()}`}>
                 {change}
               </p>
             </div>
@@ -193,6 +194,7 @@ export const FilterCard = ({
   return (
     <Card
       className={`relative z-10 ${className}`}
+      padding="p-3"
       {...props}
     >
       {children}

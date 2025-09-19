@@ -19,7 +19,7 @@ import {
   HiEye,
   HiPlus
 } from 'react-icons/hi2';
-import { StatCard, FilterCard, Button, SearchInput, Select, Pagination, ImportModal, Modal } from '../common';
+import { StatCard, FilterCard, Button, ActionButton, SearchInput, Select, Pagination, ImportModal, Modal } from '../common';
 import { addNotification } from '../../redux/slices/uiSlice';
 import HealthForm from './health/HealthForm';
 import {
@@ -361,7 +361,7 @@ const HealthDashboard = ({ showCreateModal, setShowCreateModal }) => {
           <HiExclamationTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">Error Loading Health Issues</h3>
           <p className="text-gray-600 mb-4">{error}</p>
-          <Button onClick={() => window.location.reload()} variant="gradient">Try Again</Button>
+          <Button onClick={() => window.location.reload()} variant="gradient" size="xs">Try Again</Button>
         </div>
       </div>
     );
@@ -377,12 +377,12 @@ const HealthDashboard = ({ showCreateModal, setShowCreateModal }) => {
             Manage health conditions and product recommendations
           </p>
         </div>
-        <div className="mt-4 sm:mt-0 flex space-x-3">
+        <div className="mt-4 sm:mt-0 flex space-x-2">
           <Button
             onClick={() => setShowImportModal(true)}
             icon={HiCloudArrowUp}
             variant="warning"
-            size="md"
+            size="sm"
           >
             Import Health Issues
           </Button>
@@ -390,7 +390,7 @@ const HealthDashboard = ({ showCreateModal, setShowCreateModal }) => {
             onClick={() => setShowCreateModal(true)}
             icon={HiPlus}
             variant="gradient"
-            size="md"
+            size="sm"
           >
             Add New Health Issue
           </Button>
@@ -398,7 +398,7 @@ const HealthDashboard = ({ showCreateModal, setShowCreateModal }) => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
         <StatCard
           title="Total Health Issues"
           value={stats?.overview?.totalHealthIssues || healthIssues.length}
@@ -439,7 +439,7 @@ const HealthDashboard = ({ showCreateModal, setShowCreateModal }) => {
 
       {/* Filters */}
       <FilterCard>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           <SearchInput
             value={searchTerm}
             onChange={handleSearch}
@@ -462,35 +462,28 @@ const HealthDashboard = ({ showCreateModal, setShowCreateModal }) => {
       </FilterCard>
 
       {/* Main Content */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <div className="flex items-center justify-between">
-            <div className="flex space-x-3">
-            </div>
-          </div>
-        </div>
-
+      <div>
         {/* Table */}
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-3 sm:px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Health Issue
                 </th>
-                <th className="hidden sm:table-cell px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="hidden sm:table-cell px-3 sm:px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Gender
                 </th>
-                <th className="hidden md:table-cell px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="hidden md:table-cell px-3 sm:px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Marital Status
                 </th>
-                <th className="hidden lg:table-cell px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="hidden lg:table-cell px-3 sm:px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Age Range
                 </th>
-                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-3 sm:px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
                 </th>
-                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-3 sm:px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
@@ -521,6 +514,7 @@ const HealthDashboard = ({ showCreateModal, setShowCreateModal }) => {
                         <Button
                           variant="gradient"
                           onClick={() => setShowCreateModal(true)}
+                          size="xs"
                           className="flex items-center mx-auto"
                         >
                           <HiPencil className="h-4 w-4 mr-2" />
@@ -533,7 +527,7 @@ const HealthDashboard = ({ showCreateModal, setShowCreateModal }) => {
               ) : (
                 paginatedHealthIssues.map((issue) => (
                   <tr key={issue._id} className="hover:bg-gray-50">
-                    <td className="px-3 sm:px-6 py-4">
+                    <td className="px-3 sm:px-4 py-3">
                       <div className="flex flex-col">
                         <div className="text-sm font-medium text-gray-900">
                           {issue.healthIssue}
@@ -566,7 +560,7 @@ const HealthDashboard = ({ showCreateModal, setShowCreateModal }) => {
                         </div>
                       </div>
                     </td>
-                    <td className="hidden sm:table-cell px-3 sm:px-6 py-4 whitespace-nowrap">
+                    <td className="hidden sm:table-cell px-3 sm:px-4 py-3 whitespace-nowrap">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                         issue.gender === 'male' 
                           ? 'bg-blue-100 text-blue-800'
@@ -577,7 +571,7 @@ const HealthDashboard = ({ showCreateModal, setShowCreateModal }) => {
                         {issue.gender === 'male' ? 'Male' : issue.gender === 'female' ? 'Female' : 'Both'}
                       </span>
                     </td>
-                    <td className="hidden md:table-cell px-3 sm:px-6 py-4 whitespace-nowrap">
+                    <td className="hidden md:table-cell px-3 sm:px-4 py-3 whitespace-nowrap">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                         issue.maritalStatus === 'married' 
                           ? 'bg-green-100 text-green-800'
@@ -588,10 +582,10 @@ const HealthDashboard = ({ showCreateModal, setShowCreateModal }) => {
                         {issue.maritalStatus === 'married' ? 'Married' : issue.maritalStatus === 'unmarried' ? 'Unmarried' : 'Both'}
                       </span>
                     </td>
-                    <td className="hidden lg:table-cell px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="hidden lg:table-cell px-3 sm:px-4 py-3 whitespace-nowrap text-sm text-gray-900">
                       {issue.fromAge} - {issue.toAge} years
                     </td>
-                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
+                    <td className="px-3 sm:px-4 py-3 whitespace-nowrap">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                         issue.isActive 
                           ? 'bg-green-100 text-green-800'
@@ -600,35 +594,29 @@ const HealthDashboard = ({ showCreateModal, setShowCreateModal }) => {
                         {issue.isActive ? 'Active' : 'Inactive'}
                       </span>
                     </td>
-                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <td className="px-3 sm:px-4 py-3 whitespace-nowrap text-sm font-medium">
                       <div className="flex flex-wrap gap-1 sm:gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
+                        <ActionButton
+                          icon={HiEye}
                           onClick={() => handleViewHealthIssue(issue)}
-                          className="text-green-600 hover:text-green-900"
+                          variant="view"
+                          size="sm"
                           title="View Details"
-                        >
-                          <HiEye className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
+                        />
+                        <ActionButton
+                          icon={HiPencil}
                           onClick={() => handleEditHealthIssue(issue)}
-                          className="text-blue-600 hover:text-blue-900"
-                          title="Edit"
-                        >
-                          <HiPencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
+                          variant="edit"
                           size="sm"
+                          title="Edit"
+                        />
+                        <ActionButton
+                          icon={HiXCircle}
                           onClick={() => handleDeleteHealthIssue(issue)}
-                          className="text-red-600 hover:text-red-900"
+                          variant="delete"
+                          size="sm"
                           title="Delete"
-                        >
-                          <HiXCircle className="h-4 w-4" />
-                        </Button>
+                        />
                       </div>
                     </td>
                   </tr>
@@ -718,12 +706,14 @@ const HealthDashboard = ({ showCreateModal, setShowCreateModal }) => {
                   setShowDeleteModal(false);
                   setSelectedHealthIssue(null);
                 }}
+                size="xs"
               >
                 Cancel
               </Button>
               <Button
                 variant="gradient"
                 onClick={handleDeleteConfirm}
+                size="xs"
                 className="bg-red-600 hover:bg-red-700"
                 disabled={deleteLoading}
               >
@@ -749,7 +739,7 @@ const HealthDashboard = ({ showCreateModal, setShowCreateModal }) => {
             setSelectedHealthIssue(null);
           }}
           title="Health Issue Details"
-          size="lg"
+          size="sm"
         >
               
               <div className="space-y-4">
@@ -854,6 +844,7 @@ const HealthDashboard = ({ showCreateModal, setShowCreateModal }) => {
                     setShowViewModal(false);
                     setSelectedHealthIssue(null);
                   }}
+                  size="xs"
                 >
                   Close
                 </Button>
@@ -872,7 +863,7 @@ const HealthDashboard = ({ showCreateModal, setShowCreateModal }) => {
             setSuggestionPriority(1);
           }}
           title="Add Product Suggestion"
-          size="md"
+          size="sm"
         >
               
               <div className="space-y-4">
@@ -951,6 +942,7 @@ const HealthDashboard = ({ showCreateModal, setShowCreateModal }) => {
                     setSuggestionReason('');
                     setSuggestionPriority(1);
                   }}
+                  size="xs"
                 >
                   Cancel
                 </Button>
@@ -958,6 +950,7 @@ const HealthDashboard = ({ showCreateModal, setShowCreateModal }) => {
                   variant="gradient"
                   onClick={handleAddProductSuggestion}
                   disabled={!selectedProduct || suggestionLoading}
+                  size="xs"
                 >
                   {suggestionLoading ? (
                     <div className="flex items-center">

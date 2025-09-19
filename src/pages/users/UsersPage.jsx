@@ -801,7 +801,7 @@ const UsersPage = () => {
             setShowUserModal(false);
             setSelectedUser(null);
           }}
-          size="lg"
+          size="sm"
         >
           <div className="p-6">
             <div className="flex items-center justify-between mb-6">
@@ -957,7 +957,7 @@ const UsersPage = () => {
               branch: ''
             });
           }}
-          size="lg"
+          size="sm"
         >
           <div className="p-6">
             <div className="flex items-center justify-between mb-6">

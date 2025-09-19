@@ -155,24 +155,24 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
     return (
       <Link
         to={item.href}
-        className={`group flex items-center text-sm font-medium rounded-xl transition-all duration-300 ease-in-out ${
-          isCollapsed ? 'px-3 py-3 justify-center' : 'px-4 py-3'
+        className={`group flex items-center text-sm font-medium rounded-lg transition-all duration-300 ease-in-out ${
+          isCollapsed ? 'px-3 py-2.5 justify-center' : 'px-3 py-2.5'
         } ${
           isActive
-            ? `bg-gradient-to-r from-gray-100 to-gray-50 text-gray-900 border-r-4 border-[#558b2f] shadow-md hover:shadow-lg`
-            : `text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:shadow-sm hover:scale-[1.02]`
+            ? `bg-gradient-to-r from-gray-100 to-gray-50 text-gray-900 border-r-4 border-[#558b2f] shadow-sm hover:shadow-md`
+            : `text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:shadow-sm`
         }`}
         onClick={() => setSidebarOpen(false)}
         title={isCollapsed ? item.name : undefined}
       >
         <item.icon
-          className={`h-5 w-5 flex-shrink-0 transition-all duration-300 ${
+          className={`h-4 w-4 flex-shrink-0 transition-all duration-300 ${
             isActive ? item.color : item.color
-          } ${isCollapsed ? '' : 'mr-4'} ${isActive ? 'scale-110' : 'group-hover:scale-110'}`}
+          } ${isCollapsed ? '' : 'mr-3'} ${isActive ? 'scale-105' : 'group-hover:scale-105'}`}
           aria-hidden="true"
         />
         {!isCollapsed && (
-          <span className="truncate font-medium">{item.name}</span>
+          <span className="truncate font-medium text-sm">{item.name}</span>
         )}
       </Link>
     );
@@ -198,7 +198,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
       >
         <div className="flex flex-col h-screen">
           {/* Logo and toggle buttons */}
-          <div className={`flex items-center justify-between h-16 pt-10 ${isCollapsed ? 'px-3' : 'px-6'} py-4`}>
+          <div className={`flex items-center justify-between h-16 pt-6 ${isCollapsed ? 'px-3' : 'px-6'} py-4`}>
             <div className="flex items-center w-full">
               <div className="w-full flex items-center justify-center">
                 {isCollapsed ? (
@@ -210,7 +210,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
                     <img 
                       src={logo} 
                       alt="Herb Nas Logo" 
-                      className="h-14 object-contain"
+                      className="h-12 object-contain"
                     />
                   </div>
                 )}
@@ -243,38 +243,9 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
             </div>
           </div>
 
-          {/* User info */}
-          {/* <div className="px-6 py-4 border-b border-gray-200 bg-gray-50 h-20">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                {user?.avatar?.url ? (
-                  <img
-                    className="h-12 w-12 rounded-full ring-2 ring-white shadow-sm"
-                    src={user.avatar.url}
-                    alt={user.fullName || user.firstName}
-                  />
-                ) : (
-                  <div className="h-12 w-12 rounded-full flex items-center justify-center shadow-sm" style={{background: 'linear-gradient(to bottom right, #22c55e, #16a34a)'}}>
-                    <span className="text-white font-semibold text-lg">
-                      {user?.firstName?.charAt(0) || 'U'}
-                    </span>
-                  </div>
-                )}
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-semibold text-gray-900">
-                  {user?.fullName || `${user?.firstName} ${user?.lastName}` || 'User'}
-                </p>
-                <p className="text-xs text-gray-500 capitalize bg-white px-2 py-1 rounded-full inline-block mt-1">
-                  {user?.role || 'user'}
-                </p>
-              </div>
-            </div>
-          </div> */}
-
           {/* Navigation */}
-          <nav className={`flex-1 py-4 pt-10 space-y-2 ${isCollapsed ? 'px-3' : 'px-5'}`}>
-            <div className="space-y-2">
+          <nav className={`flex-1 py-4 space-y-1 ${isCollapsed ? 'px-3' : 'px-5'}`}>
+            <div className="space-y-1">
               {navigation.map((item) => (
                 <NavigationItem key={item.name} item={item} />
               ))}

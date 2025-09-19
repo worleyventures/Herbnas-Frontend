@@ -42,31 +42,35 @@ const Button = ({
 
   const getSizeClasses = () => {
     switch (size) {
+      case 'xs':
+        return 'px-2 py-1 text-xs';
       case 'sm':
-        return 'px-4 py-2 text-sm';
+        return 'px-3 py-1.5 text-xs';
       case 'md':
-        return 'px-6 py-3 text-sm';
+        return 'px-4 py-2 text-sm';
       case 'lg':
-        return 'px-8 py-4 text-base';
+        return 'px-6 py-3 text-base';
       case 'xl':
-        return 'px-10 py-5 text-lg';
+        return 'px-8 py-4 text-lg';
       default:
-        return 'px-6 py-3 text-sm';
+        return 'px-4 py-2 text-sm';
     }
   };
 
   const getIconSize = () => {
     switch (size) {
+      case 'xs':
+        return 'h-3 w-3';
       case 'sm':
         return 'h-3 w-3';
       case 'md':
-        return 'h-4 w-4';
+        return 'h-3.5 w-3.5';
       case 'lg':
-        return 'h-5 w-5';
-      case 'xl':
-        return 'h-6 w-6';
-      default:
         return 'h-4 w-4';
+      case 'xl':
+        return 'h-5 w-5';
+      default:
+        return 'h-3.5 w-3.5';
     }
   };
 
@@ -135,27 +139,31 @@ export const ActionButton = ({
 
   const getActionSizeClasses = () => {
     switch (size) {
+      case 'xs':
+        return 'p-0.5';
       case 'sm':
-        return 'p-1.5';
+        return 'p-1';
       case 'md':
-        return 'p-2';
-      case 'lg':
-        return 'p-2.5';
-      default:
         return 'p-1.5';
+      case 'lg':
+        return 'p-2';
+      default:
+        return 'p-1';
     }
   };
 
   const getIconSize = () => {
     switch (size) {
+      case 'xs':
+        return 'h-2.5 w-2.5';
       case 'sm':
-        return 'h-4 w-4';
+        return 'h-3 w-3';
       case 'md':
-        return 'h-5 w-5';
+        return 'h-3.5 w-3.5';
       case 'lg':
-        return 'h-6 w-6';
-      default:
         return 'h-4 w-4';
+      default:
+        return 'h-3 w-3';
     }
   };
 

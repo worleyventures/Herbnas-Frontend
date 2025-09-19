@@ -220,12 +220,12 @@ const ProductsDashboard = ({ showCreateModal, setShowCreateModal }) => {
             Manage your product catalog, pricing, and inventory
           </p>
         </div>
-        <div className="mt-4 sm:mt-0 flex space-x-3">
+        <div className="mt-4 sm:mt-0 flex space-x-2">
           <Button
             onClick={() => setShowImportModal(true)}
             icon={HiCloudArrowUp}
             variant="warning"
-            size="md"
+            size="sm"
           >
             Import Products
           </Button>
@@ -233,7 +233,7 @@ const ProductsDashboard = ({ showCreateModal, setShowCreateModal }) => {
             onClick={() => setShowCreateModal(true)}
             icon={HiPencil}
             variant="gradient"
-            size="md"
+            size="sm"
           >
             Add New Product
           </Button>
@@ -241,7 +241,7 @@ const ProductsDashboard = ({ showCreateModal, setShowCreateModal }) => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
         <StatCard
           title="Total Products"
           value={finalProducts.length}
@@ -273,7 +273,7 @@ const ProductsDashboard = ({ showCreateModal, setShowCreateModal }) => {
 
       {/* Filters */}
       <FilterCard>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <SearchInput
             value={searchTerm}
             onChange={handleSearch}
@@ -290,7 +290,7 @@ const ProductsDashboard = ({ showCreateModal, setShowCreateModal }) => {
       </FilterCard>
 
       {/* Main Content */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+      <div>
         <ProductCRUD
           products={paginatedProducts}
           loading={loading}

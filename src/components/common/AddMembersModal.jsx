@@ -285,7 +285,7 @@ const AddMembersModal = ({ isOpen, onClose, branch, onAddMembers }) => {
   if (!branch) return null;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="lg">
+    <Modal isOpen={isOpen} onClose={onClose} size="sm">
       <div className="p-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
@@ -540,6 +540,7 @@ const AddMembersModal = ({ isOpen, onClose, branch, onAddMembers }) => {
                 onClick={handleAddNewUser}
                 loading={addingUser}
                 disabled={addingUser || !newUserData.firstName || !newUserData.lastName || !newUserData.email || !newUserData.password || !newUserData.confirmPassword}
+                size="xs"
                 variant="gradient"
                 className="w-full"
                 icon={HiPlus}
@@ -606,6 +607,7 @@ const AddMembersModal = ({ isOpen, onClose, branch, onAddMembers }) => {
             variant="outline"
             onClick={onClose}
             disabled={loading}
+            size="xs"
             className="hover:bg-gradient-to-r hover:from-[#22c55e] hover:to-[#16a34a] hover:text-white hover:border-transparent"
           >
             Cancel
@@ -616,6 +618,7 @@ const AddMembersModal = ({ isOpen, onClose, branch, onAddMembers }) => {
             disabled={selectedUsers.length === 0}
             variant="gradient"
             icon={HiPlus}
+            size="xs"
           >
             Add {selectedUsers.length} Member{selectedUsers.length !== 1 ? 's' : ''}
           </Button>

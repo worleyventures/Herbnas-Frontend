@@ -146,7 +146,7 @@ const InventoryDetailsModal = ({ isOpen, onClose, inventory }) => {
       isOpen={isOpen}
       onClose={onClose}
       title="Inventory Details"
-      size="lg"
+      size="sm"
     >
       <div className="space-y-6">
         {/* Inventory Header */}

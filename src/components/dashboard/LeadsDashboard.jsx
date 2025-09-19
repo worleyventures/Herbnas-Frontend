@@ -536,12 +536,12 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
                 Manage and track your sales leads effectively
               </p>
             </div>
-            <div className="mt-4 sm:mt-0 flex space-x-3">
+            <div className="mt-4 sm:mt-0 flex space-x-2">
               <Button
                 onClick={() => setShowImportModal(true)}
                 icon={HiCloudArrowUp}
                 variant="warning"
-                size="md"
+                size="sm"
               >
                 Import Leads
               </Button>
@@ -549,7 +549,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
                 onClick={() => navigate('/leads/create')}
                 icon={HiPlus}
                 variant="gradient"
-                size="md"
+                size="sm"
               >
                 Add New Lead
               </Button>
@@ -557,7 +557,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
           </div>
 
           {/* Stats Cards - Show zeros for empty collection */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
             <StatCard
               title="Total Leads"
               value={0}
@@ -597,81 +597,68 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
           </div>
 
           {/* Search and Filter Section */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-              <div className="flex-1">
-                <SearchInput
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Search leads..."
-                  icon={HiMagnifyingGlass}
-                />
-              </div>
-              <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0">
-                <Select
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value)}
-                  options={[
-                    { value: 'all', label: 'All Status' },
-                    { value: 'qualified', label: 'Qualified' },
-                    { value: 'unqualified', label: 'Unqualified' },
-                    { value: 'converted', label: 'Order Completed' }
-                  ]}
-                  className="w-full sm:w-40"
-                />
-                <Select
-                  value={filterBranch}
-                  onChange={(e) => setFilterBranch(e.target.value)}
-                  options={[
-                    { value: 'all', label: 'All Branches' },
-                    ...(branches?.map(branch => ({
-                      value: branch.branchName || branch,
-                      label: branch.branchName || branch
-                    })) || [])
-                  ]}
-                  className="w-full sm:w-40"
-                />
-              </div>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            <div className="flex-1">
+              <SearchInput
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search leads..."
+                icon={HiMagnifyingGlass}
+              />
+            </div>
+            <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0">
+              <Select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                options={[
+                  { value: 'all', label: 'All Status' },
+                  { value: 'qualified', label: 'Qualified' },
+                  { value: 'unqualified', label: 'Unqualified' },
+                  { value: 'converted', label: 'Order Completed' }
+                ]}
+                className="w-full sm:w-40"
+              />
+              <Select
+                value={filterBranch}
+                onChange={(e) => setFilterBranch(e.target.value)}
+                options={[
+                  { value: 'all', label: 'All Branches' },
+                  ...(branches?.map(branch => ({
+                    value: branch.branchName || branch,
+                    label: branch.branchName || branch
+                  })) || [])
+                ]}
+                className="w-full sm:w-40"
+              />
             </div>
           </div>
 
           {/* Empty State */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <div className="text-sm text-gray-500">
-                  Showing 1-0 of 0 leads
-                </div>
-              </div>
+          <div className="flex flex-col items-center text-center py-12">
+            <div className="text-gray-400 mb-4">
+              <HiUser className="h-16 w-16" />
             </div>
-            <div className="p-12">
-              <div className="flex flex-col items-center text-center">
-          <div className="text-gray-400 mb-4">
-                  <HiUser className="h-16 w-16" />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">No leads found</h3>
-                <p className="text-gray-600 mb-6 max-w-md">
-                  No data available at the moment
-                </p>
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <Button
-                    onClick={() => navigate('/leads/create')}
-                    icon={HiPlus}
-                    variant="gradient"
-                    size="md"
-                  >
-                    Create First Lead
-                  </Button>
-                  <Button
-                    onClick={() => setShowImportModal(true)}
-                    icon={HiCloudArrowUp}
-                    variant="outline"
-                    size="md"
-                  >
-                    Import Leads
-                  </Button>
-                </div>
-              </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">No leads found</h3>
+            <p className="text-gray-600 mb-6 max-w-md">
+              No data available at the moment
+            </p>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Button
+                onClick={() => navigate('/leads/create')}
+                icon={HiPlus}
+                variant="gradient"
+                size="sm"
+              >
+                Create First Lead
+              </Button>
+              <Button
+                onClick={() => setShowImportModal(true)}
+                icon={HiCloudArrowUp}
+                variant="outline"
+                size="sm"
+              >
+                Import Leads
+              </Button>
             </div>
           </div>
         </div>
@@ -726,12 +713,12 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
               Manage and track your sales leads effectively
             </p>
             </div>
-          <div className="mt-4 sm:mt-0 flex space-x-3">
+            <div className="mt-4 sm:mt-0 flex space-x-2">
               <Button
                 onClick={() => setShowImportModal(true)}
                 icon={HiCloudArrowUp}
                 variant="warning"
-                size="md"
+                size="sm"
               >
                 Import Leads
               </Button>
@@ -739,7 +726,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
                 onClick={() => navigate('/leads/create')}
                 icon={HiPlus}
                 variant="gradient"
-                size="md"
+                size="sm"
               >
                 Add New Lead
               </Button>
@@ -755,7 +742,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
                   }}
                     icon={view.icon}
                     variant={activeView === view.id ? "gradient" : "outline"}
-                    size="md"
+                    size="sm"
                     className={`${
                       activeView === view.id 
                         ? 'shadow-lg transform scale-105' 
@@ -789,7 +776,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
         )}
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
           <div
             onClick={() => handleCardFilter('all')}
             className={`cursor-pointer transition-all duration-200 ${
@@ -860,59 +847,53 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
         </div>
 
         {/* Search and Filter Section */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-            <div className="flex-1">
-              <SearchInput
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search leads..."
-                icon={HiMagnifyingGlass}
-                />
-              </div>
-            <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0">
-              <Select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-                options={[
-                  { value: 'all', label: 'All Status' },
-                  { value: 'qualified', label: 'Qualified' },
-                  { value: 'unqualified', label: 'Unqualified' },
-                  { value: 'converted', label: 'Order Completed' },
-                  { value: 'new_lead', label: 'New Lead' },
-                  { value: 'not_answered', label: 'Not Answered' },
-                  { value: 'pending', label: 'Pending' }
-                ]}
-                className="w-full sm:w-40"
-              />
-              <Select
-                  value={filterBranch}
-                  onChange={(e) => setFilterBranch(e.target.value)}
-                options={[
-                  { value: 'all', label: 'All Branches' },
-                  ...(branches?.map(branch => ({
-                    value: branch.branchName || branch,
-                    label: branch.branchName || branch
-                  })) || [])
-                ]}
-                className="w-full sm:w-40"
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+          <div className="flex-1">
+            <SearchInput
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search leads..."
+              icon={HiMagnifyingGlass}
               />
             </div>
+          <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0">
+            <Select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              options={[
+                { value: 'all', label: 'All Status' },
+                { value: 'qualified', label: 'Qualified' },
+                { value: 'unqualified', label: 'Unqualified' },
+                { value: 'converted', label: 'Order Completed' },
+                { value: 'new_lead', label: 'New Lead' },
+                { value: 'not_answered', label: 'Not Answered' },
+                { value: 'pending', label: 'Pending' }
+              ]}
+              className="w-full sm:w-40"
+            />
+            <Select
+                value={filterBranch}
+                onChange={(e) => setFilterBranch(e.target.value)}
+              options={[
+                { value: 'all', label: 'All Branches' },
+                ...(branches?.map(branch => ({
+                  value: branch.branchName || branch,
+                  label: branch.branchName || branch
+                })) || [])
+              ]}
+              className="w-full sm:w-40"
+            />
           </div>
         </div>
 
         {/* Leads Table Area */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <div className="flex items-center justify-between">
-              <div className="text-sm text-gray-500">
-                Showing {paginationData.startIndex}-{paginationData.endIndex} of {paginationData.totalLeads} leads
-              </div>
+        <div className="overflow-hidden">
+          <div className="flex items-center justify-between mb-4">
+            <div className="text-sm text-gray-500">
+              Showing {paginationData.startIndex}-{paginationData.endIndex} of {paginationData.totalLeads} leads
             </div>
           </div>
-          <div className="overflow-hidden">
           {renderViewContent()}
-          </div>
         </div>
       </div>
 

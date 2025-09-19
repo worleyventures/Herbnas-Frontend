@@ -259,7 +259,7 @@ const InventoryForm = ({
       isOpen={isOpen}
       onClose={handleClose}
       title={title}
-      size="lg"
+      size="sm"
     >
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Inventory Items */}
@@ -442,6 +442,7 @@ const InventoryForm = ({
             variant="outline"
             onClick={handleClose}
             disabled={loading}
+            size="xs"
           >
             Cancel
           </Button>
@@ -450,6 +451,7 @@ const InventoryForm = ({
             variant="primary"
             loading={loading}
             disabled={loading}
+            size="xs"
           >
             {loading ? 'Processing...' : submitText}
           </Button>

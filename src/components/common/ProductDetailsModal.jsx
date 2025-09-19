@@ -42,7 +42,7 @@ const ProductDetailsModal = ({
       isOpen={isOpen}
       onClose={onClose}
       title="Product Details"
-      size="lg"
+      size="sm"
     >
       <div className="space-y-6">
         {/* Header */}
@@ -172,6 +172,7 @@ const ProductDetailsModal = ({
           <Button
             variant="outline"
             onClick={onClose}
+            size="xs"
             className="hover:bg-gradient-to-r hover:from-[#22c55e] hover:to-[#16a34a] hover:text-white hover:border-transparent"
           >
             Close
@@ -183,6 +184,7 @@ const ProductDetailsModal = ({
                 onEdit(product);
                 onClose();
               }}
+              size="xs"
             >
               Edit Product
             </Button>

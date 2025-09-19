@@ -148,7 +148,7 @@ const HealthForm = ({
       isOpen={isOpen}
       onClose={handleClose}
       title={title}
-      size="lg"
+      size="sm"
     >
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Basic Information */}
@@ -309,6 +309,7 @@ const HealthForm = ({
             variant="outline"
             onClick={handleClose}
             disabled={loading}
+            size="xs"
             className="hover:bg-gradient-to-r hover:from-[#22c55e] hover:to-[#16a34a] hover:text-white hover:border-transparent"
           >
             Cancel
@@ -317,6 +318,7 @@ const HealthForm = ({
             type="submit"
             variant="gradient"
             disabled={loading}
+            size="xs"
           >
             {loading ? (
               <div className="flex items-center">

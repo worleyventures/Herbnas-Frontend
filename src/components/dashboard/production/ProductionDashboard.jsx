@@ -229,7 +229,7 @@ const ProductionDashboard = () => {
               onClick={handleCreateProduct}
               icon={HiDocumentText}
               variant="gradient"
-              size="md"
+              size="sm"
               className="shadow-lg"
             >
               Add Production
@@ -238,7 +238,7 @@ const ProductionDashboard = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
           <StatCard
             title="Total Products"
             value={stats.total}
@@ -278,34 +278,30 @@ const ProductionDashboard = () => {
         </div>
 
         {/* Search and Filter Section */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-            <div className="flex-1">
-              <SearchInput
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search products..."
-                icon={HiMagnifyingGlass}
-              />
-            </div>
-            <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0">
-              <Select
-                value={selectedStage}
-                onChange={(e) => setSelectedStage(e.target.value)}
-                options={stageOptions}
-                className="w-full sm:w-48"
-              />
-            </div>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+          <div className="flex-1">
+            <SearchInput
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search products..."
+              icon={HiMagnifyingGlass}
+            />
+          </div>
+          <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0">
+            <Select
+              value={selectedStage}
+              onChange={(e) => setSelectedStage(e.target.value)}
+              options={stageOptions}
+              className="w-full sm:w-48"
+            />
           </div>
         </div>
 
         {/* Main Content */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <div className="flex items-center justify-between">
-              <div className="text-sm text-gray-500">
-                Showing {products.length} products
-              </div>
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <div className="text-sm text-gray-500">
+              Showing {products.length} products
             </div>
           </div>
           <div className="overflow-hidden">

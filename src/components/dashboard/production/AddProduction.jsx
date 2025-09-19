@@ -129,6 +129,7 @@ const AddProduction = () => {
               onClick={handleCancel}
               variant="outline"
               icon={HiXMark}
+              size="xs"
               className="hover:bg-gray-100"
             >
               Cancel
@@ -268,6 +269,7 @@ const AddProduction = () => {
                 variant="outline"
                 onClick={handleCancel}
                 disabled={loading}
+                size="xs"
                 className="hover:bg-gray-100"
               >
                 Cancel
@@ -276,6 +278,7 @@ const AddProduction = () => {
                 type="submit"
                 variant="gradient"
                 disabled={loading}
+                size="xs"
                 className="min-w-[120px]"
               >
                 {loading ? (

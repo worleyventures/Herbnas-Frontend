@@ -217,7 +217,7 @@ const StageManagement = ({
         isOpen={isOpen}
         onClose={handleClose}
         title="Update Production Stage"
-        size="lg"
+        size="sm"
       >
         <div className="space-y-6">
           {/* Product Info */}
@@ -312,7 +312,7 @@ const StageManagement = ({
         isOpen={showUpdateModal}
         onClose={handleClose}
         title="Update Production Stage"
-        size="lg"
+        size="sm"
       >
         {selectedProduct && (
           <div className="space-y-6">

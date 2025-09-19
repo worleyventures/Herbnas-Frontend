@@ -367,7 +367,7 @@ const BranchesDashboard = ({ propActiveView = 'table' }) => {
               onClick={() => setShowCreateModal(true)}
               icon={HiPlus}
               variant="gradient"
-              size="md"
+              size="sm"
             >
               Add New Branch
             </Button>
@@ -375,7 +375,7 @@ const BranchesDashboard = ({ propActiveView = 'table' }) => {
         </div>
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
             <StatCard
               title="Total Branches"
               value={cardCounts.total}
@@ -404,7 +404,7 @@ const BranchesDashboard = ({ propActiveView = 'table' }) => {
 
           {/* Filters */}
           <FilterCard>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <SearchInput
                 placeholder="Search branches..."
                 value={searchTerm}
@@ -425,7 +425,7 @@ const BranchesDashboard = ({ propActiveView = 'table' }) => {
           </FilterCard>
 
           {/* Main Content */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+          <div>
             {renderViewContent()}
           </div>
 
