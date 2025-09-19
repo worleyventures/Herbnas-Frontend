@@ -44,7 +44,7 @@ const HealthDetailsModal = ({ isOpen, onClose, healthIssue }) => {
       isOpen={isOpen}
       onClose={onClose}
       title="Health Issue Details"
-      size="lg"
+      size="sm"
     >
       <div className="space-y-6">
         {/* Header */}

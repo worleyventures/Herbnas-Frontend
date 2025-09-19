@@ -87,7 +87,7 @@ const BranchDetailsModal = ({ isOpen, onClose, branch, branchUsers = [], branchU
       isOpen={isOpen}
       onClose={onClose}
       title="Branch Details"
-      size="lg"
+      size="sm"
     >
       <div className="space-y-6">
         {/* Branch Header */}

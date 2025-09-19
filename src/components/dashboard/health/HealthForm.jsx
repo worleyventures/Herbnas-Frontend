@@ -148,7 +148,7 @@ const HealthForm = ({
       isOpen={isOpen}
       onClose={handleClose}
       title={title}
-      size="lg"
+      size="sm"
     >
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Basic Information */}
@@ -242,14 +242,25 @@ const HealthForm = ({
           <div className="bg-gray-50 rounded-lg p-4">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-                <HiTag className="h-5 w-5 mr-2 text-[#22c55e]" />
+                <HiTag className="h-5 w-5 mr-2" style={{color: 'rgb(139, 195, 74)'}} />
                 Suggested Products
               </h3>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={onAddProductSuggestion}
-                className="text-[#22c55e] border-[#22c55e] hover:bg-[#22c55e] hover:text-white"
+                style={{
+                  color: 'rgb(139, 195, 74)',
+                  borderColor: 'rgb(139, 195, 74)'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.background = 'linear-gradient(90deg, rgb(139, 195, 74), rgb(85, 139, 47))';
+                  e.target.style.color = 'white';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.background = 'transparent';
+                  e.target.style.color = 'rgb(139, 195, 74)';
+                }}
               >
                 <HiPlus className="h-4 w-4 mr-1" />
                 Add Product
@@ -268,8 +279,8 @@ const HealthForm = ({
                         <span className={`px-2 py-1 text-xs rounded-full ${
                           suggestion.priority === 1 ? 'bg-red-100 text-red-800' :
                           suggestion.priority === 2 ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-green-100 text-green-800'
-                        }`}>
+                          'bg-green-100'
+                        }`} style={suggestion.priority === 3 ? {color: 'rgb(85, 139, 47)'} : {}}>
                           {suggestion.priority === 1 ? 'High' : suggestion.priority === 2 ? 'Medium' : 'Low'}
                         </span>
                       </div>
@@ -309,6 +320,7 @@ const HealthForm = ({
             variant="outline"
             onClick={handleClose}
             disabled={loading}
+            size="xs"
             className="hover:bg-gradient-to-r hover:from-[#22c55e] hover:to-[#16a34a] hover:text-white hover:border-transparent"
           >
             Cancel
@@ -317,6 +329,7 @@ const HealthForm = ({
             type="submit"
             variant="gradient"
             disabled={loading}
+            size="xs"
           >
             {loading ? (
               <div className="flex items-center">

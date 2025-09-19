@@ -22,19 +22,23 @@ const Input = ({
 }) => {
   const getSizeClasses = () => {
     switch (size) {
+      case 'xs':
+        return 'px-3 py-1.5 text-xs';
       case 'sm':
-        return 'px-4 py-2.5 text-sm';
+        return 'px-3 py-2 text-sm';
       case 'md':
-        return 'px-5 py-3 text-sm';
+        return 'px-4 py-2.5 text-sm';
       case 'lg':
-        return 'px-6 py-4 text-base';
+        return 'px-5 py-3 text-base';
       default:
-        return 'px-5 py-3 text-sm';
+        return 'px-4 py-2.5 text-sm';
     }
   };
 
   const getIconSize = () => {
     switch (size) {
+      case 'xs':
+        return 'h-3 w-3';
       case 'sm':
         return 'h-3 w-3';
       case 'md':
@@ -126,7 +130,7 @@ export const Select = ({
   ...props
 }) => {
   const baseSelectClasses = `
-    w-full px-5 py-3 pr-10 border-2 rounded-xl transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md hover:border-blue-500/50 cursor-pointer
+    w-full px-3 py-2 pr-8 border-2 rounded-lg transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md hover:border-blue-500/50 cursor-pointer
     ${error ? 'border-red-500 focus:ring-red-500 bg-red-50/50' : 'border-gray-300'}
     ${disabled ? 'bg-gray-100 cursor-not-allowed opacity-60' : ''}
     ${selectClassName}
@@ -189,6 +193,7 @@ export const SearchInput = ({
   onChange,
   placeholder = "Search...",
   className = "",
+  size = "sm",
   ...props
 }) => {
   return (
@@ -198,6 +203,7 @@ export const SearchInput = ({
       onChange={onChange}
       placeholder={placeholder}
       icon={props.icon}
+      size={size}
       className={className}
       {...props}
     />

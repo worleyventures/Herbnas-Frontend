@@ -50,6 +50,7 @@ const LeadDetails = () => {
           <Button
             onClick={() => navigate('/leads')}
             variant="primary"
+            size="xs"
             className="inline-flex items-center"
           >
             <HiArrowLeft className="h-4 w-4 mr-2" />

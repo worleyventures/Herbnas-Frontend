@@ -179,7 +179,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
 
   const viewOptions = [
     { id: 'pipeline', name: 'Pipeline View', icon: HiChartBar },
-    { id: 'performance', name: 'Performance', icon: HiChartBar }
+    // { id: 'performance', name: 'Performance', icon: HiChartBar }
   ];
 
   const getStatusColor = (status) => {
@@ -499,13 +499,13 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
             }}
           />
         );
-      case 'performance':
-        return (
-          <PerformanceTracking
-            leads={unfilteredLeads}
-            stats={unfilteredStats}
-          />
-        );
+      // case 'performance':
+      //   return (
+      //     <PerformanceTracking
+      //       leads={unfilteredLeads}
+      //       stats={unfilteredStats}
+      //     />
+      //   );
       default:
         return null;
     }
@@ -526,7 +526,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
   // Show empty state when no leads are available
   if (!leads || leads.length === 0) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-100">
         <div className="p-6 space-y-6">
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
@@ -536,12 +536,12 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
                 Manage and track your sales leads effectively
               </p>
             </div>
-            <div className="mt-4 sm:mt-0 flex space-x-3">
+            <div className="mt-4 sm:mt-0 flex space-x-2">
               <Button
                 onClick={() => setShowImportModal(true)}
                 icon={HiCloudArrowUp}
                 variant="warning"
-                size="md"
+                size="sm"
               >
                 Import Leads
               </Button>
@@ -549,7 +549,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
                 onClick={() => navigate('/leads/create')}
                 icon={HiPlus}
                 variant="gradient"
-                size="md"
+                size="sm"
               >
                 Add New Lead
               </Button>
@@ -557,12 +557,13 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
           </div>
 
           {/* Stats Cards - Show zeros for empty collection */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
             <StatCard
               title="Total Leads"
               value={0}
               icon={HiUser}
               iconBg="bg-gradient-to-br from-blue-500 to-blue-600"
+              gradient="blue"
               change="+5%"
               changeType="increase"
               className="h-full"
@@ -572,6 +573,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
               value={0}
               icon={HiCheckCircle}
               iconBg="bg-gradient-to-br from-green-500 to-green-600"
+              gradient="green"
               change="+2%"
               changeType="increase"
               className="h-full"
@@ -581,6 +583,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
               value={0}
               icon={HiXCircle}
               iconBg="bg-gradient-to-br from-red-500 to-red-600"
+              gradient="red"
               change="+2%"
               changeType="increase"
               className="h-full"
@@ -590,6 +593,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
               value={0}
               icon={HiCheckCircle}
               iconBg="bg-gradient-to-br from-purple-500 to-purple-600"
+              gradient="purple"
               change="+8%"
               changeType="increase"
               className="h-full"
@@ -597,81 +601,68 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
           </div>
 
           {/* Search and Filter Section */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-              <div className="flex-1">
-                <SearchInput
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Search leads..."
-                  icon={HiMagnifyingGlass}
-                />
-              </div>
-              <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0">
-                <Select
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value)}
-                  options={[
-                    { value: 'all', label: 'All Status' },
-                    { value: 'qualified', label: 'Qualified' },
-                    { value: 'unqualified', label: 'Unqualified' },
-                    { value: 'converted', label: 'Order Completed' }
-                  ]}
-                  className="w-full sm:w-40"
-                />
-                <Select
-                  value={filterBranch}
-                  onChange={(e) => setFilterBranch(e.target.value)}
-                  options={[
-                    { value: 'all', label: 'All Branches' },
-                    ...(branches?.map(branch => ({
-                      value: branch.branchName || branch,
-                      label: branch.branchName || branch
-                    })) || [])
-                  ]}
-                  className="w-full sm:w-40"
-                />
-              </div>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            <div className="flex-1">
+              <SearchInput
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search leads..."
+                icon={HiMagnifyingGlass}
+              />
+            </div>
+            <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0">
+              <Select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                options={[
+                  { value: 'all', label: 'All Status' },
+                  { value: 'qualified', label: 'Qualified' },
+                  { value: 'unqualified', label: 'Unqualified' },
+                  { value: 'converted', label: 'Order Completed' }
+                ]}
+                className="w-full sm:w-40"
+              />
+              <Select
+                value={filterBranch}
+                onChange={(e) => setFilterBranch(e.target.value)}
+                options={[
+                  { value: 'all', label: 'All Branches' },
+                  ...(branches?.map(branch => ({
+                    value: branch.branchName || branch,
+                    label: branch.branchName || branch
+                  })) || [])
+                ]}
+                className="w-full sm:w-40"
+              />
             </div>
           </div>
 
           {/* Empty State */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <div className="text-sm text-gray-500">
-                  Showing 1-0 of 0 leads
-                </div>
-              </div>
+          <div className="flex flex-col items-center text-center py-12">
+            <div className="text-gray-400 mb-4">
+              <HiUser className="h-16 w-16" />
             </div>
-            <div className="p-12">
-              <div className="flex flex-col items-center text-center">
-          <div className="text-gray-400 mb-4">
-                  <HiUser className="h-16 w-16" />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">No leads found</h3>
-                <p className="text-gray-600 mb-6 max-w-md">
-                  No data available at the moment
-                </p>
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <Button
-                    onClick={() => navigate('/leads/create')}
-                    icon={HiPlus}
-                    variant="gradient"
-                    size="md"
-                  >
-                    Create First Lead
-                  </Button>
-                  <Button
-                    onClick={() => setShowImportModal(true)}
-                    icon={HiCloudArrowUp}
-                    variant="outline"
-                    size="md"
-                  >
-                    Import Leads
-                  </Button>
-                </div>
-              </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">No leads found</h3>
+            <p className="text-gray-600 mb-6 max-w-md">
+              No data available at the moment
+            </p>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Button
+                onClick={() => navigate('/leads/create')}
+                icon={HiPlus}
+                variant="gradient"
+                size="sm"
+              >
+                Create First Lead
+              </Button>
+              <Button
+                onClick={() => setShowImportModal(true)}
+                icon={HiCloudArrowUp}
+                variant="outline"
+                size="sm"
+              >
+                Import Leads
+              </Button>
             </div>
           </div>
         </div>
@@ -726,12 +717,12 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
               Manage and track your sales leads effectively
             </p>
             </div>
-          <div className="mt-4 sm:mt-0 flex space-x-3">
+            <div className="mt-4 sm:mt-0 flex space-x-2">
               <Button
                 onClick={() => setShowImportModal(true)}
                 icon={HiCloudArrowUp}
                 variant="warning"
-                size="md"
+                size="sm"
               >
                 Import Leads
               </Button>
@@ -739,7 +730,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
                 onClick={() => navigate('/leads/create')}
                 icon={HiPlus}
                 variant="gradient"
-                size="md"
+                size="sm"
               >
                 Add New Lead
               </Button>
@@ -755,7 +746,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
                   }}
                     icon={view.icon}
                     variant={activeView === view.id ? "gradient" : "outline"}
-                    size="md"
+                    size="sm"
                     className={`${
                       activeView === view.id 
                         ? 'shadow-lg transform scale-105' 
@@ -788,79 +779,85 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
           </div>
         )}
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6">
-          <div
-            onClick={() => handleCardFilter('all')}
-            className={`cursor-pointer transition-all duration-200 ${
-              filterStatus === 'all' ? 'opacity-90 shadow-lg' : 'hover:shadow-md'
-            }`}
-          >
-            <StatCard
-              title="Total Leads"
-              value={cardCounts.total}
-              icon={HiUser}
-              iconBg="bg-gradient-to-br from-blue-500 to-blue-600"
-              change="+5%"
-              changeType="increase"
-              className="h-full"
-            />
+        {/* Stats Cards - Show for all tabs when there are leads */}
+        {leads && leads.length > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
+            <div
+              onClick={() => handleCardFilter('all')}
+              className={`cursor-pointer transition-all duration-200 ${
+                filterStatus === 'all' ? 'opacity-90 shadow-lg' : 'hover:shadow-md'
+              }`}
+            >
+              <StatCard
+                title="Total Leads"
+                value={cardCounts.total}
+                icon={HiUser}
+                iconBg="bg-gradient-to-br from-blue-500 to-blue-600"
+                gradient="blue"
+                change="+5%"
+                changeType="increase"
+                className="h-full"
+              />
+            </div>
+            
+            <div
+              onClick={() => handleCardFilter('qualified')}
+              className={`cursor-pointer transition-all duration-200 ${
+                filterStatus === 'qualified' ? 'opacity-90 shadow-lg' : 'hover:shadow-md'
+              }`}
+            >
+              <StatCard
+                title="Qualified"
+                value={cardCounts.qualified}
+                icon={HiCheckCircle}
+                iconBg="bg-gradient-to-br from-green-500 to-green-600"
+                gradient="green"
+                change="+2%"
+                changeType="increase"
+                className="h-full"
+              />
+            </div>
+            
+            <div
+              onClick={() => handleCardFilter('unqualified')}
+              className={`cursor-pointer transition-all duration-200 ${
+                filterStatus === 'unqualified' ? 'opacity-90 shadow-lg' : 'hover:shadow-md'
+              }`}
+            >
+              <StatCard
+                title="Unqualified"
+                value={cardCounts.unqualified}
+                icon={HiXCircle}
+                iconBg="bg-gradient-to-br from-red-500 to-red-600"
+                gradient="red"
+                change="+2%"
+                changeType="increase"
+                className="h-full"
+              />
+            </div>
+            
+            <div
+              onClick={() => handleCardFilter('converted')}
+              className={`cursor-pointer transition-all duration-200 ${
+                filterStatus === 'converted' ? 'opacity-90 shadow-lg' : 'hover:shadow-md'
+              }`}
+            >
+              <StatCard
+                title="Order Completed"
+                value={cardCounts.converted}
+                icon={HiCheckCircle}
+                iconBg="bg-gradient-to-br from-purple-500 to-purple-600"
+                gradient="purple"
+                change="+8%"
+                changeType="increase"
+                className="h-full"
+              />
+            </div>
           </div>
-          
-          <div
-            onClick={() => handleCardFilter('qualified')}
-            className={`cursor-pointer transition-all duration-200 ${
-              filterStatus === 'qualified' ? 'opacity-90 shadow-lg' : 'hover:shadow-md'
-            }`}
-          >
-            <StatCard
-              title="Qualified"
-              value={cardCounts.qualified}
-              icon={HiCheckCircle}
-              iconBg="bg-gradient-to-br from-green-500 to-green-600"
-              change="+2%"
-              changeType="increase"
-              className="h-full"
-            />
-          </div>
-          
-          <div
-            onClick={() => handleCardFilter('unqualified')}
-            className={`cursor-pointer transition-all duration-200 ${
-              filterStatus === 'unqualified' ? 'opacity-90 shadow-lg' : 'hover:shadow-md'
-            }`}
-          >
-            <StatCard
-              title="Unqualified"
-              value={cardCounts.unqualified}
-              icon={HiXCircle}
-              iconBg="bg-gradient-to-br from-red-500 to-red-600"
-              change="+2%"
-              changeType="increase"
-              className="h-full"
-            />
-          </div>
-          
-          <div
-            onClick={() => handleCardFilter('converted')}
-            className={`cursor-pointer transition-all duration-200 ${
-              filterStatus === 'converted' ? 'opacity-90 shadow-lg' : 'hover:shadow-md'
-            }`}
-          >
-            <StatCard
-              title="Order Completed"
-              value={cardCounts.converted}
-              icon={HiCheckCircle}
-              iconBg="bg-gradient-to-br from-purple-500 to-purple-600"
-              change="+8%"
-              changeType="increase"
-              className="h-full"
-            />
-          </div>
-        </div>
+        )}
 
-        {/* Search and Filter Section */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+        {/* Search and Filter Section - Show for all tabs when there are leads */}
+        {leads && leads.length > 0 && (
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">
             <div className="flex-1">
               <SearchInput
@@ -899,20 +896,19 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
               />
             </div>
           </div>
-        </div>
+        )}
 
-        {/* Leads Table Area */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <div className="flex items-center justify-between">
+        {/* Content Area */}
+        <div className="overflow-hidden">
+          {/* Pagination info - only show for table view */}
+          {activeView === 'table' && leads && leads.length > 0 && (
+            <div className="flex items-center justify-between mb-4">
               <div className="text-sm text-gray-500">
                 Showing {paginationData.startIndex}-{paginationData.endIndex} of {paginationData.totalLeads} leads
               </div>
             </div>
-          </div>
-          <div className="overflow-hidden">
+          )}
           {renderViewContent()}
-          </div>
         </div>
       </div>
 

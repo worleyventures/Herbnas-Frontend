@@ -112,7 +112,7 @@ const ViewProduction = () => {
           <HiDocumentText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">Product not found</h3>
           <p className="text-gray-500 mb-4">The production item you're looking for doesn't exist.</p>
-          <Button onClick={() => navigate('/production')} variant="gradient">
+          <Button onClick={() => navigate('/production')} variant="gradient" size="xs">
             Back to Production
           </Button>
         </div>

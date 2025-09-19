@@ -22,7 +22,7 @@ const Table = ({
     
     return (
       <tr>
-        <td colSpan={columns.length} className="px-6 py-16 text-center">
+        <td colSpan={columns.length} className="px-4 py-12 text-center">
           <div className="flex flex-col items-center justify-center space-y-4">
             <div className="relative">
               <div className="animate-spin rounded-full h-8 w-8 border-4 border-gray-200"></div>
@@ -40,7 +40,7 @@ const Table = ({
     
     return (
       <tr>
-        <td colSpan={columns.length} className="px-6 py-16 text-center">
+        <td colSpan={columns.length} className="px-4 py-12 text-center">
           <div className="flex flex-col items-center space-y-4">
             {EmptyIcon && (
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
@@ -126,7 +126,7 @@ const Table = ({
   };
 
   return (
-    <div className={`bg-white rounded-2xl shadow-sm border border-gray-200/50 overflow-hidden ${className}`}>
+    <div className={`overflow-hidden ${className}`}>
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200/50">
           <thead className="bg-gradient-to-r from-gray-50 to-gray-100/50">
@@ -134,7 +134,7 @@ const Table = ({
               {columns.map((column, index) => (
                 <th
                   key={index}
-                  className={`px-4 sm:px-6 py-5 text-left text-xs font-bold text-gray-600 uppercase tracking-wider ${
+                  className={`px-3 sm:px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider ${
                     column.align === 'center' ? 'text-center' : ''
                   } ${column.className || ''} ${column.hiddenOnMobile ? 'hidden sm:table-cell' : ''}`}
                 >
@@ -142,7 +142,7 @@ const Table = ({
                 </th>
               ))}
               {actions.length > 0 && (
-                <th className="px-4 sm:px-6 py-5 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">
+                <th className="px-3 sm:px-4 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">
                   Actions
                 </th>
               )}
@@ -165,7 +165,7 @@ const Table = ({
                   {columns.map((column, colIndex) => (
                     <td
                       key={colIndex}
-                      className={`px-4 sm:px-6 py-5 text-sm ${
+                      className={`px-3 sm:px-4 py-3 text-sm ${
                         column.hiddenOnMobile ? 'hidden sm:table-cell' : ''
                       } ${
                         column.align === 'center' ? 'text-center' : ''
@@ -177,7 +177,7 @@ const Table = ({
                     </td>
                   ))}
                   {actions.length > 0 && (
-                    <td className="px-4 sm:px-6 py-5 whitespace-nowrap text-center">
+                    <td className="px-3 sm:px-4 py-3 whitespace-nowrap text-center">
                       <div className="flex items-center justify-center space-x-1">
                         {actions.map((action, actionIndex) => (
                           <button

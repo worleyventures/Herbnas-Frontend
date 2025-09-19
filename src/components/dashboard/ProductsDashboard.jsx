@@ -139,13 +139,31 @@ const ProductsDashboard = ({ showCreateModal, setShowCreateModal }) => {
   const handleUpdateProduct = (productData) => {
     if (selectedProduct) {
       dispatch(updateProduct({ productId: selectedProduct._id, productData }))
-        .then(() => {
+        .then((result) => {
           setShowEditModal(false);
           setSelectedProduct(null);
-          dispatch(addNotification({
-            type: 'success',
-            message: 'Product updated successfully!'
-          }));
+          
+          const responseData = result.payload.data || result.payload;
+          
+          // Check if product was automatically moved to inventory
+          if (responseData.inventoryMoveSuccess) {
+            dispatch(addNotification({
+              type: 'success',
+              title: 'Product Updated & Moved to Inventory',
+              message: `Product updated and automatically moved to central inventory with ${responseData.inventoryStock} units`
+            }));
+          } else if (responseData.inventoryMoveError) {
+            dispatch(addNotification({
+              type: 'warning',
+              title: 'Product Updated with Warning',
+              message: `Product updated but failed to move to inventory: ${responseData.inventoryMoveError}`
+            }));
+          } else {
+            dispatch(addNotification({
+              type: 'success',
+              message: responseData.message || 'Product updated successfully!'
+            }));
+          }
         })
         .catch(() => {
           dispatch(addNotification({
@@ -220,12 +238,12 @@ const ProductsDashboard = ({ showCreateModal, setShowCreateModal }) => {
             Manage your product catalog, pricing, and inventory
           </p>
         </div>
-        <div className="mt-4 sm:mt-0 flex space-x-3">
+        <div className="mt-4 sm:mt-0 flex space-x-2">
           <Button
             onClick={() => setShowImportModal(true)}
             icon={HiCloudArrowUp}
             variant="warning"
-            size="md"
+            size="sm"
           >
             Import Products
           </Button>
@@ -233,7 +251,7 @@ const ProductsDashboard = ({ showCreateModal, setShowCreateModal }) => {
             onClick={() => setShowCreateModal(true)}
             icon={HiPencil}
             variant="gradient"
-            size="md"
+            size="sm"
           >
             Add New Product
           </Button>
@@ -241,12 +259,13 @@ const ProductsDashboard = ({ showCreateModal, setShowCreateModal }) => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
         <StatCard
           title="Total Products"
           value={finalProducts.length}
           icon={HiDocumentText}
-          iconBg="bg-gradient-to-br from-green-500 to-green-600"
+          gradient="green"
+          animation="bounce"
           change="+12%"
           changeType="increase"
           loading={loading}
@@ -255,7 +274,8 @@ const ProductsDashboard = ({ showCreateModal, setShowCreateModal }) => {
           title="Active Products"
           value={finalProducts.filter(p => p.isActive === true).length}
           icon={HiCheckCircle}
-          iconBg="bg-gradient-to-br from-emerald-500 to-emerald-600"
+          gradient="emerald"
+          animation="pulse"
           change="+8%"
           changeType="increase"
           loading={loading}
@@ -264,7 +284,8 @@ const ProductsDashboard = ({ showCreateModal, setShowCreateModal }) => {
           title="Total Value"
           value={`₹${finalProducts.reduce((sum, p) => sum + (p.price || 0), 0).toLocaleString()}`}
           icon={HiCurrencyDollar}
-          iconBg="bg-gradient-to-br from-amber-500 to-amber-600"
+          gradient="amber"
+          animation="float"
           change="+15%"
           changeType="increase"
           loading={loading}
@@ -273,7 +294,7 @@ const ProductsDashboard = ({ showCreateModal, setShowCreateModal }) => {
 
       {/* Filters */}
       <FilterCard>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <SearchInput
             value={searchTerm}
             onChange={handleSearch}
@@ -290,7 +311,7 @@ const ProductsDashboard = ({ showCreateModal, setShowCreateModal }) => {
       </FilterCard>
 
       {/* Main Content */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+      <div>
         <ProductCRUD
           products={paginatedProducts}
           loading={loading}

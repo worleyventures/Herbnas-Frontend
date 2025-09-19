@@ -18,9 +18,9 @@ const Button = ({
     
     switch (variant) {
       case 'primary':
-        return `${baseClasses} text-white shadow-sm hover:shadow-md focus:ring-green-500 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700`;
+        return `${baseClasses} text-white shadow-sm hover:shadow-md focus:ring-green-500`;
       case 'gradient':
-        return `${baseClasses} text-white shadow-lg hover:shadow-xl focus:ring-green-500 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700`;
+        return `${baseClasses} text-white shadow-lg hover:shadow-xl focus:ring-green-500`;
       case 'success':
         return `${baseClasses} text-white shadow-lg hover:shadow-xl focus:ring-emerald-500 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700`;
       case 'warning':
@@ -28,9 +28,9 @@ const Button = ({
       case 'secondary':
         return `${baseClasses} bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 hover:border-gray-400 focus:ring-green-500 shadow-sm`;
       case 'outline':
-        return `${baseClasses} text-green-500 border-2 border-green-500 hover:bg-green-500 hover:text-white focus:ring-green-500 bg-white`;
+        return `${baseClasses} border-2 focus:ring-green-500 bg-white`;
       case 'ghost':
-        return `${baseClasses} text-gray-600 hover:text-green-500 hover:bg-green-50 focus:ring-green-500`;
+        return `${baseClasses} text-gray-600 hover:bg-green-50 focus:ring-green-500`;
       case 'danger':
         return `${baseClasses} text-white shadow-lg hover:shadow-xl focus:ring-red-500 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700`;
       case 'info':
@@ -42,39 +42,58 @@ const Button = ({
 
   const getSizeClasses = () => {
     switch (size) {
+      case 'xs':
+        return 'px-2 py-1 text-xs';
       case 'sm':
-        return 'px-4 py-2 text-sm';
+        return 'px-3 py-1.5 text-xs';
       case 'md':
-        return 'px-6 py-3 text-sm';
+        return 'px-4 py-2 text-sm';
       case 'lg':
-        return 'px-8 py-4 text-base';
+        return 'px-6 py-3 text-base';
       case 'xl':
-        return 'px-10 py-5 text-lg';
+        return 'px-8 py-4 text-lg';
       default:
-        return 'px-6 py-3 text-sm';
+        return 'px-4 py-2 text-sm';
     }
   };
 
   const getIconSize = () => {
     switch (size) {
+      case 'xs':
+        return 'h-3 w-3';
       case 'sm':
         return 'h-3 w-3';
       case 'md':
-        return 'h-4 w-4';
+        return 'h-3.5 w-3.5';
       case 'lg':
-        return 'h-5 w-5';
-      case 'xl':
-        return 'h-6 w-6';
-      default:
         return 'h-4 w-4';
+      case 'xl':
+        return 'h-5 w-5';
+      default:
+        return 'h-3.5 w-3.5';
     }
   };
 
   const getPrimaryStyle = () => {
-    if (variant === 'primary') {
-      return { background: 'linear-gradient(90deg, #8bc34a, #558b2f)' };
+    if (variant === 'primary' || variant === 'gradient') {
+      return { 
+        background: 'linear-gradient(90deg, rgb(139, 195, 74), rgb(85, 139, 47))',
+        color: 'white'
+      };
     }
-    // For gradient variants, we don't need inline styles as they're handled by Tailwind classes
+    if (variant === 'outline') {
+      return { 
+        background: 'transparent',
+        color: 'rgb(139, 195, 74)',
+        borderColor: 'rgb(139, 195, 74)'
+      };
+    }
+    if (variant === 'ghost') {
+      return { 
+        background: 'transparent',
+        color: 'rgb(107, 114, 128)'
+      };
+    }
     return {};
   };
 
@@ -125,7 +144,7 @@ export const ActionButton = ({
       case 'delete':
         return 'text-gray-400 hover:text-red-500 hover:bg-red-500/10 hover:scale-110';
       case 'success':
-        return 'text-gray-400 hover:text-green-500 hover:bg-green-500/10 hover:scale-110';
+        return 'text-gray-400 hover:bg-green-500/10 hover:scale-110';
       case 'warning':
         return 'text-gray-400 hover:text-yellow-500 hover:bg-yellow-500/10 hover:scale-110';
       default:
@@ -133,29 +152,42 @@ export const ActionButton = ({
     }
   };
 
+  const getActionStyle = () => {
+    if (variant === 'success') {
+      return {
+        '--hover-color': 'linear-gradient(90deg, rgb(139, 195, 74), rgb(85, 139, 47))'
+      };
+    }
+    return {};
+  };
+
   const getActionSizeClasses = () => {
     switch (size) {
+      case 'xs':
+        return 'p-0.5';
       case 'sm':
-        return 'p-1.5';
+        return 'p-1';
       case 'md':
-        return 'p-2';
-      case 'lg':
-        return 'p-2.5';
-      default:
         return 'p-1.5';
+      case 'lg':
+        return 'p-2';
+      default:
+        return 'p-1';
     }
   };
 
   const getIconSize = () => {
     switch (size) {
+      case 'xs':
+        return 'h-2.5 w-2.5';
       case 'sm':
-        return 'h-4 w-4';
+        return 'h-3 w-3';
       case 'md':
-        return 'h-5 w-5';
+        return 'h-3.5 w-3.5';
       case 'lg':
-        return 'h-6 w-6';
-      default:
         return 'h-4 w-4';
+      default:
+        return 'h-3 w-3';
     }
   };
 
@@ -163,6 +195,7 @@ export const ActionButton = ({
     <button
       onClick={onClick}
       className={`${getActionSizeClasses()} rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 ${getActionVariantClasses()} ${className}`}
+      style={getActionStyle()}
       title={title}
       {...props}
     >

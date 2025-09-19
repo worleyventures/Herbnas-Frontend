@@ -143,7 +143,7 @@ const ImportModal = ({ isOpen, onClose, onImportSuccess }) => {
                   <Button
                     onClick={handleDownloadTemplate}
                     variant="outline"
-                    size="sm"
+                    size="xs"
                     className="border-blue-300 text-blue-700 hover:bg-blue-100"
                   >
                     <HiArrowDownTray className="h-4 w-4 mr-2" />
@@ -215,6 +215,7 @@ const ImportModal = ({ isOpen, onClose, onImportSuccess }) => {
                 onClick={handleClose}
                 variant="outline"
                 disabled={uploading}
+                size="xs"
               >
                 Cancel
               </Button>
@@ -222,6 +223,7 @@ const ImportModal = ({ isOpen, onClose, onImportSuccess }) => {
                 onClick={handleImport}
                 disabled={!file || uploading}
                 loading={uploading}
+                size="xs"
                 className="bg-blue-600 hover:bg-blue-700"
               >
                 {uploading ? 'Importing...' : 'Import Leads'}
@@ -294,11 +296,13 @@ const ImportModal = ({ isOpen, onClose, onImportSuccess }) => {
               <Button
                 onClick={resetForm}
                 variant="outline"
+                size="xs"
               >
                 Import More
               </Button>
               <Button
                 onClick={handleClose}
+                size="xs"
                 className="bg-blue-600 hover:bg-blue-700"
               >
                 Done

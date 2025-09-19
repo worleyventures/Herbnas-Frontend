@@ -45,9 +45,9 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
       href: '/leads',
       icon: HiUsers,
       current: isActiveRoute('/leads'),
-      color: 'text-green-600',
+      color: 'text-gray-600',
       bgColor: 'bg-gray-100',
-      hoverColor: 'group-hover:text-green-600',
+      hoverColor: 'group-hover:text-gray-600',
       hoverBgColor: 'group-hover:bg-gray-50'
     },
     {
@@ -55,9 +55,9 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
       href: '/production',
       icon: HiDocumentText,
       current: isActiveRoute('/production'),
-      color: 'text-green-600',
+      color: 'text-gray-600',
       bgColor: 'bg-gray-100',
-      hoverColor: 'group-hover:text-green-600',
+      hoverColor: 'group-hover:text-gray-600',
       hoverBgColor: 'group-hover:bg-gray-50'
     },
     {
@@ -105,9 +105,9 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
       href: '/accounts',
       icon: HiCurrencyDollar,
       current: isActiveRoute('/accounts'),
-      color: 'text-green-600',
+      color: 'text-gray-600',
       bgColor: 'bg-gray-100',
-      hoverColor: 'group-hover:text-green-600',
+      hoverColor: 'group-hover:text-gray-600',
       hoverBgColor: 'group-hover:bg-gray-50'
     }
   ];
@@ -152,27 +152,45 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
   const NavigationItem = ({ item }) => {
     const isActive = item.current;
 
+    const getItemStyle = () => {
+      // Only apply gradient styles if the item has gradient property and is active
+      if (item.gradient && isActive) {
+        return {
+          background: 'linear-gradient(90deg, rgb(139, 195, 74), rgb(85, 139, 47))',
+          color: 'white',
+          borderRightColor: 'rgb(85, 139, 47)'
+        };
+      }
+      if (item.gradient && !isActive) {
+        return {
+          color: 'rgb(139, 195, 74)'
+        };
+      }
+      return {};
+    };
+
     return (
       <Link
         to={item.href}
-        className={`group flex items-center text-sm font-medium rounded-xl transition-all duration-300 ease-in-out ${
-          isCollapsed ? 'px-3 py-3 justify-center' : 'px-4 py-3'
+        className={`group flex items-center text-sm font-medium rounded-lg transition-all duration-300 ease-in-out ${
+          isCollapsed ? 'px-3 py-2.5 justify-center' : 'px-3 py-2.5'
         } ${
           isActive
-            ? `bg-gradient-to-r from-gray-100 to-gray-50 text-gray-900 border-r-4 border-[#558b2f] shadow-md hover:shadow-lg`
-            : `text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:shadow-sm hover:scale-[1.02]`
+            ? `bg-gradient-to-r from-gray-100 to-gray-50 text-gray-900 border-r-4 border-[#558b2f] shadow-sm hover:shadow-md`
+            : `text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:shadow-sm`
         }`}
+        style={getItemStyle()}
         onClick={() => setSidebarOpen(false)}
         title={isCollapsed ? item.name : undefined}
       >
         <item.icon
-          className={`h-5 w-5 flex-shrink-0 transition-all duration-300 ${
-            isActive ? item.color : item.color
-          } ${isCollapsed ? '' : 'mr-4'} ${isActive ? 'scale-110' : 'group-hover:scale-110'}`}
+          className={`h-4 w-4 flex-shrink-0 transition-all duration-300 ${
+            isActive ? (item.gradient ? 'text-white' : item.color) : item.color
+          } ${isCollapsed ? '' : 'mr-3'} ${isActive ? 'scale-105' : 'group-hover:scale-105'}`}
           aria-hidden="true"
         />
         {!isCollapsed && (
-          <span className="truncate font-medium">{item.name}</span>
+          <span className="truncate font-medium text-sm">{item.name}</span>
         )}
       </Link>
     );
@@ -198,11 +216,11 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
       >
         <div className="flex flex-col h-screen">
           {/* Logo and toggle buttons */}
-          <div className={`flex items-center justify-between h-16 pt-10 ${isCollapsed ? 'px-3' : 'px-6'} py-4`}>
+          <div className={`flex items-center justify-between h-16 pt-6 ${isCollapsed ? 'px-3' : 'px-6'} py-4`}>
             <div className="flex items-center w-full">
               <div className="w-full flex items-center justify-center">
                 {isCollapsed ? (
-                  <div className="w-10 h-10 bg-gradient-to-br from-[#8bc34a] to-[#558b2f] rounded-xl flex items-center justify-center shadow-lg">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg" style={{background: 'linear-gradient(90deg, rgb(139, 195, 74), rgb(85, 139, 47))'}}>
                     <span className="text-white font-bold text-lg">H</span>
                   </div>
                 ) : (
@@ -210,7 +228,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
                     <img 
                       src={logo} 
                       alt="Herb Nas Logo" 
-                      className="h-14 object-contain"
+                      className="h-12 object-contain"
                     />
                   </div>
                 )}
@@ -243,38 +261,9 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
             </div>
           </div>
 
-          {/* User info */}
-          {/* <div className="px-6 py-4 border-b border-gray-200 bg-gray-50 h-20">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                {user?.avatar?.url ? (
-                  <img
-                    className="h-12 w-12 rounded-full ring-2 ring-white shadow-sm"
-                    src={user.avatar.url}
-                    alt={user.fullName || user.firstName}
-                  />
-                ) : (
-                  <div className="h-12 w-12 rounded-full flex items-center justify-center shadow-sm" style={{background: 'linear-gradient(to bottom right, #22c55e, #16a34a)'}}>
-                    <span className="text-white font-semibold text-lg">
-                      {user?.firstName?.charAt(0) || 'U'}
-                    </span>
-                  </div>
-                )}
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-semibold text-gray-900">
-                  {user?.fullName || `${user?.firstName} ${user?.lastName}` || 'User'}
-                </p>
-                <p className="text-xs text-gray-500 capitalize bg-white px-2 py-1 rounded-full inline-block mt-1">
-                  {user?.role || 'user'}
-                </p>
-              </div>
-            </div>
-          </div> */}
-
           {/* Navigation */}
-          <nav className={`flex-1 py-4 pt-10 space-y-2 ${isCollapsed ? 'px-3' : 'px-5'}`}>
-            <div className="space-y-2">
+          <nav className={`flex-1 py-4 space-y-1 ${isCollapsed ? 'px-3' : 'px-5'}`}>
+            <div className="space-y-1">
               {navigation.map((item) => (
                 <NavigationItem key={item.name} item={item} />
               ))}
@@ -285,7 +274,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
           <div className={`py-4 ${isCollapsed ? 'px-3' : 'px-6'}`}>
             {isCollapsed ? (
               <div className="flex items-center justify-center h-full">
-                <div className="w-8 h-8 bg-gradient-to-br from-[#8bc34a] to-[#558b2f] rounded-lg flex items-center justify-center shadow-md">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center shadow-md" style={{background: 'linear-gradient(90deg, rgb(139, 195, 74), rgb(85, 139, 47))'}}>
                   <span className="text-white font-bold text-sm">H</span>
                 </div>
               </div>

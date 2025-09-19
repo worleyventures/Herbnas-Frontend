@@ -591,34 +591,6 @@ const LeadFormStepper = ({
 
   return (
     <div className="w-full h-full flex flex-col">
-      {/* Header */}
-      <div className="px-6 py-4" style={{background: 'linear-gradient(90deg, #8bc34a, #558b2f)'}}>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="flex-shrink-0">
-              <div className="h-10 w-10 bg-white/20 rounded-lg flex items-center justify-center">
-                <HiUser className="h-6 w-6 text-white" />
-              </div>
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-white">
-                {mode === 'edit' ? 'Edit Lead Information' : 'Create New Lead'}
-              </h1>
-              <p className="text-white/90 text-sm mt-1">
-                {mode === 'edit' ? 'Update lead details and information' : 'Add a new lead to your pipeline'}
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={onCancel}
-            className="text-white/80 hover:text-white hover:bg-white/20 transition-all duration-200 p-2 rounded-lg"
-          >
-            <HiXMark className="h-6 w-6" />
-          </button>
-        </div>
-      </div>
-
       {/* Stepper */}
       <div className="px-6 py-4 bg-gray-50/50">
         <Stepper

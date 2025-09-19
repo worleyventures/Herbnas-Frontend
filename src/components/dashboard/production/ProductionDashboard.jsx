@@ -120,30 +120,34 @@ const ProductionDashboard = () => {
       notes 
     })).then((result) => {
       if (result.type === 'products/updateProductionStage/fulfilled') {
-        // Check if F6 is completed and move to inventory
-        if (newStage === 'F6' && newStatus === 'completed') {
-          console.log('Product completed F6 stage, moving to inventory...');
-          dispatch(moveToInventory(productId)).then((inventoryResult) => {
-            if (inventoryResult.type === 'products/moveToInventory/fulfilled') {
-              console.log('Product successfully moved to inventory');
-              // Show success notification
-              dispatch(addNotification({
-                type: 'success',
-                title: 'Product Moved to Inventory',
-                message: `Product has been automatically moved to central inventory with ${inventoryResult.payload.data.centralInventory.availableStock} units`,
-                duration: 5000
-              }));
-            } else {
-              console.error('Failed to move product to inventory:', inventoryResult.payload);
-              dispatch(addNotification({
-                type: 'error',
-                title: 'Inventory Move Failed',
-                message: inventoryResult.payload || 'Failed to move product to inventory',
-                duration: 5000
-              }));
-            }
-          });
+        const responseData = result.payload.data || result.payload;
+        
+        // Check if central inventory was deleted for finished production
+        if (responseData.inventoryDeleteSuccess) {
+          console.log('✅ Central inventory deleted for finished production');
+          dispatch(addNotification({
+            type: 'success',
+            title: 'Production Finished',
+            message: `Product production completed and central inventory deleted`,
+            duration: 5000
+          }));
+        } else if (responseData.inventoryDeleteError) {
+          console.error('❌ Failed to delete central inventory:', responseData.inventoryDeleteError);
+          dispatch(addNotification({
+            type: 'error',
+            title: 'Inventory Deletion Failed',
+            message: `Product stage updated but failed to delete central inventory: ${responseData.inventoryDeleteError}`,
+            duration: 5000
+          }));
         }
+        
+        // Show general success notification
+        dispatch(addNotification({
+          type: 'success',
+          title: 'Production Stage Updated',
+          message: responseData.message || 'Production stage updated successfully',
+          duration: 3000
+        }));
         
         // Refresh data
         dispatch(getAllProducts());
@@ -229,7 +233,7 @@ const ProductionDashboard = () => {
               onClick={handleCreateProduct}
               icon={HiDocumentText}
               variant="gradient"
-              size="md"
+              size="sm"
               className="shadow-lg"
             >
               Add Production
@@ -238,12 +242,13 @@ const ProductionDashboard = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
           <StatCard
             title="Total Products"
             value={stats.total}
             icon={HiDocumentText}
-            iconBg="bg-gradient-to-br from-blue-500 to-blue-600"
+            gradient="blue"
+            animation="bounce"
             change="+5%"
             changeType="increase"
             className="h-full"
@@ -252,7 +257,8 @@ const ProductionDashboard = () => {
             title="In Process"
             value={stats.inProcess}
             icon={HiPlay}
-            iconBg="bg-gradient-to-br from-blue-500 to-blue-600"
+            gradient="indigo"
+            animation="pulse"
             change="+2%"
             changeType="increase"
             className="h-full"
@@ -261,7 +267,8 @@ const ProductionDashboard = () => {
             title="On Hold"
             value={stats.onHold}
             icon={HiPause}
-            iconBg="bg-gradient-to-br from-yellow-500 to-yellow-600"
+            gradient="yellow"
+            animation="float"
             change="+1%"
             changeType="increase"
             className="h-full"
@@ -270,7 +277,8 @@ const ProductionDashboard = () => {
             title="Completed"
             value={stats.completed}
             icon={HiCheckCircle}
-            iconBg="bg-gradient-to-br from-green-500 to-green-600"
+            gradient="green"
+            animation="bounce"
             change="+8%"
             changeType="increase"
             className="h-full"
@@ -278,34 +286,30 @@ const ProductionDashboard = () => {
         </div>
 
         {/* Search and Filter Section */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-            <div className="flex-1">
-              <SearchInput
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search products..."
-                icon={HiMagnifyingGlass}
-              />
-            </div>
-            <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0">
-              <Select
-                value={selectedStage}
-                onChange={(e) => setSelectedStage(e.target.value)}
-                options={stageOptions}
-                className="w-full sm:w-48"
-              />
-            </div>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+          <div className="flex-1">
+            <SearchInput
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search products..."
+              icon={HiMagnifyingGlass}
+            />
+          </div>
+          <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0">
+            <Select
+              value={selectedStage}
+              onChange={(e) => setSelectedStage(e.target.value)}
+              options={stageOptions}
+              className="w-full sm:w-48"
+            />
           </div>
         </div>
 
         {/* Main Content */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <div className="flex items-center justify-between">
-              <div className="text-sm text-gray-500">
-                Showing {products.length} products
-              </div>
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <div className="text-sm text-gray-500">
+              Showing {products.length} products
             </div>
           </div>
           <div className="overflow-hidden">

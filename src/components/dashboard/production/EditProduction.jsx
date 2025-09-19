@@ -288,6 +288,7 @@ const EditProduction = () => {
                 variant="outline"
                 onClick={handleCancel}
                 disabled={saving}
+                size="xs"
                 className="hover:bg-gray-100"
               >
                 Cancel
@@ -296,6 +297,7 @@ const EditProduction = () => {
                 type="submit"
                 variant="gradient"
                 disabled={saving}
+                size="xs"
                 className="min-w-[120px]"
               >
                 {saving ? (

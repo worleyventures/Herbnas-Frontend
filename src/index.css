@@ -64,7 +64,7 @@ body {
 
 /* Gradient backgrounds */
 .gradient-primary {
-  background: linear-gradient(135deg, #8bc34a 0%, #558b2f 100%);
+  background: linear-gradient(90deg, rgb(139, 195, 74), rgb(85, 139, 47));
 }
 
 .gradient-secondary {
@@ -85,7 +85,7 @@ body {
 
 /* Text gradients */
 .text-gradient-primary {
-  background: linear-gradient(135deg, #8bc34a 0%, #558b2f 100%);
+  background: linear-gradient(90deg, rgb(139, 195, 74), rgb(85, 139, 47));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -105,6 +105,146 @@ body {
 
 .card-hover:hover {
   @apply transform -translate-y-1 shadow-lg;
+}
+
+/* Icon animations */
+.icon-bounce {
+  animation: bounce 2s infinite;
+}
+
+.icon-pulse {
+  animation: pulse 2s infinite;
+}
+
+.icon-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes bounce {
+  0%, 20%, 50%, 80%, 100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-4px);
+  }
+  60% {
+    transform: translateY(-2px);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+/* Stat card specific animations */
+.stat-card-icon {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.stat-card-icon:hover {
+  transform: scale(1.1) rotate(12deg);
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.1));
+}
+
+/* Stepper animations */
+.stepper-container {
+  position: relative;
+}
+
+.stepper-step-enter {
+  opacity: 0;
+  transform: scale(0.8) translateY(20px);
+}
+
+.stepper-step-enter-active {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.stepper-step-exit {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+}
+
+.stepper-step-exit-active {
+  opacity: 0;
+  transform: scale(0.8) translateY(-20px);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Stepper icon animations */
+.stepper-icon-bounce {
+  animation: stepperBounce 0.6s ease-in-out;
+}
+
+.stepper-icon-pulse {
+  animation: stepperPulse 2s infinite;
+}
+
+.stepper-icon-rotate {
+  animation: stepperRotate 0.5s ease-in-out;
+}
+
+@keyframes stepperBounce {
+  0%, 20%, 50%, 80%, 100% {
+    transform: translateY(0) scale(1);
+  }
+  40% {
+    transform: translateY(-8px) scale(1.1);
+  }
+  60% {
+    transform: translateY(-4px) scale(1.05);
+  }
+}
+
+@keyframes stepperPulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+}
+
+@keyframes stepperRotate {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  50% {
+    transform: rotate(180deg) scale(1.2);
+  }
+  100% {
+    transform: rotate(360deg) scale(1);
+  }
+}
+
+/* Stepper progress bar shimmer */
+.stepper-progress-shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.4),
+    transparent
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
 }
 
 /* Button hover effects */
@@ -178,7 +318,7 @@ body {
 }
 
 .status-online {
-  @apply bg-green-500;
+  background: linear-gradient(90deg, rgb(139, 195, 74), rgb(85, 139, 47));
 }
 
 .status-offline {

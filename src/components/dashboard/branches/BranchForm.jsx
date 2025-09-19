@@ -126,7 +126,7 @@ const BranchForm = ({
       isOpen={isOpen}
       onClose={handleClose}
       title={title}
-      size="lg"
+      size="sm"
     >
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Branch Name */}
@@ -253,6 +253,7 @@ const BranchForm = ({
             variant="outline"
             onClick={handleClose}
             disabled={loading}
+            size="xs"
             className="border-gray-300 text-gray-700 hover:bg-gradient-to-r hover:from-[#22c55e] hover:to-[#16a34a] hover:text-white hover:border-transparent"
           >
             Cancel
@@ -261,6 +262,7 @@ const BranchForm = ({
             type="submit"
             variant="gradient"
             disabled={loading}
+            size="xs"
           >
             {loading ? (
               <div className="flex items-center">

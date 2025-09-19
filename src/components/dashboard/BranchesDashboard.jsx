@@ -367,7 +367,7 @@ const BranchesDashboard = ({ propActiveView = 'table' }) => {
               onClick={() => setShowCreateModal(true)}
               icon={HiPlus}
               variant="gradient"
-              size="md"
+              size="sm"
             >
               Add New Branch
             </Button>
@@ -375,12 +375,13 @@ const BranchesDashboard = ({ propActiveView = 'table' }) => {
         </div>
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
             <StatCard
               title="Total Branches"
               value={cardCounts.total}
               icon={HiBuildingOffice2}
               iconBg="bg-gradient-to-br from-purple-500 to-purple-600"
+              gradient="purple"
               onClick={() => handleCardFilter('all')}
               className="cursor-pointer hover:shadow-md transition-shadow"
             />
@@ -389,6 +390,7 @@ const BranchesDashboard = ({ propActiveView = 'table' }) => {
               value={cardCounts.active}
               icon={HiUsers}
               iconBg="bg-gradient-to-br from-emerald-500 to-emerald-600"
+              gradient="emerald"
               onClick={() => handleCardFilter('active')}
               className="cursor-pointer hover:shadow-md transition-shadow"
             />
@@ -397,6 +399,7 @@ const BranchesDashboard = ({ propActiveView = 'table' }) => {
               value={cardCounts.inactive}
               icon={HiExclamationTriangle}
               iconBg="bg-gradient-to-br from-red-500 to-red-600"
+              gradient="red"
               onClick={() => handleCardFilter('inactive')}
               className="cursor-pointer hover:shadow-md transition-shadow"
             />
@@ -404,7 +407,7 @@ const BranchesDashboard = ({ propActiveView = 'table' }) => {
 
           {/* Filters */}
           <FilterCard>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <SearchInput
                 placeholder="Search branches..."
                 value={searchTerm}
@@ -425,7 +428,7 @@ const BranchesDashboard = ({ propActiveView = 'table' }) => {
           </FilterCard>
 
           {/* Main Content */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+          <div>
             {renderViewContent()}
           </div>
 

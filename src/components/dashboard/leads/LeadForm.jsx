@@ -600,33 +600,6 @@ const LeadForm = ({
 
   return (
     <div className="max-w-6xl mx-auto p-6">
-      {/* Header */}
-      <div className="rounded-t-2xl px-6 py-6" style={{background: 'linear-gradient(to right, #22c55e, #16a34a)'}}>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="flex-shrink-0">
-              <div className="h-10 w-10 bg-white/20 rounded-lg flex items-center justify-center">
-                <HiUser className="h-6 w-6 text-white" />
-              </div>
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-white">
-                {mode === 'edit' ? 'Edit Lead Information' : 'Create New Lead'}
-              </h1>
-              <p className="text-white/80 text-sm mt-1">
-                {mode === 'edit' ? 'Update lead details and information' : 'Add a new lead to your pipeline'}
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={onCancel}
-            className="text-white/80 hover:text-white hover:bg-white/20 transition-all duration-200 p-2 rounded-lg"
-          >
-            <HiXMark className="h-6 w-6" />
-          </button>
-        </div>
-      </div>
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="bg-white rounded-b-2xl shadow-2xl">

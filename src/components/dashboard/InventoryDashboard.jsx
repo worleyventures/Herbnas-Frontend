@@ -260,12 +260,13 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
         <StatCard
           title="Total Inventory"
           value={totalInventory}
           icon={HiCube}
-          iconBg="bg-gradient-to-br from-blue-500 to-blue-600"
+          gradient="blue"
+          animation="bounce"
           change="+5%"
           changeType="increase"
           loading={statsLoading || loading}
@@ -274,25 +275,28 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
           title="Low Stock Items"
           value={lowStockItems}
           icon={HiExclamationTriangle}
-          iconBg="bg-gradient-to-br from-red-500 to-red-600"
+          gradient="red"
+          animation="pulse"
           change="+2%"
           changeType="increase"
           loading={statsLoading || loading}
         />
-                <StatCard
-                  title="High Stock Items"
-                  value={highStockItems}
-                  icon={HiInformationCircle}
-                  iconBg="bg-gradient-to-br from-yellow-500 to-yellow-600"
-                  change="+2%"
-                  changeType="increase"
-                  loading={statsLoading || loading}
-                />
+        <StatCard
+          title="High Stock Items"
+          value={highStockItems}
+          icon={HiInformationCircle}
+          gradient="yellow"
+          animation="float"
+          change="+2%"
+          changeType="increase"
+          loading={statsLoading || loading}
+        />
         <StatCard
           title="Total Value"
           value={`₹${totalValue.toLocaleString()}`}
           icon={HiCurrencyDollar}
-          iconBg="bg-gradient-to-br from-emerald-500 to-emerald-600"
+          gradient="emerald"
+          animation="bounce"
           change="+8%"
           changeType="increase"
           loading={statsLoading || loading}
@@ -301,7 +305,7 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
 
       {/* Filters */}
       <FilterCard>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           <SearchInput
             value={searchTerm}
             onChange={setSearchTerm}

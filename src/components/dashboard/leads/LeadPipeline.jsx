@@ -95,19 +95,19 @@ const LeadPipeline = ({
   const getStatusIcon = (status) => {
     switch (status) {
       case 'new_lead':
-        return <HiUser className="h-4 w-4" />;
+        // return <HiUser className="h-4 w-4" />;
       case 'not_answered':
-        return <HiPhone className="h-4 w-4" />;
+        // return <HiPhone className="h-4 w-4" />;
       case 'qualified':
-        return <HiCheckCircle className="h-4 w-4" />;
+        // return <HiCheckCircle className="h-4 w-4" />;
       case 'pending':
-        return <HiClock className="h-4 w-4" />;
+        // return <HiClock className="h-4 w-4" />;
       case 'order_completed':
-        return <HiCheckCircle className="h-4 w-4" />;
+        // return <HiCheckCircle className="h-4 w-4" />;
       case 'unqualified':
-        return <HiXCircle className="h-4 w-4" />;
+        // return <HiXCircle className="h-4 w-4" />;
       default:
-        return <HiUser className="h-4 w-4" />;
+        // return <HiUser className="h-4 w-4" />;
     }
   };
 
@@ -264,7 +264,7 @@ const LeadPipeline = ({
             return (
               <div key={stage.id} className="text-center">
                 <div className={`inline-flex items-center justify-center w-8 h-8 rounded-full ${stage.color} text-white mb-2`}>
-                  {getStatusIcon(stage.id)}
+                  {/* {getStatusIcon(stage.id)} */}
                 </div>
                 <p className="text-xl font-bold text-gray-900">{stageLeads.length}</p>
                 <p className={`text-xs font-medium ${stage.textColor}`}>{stage.title}</p>
