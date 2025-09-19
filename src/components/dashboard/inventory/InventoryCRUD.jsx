@@ -28,7 +28,8 @@ const InventoryCRUD = ({
   loading,
   createLoading,
   updateLoading,
-  deleteLoading
+  deleteLoading,
+  isFinishedProduction = false
 }) => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -120,25 +121,47 @@ const InventoryCRUD = ({
     },
     {
       key: 'productionStatus',
-      label: 'Production Status',
+      label: isFinishedProduction ? 'Production Status' : 'Production Status',
       sortable: true,
       render: (inventoryItem) => (
         <div className="flex flex-col space-y-1">
           <div className="flex items-center space-x-2">
             <HiCheckCircle className="h-4 w-4 text-green-500" />
-            <span className="text-sm font-medium text-gray-900">F6 - Completed</span>
+            <span className="text-sm font-medium text-gray-900">
+              {isFinishedProduction ? 'F6 - Completed' : 'F6 - Completed'}
+            </span>
           </div>
           <div className="text-xs text-gray-500">
-            Production finished
+            {isFinishedProduction ? 'Production finished' : 'Production finished'}
           </div>
         </div>
       )
     },
     {
       key: 'stock',
-      label: 'Stock Levels',
+      label: isFinishedProduction ? 'Production Quantity' : 'Stock Levels',
       sortable: false,
       render: (inventoryItem) => {
+        if (isFinishedProduction) {
+          return (
+            <div className="space-y-1">
+              <div className="flex items-center space-x-2">
+                <span className="text-sm font-medium text-gray-900">
+                  {inventoryItem.product?.quantity || 0} units
+                </span>
+                <StatusBadge 
+                  status="completed"
+                  variant="success"
+                  className="text-xs"
+                />
+              </div>
+              <div className="text-xs text-gray-500">
+                Produced: {inventoryItem.product?.quantity || 0}
+              </div>
+            </div>
+          );
+        }
+
         const stockStatus = getStockStatus(inventoryItem);
         
         return (
@@ -182,10 +205,21 @@ const InventoryCRUD = ({
     },
     {
       key: 'value',
-      label: 'Stock Value',
+      label: isFinishedProduction ? 'Production Value' : 'Stock Value',
       sortable: false,
       hiddenOnMobile: true,
       render: (inventoryItem) => {
+        if (isFinishedProduction) {
+          const productionQuantity = inventoryItem.product?.quantity || 0;
+          const totalValue = productionQuantity * (inventoryItem.product?.price || 0);
+          return (
+            <div className="text-sm">
+              <p className="font-medium text-gray-900">₹{totalValue.toLocaleString()}</p>
+              <p className="text-xs text-gray-500">total production value</p>
+            </div>
+          );
+        }
+
         const availableStock = inventoryItem.availableStock || 0;
         const totalValue = availableStock * (inventoryItem.product?.price || 0);
         return (
@@ -224,22 +258,26 @@ const InventoryCRUD = ({
             onClick={() => handleViewInventory(inventoryItem)}
             variant="view"
             size="sm"
-            title="View Details"
+            title={isFinishedProduction ? "View Production Details" : "View Details"}
           />
-          <ActionButton
-            icon={HiPencil}
-            onClick={() => onEditInventory(inventoryItem)}
-            variant="edit"
-            size="sm"
-            title="Edit Inventory"
-          />
-          <ActionButton
-            icon={HiTrash}
-            onClick={() => handleDeleteInventory(inventoryItem)}
-            variant="danger"
-            size="sm"
-            title="Delete Inventory"
-          />
+          {!isFinishedProduction && (
+            <>
+              <ActionButton
+                icon={HiPencil}
+                onClick={() => onEditInventory(inventoryItem)}
+                variant="edit"
+                size="sm"
+                title="Edit Inventory"
+              />
+              <ActionButton
+                icon={HiTrash}
+                onClick={() => handleDeleteInventory(inventoryItem)}
+                variant="danger"
+                size="sm"
+                title="Delete Inventory"
+              />
+            </>
+          )}
         </div>
       )
     }
@@ -283,8 +321,8 @@ const InventoryCRUD = ({
         data={inventory}
         columns={columns}
         loading={loading}
-        emptyMessage="No completed production products in inventory yet"
-        emptySubMessage="Products will appear here once they complete F6 stage with 'completed' status"
+        emptyMessage={isFinishedProduction ? "No finished production products yet" : "No completed production products in inventory yet"}
+        emptySubMessage={isFinishedProduction ? "Products will appear here once they complete F6 stage with 'completed' status" : "Products will appear here once they complete F6 stage with 'completed' status"}
         className="w-full"
       />
 
@@ -294,43 +332,46 @@ const InventoryCRUD = ({
           isOpen={showDetailsModal}
           onClose={handleCloseDetails}
           inventory={selectedInventory}
+          isFinishedProduction={isFinishedProduction}
         />
       )}
 
-      {/* Delete Confirmation Modal */}
-      <ConfirmationModal
-        isOpen={showDeleteModal}
-        onClose={() => setShowDeleteModal(false)}
-        onConfirm={() => {
-          onDeleteInventoryConfirm();
-        }}
-        title="Delete Inventory"
-        message={
-          selectedInventory ? (
-            <div className="text-left">
-              <p className="mb-2">Are you sure you want to delete this inventory record?</p>
-              <div className="bg-gray-50 p-3 rounded-lg">
-                <p className="font-medium text-gray-900">
-                  {selectedInventory.product?.productName || 'Unknown Product'}
-                </p>
-                <p className="text-sm text-gray-600">
-                  {selectedInventory.branch?.branchName || 'Unknown Branch'}
-                </p>
-                <p className="text-sm text-gray-500">
-                  Stock: {(selectedInventory.inventoryStock || 0) + (selectedInventory.branchStock || 0)} units
+      {/* Delete Confirmation Modal - Only show for regular inventory, not finished production */}
+      {!isFinishedProduction && (
+        <ConfirmationModal
+          isOpen={showDeleteModal}
+          onClose={() => setShowDeleteModal(false)}
+          onConfirm={() => {
+            onDeleteInventoryConfirm();
+          }}
+          title="Delete Inventory"
+          message={
+            selectedInventory ? (
+              <div className="text-left">
+                <p className="mb-2">Are you sure you want to delete this inventory record?</p>
+                <div className="bg-gray-50 p-3 rounded-lg">
+                  <p className="font-medium text-gray-900">
+                    {selectedInventory.product?.productName || 'Unknown Product'}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    {selectedInventory.branch?.branchName || 'Unknown Branch'}
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    Stock: {(selectedInventory.inventoryStock || 0) + (selectedInventory.branchStock || 0)} units
+                  </p>
+                </div>
+                <p className="mt-2 text-sm text-gray-600">
+                  This action cannot be undone. The inventory record will be permanently removed.
                 </p>
               </div>
-              <p className="mt-2 text-sm text-gray-600">
-                This action cannot be undone. The inventory record will be permanently removed.
-              </p>
-            </div>
-          ) : "Are you sure you want to delete this inventory record?"
-        }
-        confirmText="Delete"
-        cancelText="Cancel"
-        variant="danger"
-        loading={deleteLoading}
-      />
+            ) : "Are you sure you want to delete this inventory record?"
+          }
+          confirmText="Delete"
+          cancelText="Cancel"
+          variant="danger"
+          loading={deleteLoading}
+        />
+      )}
     </div>
   );
 };

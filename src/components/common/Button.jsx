@@ -18,9 +18,9 @@ const Button = ({
     
     switch (variant) {
       case 'primary':
-        return `${baseClasses} text-white shadow-sm hover:shadow-md focus:ring-green-500 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700`;
+        return `${baseClasses} text-white shadow-sm hover:shadow-md focus:ring-green-500`;
       case 'gradient':
-        return `${baseClasses} text-white shadow-lg hover:shadow-xl focus:ring-green-500 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700`;
+        return `${baseClasses} text-white shadow-lg hover:shadow-xl focus:ring-green-500`;
       case 'success':
         return `${baseClasses} text-white shadow-lg hover:shadow-xl focus:ring-emerald-500 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700`;
       case 'warning':
@@ -28,9 +28,9 @@ const Button = ({
       case 'secondary':
         return `${baseClasses} bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 hover:border-gray-400 focus:ring-green-500 shadow-sm`;
       case 'outline':
-        return `${baseClasses} text-green-500 border-2 border-green-500 hover:bg-green-500 hover:text-white focus:ring-green-500 bg-white`;
+        return `${baseClasses} border-2 focus:ring-green-500 bg-white`;
       case 'ghost':
-        return `${baseClasses} text-gray-600 hover:text-green-500 hover:bg-green-50 focus:ring-green-500`;
+        return `${baseClasses} text-gray-600 hover:bg-green-50 focus:ring-green-500`;
       case 'danger':
         return `${baseClasses} text-white shadow-lg hover:shadow-xl focus:ring-red-500 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700`;
       case 'info':
@@ -75,10 +75,25 @@ const Button = ({
   };
 
   const getPrimaryStyle = () => {
-    if (variant === 'primary') {
-      return { background: 'linear-gradient(90deg, #8bc34a, #558b2f)' };
+    if (variant === 'primary' || variant === 'gradient') {
+      return { 
+        background: 'linear-gradient(90deg, rgb(139, 195, 74), rgb(85, 139, 47))',
+        color: 'white'
+      };
     }
-    // For gradient variants, we don't need inline styles as they're handled by Tailwind classes
+    if (variant === 'outline') {
+      return { 
+        background: 'transparent',
+        color: 'rgb(139, 195, 74)',
+        borderColor: 'rgb(139, 195, 74)'
+      };
+    }
+    if (variant === 'ghost') {
+      return { 
+        background: 'transparent',
+        color: 'rgb(107, 114, 128)'
+      };
+    }
     return {};
   };
 
@@ -129,12 +144,21 @@ export const ActionButton = ({
       case 'delete':
         return 'text-gray-400 hover:text-red-500 hover:bg-red-500/10 hover:scale-110';
       case 'success':
-        return 'text-gray-400 hover:text-green-500 hover:bg-green-500/10 hover:scale-110';
+        return 'text-gray-400 hover:bg-green-500/10 hover:scale-110';
       case 'warning':
         return 'text-gray-400 hover:text-yellow-500 hover:bg-yellow-500/10 hover:scale-110';
       default:
         return 'text-gray-400 hover:text-blue-500 hover:bg-blue-500/10 hover:scale-110';
     }
+  };
+
+  const getActionStyle = () => {
+    if (variant === 'success') {
+      return {
+        '--hover-color': 'linear-gradient(90deg, rgb(139, 195, 74), rgb(85, 139, 47))'
+      };
+    }
+    return {};
   };
 
   const getActionSizeClasses = () => {
@@ -171,6 +195,7 @@ export const ActionButton = ({
     <button
       onClick={onClick}
       className={`${getActionSizeClasses()} rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 ${getActionVariantClasses()} ${className}`}
+      style={getActionStyle()}
       title={title}
       {...props}
     >

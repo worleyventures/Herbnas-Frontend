@@ -45,9 +45,9 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
       href: '/leads',
       icon: HiUsers,
       current: isActiveRoute('/leads'),
-      color: 'text-green-600',
+      color: 'text-gray-600',
       bgColor: 'bg-gray-100',
-      hoverColor: 'group-hover:text-green-600',
+      hoverColor: 'group-hover:text-gray-600',
       hoverBgColor: 'group-hover:bg-gray-50'
     },
     {
@@ -55,9 +55,9 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
       href: '/production',
       icon: HiDocumentText,
       current: isActiveRoute('/production'),
-      color: 'text-green-600',
+      color: 'text-gray-600',
       bgColor: 'bg-gray-100',
-      hoverColor: 'group-hover:text-green-600',
+      hoverColor: 'group-hover:text-gray-600',
       hoverBgColor: 'group-hover:bg-gray-50'
     },
     {
@@ -105,9 +105,9 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
       href: '/accounts',
       icon: HiCurrencyDollar,
       current: isActiveRoute('/accounts'),
-      color: 'text-green-600',
+      color: 'text-gray-600',
       bgColor: 'bg-gray-100',
-      hoverColor: 'group-hover:text-green-600',
+      hoverColor: 'group-hover:text-gray-600',
       hoverBgColor: 'group-hover:bg-gray-50'
     }
   ];
@@ -152,6 +152,23 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
   const NavigationItem = ({ item }) => {
     const isActive = item.current;
 
+    const getItemStyle = () => {
+      // Only apply gradient styles if the item has gradient property and is active
+      if (item.gradient && isActive) {
+        return {
+          background: 'linear-gradient(90deg, rgb(139, 195, 74), rgb(85, 139, 47))',
+          color: 'white',
+          borderRightColor: 'rgb(85, 139, 47)'
+        };
+      }
+      if (item.gradient && !isActive) {
+        return {
+          color: 'rgb(139, 195, 74)'
+        };
+      }
+      return {};
+    };
+
     return (
       <Link
         to={item.href}
@@ -162,12 +179,13 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
             ? `bg-gradient-to-r from-gray-100 to-gray-50 text-gray-900 border-r-4 border-[#558b2f] shadow-sm hover:shadow-md`
             : `text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:shadow-sm`
         }`}
+        style={getItemStyle()}
         onClick={() => setSidebarOpen(false)}
         title={isCollapsed ? item.name : undefined}
       >
         <item.icon
           className={`h-4 w-4 flex-shrink-0 transition-all duration-300 ${
-            isActive ? item.color : item.color
+            isActive ? (item.gradient ? 'text-white' : item.color) : item.color
           } ${isCollapsed ? '' : 'mr-3'} ${isActive ? 'scale-105' : 'group-hover:scale-105'}`}
           aria-hidden="true"
         />
@@ -202,7 +220,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
             <div className="flex items-center w-full">
               <div className="w-full flex items-center justify-center">
                 {isCollapsed ? (
-                  <div className="w-10 h-10 bg-gradient-to-br from-[#8bc34a] to-[#558b2f] rounded-xl flex items-center justify-center shadow-lg">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg" style={{background: 'linear-gradient(90deg, rgb(139, 195, 74), rgb(85, 139, 47))'}}>
                     <span className="text-white font-bold text-lg">H</span>
                   </div>
                 ) : (
@@ -256,7 +274,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
           <div className={`py-4 ${isCollapsed ? 'px-3' : 'px-6'}`}>
             {isCollapsed ? (
               <div className="flex items-center justify-center h-full">
-                <div className="w-8 h-8 bg-gradient-to-br from-[#8bc34a] to-[#558b2f] rounded-lg flex items-center justify-center shadow-md">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center shadow-md" style={{background: 'linear-gradient(90deg, rgb(139, 195, 74), rgb(85, 139, 47))'}}>
                   <span className="text-white font-bold text-sm">H</span>
                 </div>
               </div>

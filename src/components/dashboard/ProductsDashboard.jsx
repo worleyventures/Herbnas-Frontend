@@ -264,7 +264,8 @@ const ProductsDashboard = ({ showCreateModal, setShowCreateModal }) => {
           title="Total Products"
           value={finalProducts.length}
           icon={HiDocumentText}
-          iconBg="bg-gradient-to-br from-green-500 to-green-600"
+          gradient="green"
+          animation="bounce"
           change="+12%"
           changeType="increase"
           loading={loading}
@@ -273,7 +274,8 @@ const ProductsDashboard = ({ showCreateModal, setShowCreateModal }) => {
           title="Active Products"
           value={finalProducts.filter(p => p.isActive === true).length}
           icon={HiCheckCircle}
-          iconBg="bg-gradient-to-br from-emerald-500 to-emerald-600"
+          gradient="emerald"
+          animation="pulse"
           change="+8%"
           changeType="increase"
           loading={loading}
@@ -282,7 +284,8 @@ const ProductsDashboard = ({ showCreateModal, setShowCreateModal }) => {
           title="Total Value"
           value={`₹${finalProducts.reduce((sum, p) => sum + (p.price || 0), 0).toLocaleString()}`}
           icon={HiCurrencyDollar}
-          iconBg="bg-gradient-to-br from-amber-500 to-amber-600"
+          gradient="amber"
+          animation="float"
           change="+15%"
           changeType="increase"
           loading={loading}

@@ -403,7 +403,8 @@ const HealthDashboard = ({ showCreateModal, setShowCreateModal }) => {
           title="Total Health Issues"
           value={stats?.overview?.totalHealthIssues || healthIssues.length}
           icon={HiDocumentText}
-          iconBg="bg-gradient-to-br from-green-500 to-green-600"
+          gradient="green"
+          animation="bounce"
           change="+5%"
           changeType="increase"
           loading={statsLoading || loading}
@@ -412,7 +413,8 @@ const HealthDashboard = ({ showCreateModal, setShowCreateModal }) => {
           title="Active Issues"
           value={stats?.overview?.activeHealthIssues || healthIssues.filter(i => i.isActive === true).length}
           icon={HiCheckCircle}
-          iconBg="bg-gradient-to-br from-emerald-500 to-emerald-600"
+          gradient="emerald"
+          animation="pulse"
           change="+2%"
           changeType="increase"
           loading={statsLoading || loading}
@@ -421,7 +423,8 @@ const HealthDashboard = ({ showCreateModal, setShowCreateModal }) => {
           title="Male Specific"
           value={stats?.genderDistribution?.find(g => g._id === 'male')?.count || healthIssues.filter(i => i.gender === 'male').length}
           icon={HiUser}
-          iconBg="bg-gradient-to-br from-blue-500 to-blue-600"
+          gradient="blue"
+          animation="float"
           change="+1%"
           changeType="increase"
           loading={statsLoading || loading}
@@ -430,7 +433,8 @@ const HealthDashboard = ({ showCreateModal, setShowCreateModal }) => {
           title="Female Specific"
           value={stats?.genderDistribution?.find(g => g._id === 'female')?.count || healthIssues.filter(i => i.gender === 'female').length}
           icon={HiHeart}
-          iconBg="bg-gradient-to-br from-red-500 to-red-600"
+          gradient="pink"
+          animation="bounce"
           change="+3%"
           changeType="increase"
           loading={statsLoading || loading}

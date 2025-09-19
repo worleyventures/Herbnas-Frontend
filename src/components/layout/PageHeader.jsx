@@ -54,7 +54,7 @@ const PageHeader = ({
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               {Icon && (
-                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center shadow-lg">
+                <div className="h-12 w-12 rounded-xl flex items-center justify-center shadow-lg" style={{background: 'linear-gradient(90deg, rgb(139, 195, 74), rgb(85, 139, 47))'}}>
                   <Icon className="h-6 w-6 text-white" />
                 </div>
               )}
@@ -96,14 +96,17 @@ const PageHeader = ({
                 // Define gradient colors based on stat type
                 const getGradientColors = (statName) => {
                   const name = statName.toLowerCase();
-                  if (name.includes('lead')) return 'bg-gradient-to-br from-green-500 to-green-600';
+                  if (name.includes('lead')) return 'linear-gradient(90deg, rgb(139, 195, 74), rgb(85, 139, 47))';
                   if (name.includes('product')) return 'bg-gradient-to-br from-blue-500 to-blue-600';
                   if (name.includes('branch')) return 'bg-gradient-to-br from-purple-500 to-purple-600';
                   if (name.includes('conversion') || name.includes('rate')) return 'bg-gradient-to-br from-amber-500 to-amber-600';
                   if (name.includes('inventory') || name.includes('stock')) return 'bg-gradient-to-br from-blue-500 to-blue-600';
                   if (name.includes('health')) return 'bg-gradient-to-br from-red-500 to-red-600';
-                  return 'bg-gradient-to-br from-green-500 to-green-600';
+                  return 'linear-gradient(90deg, rgb(139, 195, 74), rgb(85, 139, 47))';
                 };
+
+                const gradientStyle = getGradientColors(stat.name).includes('linear-gradient') ? 
+                  { background: getGradientColors(stat.name) } : {};
 
                 return (
                   <StatCard
@@ -111,7 +114,8 @@ const PageHeader = ({
                     title={stat.name}
                     value={stat.value}
                     icon={stat.icon}
-                    iconBg={getGradientColors(stat.name)}
+                    iconBg={getGradientColors(stat.name).includes('linear-gradient') ? '' : getGradientColors(stat.name)}
+                    style={gradientStyle}
                     change={stat.change}
                     changeType={stat.changeType}
                     className="h-full"

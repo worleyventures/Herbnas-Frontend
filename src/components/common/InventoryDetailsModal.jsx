@@ -7,11 +7,13 @@ import {
   HiXMark,
   HiExclamationTriangle,
   HiCheckCircle,
-  HiInformationCircle
+  HiInformationCircle,
+  HiCog6Tooth,
+  HiDocumentText
 } from 'react-icons/hi2';
 import { Modal, StatusBadge } from './index';
 
-const InventoryDetailsModal = ({ isOpen, onClose, inventory }) => {
+const InventoryDetailsModal = ({ isOpen, onClose, inventory, isFinishedProduction = false }) => {
   if (!inventory) return null;
 
   const formatDate = (dateString) => {
@@ -25,6 +27,16 @@ const InventoryDetailsModal = ({ isOpen, onClose, inventory }) => {
   };
 
   const getStockStatus = () => {
+    if (isFinishedProduction) {
+      return {
+        status: 'completed',
+        variant: 'success',
+        icon: HiCheckCircle,
+        color: 'text-green-600',
+        bgColor: 'bg-green-100'
+      };
+    }
+
     const totalStock = (inventory.inventoryStock || 0) + (inventory.branchStock || 0);
     const minLevel = inventory.minStockLevel || 0;
     const maxLevel = inventory.maxStockLevel || 0;
@@ -60,7 +72,80 @@ const InventoryDetailsModal = ({ isOpen, onClose, inventory }) => {
   const totalStock = (inventory.inventoryStock || 0) + (inventory.branchStock || 0);
   const totalValue = totalStock * (inventory.product?.price || 0);
 
-  const details = [
+  const details = isFinishedProduction ? [
+    {
+      label: 'Product Name',
+      value: inventory.product?.productName || 'N/A',
+      icon: HiDocumentText,
+      color: 'text-blue-600'
+    },
+    {
+      label: 'Batch Number',
+      value: inventory.product?.batchNumber || 'N/A',
+      icon: HiCube,
+      color: 'text-indigo-600'
+    },
+    {
+      label: 'Production Stage',
+      value: 'F6 - Final Inspection',
+      icon: HiCog6Tooth,
+      color: 'text-purple-600'
+    },
+    {
+      label: 'Production Status',
+      value: 'Completed',
+      icon: HiCheckCircle,
+      color: 'text-green-600'
+    },
+    {
+      label: 'Production Quantity',
+      value: `${inventory.product?.quantity || 0} units`,
+      icon: HiCube,
+      color: 'text-blue-600'
+    },
+    {
+      label: 'Production Status',
+      value: (
+        <StatusBadge 
+          status={stockStatus.status}
+          variant={stockStatus.variant}
+        />
+      ),
+      icon: stockStatus.icon,
+      color: stockStatus.color
+    },
+    {
+      label: 'Price per Unit',
+      value: `₹${inventory.product?.price || 0}`,
+      icon: HiCube,
+      color: 'text-green-600'
+    },
+    {
+      label: 'Total Production Value',
+      value: `₹${((inventory.product?.quantity || 0) * (inventory.product?.price || 0)).toLocaleString()}`,
+      icon: HiCube,
+      color: 'text-green-600'
+    },
+    {
+      label: 'Production Completed',
+      value: formatDate(inventory.updatedAt || inventory.createdAt),
+      icon: HiCalendar,
+      color: 'text-gray-600'
+    },
+    {
+      label: 'Last Updated',
+      value: formatDate(inventory.updatedAt || inventory.createdAt),
+      icon: HiCalendar,
+      color: 'text-gray-600'
+    },
+    {
+      label: 'Updated By',
+      value: inventory.updatedBy ? 
+        `${inventory.updatedBy.firstName} ${inventory.updatedBy.lastName}` : 'N/A',
+      icon: HiUser,
+      color: 'text-indigo-600'
+    }
+  ] : [
     {
       label: 'Product Name',
       value: inventory.product?.productName || 'N/A',
@@ -145,15 +230,19 @@ const InventoryDetailsModal = ({ isOpen, onClose, inventory }) => {
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Inventory Details"
+      title={isFinishedProduction ? "Finished Production Details" : "Inventory Details"}
       size="sm"
     >
       <div className="space-y-6">
-        {/* Inventory Header */}
+        {/* Header */}
         <div className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
           <div className="flex-shrink-0">
-            <div className="h-16 w-16 rounded-lg bg-blue-100 flex items-center justify-center">
-              <HiCube className="h-8 w-8 text-blue-600" />
+            <div className={`h-16 w-16 rounded-lg ${isFinishedProduction ? 'bg-green-100' : 'bg-blue-100'} flex items-center justify-center`}>
+              {isFinishedProduction ? (
+                <HiCheckCircle className="h-8 w-8 text-green-600" />
+              ) : (
+                <HiCube className="h-8 w-8 text-blue-600" />
+              )}
             </div>
           </div>
           <div className="flex-1 min-w-0">
@@ -161,7 +250,10 @@ const InventoryDetailsModal = ({ isOpen, onClose, inventory }) => {
               {inventory.product?.productName || 'Unknown Product'}
             </h3>
             <p className="text-sm text-gray-600">
-              {inventory.branch?.branchName || 'Unknown Branch'}
+              {isFinishedProduction ? 
+                `Batch: ${inventory.product?.batchNumber || 'N/A'}` : 
+                (inventory.branch?.branchName || 'Unknown Branch')
+              }
             </p>
             <div className="mt-2">
               <StatusBadge 
@@ -172,45 +264,88 @@ const InventoryDetailsModal = ({ isOpen, onClose, inventory }) => {
           </div>
         </div>
 
-        {/* Stock Overview */}
+        {/* Overview */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-blue-50 p-4 rounded-lg">
-            <div className="flex items-center">
-              <HiCube className="h-8 w-8 text-blue-600 mr-3" />
-              <div>
-                <p className="text-sm font-medium text-blue-600">Total Stock</p>
-                <p className="text-2xl font-bold text-blue-900">{totalStock}</p>
-                <p className="text-xs text-blue-600">units</p>
+          {isFinishedProduction ? (
+            <>
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <div className="flex items-center">
+                  <HiCube className="h-8 w-8 text-blue-600 mr-3" />
+                  <div>
+                    <p className="text-sm font-medium text-blue-600">Production Quantity</p>
+                    <p className="text-2xl font-bold text-blue-900">{inventory.product?.quantity || 0}</p>
+                    <p className="text-xs text-blue-600">units produced</p>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-          
-          <div className="bg-green-50 p-4 rounded-lg">
-            <div className="flex items-center">
-              <HiCube className="h-8 w-8 text-green-600 mr-3" />
-              <div>
-                <p className="text-sm font-medium text-green-600">Total Value</p>
-                <p className="text-2xl font-bold text-green-900">₹{totalValue.toLocaleString()}</p>
-                <p className="text-xs text-green-600">worth of stock</p>
+              
+              <div className="bg-green-50 p-4 rounded-lg">
+                <div className="flex items-center">
+                  <HiCube className="h-8 w-8 text-green-600 mr-3" />
+                  <div>
+                    <p className="text-sm font-medium text-green-600">Production Value</p>
+                    <p className="text-2xl font-bold text-green-900">₹{((inventory.product?.quantity || 0) * (inventory.product?.price || 0)).toLocaleString()}</p>
+                    <p className="text-xs text-green-600">total value</p>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-          
-          <div className={`p-4 rounded-lg ${stockStatus.bgColor}`}>
-            <div className="flex items-center">
-              <stockStatus.icon className={`h-8 w-8 ${stockStatus.color} mr-3`} />
-              <div>
-                <p className={`text-sm font-medium ${stockStatus.color}`}>Stock Status</p>
-                <p className={`text-2xl font-bold ${stockStatus.color}`}>
-                  {stockStatus.status.charAt(0).toUpperCase() + stockStatus.status.slice(1)}
-                </p>
-                <p className={`text-xs ${stockStatus.color}`}>
-                  {stockStatus.status === 'low' ? 'Below minimum' : 
-                   stockStatus.status === 'high' ? 'Above maximum' : 'Normal range'}
-                </p>
+              
+              <div className={`p-4 rounded-lg ${stockStatus.bgColor}`}>
+                <div className="flex items-center">
+                  <stockStatus.icon className={`h-8 w-8 ${stockStatus.color} mr-3`} />
+                  <div>
+                    <p className={`text-sm font-medium ${stockStatus.color}`}>Production Status</p>
+                    <p className={`text-2xl font-bold ${stockStatus.color}`}>
+                      {stockStatus.status.charAt(0).toUpperCase() + stockStatus.status.slice(1)}
+                    </p>
+                    <p className={`text-xs ${stockStatus.color}`}>
+                      Production finished
+                    </p>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
+            </>
+          ) : (
+            <>
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <div className="flex items-center">
+                  <HiCube className="h-8 w-8 text-blue-600 mr-3" />
+                  <div>
+                    <p className="text-sm font-medium text-blue-600">Total Stock</p>
+                    <p className="text-2xl font-bold text-blue-900">{totalStock}</p>
+                    <p className="text-xs text-blue-600">units</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-green-50 p-4 rounded-lg">
+                <div className="flex items-center">
+                  <HiCube className="h-8 w-8 text-green-600 mr-3" />
+                  <div>
+                    <p className="text-sm font-medium text-green-600">Total Value</p>
+                    <p className="text-2xl font-bold text-green-900">₹{totalValue.toLocaleString()}</p>
+                    <p className="text-xs text-green-600">worth of stock</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className={`p-4 rounded-lg ${stockStatus.bgColor}`}>
+                <div className="flex items-center">
+                  <stockStatus.icon className={`h-8 w-8 ${stockStatus.color} mr-3`} />
+                  <div>
+                    <p className={`text-sm font-medium ${stockStatus.color}`}>Stock Status</p>
+                    <p className={`text-2xl font-bold ${stockStatus.color}`}>
+                      {stockStatus.status.charAt(0).toUpperCase() + stockStatus.status.slice(1)}
+                    </p>
+                    <p className={`text-xs ${stockStatus.color}`}>
+                      {stockStatus.status === 'low' ? 'Below minimum' : 
+                       stockStatus.status === 'high' ? 'Above maximum' : 'Normal range'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Inventory Details */}
@@ -231,11 +366,13 @@ const InventoryDetailsModal = ({ isOpen, onClose, inventory }) => {
         {/* Product Information */}
         {inventory.product && (
           <div className="border-t border-gray-200 pt-6">
-            <h4 className="text-lg font-medium text-gray-900 mb-4">Product Information</h4>
+            <h4 className="text-lg font-medium text-gray-900 mb-4">
+              {isFinishedProduction ? 'Production Information' : 'Product Information'}
+            </h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="flex items-center space-x-3">
                 <div className="flex-shrink-0 text-blue-600">
-                  <HiCube className="h-5 w-5" />
+                  {isFinishedProduction ? <HiDocumentText className="h-5 w-5" /> : <HiCube className="h-5 w-5" />}
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-500">Product Name</p>
@@ -260,6 +397,17 @@ const InventoryDetailsModal = ({ isOpen, onClose, inventory }) => {
                   <p className="text-sm text-gray-900">{inventory.product.weight || 'N/A'}g</p>
                 </div>
               </div>
+              {isFinishedProduction && (
+                <div className="flex items-center space-x-3">
+                  <div className="flex-shrink-0 text-indigo-600">
+                    <HiCog6Tooth className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Production Stage</p>
+                    <p className="text-sm text-gray-900">F6 - Final Inspection</p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}

@@ -381,6 +381,7 @@ const BranchesDashboard = ({ propActiveView = 'table' }) => {
               value={cardCounts.total}
               icon={HiBuildingOffice2}
               iconBg="bg-gradient-to-br from-purple-500 to-purple-600"
+              gradient="purple"
               onClick={() => handleCardFilter('all')}
               className="cursor-pointer hover:shadow-md transition-shadow"
             />
@@ -389,6 +390,7 @@ const BranchesDashboard = ({ propActiveView = 'table' }) => {
               value={cardCounts.active}
               icon={HiUsers}
               iconBg="bg-gradient-to-br from-emerald-500 to-emerald-600"
+              gradient="emerald"
               onClick={() => handleCardFilter('active')}
               className="cursor-pointer hover:shadow-md transition-shadow"
             />
@@ -397,6 +399,7 @@ const BranchesDashboard = ({ propActiveView = 'table' }) => {
               value={cardCounts.inactive}
               icon={HiExclamationTriangle}
               iconBg="bg-gradient-to-br from-red-500 to-red-600"
+              gradient="red"
               onClick={() => handleCardFilter('inactive')}
               className="cursor-pointer hover:shadow-md transition-shadow"
             />

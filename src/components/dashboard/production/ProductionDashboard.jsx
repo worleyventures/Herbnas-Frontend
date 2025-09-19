@@ -122,21 +122,21 @@ const ProductionDashboard = () => {
       if (result.type === 'products/updateProductionStage/fulfilled') {
         const responseData = result.payload.data || result.payload;
         
-        // Check if product was automatically moved to inventory
-        if (responseData.inventoryMoveSuccess) {
-          console.log('✅ Product automatically moved to inventory');
+        // Check if central inventory was deleted for finished production
+        if (responseData.inventoryDeleteSuccess) {
+          console.log('✅ Central inventory deleted for finished production');
           dispatch(addNotification({
             type: 'success',
-            title: 'Product Moved to Inventory',
-            message: `Product has been automatically moved to central inventory with ${responseData.inventoryStock} units`,
+            title: 'Production Finished',
+            message: `Product production completed and central inventory deleted`,
             duration: 5000
           }));
-        } else if (responseData.inventoryMoveError) {
-          console.error('❌ Failed to move product to inventory:', responseData.inventoryMoveError);
+        } else if (responseData.inventoryDeleteError) {
+          console.error('❌ Failed to delete central inventory:', responseData.inventoryDeleteError);
           dispatch(addNotification({
             type: 'error',
-            title: 'Inventory Move Failed',
-            message: `Product stage updated but failed to move to inventory: ${responseData.inventoryMoveError}`,
+            title: 'Inventory Deletion Failed',
+            message: `Product stage updated but failed to delete central inventory: ${responseData.inventoryDeleteError}`,
             duration: 5000
           }));
         }
@@ -247,7 +247,8 @@ const ProductionDashboard = () => {
             title="Total Products"
             value={stats.total}
             icon={HiDocumentText}
-            iconBg="bg-gradient-to-br from-blue-500 to-blue-600"
+            gradient="blue"
+            animation="bounce"
             change="+5%"
             changeType="increase"
             className="h-full"
@@ -256,7 +257,8 @@ const ProductionDashboard = () => {
             title="In Process"
             value={stats.inProcess}
             icon={HiPlay}
-            iconBg="bg-gradient-to-br from-blue-500 to-blue-600"
+            gradient="indigo"
+            animation="pulse"
             change="+2%"
             changeType="increase"
             className="h-full"
@@ -265,7 +267,8 @@ const ProductionDashboard = () => {
             title="On Hold"
             value={stats.onHold}
             icon={HiPause}
-            iconBg="bg-gradient-to-br from-yellow-500 to-yellow-600"
+            gradient="yellow"
+            animation="float"
             change="+1%"
             changeType="increase"
             className="h-full"
@@ -274,7 +277,8 @@ const ProductionDashboard = () => {
             title="Completed"
             value={stats.completed}
             icon={HiCheckCircle}
-            iconBg="bg-gradient-to-br from-green-500 to-green-600"
+            gradient="green"
+            animation="bounce"
             change="+8%"
             changeType="increase"
             className="h-full"

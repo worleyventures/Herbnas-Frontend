@@ -51,14 +51,27 @@ const Dashboard = () => {
   const actions = [
     <button
       key="create-lead"
-      className="inline-flex items-center px-6 py-3 border border-transparent text-sm font-semibold rounded-xl shadow-lg text-white bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all duration-300"
+      className="inline-flex items-center px-6 py-3 border border-transparent text-sm font-semibold rounded-xl shadow-lg text-white hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all duration-300"
+      style={{background: 'linear-gradient(90deg, rgb(139, 195, 74), rgb(85, 139, 47))'}}
     >
       <HiPlus className="-ml-1 mr-2 h-4 w-4" />
       Create Lead
     </button>,
     <button
       key="view-reports"
-      className="inline-flex items-center px-6 py-3 border-2 border-green-500 text-sm font-semibold rounded-xl shadow-sm text-green-500 bg-white hover:bg-gradient-to-r hover:from-green-500 hover:to-green-600 hover:text-white hover:border-transparent focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all duration-300"
+      className="inline-flex items-center px-6 py-3 border-2 text-sm font-semibold rounded-xl shadow-sm bg-white hover:border-transparent focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all duration-300"
+      style={{
+        borderColor: 'rgb(139, 195, 74)',
+        color: 'rgb(139, 195, 74)'
+      }}
+      onMouseEnter={(e) => {
+        e.target.style.background = 'linear-gradient(90deg, rgb(139, 195, 74), rgb(85, 139, 47))';
+        e.target.style.color = 'white';
+      }}
+      onMouseLeave={(e) => {
+        e.target.style.background = 'white';
+        e.target.style.color = 'rgb(139, 195, 74)';
+      }}
     >
       <HiEye className="-ml-1 mr-2 h-4 w-4" />
       View Reports
@@ -97,7 +110,7 @@ const Dashboard = () => {
                   <span className={`text-sm font-medium ${
                     stat.changeType === 'increase' ? 'text-green-600' : 
                     stat.changeType === 'decrease' ? 'text-red-600' : 'text-gray-600'
-                  }`}>
+                  }`} style={stat.changeType === 'increase' ? {color: 'rgb(139, 195, 74)'} : {}}>
                     {stat.change}
                   </span>
                   <span className="text-sm text-gray-500 ml-1">from last month</span>
@@ -127,7 +140,8 @@ const Dashboard = () => {
                   description: 'Jane Smith - Qualified',
                   time: '15 minutes ago',
                   user: 'Mike Johnson',
-                  color: 'bg-green-500'
+                  color: 'bg-green-500',
+                  gradient: true
                 },
                 {
                   id: 3,
@@ -147,7 +161,10 @@ const Dashboard = () => {
                 }
               ].map((activity) => (
                 <div key={activity.id} className="flex items-start space-x-4 p-4 rounded-xl hover:bg-gray-50 transition-colors duration-200">
-                  <div className={`flex-shrink-0 w-3 h-3 ${activity.color} rounded-full mt-2 shadow-sm`}></div>
+                  <div 
+                    className={`flex-shrink-0 w-3 h-3 ${activity.color} rounded-full mt-2 shadow-sm`}
+                    style={activity.gradient ? {background: 'linear-gradient(90deg, rgb(139, 195, 74), rgb(85, 139, 47))'} : {}}
+                  ></div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-gray-900">
                       {activity.action}
