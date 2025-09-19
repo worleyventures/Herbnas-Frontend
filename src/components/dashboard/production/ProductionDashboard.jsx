@@ -120,30 +120,34 @@ const ProductionDashboard = () => {
       notes 
     })).then((result) => {
       if (result.type === 'products/updateProductionStage/fulfilled') {
-        // Check if F6 is completed and move to inventory
-        if (newStage === 'F6' && newStatus === 'completed') {
-          console.log('Product completed F6 stage, moving to inventory...');
-          dispatch(moveToInventory(productId)).then((inventoryResult) => {
-            if (inventoryResult.type === 'products/moveToInventory/fulfilled') {
-              console.log('Product successfully moved to inventory');
-              // Show success notification
-              dispatch(addNotification({
-                type: 'success',
-                title: 'Product Moved to Inventory',
-                message: `Product has been automatically moved to central inventory with ${inventoryResult.payload.data.centralInventory.availableStock} units`,
-                duration: 5000
-              }));
-            } else {
-              console.error('Failed to move product to inventory:', inventoryResult.payload);
-              dispatch(addNotification({
-                type: 'error',
-                title: 'Inventory Move Failed',
-                message: inventoryResult.payload || 'Failed to move product to inventory',
-                duration: 5000
-              }));
-            }
-          });
+        const responseData = result.payload.data || result.payload;
+        
+        // Check if product was automatically moved to inventory
+        if (responseData.inventoryMoveSuccess) {
+          console.log('✅ Product automatically moved to inventory');
+          dispatch(addNotification({
+            type: 'success',
+            title: 'Product Moved to Inventory',
+            message: `Product has been automatically moved to central inventory with ${responseData.inventoryStock} units`,
+            duration: 5000
+          }));
+        } else if (responseData.inventoryMoveError) {
+          console.error('❌ Failed to move product to inventory:', responseData.inventoryMoveError);
+          dispatch(addNotification({
+            type: 'error',
+            title: 'Inventory Move Failed',
+            message: `Product stage updated but failed to move to inventory: ${responseData.inventoryMoveError}`,
+            duration: 5000
+          }));
         }
+        
+        // Show general success notification
+        dispatch(addNotification({
+          type: 'success',
+          title: 'Production Stage Updated',
+          message: responseData.message || 'Production stage updated successfully',
+          duration: 3000
+        }));
         
         // Refresh data
         dispatch(getAllProducts());

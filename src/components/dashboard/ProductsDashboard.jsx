@@ -139,13 +139,31 @@ const ProductsDashboard = ({ showCreateModal, setShowCreateModal }) => {
   const handleUpdateProduct = (productData) => {
     if (selectedProduct) {
       dispatch(updateProduct({ productId: selectedProduct._id, productData }))
-        .then(() => {
+        .then((result) => {
           setShowEditModal(false);
           setSelectedProduct(null);
-          dispatch(addNotification({
-            type: 'success',
-            message: 'Product updated successfully!'
-          }));
+          
+          const responseData = result.payload.data || result.payload;
+          
+          // Check if product was automatically moved to inventory
+          if (responseData.inventoryMoveSuccess) {
+            dispatch(addNotification({
+              type: 'success',
+              title: 'Product Updated & Moved to Inventory',
+              message: `Product updated and automatically moved to central inventory with ${responseData.inventoryStock} units`
+            }));
+          } else if (responseData.inventoryMoveError) {
+            dispatch(addNotification({
+              type: 'warning',
+              title: 'Product Updated with Warning',
+              message: `Product updated but failed to move to inventory: ${responseData.inventoryMoveError}`
+            }));
+          } else {
+            dispatch(addNotification({
+              type: 'success',
+              message: responseData.message || 'Product updated successfully!'
+            }));
+          }
         })
         .catch(() => {
           dispatch(addNotification({
