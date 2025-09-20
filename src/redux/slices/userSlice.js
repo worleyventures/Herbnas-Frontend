@@ -124,18 +124,23 @@ const userSlice = createSlice({
       })
       .addCase(getUserById.fulfilled, (state, action) => {
         state.userLoading = false;
-        const user = action.payload.data.user || action.payload.data;
+        console.log('UserSlice: getUserById fulfilled, payload:', action.payload);
+        const user = action.payload.data?.user || action.payload.data || action.payload;
+        console.log('UserSlice: Extracted user:', user);
         const index = state.users.findIndex(u => u._id === user._id);
         if (index !== -1) {
           state.users[index] = user;
+          console.log('UserSlice: Updated existing user at index:', index);
         } else {
           state.users.push(user);
+          console.log('UserSlice: Added new user to users array');
         }
         state.userError = null;
       })
       .addCase(getUserById.rejected, (state, action) => {
         state.userLoading = false;
         state.userError = action.payload;
+        console.log('UserSlice: getUserById rejected, error:', action.payload);
       })
       
       // Get my profile

@@ -37,9 +37,13 @@ export const getUserById = createAsyncThunk(
   'users/getUserById',
   async (userId, { rejectWithValue }) => {
     try {
+      console.log('getUserById: Fetching user with ID:', userId);
       const response = await api.get(`/users/${userId}`);
+      console.log('getUserById: API response:', response.data);
       return response.data;
     } catch (err) {
+      console.error('getUserById: API error:', err);
+      console.error('getUserById: Error response:', err.response?.data);
       return rejectWithValue(err.response?.data?.message || err.message);
     }
   }

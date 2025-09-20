@@ -14,7 +14,6 @@ import {
   HiXCircle
 } from 'react-icons/hi2';
 import { Table, ActionButton, StatusBadge, ConfirmationModal } from '../../common';
-import { BranchDetailsModal } from '../../common';
 
 const BranchCRUD = ({ 
   branches, 
@@ -39,7 +38,6 @@ const BranchCRUD = ({
   deleteLoading
 }) => {
   const navigate = useNavigate();
-  const [showDetailsModal, setShowDetailsModal] = useState(false);
   
   const dispatch = useDispatch();
   
@@ -164,7 +162,12 @@ const BranchCRUD = ({
           />
           <ActionButton
             icon={HiPencil}
-            onClick={() => onEditBranch(branch)}
+            onClick={() => navigate(`/branches/edit/${branch._id}`, { 
+              state: { 
+                branch,
+                returnTo: '/branches'
+              }
+            })}
             variant="edit"
             size="sm"
             title="Edit Branch"
@@ -208,16 +211,9 @@ const BranchCRUD = ({
   };
 
   const handleViewBranch = (branch) => {
-    onSelectBranch(branch);
-    setShowDetailsModal(true);
-    // Fetch users for this branch
-    dispatch(getUsersByBranch(branch._id));
+    navigate(`/branches/view/${branch._id}`);
   };
 
-  const handleCloseDetails = () => {
-    setShowDetailsModal(false);
-    onSelectBranch(null);
-  };
 
   // Loading state
   if (loading) {
@@ -263,16 +259,6 @@ const BranchCRUD = ({
         className="w-full"
       />
 
-      {/* Branch Details Modal */}
-      {selectedBranch && (
-        <BranchDetailsModal
-          isOpen={showDetailsModal}
-          onClose={handleCloseDetails}
-          branch={selectedBranch}
-          branchUsers={branchUsers}
-          branchUsersLoading={branchUsersLoading}
-        />
-      )}
 
       {/* Disable Confirmation Modal */}
       <ConfirmationModal

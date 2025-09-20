@@ -12,7 +12,6 @@ import {
   HiInformationCircle
 } from 'react-icons/hi2';
 import { Table, ActionButton, StatusBadge, ConfirmationModal } from '../../common';
-import { InventoryDetailsModal } from '../../common';
 
 const InventoryCRUD = ({ 
   inventory, 

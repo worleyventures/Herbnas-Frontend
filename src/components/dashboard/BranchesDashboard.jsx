@@ -25,15 +25,12 @@ import {
   clearBranchSuccess
 } from '../../redux/actions/branchActions';
 import BranchCRUD from './branches/BranchCRUD';
-import BranchForm from './branches/BranchForm';
 
 const BranchesDashboard = ({ propActiveView = 'table' }) => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const [activeView, setActiveView] = useState(propActiveView || 'table');
   const [selectedBranch, setSelectedBranch] = useState(null);
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showDisableModal, setShowDisableModal] = useState(false);
   const [showActivateModal, setShowActivateModal] = useState(false);
@@ -158,8 +155,12 @@ const BranchesDashboard = ({ propActiveView = 'table' }) => {
   };
 
   const handleEditBranch = (branch) => {
-    setSelectedBranch(branch);
-    setShowEditModal(true);
+    navigate(`/branches/edit/${branch._id}`, { 
+      state: { 
+        branch,
+        returnTo: '/branches'
+      }
+    });
   };
 
   const handleViewBranch = (branch) => {
@@ -322,7 +323,7 @@ const BranchesDashboard = ({ propActiveView = 'table' }) => {
             onSelectBranch={setSelectedBranch}
             onEditBranch={handleEditBranch}
             onDeleteBranch={handleDeleteBranch}
-            onCreateBranch={() => setShowCreateModal(true)}
+            onCreateBranch={() => navigate('/branches/create')}
             onUpdateBranch={handleUpdateBranch}
             onDeleteBranchConfirm={handleToggleBranchStatus}
             onDisableBranch={() => setShowDisableModal(true)}
@@ -442,33 +443,6 @@ const BranchesDashboard = ({ propActiveView = 'table' }) => {
           )}
         </div>
 
-      {/* Create Branch Modal */}
-      {showCreateModal && (
-        <BranchForm
-          isOpen={showCreateModal}
-          onClose={() => setShowCreateModal(false)}
-          onSubmit={handleCreateBranch}
-          title="Create New Branch"
-          submitText="Create Branch"
-          loading={loading}
-        />
-      )}
-
-      {/* Edit Branch Modal */}
-      {showEditModal && selectedBranch && (
-        <BranchForm
-          isOpen={showEditModal}
-          onClose={() => {
-            setShowEditModal(false);
-            setSelectedBranch(null);
-          }}
-          onSubmit={handleUpdateBranch}
-          title="Edit Branch"
-          submitText="Update Branch"
-          initialData={selectedBranch}
-          loading={loading}
-        />
-      )}
 
       {/* Import Modal */}
       <ImportModal

@@ -27,13 +27,11 @@ import { getAllBranches } from '../../redux/actions/branchActions';
 import { clearError, clearSuccess } from '../../redux/slices/productSlice';
 import { addNotification } from '../../redux/slices/uiSlice';
 import ProductCRUD from './products/ProductCRUD';
-import ProductForm from './products/ProductForm';
 
-const ProductsDashboard = ({ showCreateModal, setShowCreateModal }) => {
+const ProductsDashboard = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const [selectedProduct, setSelectedProduct] = useState(null);
-  const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -124,8 +122,12 @@ const ProductsDashboard = ({ showCreateModal, setShowCreateModal }) => {
 
   // Handle edit product
   const handleEditProduct = (product) => {
-    setSelectedProduct(product);
-    setShowEditModal(true);
+    navigate(`/products/edit/${product._id}`, { 
+      state: { 
+        product,
+        returnTo: '/products'
+      }
+    });
   };
 
   // Handle delete product
@@ -248,7 +250,7 @@ const ProductsDashboard = ({ showCreateModal, setShowCreateModal }) => {
             Import Products
           </Button>
           <Button
-            onClick={() => setShowCreateModal(true)}
+            onClick={() => navigate('/products/create')}
             icon={HiPencil}
             variant="gradient"
             size="sm"
@@ -339,32 +341,6 @@ const ProductsDashboard = ({ showCreateModal, setShowCreateModal }) => {
         </div>
       )}
 
-      {/* Modals */}
-      {showCreateModal && (
-        <ProductForm
-          isOpen={showCreateModal}
-          onClose={() => setShowCreateModal(false)}
-          onSubmit={handleCreateProductSubmit}
-          title="Create New Product"
-          submitText="Create Product"
-          loading={loading}
-        />
-      )}
-
-      {showEditModal && selectedProduct && (
-        <ProductForm
-          isOpen={showEditModal}
-          onClose={() => {
-            setShowEditModal(false);
-            setSelectedProduct(null);
-          }}
-          onSubmit={handleUpdateProduct}
-          title="Edit Product"
-          submitText="Update Product"
-          initialData={selectedProduct}
-          loading={loading}
-        />
-      )}
 
       {showImportModal && (
         <ImportModal

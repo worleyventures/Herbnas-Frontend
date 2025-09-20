@@ -9,7 +9,6 @@ import {
   HiCube
 } from 'react-icons/hi2';
 import { Table, ActionButton, ConfirmationModal } from '../../common';
-import { ProductDetailsModal } from '../../common';
 
 const ProductCRUD = ({
   products,
@@ -24,12 +23,10 @@ const ProductCRUD = ({
   setShowDeleteModal
 }) => {
   const navigate = useNavigate();
-  const [showDetailsModal, setShowDetailsModal] = useState(false);
 
   // Handle view product
   const handleView = (product) => {
-    onSelectProduct(product);
-    setShowDetailsModal(true);
+    navigate(`/products/view/${product._id}`);
   };
 
   // Handle edit product
@@ -134,14 +131,6 @@ const ProductCRUD = ({
         onRowClick={onSelectProduct}
       />
 
-      {/* Product Details Modal */}
-      <ProductDetailsModal
-        isOpen={showDetailsModal}
-        onClose={() => setShowDetailsModal(false)}
-        product={selectedProduct}
-        onEdit={onEditProduct}
-        onDelete={handleDelete}
-      />
 
       {/* Delete Confirmation Modal */}
       <ConfirmationModal

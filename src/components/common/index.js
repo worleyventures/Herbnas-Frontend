@@ -16,6 +16,7 @@ export { default as Badge, StatusBadge, PriorityBadge, CustomBadge } from './Bad
 // Modal Components
 export { default as Modal } from './Modal';
 export { ConfirmationModal } from './Modal';
+export { default as CommonModal } from './CommonModal';
 
 // Loading Components
 export { default as Loading, Spinner, PageLoading, InlineLoading, ButtonLoading } from './Loading';
@@ -29,10 +30,5 @@ export { default as Pagination } from './Pagination';
 // Stepper Components
 export { default as Stepper } from './Stepper';
 
-// Modal Components
-export { default as LeadDetailsModal } from './LeadDetailsModal';
-export { default as BranchDetailsModal } from './BranchDetailsModal';
-export { default as ProductDetailsModal } from './ProductDetailsModal';
-export { default as HealthDetailsModal } from './HealthDetailsModal';
-export { default as InventoryDetailsModal } from './InventoryDetailsModal';
+// Import Modal Component
 export { default as ImportModal } from './ImportModal';

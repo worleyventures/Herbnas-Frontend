@@ -13,7 +13,6 @@ import {
 } from 'react-icons/hi2';
 import { StatCard, FilterCard, Button, SearchInput, Select, Pagination } from '../common';
 import { addNotification } from '../../redux/slices/uiSlice';
-import InventoryForm from './inventory/InventoryForm';
 import InventoryCRUD from './inventory/InventoryCRUD';
 import {
   getAllInventory,
@@ -48,7 +47,6 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
 
   // Local state
   const [selectedInventory, setSelectedInventory] = useState(null);
-  const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterProduct, setFilterProduct] = useState('all');
@@ -157,8 +155,12 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
   // Handle form submissions
 
   const handleEditInventory = (inventoryItem) => {
-    setSelectedInventory(inventoryItem);
-    setShowEditModal(true);
+    navigate(`/inventory/edit/${inventoryItem._id}`, { 
+      state: { 
+        inventory: inventoryItem,
+        returnTo: '/inventory'
+      }
+    });
   };
 
   const handleUpdateInventory = async (formData) => {
@@ -340,7 +342,7 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
         onSelectInventory={setSelectedInventory}
         onEditInventory={handleEditInventory}
         onDeleteInventory={handleDeleteInventory}
-        onCreateInventory={() => setShowCreateModal(true)}
+        onCreateInventory={() => navigate('/inventory/create')}
         onUpdateInventory={handleUpdateInventory}
         onDeleteInventoryConfirm={handleDeleteInventoryConfirm}
         showDeleteModal={showDeleteModal}
@@ -366,19 +368,6 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
       )}
 
 
-      <InventoryForm
-        isOpen={showEditModal}
-        onClose={() => {
-          setShowEditModal(false);
-          setSelectedInventory(null);
-        }}
-        onSubmit={handleUpdateInventory}
-        title="Edit Inventory"
-        submitText="Update Inventory"
-        initialData={selectedInventory}
-        loading={loading}
-        products={allProducts}
-      />
 
     </div>
   );
