@@ -64,16 +64,9 @@ const BranchCRUD = ({
       label: 'Branch Name',
       sortable: true,
       render: (branch) => (
-        <div className="flex items-center">
-          <div className="flex-shrink-0 h-8 w-8">
-            <div className="h-8 w-8 rounded-lg bg-indigo-100 flex items-center justify-center">
-              <HiBuildingOffice2 className="h-4 w-4 text-indigo-600" />
-            </div>
-          </div>
-          <div className="ml-3">
-            <div className="text-sm font-medium text-gray-900 truncate">{branch.branchName}</div>
-            <div className="text-xs text-gray-500 truncate">{branch.branchCode}</div>
-          </div>
+        <div>
+          <div className="text-sm font-medium text-gray-900 truncate">{branch.branchName}</div>
+          <div className="text-xs text-gray-500 truncate">{branch.branchCode}</div>
         </div>
       )
     },
@@ -82,11 +75,8 @@ const BranchCRUD = ({
       label: 'Address',
       sortable: true,
       render: (branch) => (
-        <div className="flex items-center">
-          <HiMapPin className="h-3 w-3 text-gray-400 mr-2 flex-shrink-0" />
-          <div className="text-sm text-gray-900 max-w-48 truncate" title={branch.branchAddress}>
-            {branch.branchAddress}
-          </div>
+        <div className="text-sm text-gray-900 max-w-48 truncate" title={branch.branchAddress}>
+          {branch.branchAddress}
         </div>
       )
     },

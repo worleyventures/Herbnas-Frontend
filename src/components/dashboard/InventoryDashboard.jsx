@@ -65,7 +65,7 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
         stockStatus: filterStockStatus === 'all' ? '' : filterStockStatus
       }));
       dispatch(getInventoryStats());
-      dispatch(getAllProducts({ page: 1, limit: 1000 }));
+      dispatch(getAllProducts({ page: 1, limit: 1000, isActive: true }));
     }
   }, [dispatch, isAuthenticated]);
 

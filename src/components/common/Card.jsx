@@ -113,14 +113,14 @@ export const StatCard = ({
 
   if (loading) {
     return (
-      <Card className={`group h-full ${getGradientBackground()} ${className}`} padding="p-3">
-        <div className="flex items-center h-full">
+      <Card className={`group h-full ${getGradientBackground()} ${className}`} padding="p-4">
+        <div className="flex items-center justify-between h-full">
           <div className="flex-shrink-0">
-            <div className="h-6 w-6 loading-skeleton rounded-full"></div>
+            <div className="h-8 loading-skeleton rounded w-12"></div>
           </div>
-          <div className="ml-2 flex-1 space-y-1">
-            <div className="h-3 loading-skeleton rounded w-12"></div>
-            <div className="h-5 loading-skeleton rounded w-8"></div>
+          <div className="flex-1 text-right space-y-1">
+            <div className="h-4 loading-skeleton rounded w-20 ml-auto"></div>
+            <div className="h-3 loading-skeleton rounded w-16 ml-auto"></div>
           </div>
         </div>
       </Card>
@@ -132,31 +132,20 @@ export const StatCard = ({
       className={`group h-full ${getGradientBackground()} ${className}`}
       onClick={onClick}
       hover={!!onClick}
-      padding="p-3"
+      padding="p-4"
     >
-      <div className="flex items-center h-full">
+      <div className="flex items-center justify-between h-full">
         <div className="flex-shrink-0">
-          <div className="h-8 w-8 flex items-center justify-center">
-            {Icon ? (
-              React.createElement(Icon, {
-                className: `h-6 w-6 text-gray-600 group-hover:text-blue-600 ${getAnimationClass()}`
-              })
-            ) : (
-              <div className="h-6 w-6 bg-gray-200 rounded-full flex items-center justify-center group-hover:bg-blue-100 transition-all duration-300">
-                <span className="text-gray-500 text-xs font-bold group-hover:text-blue-600">?</span>
-              </div>
-            )}
-          </div>
+          <p className="text-3xl font-bold text-gray-900">{value}</p>
         </div>
-        <div className="ml-2 flex-1 min-w-0">
-          <p className="text-xs font-medium text-gray-500 mb-0.5 truncate">{title}</p>
-          <p className="text-xl font-bold text-gray-900 mb-0.5">{value}</p>
+        <div className="flex-1 text-right">
+          <p className="text-sm font-medium text-gray-500 mb-1">{title}</p>
           {change && (
-            <div className="flex items-center space-x-1">
-              <span className={`text-xs font-medium ${getChangeColor()}`}>
+            <div className="flex items-center justify-end space-x-1">
+              <span className={`text-sm font-medium ${getChangeColor()}`}>
                 {getChangeIcon()}
               </span>
-              <p className={`text-xs font-medium ${getChangeColor()}`}>
+              <p className={`text-sm font-medium ${getChangeColor()}`}>
                 {change}
               </p>
             </div>

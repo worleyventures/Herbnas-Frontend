@@ -107,14 +107,9 @@ const StageManagement = ({
       label: 'Product Name',
       sortable: true,
       render: (product) => (
-        <div className="flex items-center space-x-3">
-          <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-blue-500/10 to-blue-600/10 flex items-center justify-center">
-            <HiDocumentText className="h-5 w-5 text-blue-600" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="font-semibold text-gray-900 truncate">{product.productName}</div>
-            <div className="text-sm text-gray-500">Batch: {product.batchNumber}</div>
-          </div>
+        <div className="min-w-0 flex-1">
+          <div className="font-semibold text-gray-900 truncate">{product.productName}</div>
+          <div className="text-sm text-gray-500">Batch: {product.batchNumber}</div>
         </div>
       )
     },
@@ -122,29 +117,18 @@ const StageManagement = ({
       key: 'productionStage',
       label: 'Current Stage',
       sortable: true,
-      render: (product) => {
-        const stageConfig = stages.find(s => s.id === product.productionStage);
-        return (
-          <div className="flex items-center space-x-2">
-            <div className={`w-6 h-6 ${getStageColor(product.productionStage)} rounded flex items-center justify-center`}>
-              {stageConfig?.icon ? React.createElement(stageConfig.icon, { className: "h-3 w-3 text-white" }) : <HiCog6Tooth className="h-3 w-3 text-white" />}
-            </div>
-            <span className="font-medium">{product.productionStage}</span>
-          </div>
-        );
-      }
+      render: (product) => (
+        <span className="font-medium">{product.productionStage}</span>
+      )
     },
     {
       key: 'productionStatus',
       label: 'Status',
       sortable: true,
       render: (product) => (
-        <div className="flex items-center space-x-2">
-          {getStatusIcon(product.productionStatus)}
-          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(product.productionStatus)}`}>
-            {product.productionStatus?.replace('-', ' ') || 'Unknown'}
-          </span>
-        </div>
+        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(product.productionStatus)}`}>
+          {product.productionStatus?.replace('-', ' ') || 'Unknown'}
+        </span>
       )
     },
     {
@@ -152,10 +136,7 @@ const StageManagement = ({
       label: 'Price',
       sortable: true,
       render: (product) => (
-        <div className="flex items-center space-x-1">
-          <HiCurrencyDollar className="h-4 w-4 text-gray-400" />
-          <span className="font-medium">₹{product.price?.toLocaleString() || '0'}</span>
-        </div>
+        <span className="font-medium">₹{product.price?.toLocaleString() || '0'}</span>
       )
     },
     {
@@ -163,10 +144,7 @@ const StageManagement = ({
       label: 'Quantity',
       sortable: true,
       render: (product) => (
-        <div className="flex items-center space-x-1">
-          <HiCube className="h-4 w-4 text-gray-400" />
-          <span className="font-medium">{product.quantity || 0}</span>
-        </div>
+        <span className="font-medium">{product.quantity || 0}</span>
       )
     },
     {

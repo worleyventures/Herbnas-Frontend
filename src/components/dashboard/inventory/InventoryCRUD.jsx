@@ -32,7 +32,6 @@ const InventoryCRUD = ({
 }) => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const [showDetailsModal, setShowDetailsModal] = useState(false);
 
   // Get users for updatedBy display
   const users = useSelector((state) => state.user?.users || []);
@@ -98,23 +97,16 @@ const InventoryCRUD = ({
       label: 'Product',
       sortable: true,
       render: (inventoryItem) => (
-        <div className="flex items-center space-x-3">
-          <div className="flex-shrink-0">
-            <div className="h-10 w-10 rounded-lg bg-green-100 flex items-center justify-center">
-              <HiCube className="h-5 w-5 text-green-600" />
-            </div>
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-900 truncate">
-              {inventoryItem.product?.productName || 'Unknown Product'}
-            </p>
-            <p className="text-sm text-gray-500 truncate">
-              Batch: {inventoryItem.product?.batchNumber || 'N/A'}
-            </p>
-            <p className="text-xs text-gray-400 truncate">
-              ₹{inventoryItem.product?.price || 'N/A'} | {inventoryItem.product?.weight || 'N/A'}g
-            </p>
-          </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-gray-900 truncate">
+            {inventoryItem.product?.productName || 'Unknown Product'}
+          </p>
+          <p className="text-sm text-gray-500 truncate">
+            Batch: {inventoryItem.product?.batchNumber || 'N/A'}
+          </p>
+          <p className="text-xs text-gray-400 truncate">
+            ₹{inventoryItem.product?.price || 'N/A'} | {inventoryItem.product?.weight || 'N/A'}g
+          </p>
         </div>
       )
     },
@@ -124,12 +116,9 @@ const InventoryCRUD = ({
       sortable: true,
       render: (inventoryItem) => (
         <div className="flex flex-col space-y-1">
-          <div className="flex items-center space-x-2">
-            <HiCheckCircle className="h-4 w-4 text-green-500" />
-            <span className="text-sm font-medium text-gray-900">
-              {isFinishedProduction ? 'F6 - Completed' : 'F6 - Completed'}
-            </span>
-          </div>
+          <span className="text-sm font-medium text-gray-900">
+            {isFinishedProduction ? 'F6 - Completed' : 'F6 - Completed'}
+          </span>
           <div className="text-xs text-gray-500">
             {isFinishedProduction ? 'Production finished' : 'Production finished'}
           </div>
@@ -190,12 +179,10 @@ const InventoryCRUD = ({
       render: (inventoryItem) => (
         <div className="text-sm space-y-1">
           <div className="flex items-center space-x-2">
-            <HiExclamationTriangle className="h-3 w-3 text-red-500" />
             <span className="text-gray-500">Min:</span>
             <span className="font-medium">{inventoryItem.minStockLevel || 0}</span>
           </div>
           <div className="flex items-center space-x-2">
-            <HiInformationCircle className="h-3 w-3 text-yellow-500" />
             <span className="text-gray-500">Max:</span>
             <span className="font-medium">{inventoryItem.maxStockLevel || 0}</span>
           </div>
@@ -283,8 +270,7 @@ const InventoryCRUD = ({
   ], [allUsers]);
 
   const handleViewInventory = (inventoryItem) => {
-    onSelectInventory(inventoryItem);
-    setShowDetailsModal(true);
+    navigate(`/inventory/view/${inventoryItem._id}`);
   };
 
   const handleDeleteInventory = (inventoryItem) => {
@@ -292,10 +278,6 @@ const InventoryCRUD = ({
     setShowDeleteModal(true);
   };
 
-  const handleCloseDetails = () => {
-    setShowDetailsModal(false);
-    onSelectInventory(null);
-  };
 
   // Loading state
   if (loading) {
@@ -325,15 +307,6 @@ const InventoryCRUD = ({
         className="w-full"
       />
 
-      {/* Inventory Details Modal */}
-      {selectedInventory && (
-        <InventoryDetailsModal
-          isOpen={showDetailsModal}
-          onClose={handleCloseDetails}
-          inventory={selectedInventory}
-          isFinishedProduction={isFinishedProduction}
-        />
-      )}
 
       {/* Delete Confirmation Modal - Only show for regular inventory, not finished production */}
       {!isFinishedProduction && (

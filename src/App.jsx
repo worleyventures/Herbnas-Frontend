@@ -30,6 +30,7 @@ import ProductionPage from './pages/production/ProductionPage';
 import AddProduction from './components/dashboard/production/AddProduction';
 import ViewProduction from './components/dashboard/production/ViewProduction';
 import EditProduction from './components/dashboard/production/EditProduction';
+import ByProductAddPage from './pages/production/ByProductAddPage';
 
 function App() {
   return (
@@ -64,6 +65,7 @@ function App() {
             <Route path="/production/add" element={<AddProduction />} />
             <Route path="/production/view/:id" element={<ViewProduction />} />
             <Route path="/production/edit/:id" element={<EditProduction />} />
+            <Route path="/production/by-product/add" element={<ByProductAddPage />} />
             <Route path="/branches" element={<BranchesPage />} />
             <Route path="/branches/table" element={<BranchesPage />} />
             <Route path="/branches/map" element={<BranchesPage />} />

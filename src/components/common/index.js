@@ -32,3 +32,6 @@ export { default as Stepper } from './Stepper';
 
 // Import Modal Component
 export { default as ImportModal } from './ImportModal';
+
+// Product Modal Component
+export { default as ProductDetailsModal } from './ProductDetailsModal';

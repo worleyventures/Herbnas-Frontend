@@ -173,7 +173,9 @@ const productSlice = createSlice({
       .addCase(deleteProduct.fulfilled, (state, action) => {
         state.deleteLoading = false;
         state.deleteSuccess = action.payload.message || 'Product deleted successfully';
-        state.products = state.products.filter(product => product._id !== action.payload.id);
+        // Remove the deleted product from the state using the productId from response or action meta
+        const productId = action.payload.id || action.meta.arg;
+        state.products = state.products.filter(product => product._id !== productId);
         state.deleteError = null;
       })
       .addCase(deleteProduct.rejected, (state, action) => {

@@ -59,7 +59,7 @@ const ProductsDashboard = () => {
   // Load data on component mount
   useEffect(() => {
     if (isAuthenticated) {
-      dispatch(getAllProducts());
+      dispatch(getAllProducts({ isActive: true }));
       dispatch(getAllBranches());
       // Note: Stats API endpoint doesn't exist yet, using calculated stats from products
     }

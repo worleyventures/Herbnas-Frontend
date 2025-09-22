@@ -381,3 +381,4 @@ const BranchDetailsPage = () => {
 };
 
 export default BranchDetailsPage;
+

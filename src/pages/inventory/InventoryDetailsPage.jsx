@@ -398,3 +398,4 @@ const InventoryDetailsPage = () => {
 };
 
 export default InventoryDetailsPage;
+

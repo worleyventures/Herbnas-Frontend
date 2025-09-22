@@ -17,7 +17,7 @@ import {
   HiCube,
   HiBars3,
   HiChevronLeft,
-  HiChevronRight
+  HiChevronRight,
 } from 'react-icons/hi2';
 
 const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {

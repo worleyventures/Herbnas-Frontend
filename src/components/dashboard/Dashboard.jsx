@@ -97,16 +97,13 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
         {stats.map((stat, index) => (
           <div key={index} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center">
+            <div className="flex items-center justify-between h-full">
               <div className="flex-shrink-0">
-                <div className="h-12 w-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
-                  <stat.icon className="h-6 w-6 text-white" />
-                </div>
+                <p className="text-3xl font-bold text-gray-900">{stat.value}</p>
               </div>
-              <div className="ml-4 flex-1">
-                <p className="text-sm font-medium text-gray-600">{stat.name}</p>
-                <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
-                <div className="flex items-center mt-1">
+              <div className="flex-1 text-right">
+                <p className="text-sm font-medium text-gray-600 mb-1">{stat.name}</p>
+                <div className="flex items-center justify-end">
                   <span className={`text-sm font-medium ${
                     stat.changeType === 'increase' ? 'text-green-600' : 
                     stat.changeType === 'decrease' ? 'text-red-600' : 'text-gray-600'

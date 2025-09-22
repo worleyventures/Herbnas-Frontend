@@ -9,6 +9,7 @@ import {
   HiCube
 } from 'react-icons/hi2';
 import { Table, ActionButton, ConfirmationModal } from '../../common';
+import { ProductDetailsModal } from '../../common';
 
 const ProductCRUD = ({
   products,
@@ -23,10 +24,12 @@ const ProductCRUD = ({
   setShowDeleteModal
 }) => {
   const navigate = useNavigate();
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
 
   // Handle view product
   const handleView = (product) => {
-    navigate(`/products/view/${product._id}`);
+    onSelectProduct(product);
+    setShowDetailsModal(true);
   };
 
   // Handle edit product
@@ -53,13 +56,8 @@ const ProductCRUD = ({
       label: 'Product Name',
       sortable: true,
       render: (product) => (
-        <div className="flex items-center space-x-3">
-          <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-[#22c55e]/10 to-[#16a34a]/10 flex items-center justify-center">
-            <HiDocumentText className="h-5 w-5 text-[#22c55e]" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="font-semibold text-gray-900 truncate">{product.productName || 'No Name'}</div>
-          </div>
+        <div className="min-w-0 flex-1">
+          <div className="font-semibold text-gray-900 truncate">{product.productName || 'No Name'}</div>
         </div>
       )
     },
@@ -68,10 +66,7 @@ const ProductCRUD = ({
       label: 'Price',
       sortable: true,
       render: (product) => (
-        <div className="flex items-center space-x-1">
-          <HiCurrencyDollar className="h-4 w-4 text-gray-400" />
-          <span className="font-medium">₹{product.price?.toLocaleString() || '0'}</span>
-        </div>
+        <span className="font-medium">₹{product.price?.toLocaleString() || '0'}</span>
       )
     },
     {
@@ -79,12 +74,9 @@ const ProductCRUD = ({
       label: 'Branch Stock',
       sortable: true,
       render: (product) => (
-        <div className="flex items-center space-x-1">
-          <HiCube className="h-4 w-4 text-gray-400" />
-          <span className={`font-medium ${product.branchStock <= 10 ? 'text-red-600' : product.branchStock <= 50 ? 'text-yellow-600' : 'text-green-600'}`}>
-            {product.branchStock || 0}
-          </span>
-        </div>
+        <span className={`font-medium ${product.branchStock <= 10 ? 'text-red-600' : product.branchStock <= 50 ? 'text-yellow-600' : 'text-green-600'}`}>
+          {product.branchStock || 0}
+        </span>
       )
     },
     {
@@ -131,6 +123,14 @@ const ProductCRUD = ({
         onRowClick={onSelectProduct}
       />
 
+      {/* Product Details Modal */}
+      <ProductDetailsModal
+        isOpen={showDetailsModal}
+        onClose={() => setShowDetailsModal(false)}
+        product={selectedProduct}
+        onEdit={onEditProduct}
+        onDelete={handleDelete}
+      />
 
       {/* Delete Confirmation Modal */}
       <ConfirmationModal
