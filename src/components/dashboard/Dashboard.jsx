@@ -9,7 +9,7 @@ import {
   HiPlus,
   HiEye
 } from 'react-icons/hi2';
-import { Card } from '../common';
+import { Card, Button } from '../common';
 
 const Dashboard = () => {
   const dispatch = useDispatch();
@@ -49,33 +49,24 @@ const Dashboard = () => {
 
 
   const actions = [
-    <button
+    <Button
       key="create-lead"
-      className="inline-flex items-center px-6 py-3 border border-transparent text-sm font-semibold rounded-xl shadow-lg text-white hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all duration-300"
-      style={{background: 'linear-gradient(90deg, rgb(139, 195, 74), rgb(85, 139, 47))'}}
+      variant="gradient"
+      size="md"
+      icon={HiPlus}
+      className="shadow-lg hover:shadow-xl"
     >
-      <HiPlus className="-ml-1 mr-2 h-4 w-4" />
       Create Lead
-    </button>,
-    <button
+    </Button>,
+    <Button
       key="view-reports"
-      className="inline-flex items-center px-6 py-3 border-2 text-sm font-semibold rounded-xl shadow-sm bg-white hover:border-transparent focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all duration-300"
-      style={{
-        borderColor: 'rgb(139, 195, 74)',
-        color: 'rgb(139, 195, 74)'
-      }}
-      onMouseEnter={(e) => {
-        e.target.style.background = 'linear-gradient(90deg, rgb(139, 195, 74), rgb(85, 139, 47))';
-        e.target.style.color = 'white';
-      }}
-      onMouseLeave={(e) => {
-        e.target.style.background = 'white';
-        e.target.style.color = 'rgb(139, 195, 74)';
-      }}
+      variant="outline"
+      size="md"
+      icon={HiEye}
+      className="shadow-sm"
     >
-      <HiEye className="-ml-1 mr-2 h-4 w-4" />
       View Reports
-    </button>
+    </Button>
   ];
 
   return (
@@ -242,7 +233,7 @@ const Dashboard = () => {
               </div>
             </div>
             <div className="mt-4">
-              <button className="text-purple-500 hover:text-purple-600 text-sm font-semibold transition-colors duration-200">
+              <button className="text-purple-500 hover:text-purple-600 hover:bg-purple-50 text-sm font-semibold px-3 py-1 rounded-lg transition-all duration-200">
                 View Reports →
               </button>
             </div>

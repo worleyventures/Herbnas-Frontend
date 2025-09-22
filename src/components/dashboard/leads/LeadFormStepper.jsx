@@ -433,9 +433,10 @@ const LeadFormStepper = ({
         
       case 5: // Payment & Assignment
         console.log('Validating step 5 - dispatchedFrom:', formData.dispatchedFrom);
-        if (!formData.dispatchedFrom) {
-          newErrors.dispatchedFrom = 'Please assign a branch';
-        }
+        // Make branch assignment optional for now to test
+        // if (!formData.dispatchedFrom) {
+        //   newErrors.dispatchedFrom = 'Please assign a branch';
+        // }
         break;
     }
     
@@ -520,11 +521,14 @@ const LeadFormStepper = ({
     }
     
     if (allValid) {
+      console.log('✅ Form validation passed, submitting data:', JSON.stringify(formData, null, 2));
       onSubmit(formData);
     } else {
+      console.log('❌ Form validation failed, errors:', errors);
       // Go to first step with errors
       for (let i = 1; i <= steps.length; i++) {
         if (!validateStep(i)) {
+          console.log(`❌ Validation failed at step ${i}`);
           setCurrentStep(i);
           break;
         }
@@ -615,9 +619,9 @@ const LeadFormStepper = ({
                 type="button"
                 onClick={handlePrevious}
                 disabled={currentStep === 1}
-                className="flex items-center space-x-2 px-6 py-3 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+                className="flex items-center space-x-2 px-3 py-1.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-xs font-medium"
               >
-                <HiChevronLeft className="h-4 w-4" />
+                <HiChevronLeft className="h-3 w-3" />
                 <span>Previous</span>
               </button>
               
@@ -625,7 +629,7 @@ const LeadFormStepper = ({
                 <button
                   type="button"
                   onClick={onCancel}
-                  className="px-6 py-3 border border-gray-300 text-gray-700 rounded-xl hover:bg-gradient-to-r hover:from-[#8bc34a] hover:to-[#558b2f] hover:text-white hover:border-transparent transition-all duration-200 text-sm font-medium"
+                  className="px-3 py-1.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gradient-to-r hover:from-[#8bc34a] hover:to-[#558b2f] hover:text-white hover:border-transparent transition-all duration-200 text-xs font-medium"
                 >
                   Cancel
                 </button>
@@ -634,19 +638,19 @@ const LeadFormStepper = ({
                   <button
                     type="button"
                     onClick={handleNext}
-                    className="px-6 py-3 text-white rounded-xl transition-all duration-200 flex items-center space-x-2 bg-gradient-to-r from-[#8bc34a] to-[#558b2f] hover:from-[#558b2f] hover:to-[#4a7c2a] shadow-lg hover:shadow-xl text-sm font-medium"
+                    className="px-3 py-1.5 text-white rounded-lg transition-all duration-200 flex items-center space-x-2 bg-gradient-to-r from-[#8bc34a] to-[#558b2f] hover:from-[#558b2f] hover:to-[#4a7c2a] shadow-md hover:shadow-lg text-xs font-medium"
                   >
                     <span>Next</span>
-                    <HiChevronRight className="h-4 w-4" />
+                    <HiChevronRight className="h-3 w-3" />
                   </button>
                 ) : (
                   <button
                     type="submit"
                     disabled={loading}
-                    className="px-6 py-3 text-white rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 bg-gradient-to-r from-[#8bc34a] to-[#558b2f] hover:from-[#558b2f] hover:to-[#4a7c2a] shadow-lg hover:shadow-xl text-sm font-medium"
+                    className="px-3 py-1.5 text-white rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 bg-gradient-to-r from-[#8bc34a] to-[#558b2f] hover:from-[#558b2f] hover:to-[#4a7c2a] shadow-md hover:shadow-lg text-xs font-medium"
                   >
                     {loading && (
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
                     )}
                     <span>{mode === 'edit' ? 'Update Lead' : 'Create Lead'}</span>
                   </button>

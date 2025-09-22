@@ -366,14 +366,14 @@ const UserFormPage = () => {
                 type="button"
                 onClick={handleBack}
                 variant="secondary"
-                size="sm"
+                size="xs"
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
                 variant="primary"
-                size="sm"
+                size="xs"
                 loading={userLoading}
                 className="flex items-center"
               >

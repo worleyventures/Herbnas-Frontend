@@ -333,14 +333,14 @@ const InventoryFormPage = () => {
                 type="button"
                 onClick={handleBack}
                 variant="outline"
-                size="sm"
+                size="xs"
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
                 variant="primary"
-                size="sm"
+                size="xs"
                 loading={inventoryLoading}
                 className="flex items-center"
               >

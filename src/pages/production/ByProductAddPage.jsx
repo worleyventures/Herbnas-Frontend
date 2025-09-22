@@ -153,28 +153,6 @@ const ByProductAddPage = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center space-x-4 mb-4">
-            <Button
-              onClick={handleCancel}
-              variant="outline"
-              size="sm"
-              icon={HiArrowLeft}
-            >
-              Back
-            </Button>
-            <div className="flex items-center space-x-3">
-              <div className="p-3 bg-blue-100 rounded-lg">
-                <HiTag className="h-8 w-8 text-blue-600" />
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">Add By-Product</h1>
-                <p className="text-gray-600">Create a new by-product entry</p>
-              </div>
-            </div>
-          </div>
-        </div>
 
         {/* Form Card */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200">
@@ -298,7 +276,7 @@ const ByProductAddPage = () => {
                 onClick={handleCancel}
                 variant="outline"
                 disabled={isSubmitting}
-                size="lg"
+                size="xs"
               >
                 Cancel
               </Button>
@@ -307,7 +285,7 @@ const ByProductAddPage = () => {
                 variant="primary"
                 disabled={isSubmitting}
                 loading={isSubmitting}
-                size="lg"
+                size="xs"
                 icon={HiCheckCircle}
               >
                 Create By-Product

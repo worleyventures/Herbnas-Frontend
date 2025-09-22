@@ -134,6 +134,22 @@ const leadSlice = createSlice({
       const newLead = action.payload;
       state.leads.unshift(newLead);
       state.totalLeads += 1;
+    },
+    
+    // Clear all lead data (for force refresh)
+    clearAllLeadData: (state) => {
+      state.leads = [];
+      state.totalLeads = 0;
+      state.pagination = {
+        currentPage: 1,
+        totalPages: 1,
+        totalLeads: 0,
+        hasNextPage: false,
+        hasPrevPage: false
+      };
+      state.stats = null;
+      state.loading = false;
+      state.error = null;
     }
   },
   extraReducers: (builder) => {
@@ -189,11 +205,13 @@ const leadSlice = createSlice({
         state.createSuccess = action.payload.message;
         state.createError = null;
         
-        // Add to leads list if we're on the first page
-        if (state.pagination.currentPage === 1) {
-          state.leads.unshift(action.payload.data.lead);
-          state.totalLeads += 1;
-        }
+        // Always add the new lead to the list and increment total count
+        state.leads.unshift(action.payload.data.lead);
+        state.totalLeads += 1;
+        
+        // Update pagination to reflect the new total
+        state.pagination.totalLeads = state.totalLeads;
+        state.pagination.totalPages = Math.ceil(state.totalLeads / (state.pagination.limit || 10));
       })
       .addCase(createLead.rejected, (state, action) => {
         state.createLoading = false;
@@ -406,7 +424,8 @@ export const {
   resetLeadState,
   updateLeadInList,
   removeLeadFromList,
-  addLeadToList
+  addLeadToList,
+  clearAllLeadData
 } = leadSlice.actions;
 
 // Selectors

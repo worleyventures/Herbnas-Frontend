@@ -15,6 +15,7 @@ import { StatCard, FilterCard, Button, SearchInput, Select, Pagination, ImportMo
 import { addNotification } from '../../redux/slices/uiSlice';
 import {
   getAllBranches,
+  getBranchById,
   getBranchStats,
   createBranch,
   updateBranch,
@@ -31,6 +32,7 @@ const BranchesDashboard = ({ propActiveView = 'table' }) => {
   const dispatch = useDispatch();
   const [activeView, setActiveView] = useState(propActiveView || 'table');
   const [selectedBranch, setSelectedBranch] = useState(null);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showDisableModal, setShowDisableModal] = useState(false);
   const [showActivateModal, setShowActivateModal] = useState(false);
@@ -124,7 +126,6 @@ const BranchesDashboard = ({ propActiveView = 'table' }) => {
   const handleCreateBranch = (branchData) => {
     try {
       dispatch(createBranch(branchData));
-      setShowCreateModal(false);
     } catch (error) {
       console.error('Error creating branch:', error);
     }
@@ -175,11 +176,29 @@ const BranchesDashboard = ({ propActiveView = 'table' }) => {
   const handleToggleBranchStatus = async () => {
     try {
       if (selectedBranch) {
+        console.log('Toggling branch status:', {
+          branchId: selectedBranch._id,
+          branchName: selectedBranch.branchName,
+          isActive: selectedBranch.isActive,
+          isActiveType: typeof selectedBranch.isActive
+        });
+        
+        // First, refresh the branch data to ensure we have the latest status
+        const branchResponse = await dispatch(getBranchById(selectedBranch._id)).unwrap();
+        const latestBranch = branchResponse.data.branch;
+        
+        console.log('Latest branch data from server:', {
+          branchId: latestBranch._id,
+          branchName: latestBranch.branchName,
+          isActive: latestBranch.isActive,
+          isActiveType: typeof latestBranch.isActive
+        });
+        
         // Use deactivate or restore based on current status
-        if (selectedBranch.isActive) {
-          await dispatch(deactivateBranch(selectedBranch._id)).unwrap();
+        if (latestBranch.isActive) {
+          await dispatch(deactivateBranch(latestBranch._id)).unwrap();
         } else {
-          await dispatch(restoreBranch(selectedBranch._id)).unwrap();
+          await dispatch(restoreBranch(latestBranch._id)).unwrap();
         }
         
         // Show success notification
@@ -208,11 +227,21 @@ const BranchesDashboard = ({ propActiveView = 'table' }) => {
       }
     } catch (error) {
       console.error('Error toggling branch status:', error);
+      
+      // Extract error message from the error object
+      let errorMessage = 'Failed to update branch status. Please try again.';
+      
+      if (error?.message) {
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      }
+      
       dispatch(addNotification({
         type: 'error',
         title: 'Error',
-        message: 'Failed to update branch status. Please try again.',
-        duration: 3000
+        message: errorMessage,
+        duration: 5000
       }));
     }
   };
@@ -365,7 +394,7 @@ const BranchesDashboard = ({ propActiveView = 'table' }) => {
           </div>
           <div className="flex items-center space-x-3 mt-4 sm:mt-0">
             <Button
-              onClick={() => setShowCreateModal(true)}
+              onClick={() => navigate('/branches/create')}
               icon={HiPlus}
               variant="gradient"
               size="sm"

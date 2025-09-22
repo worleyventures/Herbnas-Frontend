@@ -191,6 +191,12 @@ const BranchCRUD = ({
   };
 
   const handleDisableBranch = (branch) => {
+    console.log('Disable branch clicked:', {
+      branchId: branch._id,
+      branchName: branch.branchName,
+      isActive: branch.isActive,
+      isActiveType: typeof branch.isActive
+    });
     onSelectBranch(branch);
     onDisableBranch();
   };

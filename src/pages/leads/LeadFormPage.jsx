@@ -98,7 +98,36 @@ const LeadFormPage = () => {
       
       dispatch(updateLead({ leadId: currentLead._id, leadData: formData }));
     } else {
-      dispatch(createLead(formData));
+      console.log('Creating new lead with data:', JSON.stringify(formData, null, 2));
+      
+      // Validate required fields before sending
+      if (!formData.customerName || !formData.customerMobile) {
+        console.error('Missing required fields:', {
+          customerName: formData.customerName,
+          customerMobile: formData.customerMobile
+        });
+        return;
+      }
+      
+      // Clean up the data before sending
+      const cleanedData = {
+        customerName: formData.customerName?.trim(),
+        customerMobile: formData.customerMobile?.trim(),
+        customerEmail: formData.customerEmail?.trim() || undefined,
+        age: formData.age ? parseInt(formData.age) : undefined,
+        gender: formData.gender || undefined,
+        maritalStatus: formData.maritalStatus || undefined,
+        healthIssues: formData.healthIssues || [],
+        products: formData.products || [],
+        payment: formData.payment || undefined,
+        dispatchedFrom: formData.dispatchedFrom || undefined,
+        address: formData.address || {},
+        leadStatus: formData.leadStatus || 'new_lead',
+        reminders: formData.reminders || []
+      };
+      
+      console.log('Cleaned data being sent:', JSON.stringify(cleanedData, null, 2));
+      dispatch(createLead(cleanedData));
     }
   };
 
