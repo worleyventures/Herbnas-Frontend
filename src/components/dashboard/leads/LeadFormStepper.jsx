@@ -28,7 +28,7 @@ import {
   HiHeart,
   HiCurrencyDollar
 } from 'react-icons/hi2';
-import { Stepper } from '../../common';
+import { Stepper, MaterialStepper } from '../../common';
 import BasicInfoStep from './steps/BasicInfoStep';
 import RemindersStep from './steps/RemindersStep';
 import CustomerDetailsStep from './steps/CustomerDetailsStep';
@@ -593,7 +593,7 @@ const LeadFormStepper = ({
     <div className="w-full h-full flex flex-col">
       {/* Stepper */}
       <div className="px-6 py-4 bg-gray-50/50">
-        <Stepper
+        <MaterialStepper
           steps={steps}
           currentStep={currentStep}
           onStepChange={handleStepChange}
