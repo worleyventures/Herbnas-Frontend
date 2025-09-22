@@ -29,6 +29,8 @@ export { default as Pagination } from './Pagination';
 
 // Stepper Components
 export { default as Stepper } from './Stepper';
+export { default as MaterialStepper } from './MaterialStepper';
+export { default as Dropdown } from './Dropdown';
 
 // Import Modal Component
 export { default as ImportModal } from './ImportModal';

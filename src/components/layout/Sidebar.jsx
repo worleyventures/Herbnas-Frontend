@@ -1,4 +1,4 @@
-import React,{ useState } from 'react';
+import React,{ useState, useMemo } from 'react';
 import { useSelector } from 'react-redux';
 import { Link, useLocation } from 'react-router-dom';
 import logo from '../../assets/logo.webp';
@@ -25,129 +25,163 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
   const { user } = useSelector((state) => state.auth);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
+  // Debug logging for user state
+  console.log('Sidebar Debug:', {
+    user,
+    userRole: user?.role,
+    isAdmin: user?.role === 'admin' || user?.role === 'super_admin',
+    currentPath: location.pathname
+  });
+
+  // Get auth loading state to prevent flickering during user validation
+  const { loading: authLoading } = useSelector((state) => state.auth || {});
+
   const isActiveRoute = (path) => {
     return location.pathname === path || location.pathname.startsWith(path + '/');
   };
 
-  const navigation = [
-    {
-      name: 'Dashboard',
-      href: '/dashboard',
-      icon: HiHome,
-      current: isActiveRoute('/dashboard'),
-      color: 'text-blue-600',
-      bgColor: 'bg-gray-100',
-      hoverColor: 'group-hover:text-blue-600',
-      hoverBgColor: 'group-hover:bg-gray-50'
-    },
-    {
-      name: 'Leads',
-      href: '/leads',
-      icon: HiUsers,
-      current: isActiveRoute('/leads'),
-      color: 'text-gray-600',
-      bgColor: 'bg-gray-100',
-      hoverColor: 'group-hover:text-gray-600',
-      hoverBgColor: 'group-hover:bg-gray-50'
-    },
-    {
-      name: 'Production',
-      href: '/production',
-      icon: HiDocumentText,
-      current: isActiveRoute('/production'),
-      color: 'text-gray-600',
-      bgColor: 'bg-gray-100',
-      hoverColor: 'group-hover:text-gray-600',
-      hoverBgColor: 'group-hover:bg-gray-50'
-    },
-    {
-      name: 'Inventory',
-      href: '/inventory',
-      icon: HiCube,
-      current: isActiveRoute('/inventory'),
-      color: 'text-orange-600',
-      bgColor: 'bg-gray-100',
-      hoverColor: 'group-hover:text-orange-600',
-      hoverBgColor: 'group-hover:bg-gray-50'
-    },
-    {
-      name: 'Branches',
-      href: '/branches',
-      icon: HiBuildingOffice2,
-      current: isActiveRoute('/branches'),
-      color: 'text-indigo-600',
-      bgColor: 'bg-gray-100',
-      hoverColor: 'group-hover:text-indigo-600',
-      hoverBgColor: 'group-hover:bg-gray-50'
-    },
-    {
-      name: 'Health Issues',
-      href: '/health-issues',
-      icon: HiHeart,
-      current: isActiveRoute('/health-issues'),
-      color: 'text-red-600',
-      bgColor: 'bg-gray-100',
-      hoverColor: 'group-hover:text-red-600',
-      hoverBgColor: 'group-hover:bg-gray-50'
-    },
-    {
-      name: 'Orders',
-      href: '/orders',
-      icon: HiClipboardDocumentList,
-      current: isActiveRoute('/orders'),
-      color: 'text-teal-600',
-      bgColor: 'bg-gray-100',
-      hoverColor: 'group-hover:text-teal-600',
-      hoverBgColor: 'group-hover:bg-gray-50'
-    },
-    {
-      name: 'Accounts',
-      href: '/accounts',
-      icon: HiCurrencyDollar,
-      current: isActiveRoute('/accounts'),
-      color: 'text-gray-600',
-      bgColor: 'bg-gray-100',
-      hoverColor: 'group-hover:text-gray-600',
-      hoverBgColor: 'group-hover:bg-gray-50'
+  // Stable user role - use localStorage as fallback to prevent flickering
+  const stableUserRole = useMemo(() => {
+    if (user?.role) {
+      return user.role;
     }
-  ];
+    // Fallback to localStorage if Redux user is temporarily unavailable
+    try {
+      const storedUser = localStorage.getItem('user');
+      if (storedUser && storedUser !== 'undefined' && storedUser !== 'null') {
+        const parsedUser = JSON.parse(storedUser);
+        return parsedUser?.role;
+      }
+    } catch (error) {
+      console.error('Error parsing user from localStorage:', error);
+    }
+    return null;
+  }, [user?.role]);
 
-  // Add admin-only navigation items
-  if (user?.role === 'admin' || user?.role === 'super_admin') {
-    navigation.push(
+  const navigation = useMemo(() => {
+    const baseNavigation = [
       {
-        name: 'User Management',
-        href: '/user-management',
-        icon: HiUserGroup,
-        current: isActiveRoute('/user-management'),
-        color: 'text-cyan-600',
+        name: 'Dashboard',
+        href: '/dashboard',
+        icon: HiHome,
+        current: isActiveRoute('/dashboard'),
+        color: 'text-blue-600',
         bgColor: 'bg-gray-100',
-        hoverColor: 'group-hover:text-cyan-600',
+        hoverColor: 'group-hover:text-blue-600',
         hoverBgColor: 'group-hover:bg-gray-50'
       },
       {
-        name: 'Payroll',
-        href: '/payroll',
-        icon: HiChartBar,
-        current: isActiveRoute('/payroll'),
-        color: 'text-pink-600',
+        name: 'Leads',
+        href: '/leads',
+        icon: HiUsers,
+        current: isActiveRoute('/leads'),
+        color: 'text-gray-600',
         bgColor: 'bg-gray-100',
-        hoverColor: 'group-hover:text-pink-600',
+        hoverColor: 'group-hover:text-gray-600',
+        hoverBgColor: 'group-hover:bg-gray-50'
+      },
+      {
+        name: 'Production',
+        href: '/production',
+        icon: HiDocumentText,
+        current: isActiveRoute('/production'),
+        color: 'text-gray-600',
+        bgColor: 'bg-gray-100',
+        hoverColor: 'group-hover:text-gray-600',
+        hoverBgColor: 'group-hover:bg-gray-50'
+      },
+      {
+        name: 'Inventory',
+        href: '/inventory',
+        icon: HiCube,
+        current: isActiveRoute('/inventory'),
+        color: 'text-orange-600',
+        bgColor: 'bg-gray-100',
+        hoverColor: 'group-hover:text-orange-600',
+        hoverBgColor: 'group-hover:bg-gray-50'
+      },
+      {
+        name: 'Branches',
+        href: '/branches',
+        icon: HiBuildingOffice2,
+        current: isActiveRoute('/branches'),
+        color: 'text-indigo-600',
+        bgColor: 'bg-gray-100',
+        hoverColor: 'group-hover:text-indigo-600',
+        hoverBgColor: 'group-hover:bg-gray-50'
+      },
+      {
+        name: 'Health Issues',
+        href: '/health-issues',
+        icon: HiHeart,
+        current: isActiveRoute('/health-issues'),
+        color: 'text-red-600',
+        bgColor: 'bg-gray-100',
+        hoverColor: 'group-hover:text-red-600',
+        hoverBgColor: 'group-hover:bg-gray-50'
+      },
+      {
+        name: 'Orders',
+        href: '/orders',
+        icon: HiClipboardDocumentList,
+        current: isActiveRoute('/orders'),
+        color: 'text-teal-600',
+        bgColor: 'bg-gray-100',
+        hoverColor: 'group-hover:text-teal-600',
+        hoverBgColor: 'group-hover:bg-gray-50'
+      },
+      {
+        name: 'Accounts',
+        href: '/accounts',
+        icon: HiCurrencyDollar,
+        current: isActiveRoute('/accounts'),
+        color: 'text-gray-600',
+        bgColor: 'bg-gray-100',
+        hoverColor: 'group-hover:text-gray-600',
         hoverBgColor: 'group-hover:bg-gray-50'
       }
-    );
-  }
+    ];
 
-  navigation.push({
-    name: 'Settings',
-    href: '/settings',
-    icon: HiCog6Tooth,
-    current: isActiveRoute('/settings'),
-    color: 'text-gray-600',
-    bgColor: 'bg-gray-100',
-    hoverColor: 'group-hover:text-gray-600',
-    hoverBgColor: 'group-hover:bg-gray-50'
-  });
+    // Add admin-only navigation items using stable role
+    const adminNavigation = [];
+    if (stableUserRole === 'admin' || stableUserRole === 'super_admin') {
+      adminNavigation.push(
+        {
+          name: 'User Management',
+          href: '/user-management',
+          icon: HiUserGroup,
+          current: isActiveRoute('/user-management'),
+          color: 'text-cyan-600',
+          bgColor: 'bg-gray-100',
+          hoverColor: 'group-hover:text-cyan-600',
+          hoverBgColor: 'group-hover:bg-gray-50'
+        },
+        {
+          name: 'Payroll',
+          href: '/payroll',
+          icon: HiChartBar,
+          current: isActiveRoute('/payroll'),
+          color: 'text-pink-600',
+          bgColor: 'bg-gray-100',
+          hoverColor: 'group-hover:text-pink-600',
+          hoverBgColor: 'group-hover:bg-gray-50'
+        }
+      );
+    }
+
+    const settingsNavigation = {
+      name: 'Settings',
+      href: '/settings',
+      icon: HiCog6Tooth,
+      current: isActiveRoute('/settings'),
+      color: 'text-gray-600',
+      bgColor: 'bg-gray-100',
+      hoverColor: 'group-hover:text-gray-600',
+      hoverBgColor: 'group-hover:bg-gray-50'
+    };
+
+    return [...baseNavigation, ...adminNavigation, settingsNavigation];
+  }, [stableUserRole, location.pathname]);
 
   const NavigationItem = ({ item }) => {
     const isActive = item.current;
@@ -180,7 +214,12 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
             : `text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:shadow-sm`
         }`}
         style={getItemStyle()}
-        onClick={() => setSidebarOpen(false)}
+        onClick={() => {
+          // Only close sidebar on mobile when clicking navigation items
+          if (window.innerWidth < 768) {
+            setSidebarOpen(false);
+          }
+        }}
         title={isCollapsed ? item.name : undefined}
       >
         <item.icon

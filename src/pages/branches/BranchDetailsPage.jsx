@@ -143,57 +143,6 @@ const BranchDetailsPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-4">
-              <Button
-                onClick={() => navigate('/branches')}
-                variant="outline"
-                size="sm"
-                className="flex items-center"
-              >
-                <HiArrowLeft className="h-4 w-4 mr-2" />
-                Back to Branches
-              </Button>
-              <div className="h-6 w-px bg-gray-300" />
-              <div>
-                <h1 className="text-xl font-semibold text-gray-900">Branch Details</h1>
-                <p className="text-sm text-gray-500">Branch ID: {branch._id?.slice(-8) || 'N/A'}</p>
-              </div>
-            </div>
-            
-            <div className="flex items-center space-x-3">
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex items-center"
-              >
-                <HiPrinter className="h-4 w-4 mr-2" />
-                Print
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex items-center"
-              >
-                <HiShare className="h-4 w-4 mr-2" />
-                Share
-              </Button>
-              <Button
-                onClick={() => navigate(`/branches/edit/${branch._id}`)}
-                variant="primary"
-                size="sm"
-                className="flex items-center"
-              >
-                <HiPencil className="h-4 w-4 mr-2" />
-                Edit Branch
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

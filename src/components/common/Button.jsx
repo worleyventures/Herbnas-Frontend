@@ -18,9 +18,9 @@ const Button = ({
     
     switch (variant) {
       case 'primary':
-        return `${baseClasses} text-white shadow-sm hover:shadow-md focus:ring-green-500`;
+        return `${baseClasses} text-white shadow-sm hover:shadow-md focus:ring-green-500 bg-gradient-to-r from-[#8bc34a] to-[#558b2f] hover:from-[#558b2f] hover:to-[#4a7c2a]`;
       case 'gradient':
-        return `${baseClasses} text-white shadow-lg hover:shadow-xl focus:ring-green-500`;
+        return `${baseClasses} text-white shadow-lg hover:shadow-xl focus:ring-green-500 bg-gradient-to-r from-[#8bc34a] to-[#558b2f] hover:from-[#558b2f] hover:to-[#4a7c2a]`;
       case 'success':
         return `${baseClasses} text-white shadow-lg hover:shadow-xl focus:ring-emerald-500 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700`;
       case 'warning':
@@ -28,15 +28,15 @@ const Button = ({
       case 'secondary':
         return `${baseClasses} bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 hover:border-gray-400 focus:ring-green-500 shadow-sm`;
       case 'outline':
-        return `${baseClasses} border-2 focus:ring-green-500 bg-white`;
+        return `${baseClasses} border-2 border-[#8bc34a] text-[#8bc34a] bg-white hover:bg-gradient-to-r hover:from-[#8bc34a] hover:to-[#558b2f] hover:text-white hover:border-transparent focus:ring-green-500`;
       case 'ghost':
-        return `${baseClasses} text-gray-600 hover:bg-green-50 focus:ring-green-500`;
+        return `${baseClasses} text-gray-600 bg-gray-100 hover:bg-gradient-to-r hover:from-[#8bc34a] hover:to-[#558b2f] hover:text-white focus:ring-green-500`;
       case 'danger':
         return `${baseClasses} text-white shadow-lg hover:shadow-xl focus:ring-red-500 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700`;
       case 'info':
         return `${baseClasses} text-white shadow-lg hover:shadow-xl focus:ring-blue-500 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700`;
       default:
-        return baseClasses;
+        return `${baseClasses} text-white bg-gradient-to-r from-[#8bc34a] to-[#558b2f] hover:from-[#558b2f] hover:to-[#4a7c2a] shadow-sm hover:shadow-md focus:ring-green-500`;
     }
   };
 
@@ -53,7 +53,7 @@ const Button = ({
       case 'xl':
         return 'px-8 py-4 text-lg';
       default:
-        return 'px-4 py-2 text-sm';
+        return 'px-3 py-1.5 text-xs'; // Reduced default size from md to sm
     }
   };
 
@@ -75,25 +75,7 @@ const Button = ({
   };
 
   const getPrimaryStyle = () => {
-    if (variant === 'primary' || variant === 'gradient') {
-      return { 
-        background: 'linear-gradient(90deg, rgb(139, 195, 74), rgb(85, 139, 47))',
-        color: 'white'
-      };
-    }
-    if (variant === 'outline') {
-      return { 
-        background: 'transparent',
-        color: 'rgb(139, 195, 74)',
-        borderColor: 'rgb(139, 195, 74)'
-      };
-    }
-    if (variant === 'ghost') {
-      return { 
-        background: 'transparent',
-        color: 'rgb(107, 114, 128)'
-      };
-    }
+    // All styles are now handled by CSS classes, no need for inline styles
     return {};
   };
 

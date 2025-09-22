@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -13,7 +13,8 @@ import {
   HiChartBar,
   HiPencil,
   HiCloudArrowUp,
-  HiArchiveBox
+  HiArchiveBox,
+  HiArrowPath
 } from 'react-icons/hi2';
 import { StatCard, FilterCard, Button, SearchInput, Select, Pagination, ImportModal } from '../common';
 import {
@@ -27,6 +28,7 @@ import {
   clearLeadErrors,
   clearLeadSuccess
 } from '../../redux/actions/leadActions';
+import { clearAllLeadData } from '../../redux/slices/leadSlice';
 import { addNotification } from '../../redux/slices/uiSlice';
 import { getActiveBranches } from '../../redux/actions/branchActions';
 import LeadPipeline from './leads/LeadPipeline';
@@ -79,15 +81,20 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
     }
   }, [propActiveView]);
 
-  // Load leads and stats on component mount
-  useEffect(() => {
-    // Always try to fetch leads - let the API handle authentication
+  // Force refresh function
+  const forceRefresh = useCallback(() => {
+    console.log('Force refreshing all lead data...');
+    
+    // Clear all cached data first
+    dispatch(clearAllLeadData());
+    
     const params = {
       page: currentPage,
       limit: itemsPerPage,
       search: searchTerm,
       leadStatus: filterStatus === 'all' ? '' : filterStatus,
-      dispatchedFrom: filterBranch === 'all' ? '' : filterBranch
+      dispatchedFrom: filterBranch === 'all' ? '' : filterBranch,
+      _t: Date.now() // Add timestamp to bypass cache
     };
 
     // Handle special status groups by fetching all leads and filtering client-side
@@ -101,13 +108,28 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
       params.limit = itemsPerPage;
     }
 
-    console.log('Fetching leads with params:', params);
+    console.log('Force fetching leads with params:', params);
 
     // Always dispatch the API call - let the interceptor handle auth
     dispatch(getAllLeads(params));
     dispatch(getLeadStats());
     dispatch(getActiveBranches());
-  }, [dispatch, isAuthenticated, user, currentPage, itemsPerPage, searchTerm, filterStatus, filterBranch]);
+    
+    // Also fetch unfiltered data for pipeline view
+    dispatch(getAllLeads({ limit: 1000, page: 1, _t: Date.now() })).then((result) => {
+      if (result.payload && result.payload.data) {
+        setUnfilteredLeads(result.payload.data.leads);
+        console.log('Set unfiltered leads via force refresh:', result.payload.data.leads.length);
+      }
+    }).catch((error) => {
+      console.error('Error fetching unfiltered leads via force refresh:', error);
+    });
+  }, [dispatch, currentPage, itemsPerPage, searchTerm, filterStatus, filterBranch]);
+
+  // Load leads and stats on component mount
+  useEffect(() => {
+    forceRefresh();
+  }, [forceRefresh]);
 
   // Initialize pagination on first load
   useEffect(() => {
@@ -121,29 +143,28 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
   const [unfilteredLeads, setUnfilteredLeads] = useState([]);
   const [unfilteredStats, setUnfilteredStats] = useState(null);
 
-  // Fetch all leads for pipeline and performance (unfiltered) - always fetch when component mounts
+  // Fetch unfiltered data on mount
   useEffect(() => {
-    // Use Redux action to fetch all leads without filters
-    console.log('Fetching unfiltered leads via Redux...');
+    console.log('Fetching unfiltered leads on mount...');
     dispatch(getAllLeads({ limit: 1000, page: 1 })).then((result) => {
       if (result.payload && result.payload.data) {
         setUnfilteredLeads(result.payload.data.leads);
-        console.log('Set unfiltered leads via Redux:', result.payload.data.leads.length);
+        console.log('Set unfiltered leads on mount:', result.payload.data.leads.length);
       }
     }).catch((error) => {
-      console.error('Error fetching unfiltered leads via Redux:', error);
+      console.error('Error fetching unfiltered leads on mount:', error);
     });
 
     // Fetch stats
     dispatch(getLeadStats()).then((result) => {
       if (result.payload && result.payload.data) {
         setUnfilteredStats(result.payload.data);
-        console.log('Set unfiltered stats via Redux');
+        console.log('Set unfiltered stats on mount');
       }
     }).catch((error) => {
-      console.error('Error fetching unfiltered stats via Redux:', error);
+      console.error('Error fetching unfiltered stats on mount:', error);
     });
-  }, [dispatch]); // Only run once on component mount
+  }, [dispatch]);
 
   // Clear success/error messages after a delay and close modals on success
   useEffect(() => {
@@ -151,14 +172,20 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
       // Close modals on success
       if (createSuccess) {
         setShowCreateModal(false);
+        // Force refresh all data after successful creation
+        forceRefresh();
       }
       if (updateSuccess) {
         setShowEditModal(false);
         setSelectedLead(null);
+        // Force refresh all data after successful update
+        forceRefresh();
       }
       if (deleteSuccess) {
         setShowDeleteModal(false);
         setSelectedLead(null);
+        // Force refresh all data after successful deletion
+        forceRefresh();
       }
       
       const timer = setTimeout(() => {
@@ -166,7 +193,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
       }, 5000);
       return () => clearTimeout(timer);
     }
-  }, [createSuccess, updateSuccess, deleteSuccess, dispatch]);
+  }, [createSuccess, updateSuccess, deleteSuccess, forceRefresh]);
 
   useEffect(() => {
     if (createError || updateError || deleteError) {
@@ -553,6 +580,15 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
               >
                 Add New Lead
               </Button>
+              <Button
+                onClick={forceRefresh}
+                icon={HiArrowPath}
+                variant="outline"
+                size="sm"
+                className="hover:bg-green-50"
+              >
+                Refresh
+              </Button>
             </div>
           </div>
 
@@ -663,6 +699,15 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
               >
                 Import Leads
               </Button>
+              <Button
+                onClick={forceRefresh}
+                icon={HiArrowPath}
+                variant="outline"
+                size="sm"
+                className="hover:bg-green-50"
+              >
+                Refresh
+              </Button>
             </div>
           </div>
         </div>
@@ -733,6 +778,15 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
                 size="sm"
               >
                 Add New Lead
+              </Button>
+              <Button
+                onClick={forceRefresh}
+                icon={HiArrowPath}
+                variant="outline"
+                size="sm"
+                className="hover:bg-green-50"
+              >
+                Refresh
               </Button>
               {viewOptions.map((view) => (
                   <Button

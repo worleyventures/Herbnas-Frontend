@@ -298,7 +298,7 @@ const EditProduction = () => {
                 variant="gradient"
                 disabled={saving}
                 size="xs"
-                className="min-w-[120px]"
+                className="min-w-[100px]"
               >
                 {saving ? (
                   <div className="flex items-center">

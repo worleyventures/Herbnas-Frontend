@@ -1,6 +1,6 @@
 // src/components/layout/Layout.jsx
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useLocation, Outlet } from "react-router-dom";
 import Header from "./Header";
 import Sidebar from "./Sidebar";
@@ -8,10 +8,26 @@ import Sidebar from "./Sidebar";
 const Layout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
+  const previousPathRef = useRef(location.pathname);
 
-  // Close sidebar on route change (mobile)
+  // Close sidebar on route change (mobile) - but only when changing main sections
   useEffect(() => {
-    setSidebarOpen(false);
+    const mainSections = ['/dashboard', '/leads', '/production', '/inventory', '/branches', '/health-issues', '/orders', '/accounts', '/user-management', '/payroll', '/settings'];
+    
+    const getMainSection = (pathname) => {
+      return mainSections.find(section => pathname.startsWith(section));
+    };
+    
+    const currentMainSection = getMainSection(location.pathname);
+    const previousMainSection = getMainSection(previousPathRef.current);
+    
+    // Only close sidebar if we're actually changing main sections
+    if (currentMainSection && previousMainSection && currentMainSection !== previousMainSection) {
+      setSidebarOpen(false);
+    }
+    
+    // Update the previous path reference
+    previousPathRef.current = location.pathname;
   }, [location]);
 
   return (

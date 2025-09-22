@@ -200,7 +200,10 @@ const AddProduction = () => {
               </div>
               
               <div className="mt-6">
-                <Input
+                <textarea
+                  className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#22c55e] ${
+                    errors.description ? 'border-red-500' : 'border-gray-300'
+                  }`}
                   label="Description"
                   value={formData.description}
                   onChange={(e) => handleChange('description', e.target.value)}
@@ -279,7 +282,7 @@ const AddProduction = () => {
                 variant="gradient"
                 disabled={loading}
                 size="xs"
-                className="min-w-[120px]"
+                className="min-w-[100px]"
               >
                 {loading ? (
                   <div className="flex items-center">

@@ -1,4 +1,5 @@
 import React from 'react';
+import Dropdown from './Dropdown';
 
 const Input = ({
   type = "text",
@@ -129,61 +130,21 @@ export const Select = ({
   name,
   ...props
 }) => {
-  const baseSelectClasses = `
-    w-full px-3 py-2 pr-8 border-2 rounded-lg transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md hover:border-blue-500/50 cursor-pointer
-    ${error ? 'border-red-500 focus:ring-red-500 bg-red-50/50' : 'border-gray-300'}
-    ${disabled ? 'bg-gray-100 cursor-not-allowed opacity-60' : ''}
-    ${selectClassName}
-  `;
-
   return (
-    <div className={`space-y-2 ${className}`}>
-      {label && (
-        <label className={`block text-sm font-semibold text-gray-700 ${labelClassName}`}>
-          {label}
-        </label>
-      )}
-      
-      <div className="relative">
-        <select
-          name={name}
-          value={value}
-          onChange={onChange}
-          disabled={disabled}
-          className={baseSelectClasses}
-          {...props}
-        >
-          {placeholder && (
-            <option value="" disabled>
-              {placeholder}
-            </option>
-          )}
-          {options.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-        
-        {/* Custom dropdown arrow */}
-        <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-          <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
-        </div>
-      </div>
-      
-      {error && errorMessage && (
-        <div className="flex items-center space-x-1">
-          <div className="w-1 h-1 bg-red-500 rounded-full"></div>
-          <p className="text-sm text-red-500 font-medium">{errorMessage}</p>
-        </div>
-      )}
-      
-      {!error && helperText && (
-        <p className="text-sm text-gray-500 font-medium">{helperText}</p>
-      )}
-    </div>
+    <Dropdown
+      options={options}
+      value={value}
+      onChange={onChange}
+      placeholder={placeholder}
+      disabled={disabled}
+      error={error}
+      errorMessage={errorMessage}
+      label={label}
+      helperText={helperText}
+      className={className}
+      labelClassName={labelClassName}
+      {...props}
+    />
   );
 };
 
