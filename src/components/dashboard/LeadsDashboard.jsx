@@ -81,56 +81,6 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
     }
   }, [propActiveView]);
 
-  // Force refresh function
-  const forceRefresh = useCallback(() => {
-    console.log('Force refreshing all lead data...');
-    
-    // Clear all cached data first
-    dispatch(clearAllLeadData());
-    
-    const params = {
-      page: currentPage,
-      limit: itemsPerPage,
-      search: searchTerm,
-      leadStatus: filterStatus === 'all' ? '' : filterStatus,
-      dispatchedFrom: filterBranch === 'all' ? '' : filterBranch,
-      _t: Date.now() // Add timestamp to bypass cache
-    };
-
-    // Handle special status groups by fetching all leads and filtering client-side
-    if (filterStatus === 'unqualified' || filterStatus === 'converted') {
-      params.leadStatus = ''; // Get all leads, we'll filter client-side
-      params.limit = 1000; // Fetch more leads to ensure we get all relevant data
-      params.page = 1; // Always fetch from page 1 when doing client-side pagination
-    } else {
-      // For regular filters, use normal pagination
-      params.page = currentPage;
-      params.limit = itemsPerPage;
-    }
-
-    console.log('Force fetching leads with params:', params);
-
-    // Always dispatch the API call - let the interceptor handle auth
-    dispatch(getAllLeads(params));
-    dispatch(getLeadStats());
-    dispatch(getActiveBranches());
-    
-    // Also fetch unfiltered data for pipeline view
-    dispatch(getAllLeads({ limit: 1000, page: 1, _t: Date.now() })).then((result) => {
-      if (result.payload && result.payload.data) {
-        setUnfilteredLeads(result.payload.data.leads);
-        console.log('Set unfiltered leads via force refresh:', result.payload.data.leads.length);
-      }
-    }).catch((error) => {
-      console.error('Error fetching unfiltered leads via force refresh:', error);
-    });
-  }, [dispatch, currentPage, itemsPerPage, searchTerm, filterStatus, filterBranch]);
-
-  // Load leads and stats on component mount
-  useEffect(() => {
-    forceRefresh();
-  }, [forceRefresh]);
-
   // Initialize pagination on first load
   useEffect(() => {
     if (isAuthenticated && user) {
@@ -169,23 +119,16 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
   // Clear success/error messages after a delay and close modals on success
   useEffect(() => {
     if (createSuccess || updateSuccess || deleteSuccess) {
-      // Close modals on success
       if (createSuccess) {
         setShowCreateModal(false);
-        // Force refresh all data after successful creation
-        forceRefresh();
       }
       if (updateSuccess) {
         setShowEditModal(false);
         setSelectedLead(null);
-        // Force refresh all data after successful update
-        forceRefresh();
       }
       if (deleteSuccess) {
         setShowDeleteModal(false);
         setSelectedLead(null);
-        // Force refresh all data after successful deletion
-        forceRefresh();
       }
       
       const timer = setTimeout(() => {
@@ -193,7 +136,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
       }, 5000);
       return () => clearTimeout(timer);
     }
-  }, [createSuccess, updateSuccess, deleteSuccess, forceRefresh]);
+  }, [createSuccess, updateSuccess, deleteSuccess]);
 
   useEffect(() => {
     if (createError || updateError || deleteError) {
@@ -541,7 +484,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
   // Show loading state only when actually loading
   if (loading || statsLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="flex flex-col items-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#22c55e]"></div>
           <p className="mt-4 text-gray-600">Loading leads...</p>
@@ -553,7 +496,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
   // Show empty state when no leads are available
   if (!leads || leads.length === 0) {
     return (
-      <div className="min-h-screen bg-gray-100">
+      <div className="min-h-screen bg-white">
         <div className="p-6 space-y-6">
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
@@ -579,15 +522,6 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
                 size="sm"
               >
                 Add New Lead
-              </Button>
-              <Button
-                onClick={forceRefresh}
-                icon={HiArrowPath}
-                variant="outline"
-                size="sm"
-                className="hover:bg-green-50"
-              >
-                Refresh
               </Button>
             </div>
           </div>
@@ -699,15 +633,6 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
               >
                 Import Leads
               </Button>
-              <Button
-                onClick={forceRefresh}
-                icon={HiArrowPath}
-                variant="outline"
-                size="sm"
-                className="hover:bg-green-50"
-              >
-                Refresh
-              </Button>
             </div>
           </div>
         </div>
@@ -725,7 +650,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
   // Show error state
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 max-w-md w-full mx-4">
           <div className="flex items-center mb-4">
             <HiExclamationTriangle className="h-8 w-8 text-red-500 mr-3" />
@@ -752,7 +677,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       <div className="p-6 space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
@@ -778,15 +703,6 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
                 size="sm"
               >
                 Add New Lead
-              </Button>
-              <Button
-                onClick={forceRefresh}
-                icon={HiArrowPath}
-                variant="outline"
-                size="sm"
-                className="hover:bg-green-50"
-              >
-                Refresh
               </Button>
               {viewOptions.map((view) => (
                   <Button

@@ -114,7 +114,7 @@ const AddProduction = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       <div className="p-6">
         {/* Header */}
         <div className="mb-8">
@@ -243,7 +243,6 @@ const AddProduction = () => {
                   value={formData.productionStatus}
                   onChange={(e) => handleChange('productionStatus', e.target.value)}
                   options={[
-                    { value: 'not_in_production', label: 'Not In Production' },
                     { value: 'in-process', label: 'In Process' },
                     { value: 'on-hold', label: 'On Hold' },
                     { value: 'completed', label: 'Completed' }
@@ -302,4 +301,3 @@ const AddProduction = () => {
 };
 
 export default AddProduction;
-

@@ -155,19 +155,19 @@ const LeadFormStepper = ({
   const [branchSearch, setBranchSearch] = useState('');
   const [showBranchDropdown, setShowBranchDropdown] = useState(false);
 
-  // Define stepper steps
-  const steps = [
-    {
-      id: 'basic-info',
-      title: 'Basic Information',
-      description: 'Lead details and status',
-      icon: HiClipboardDocumentList
-    },
+  // Define stepper steps based on lead status
+  const allSteps = [
     {
       id: 'reminders',
       title: 'Reminders',
       description: 'Follow-up reminders and notes',
       icon: HiBell
+    },
+    {
+      id: 'basic-info',
+      title: 'Basic Information',
+      description: 'Lead details and status',
+      icon: HiClipboardDocumentList
     },
     {
       id: 'customer-info',
@@ -188,6 +188,18 @@ const LeadFormStepper = ({
       icon: HiCurrencyDollar
     },
   ];
+
+  // Show all steps if lead status is "Order Completed", otherwise show only first 3 steps
+  const steps = formData.leadStatus === 'order_completed' 
+    ? allSteps 
+    : allSteps.slice(0, 3);
+
+  // Reset current step when lead status changes and current step is no longer available
+  useEffect(() => {
+    if (currentStep > steps.length) {
+      setCurrentStep(steps.length);
+    }
+  }, [steps.length, currentStep]);
 
   // Function to clear authentication and redirect to login
   const clearAuthAndRedirect = () => {
@@ -398,16 +410,23 @@ const LeadFormStepper = ({
   const validateStep = (stepNumber) => {
     const newErrors = {};
     
-    switch (stepNumber) {
-      case 1: // Basic Information
-        // No required fields in basic info step
-        break;
-        
-      case 2: // Reminders
+    // Get the step configuration for the given step number
+    const stepConfig = steps[stepNumber - 1];
+    
+    if (!stepConfig) {
+      return true; // No validation needed for non-existent steps
+    }
+    
+    switch (stepConfig.id) {
+      case 'reminders':
         // No required fields in reminders step
         break;
         
-      case 3: // Customer Details
+      case 'basic-info':
+        // No required fields in basic info step
+        break;
+        
+      case 'customer-info':
         if (!formData.customerName.trim()) {
           newErrors.customerName = 'Customer name is required';
         }
@@ -419,7 +438,7 @@ const LeadFormStepper = ({
         }
         break;
         
-      case 4: // Health & Products
+      case 'health-products':
         // Validate that all selected products have valid ObjectIds
         const invalidProductIds = formData.products.filter(productId => {
           // Check if it's a valid MongoDB ObjectId (24 hex characters)
@@ -431,8 +450,8 @@ const LeadFormStepper = ({
         }
         break;
         
-      case 5: // Payment & Assignment
-        console.log('Validating step 5 - dispatchedFrom:', formData.dispatchedFrom);
+      case 'payment-assignment':
+        console.log('Validating payment-assignment - dispatchedFrom:', formData.dispatchedFrom);
         // Make branch assignment optional for now to test
         // if (!formData.dispatchedFrom) {
         //   newErrors.dispatchedFrom = 'Please assign a branch';
@@ -536,12 +555,17 @@ const LeadFormStepper = ({
     }
   };
 
-  // Render step content
+  // Render step content based on current step and available steps
   const renderStepContent = () => {
-    switch (currentStep) {
-      case 1:
-        return <BasicInfoStep formData={formData} setFormData={setFormData} errors={errors} />;
-      case 2:
+    // Get the current step configuration
+    const currentStepConfig = steps[currentStep - 1];
+    
+    if (!currentStepConfig) {
+      return null;
+    }
+
+    switch (currentStepConfig.id) {
+      case 'reminders':
         return <RemindersStep 
           formData={formData} 
           setFormData={setFormData} 
@@ -549,13 +573,15 @@ const LeadFormStepper = ({
           newReminder={newReminder}
           setNewReminder={setNewReminder}
         />;
-      case 3:
+      case 'basic-info':
+        return <BasicInfoStep formData={formData} setFormData={setFormData} errors={errors} />;
+      case 'customer-info':
         return <CustomerDetailsStep 
           formData={formData} 
           setFormData={setFormData} 
           errors={errors}
         />;
-      case 4:
+      case 'health-products':
         return <HealthProductsStep 
           formData={formData} 
           setFormData={setFormData} 
@@ -574,7 +600,7 @@ const LeadFormStepper = ({
           healthIssuesError={healthIssuesError}
           errors={errors}
         />;
-      case 5:
+      case 'payment-assignment':
         return <PaymentAssignmentStep 
           formData={formData} 
           setFormData={setFormData} 
