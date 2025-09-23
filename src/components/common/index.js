@@ -45,3 +45,4 @@ export { default as BranchDetailsModal } from './BranchDetailsModal';
 export { default as InventoryDetailsModal } from './InventoryDetailsModal';
 export { default as LeadDetailsModal } from './LeadDetailsModal';
 export { default as HealthIssueDetailsModal } from './HealthIssueDetailsModal';
+export { default as ProductionDetailsModal } from './ProductionDetailsModal';

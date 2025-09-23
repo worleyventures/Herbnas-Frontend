@@ -93,9 +93,9 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
       },
       {
         name: 'Production',
-        href: '/production',
+        href: '/productions',
         icon: HiDocumentText,
-        current: isActiveRoute('/production'),
+        current: isActiveRoute('/productions'),
         color: 'text-gray-600',
         bgColor: 'bg-gray-100',
         hoverColor: 'group-hover:text-gray-600',

@@ -1,6 +1,6 @@
 
 import { Provider } from 'react-redux';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { store } from './redux/store';
 import './App.css';
 import Layout from './components/layout/Layout';
@@ -27,10 +27,8 @@ import InventoryPage from './components/dashboard/InventoryDashboard';
 import InventoryFormPage from './pages/inventory/InventoryFormPage';
 import InventoryDetailsPage from './pages/inventory/InventoryDetailsPage';
 import ProductionPage from './pages/production/ProductionPage';
-import AddProduction from './components/dashboard/production/AddProduction';
-import ViewProduction from './components/dashboard/production/ViewProduction';
-import EditProduction from './components/dashboard/production/EditProduction';
-import ByProductAddPage from './pages/production/ByProductAddPage';
+import ProductionFormPage from './pages/production/ProductionFormPage';
+import ProductionDetailsPage from './pages/production/ProductionDetailsPage';
 
 function App() {
   return (
@@ -61,11 +59,12 @@ function App() {
             <Route path="/products/create" element={<ProductFormPage />} />
             <Route path="/products/edit/:id" element={<ProductFormPage />} />
             <Route path="/products/view/:id" element={<ProductDetailsPage />} />
-            <Route path="/production" element={<ProductionPage />} />
-            <Route path="/production/add" element={<AddProduction />} />
-            <Route path="/production/view/:id" element={<ViewProduction />} />
-            <Route path="/production/edit/:id" element={<EditProduction />} />
-            <Route path="/production/by-product/add" element={<ByProductAddPage />} />
+            {/* Production routes */}
+            <Route path="/production" element={<Navigate to="/productions" replace />} />
+            <Route path="/productions" element={<ProductionPage />} />
+            <Route path="/productions/create" element={<ProductionFormPage />} />
+            <Route path="/productions/edit/:id" element={<ProductionFormPage />} />
+            <Route path="/productions/view/:id" element={<ProductionDetailsPage />} />
             <Route path="/branches" element={<BranchesPage />} />
             <Route path="/branches/table" element={<BranchesPage />} />
             <Route path="/branches/map" element={<BranchesPage />} />

@@ -95,41 +95,54 @@ export const getProductionStats = createAsyncThunk(
   }
 );
 
-// Get products by stage (for production dashboard)
-export const getProductsByStage = createAsyncThunk(
-  'productions/getProductsByStage',
-  async (stage, { rejectWithValue }) => {
+// Get productions by status
+export const getProductionsByStatus = createAsyncThunk(
+  'productions/getProductionsByStatus',
+  async (status, { rejectWithValue }) => {
     try {
-      const response = await api.get(`/products?productionStage=${stage}`);
+      const response = await api.get(`/productions?productionStatus=${status}`);
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to fetch products by stage');
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch productions by status');
     }
   }
 );
 
-// Update production stage
-export const updateProductionStage = createAsyncThunk(
-  'productions/updateProductionStage',
-  async ({ productId, stage }, { rejectWithValue }) => {
+// Get productions by QC status
+export const getProductionsByQCStatus = createAsyncThunk(
+  'productions/getProductionsByQCStatus',
+  async (QCstatus, { rejectWithValue }) => {
     try {
-      const response = await api.put(`/products/${productId}/stage`, { productionStage: stage });
+      const response = await api.get(`/productions?QCstatus=${QCstatus}`);
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to update production stage');
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch productions by QC status');
     }
   }
 );
 
-// Move to inventory
-export const moveToInventory = createAsyncThunk(
-  'productions/moveToInventory',
-  async (productId, { rejectWithValue }) => {
+// Update production status
+export const updateProductionStatus = createAsyncThunk(
+  'productions/updateProductionStatus',
+  async ({ productionId, productionStatus }, { rejectWithValue }) => {
     try {
-      const response = await api.post(`/products/${productId}/move-to-inventory`);
+      const response = await api.put(`/productions/${productionId}`, { productionStatus });
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to move product to inventory');
+      return rejectWithValue(error.response?.data?.message || 'Failed to update production status');
+    }
+  }
+);
+
+// Update QC status
+export const updateQCStatus = createAsyncThunk(
+  'productions/updateQCStatus',
+  async ({ productionId, QCstatus, QCNotes }, { rejectWithValue }) => {
+    try {
+      const response = await api.put(`/productions/${productionId}`, { QCstatus, QCNotes });
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to update QC status');
     }
   }
 );

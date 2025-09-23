@@ -6,14 +6,14 @@ import {
   updateProduction,
   deleteProduction,
   getProductionStats,
-  getProductsByStage,
-  updateProductionStage,
-  moveToInventory
+  getProductionsByStatus,
+  getProductionsByQCStatus,
+  updateProductionStatus,
+  updateQCStatus
 } from '../actions/productionActions';
 
 const initialState = {
   productions: [],
-  productsByStage: [],
   currentProduction: null,
   stats: null,
   loading: false,
@@ -78,21 +78,6 @@ const productionSlice = createSlice({
         state.currentProduction = null;
       })
 
-      // Get products by stage
-      .addCase(getProductsByStage.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(getProductsByStage.fulfilled, (state, action) => {
-        state.loading = false;
-        state.productsByStage = action.payload.data.products || [];
-        state.error = null;
-      })
-      .addCase(getProductsByStage.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
-        state.productsByStage = [];
-      })
 
       // Create production
       .addCase(createProduction.pending, (state) => {
@@ -166,37 +151,79 @@ const productionSlice = createSlice({
         state.stats = null;
       })
 
-      // Update production stage
-      .addCase(updateProductionStage.pending, (state) => {
+
+      // Get productions by status
+      .addCase(getProductionsByStatus.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
-      .addCase(updateProductionStage.fulfilled, (state, action) => {
+      .addCase(getProductionsByStatus.fulfilled, (state, action) => {
         state.loading = false;
-        const updatedProduct = action.payload.data.product;
-        const index = state.productsByStage.findIndex(p => p._id === updatedProduct._id);
+        state.productions = action.payload.data.productions || [];
+        state.error = null;
+      })
+      .addCase(getProductionsByStatus.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+        state.productions = [];
+      })
+
+      // Get productions by QC status
+      .addCase(getProductionsByQCStatus.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(getProductionsByQCStatus.fulfilled, (state, action) => {
+        state.loading = false;
+        state.productions = action.payload.data.productions || [];
+        state.error = null;
+      })
+      .addCase(getProductionsByQCStatus.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+        state.productions = [];
+      })
+
+      // Update production status
+      .addCase(updateProductionStatus.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(updateProductionStatus.fulfilled, (state, action) => {
+        state.loading = false;
+        const updatedProduction = action.payload.data.production;
+        const index = state.productions.findIndex(p => p._id === updatedProduction._id);
         if (index !== -1) {
-          state.productsByStage[index] = updatedProduct;
+          state.productions[index] = updatedProduction;
+        }
+        if (state.currentProduction && state.currentProduction._id === updatedProduction._id) {
+          state.currentProduction = updatedProduction;
         }
         state.error = null;
       })
-      .addCase(updateProductionStage.rejected, (state, action) => {
+      .addCase(updateProductionStatus.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })
 
-      // Move to inventory
-      .addCase(moveToInventory.pending, (state) => {
+      // Update QC status
+      .addCase(updateQCStatus.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
-      .addCase(moveToInventory.fulfilled, (state, action) => {
+      .addCase(updateQCStatus.fulfilled, (state, action) => {
         state.loading = false;
-        const productId = action.meta.arg;
-        state.productsByStage = state.productsByStage.filter(p => p._id !== productId);
+        const updatedProduction = action.payload.data.production;
+        const index = state.productions.findIndex(p => p._id === updatedProduction._id);
+        if (index !== -1) {
+          state.productions[index] = updatedProduction;
+        }
+        if (state.currentProduction && state.currentProduction._id === updatedProduction._id) {
+          state.currentProduction = updatedProduction;
+        }
         state.error = null;
       })
-      .addCase(moveToInventory.rejected, (state, action) => {
+      .addCase(updateQCStatus.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       });

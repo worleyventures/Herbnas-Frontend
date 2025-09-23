@@ -1,121 +1,212 @@
 import { createSlice } from '@reduxjs/toolkit';
 import {
-  getAllInventory,
-  getInventoryByProduct,
-  getInventoryByBranch,
-  createOrUpdateInventory,
-  updateInventoryStock,
-  deleteInventory,
-  getInventoryStats
+  getAllRawMaterials,
+  getRawMaterialById,
+  createRawMaterial,
+  updateRawMaterial,
+  deleteRawMaterial,
+  getAllFinishedGoods,
+  getFinishedGoodsById,
+  updateFinishedGoodsStock,
+  getInventoryStats,
+  createOrUpdateInventory
 } from '../actions/inventoryActions';
 
 const initialState = {
-  inventory: [],
-  productInventory: [],
-  branchInventory: [],
+  rawMaterials: [],
+  currentRawMaterial: null,
+  finishedGoods: [],
+  currentFinishedGoods: null,
+  stats: null,
   loading: false,
   error: null,
-  stats: null,
-  statsLoading: false,
-  statsError: null,
-  pagination: null,
-  success: null
+  pagination: {
+    currentPage: 1,
+    totalPages: 1,
+    totalItems: 0,
+    itemsPerPage: 10,
+  },
 };
 
 const inventorySlice = createSlice({
   name: 'inventory',
   initialState,
   reducers: {
-    // Set inventory
-    setInventory: (state, action) => {
-      state.inventory = action.payload;
-    },
-    
-    // Add new inventory
-    addInventory: (state, action) => {
-      state.inventory.unshift(action.payload);
-    },
-    
-    // Update inventory in state
-    updateInventoryInState: (state, action) => {
-      const index = state.inventory.findIndex(item => item._id === action.payload._id);
-      if (index !== -1) {
-        state.inventory[index] = action.payload;
-      }
-    },
-    
-    // Remove inventory
-    removeInventory: (state, action) => {
-      state.inventory = state.inventory.filter(item => item._id !== action.payload);
-    },
-    
-    // Set inventory stats
-    setInventoryStats: (state, action) => {
-      state.stats = action.payload;
-    },
-    
-    // Clear error
     clearError: (state) => {
       state.error = null;
-      state.statsError = null;
     },
-    
-    // Clear success
-    clearSuccess: (state) => {
-      state.success = null;
+    clearCurrentRawMaterial: (state) => {
+      state.currentRawMaterial = null;
+    },
+    clearRawMaterials: (state) => {
+      state.rawMaterials = [];
+      state.pagination = initialState.pagination;
     }
   },
   extraReducers: (builder) => {
     builder
-      // Get all inventory
-      .addCase(getAllInventory.pending, (state) => {
+      // Get all raw materials
+      .addCase(getAllRawMaterials.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
-      .addCase(getAllInventory.fulfilled, (state, action) => {
+      .addCase(getAllRawMaterials.fulfilled, (state, action) => {
         state.loading = false;
-        state.inventory = action.payload.data.inventory || action.payload.data;
-        state.pagination = action.payload.data.pagination || null;
+        state.rawMaterials = action.payload.data.rawMaterials || [];
+        state.pagination = action.payload.data.pagination || initialState.pagination;
         state.error = null;
       })
-      .addCase(getAllInventory.rejected, (state, action) => {
+      .addCase(getAllRawMaterials.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
-        state.inventory = [];
+        state.rawMaterials = [];
+        state.pagination = initialState.pagination;
       })
-      
-      // Get inventory by product
-      .addCase(getInventoryByProduct.pending, (state) => {
+
+      // Get raw material by ID
+      .addCase(getRawMaterialById.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
-      .addCase(getInventoryByProduct.fulfilled, (state, action) => {
+      .addCase(getRawMaterialById.fulfilled, (state, action) => {
         state.loading = false;
-        state.productInventory = action.payload.data.inventory || action.payload.data;
+        state.currentRawMaterial = action.payload.data.rawMaterial;
         state.error = null;
       })
-      .addCase(getInventoryByProduct.rejected, (state, action) => {
+      .addCase(getRawMaterialById.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
-        state.productInventory = [];
+        state.currentRawMaterial = null;
       })
-      
-      // Get inventory by branch
-      .addCase(getInventoryByBranch.pending, (state) => {
+
+      // Create raw material
+      .addCase(createRawMaterial.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
-      .addCase(getInventoryByBranch.fulfilled, (state, action) => {
+      .addCase(createRawMaterial.fulfilled, (state, action) => {
         state.loading = false;
-        state.branchInventory = action.payload.data.inventory || action.payload.data;
+        state.rawMaterials.unshift(action.payload.data.rawMaterial);
         state.error = null;
       })
-      .addCase(getInventoryByBranch.rejected, (state, action) => {
+      .addCase(createRawMaterial.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
-        state.branchInventory = [];
       })
-      
+
+      // Update raw material
+      .addCase(updateRawMaterial.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(updateRawMaterial.fulfilled, (state, action) => {
+        state.loading = false;
+        const updatedRawMaterial = action.payload.data.rawMaterial;
+        const index = state.rawMaterials.findIndex(rm => rm._id === updatedRawMaterial._id);
+        if (index !== -1) {
+          state.rawMaterials[index] = updatedRawMaterial;
+        }
+        if (state.currentRawMaterial && state.currentRawMaterial._id === updatedRawMaterial._id) {
+          state.currentRawMaterial = updatedRawMaterial;
+        }
+        state.error = null;
+      })
+      .addCase(updateRawMaterial.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+
+      // Delete raw material
+      .addCase(deleteRawMaterial.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(deleteRawMaterial.fulfilled, (state, action) => {
+        state.loading = false;
+        const rawMaterialId = action.meta.arg;
+        state.rawMaterials = state.rawMaterials.filter(rm => rm._id !== rawMaterialId);
+        if (state.currentRawMaterial && state.currentRawMaterial._id === rawMaterialId) {
+          state.currentRawMaterial = null;
+        }
+        state.error = null;
+      })
+      .addCase(deleteRawMaterial.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+
+      // Get all finished goods
+      .addCase(getAllFinishedGoods.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(getAllFinishedGoods.fulfilled, (state, action) => {
+        state.loading = false;
+        state.finishedGoods = action.payload.data.finishedGoods || [];
+        state.pagination = action.payload.data.pagination || initialState.pagination;
+        state.error = null;
+      })
+      .addCase(getAllFinishedGoods.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+        state.finishedGoods = [];
+        state.pagination = initialState.pagination;
+      })
+
+      // Get finished goods by ID
+      .addCase(getFinishedGoodsById.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(getFinishedGoodsById.fulfilled, (state, action) => {
+        state.loading = false;
+        state.currentFinishedGoods = action.payload.data.finishedGoods;
+        state.error = null;
+      })
+      .addCase(getFinishedGoodsById.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+        state.currentFinishedGoods = null;
+      })
+
+      // Update finished goods stock
+      .addCase(updateFinishedGoodsStock.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(updateFinishedGoodsStock.fulfilled, (state, action) => {
+        state.loading = false;
+        const updatedFinishedGoods = action.payload.data.finishedGoods;
+        const index = state.finishedGoods.findIndex(fg => fg._id === updatedFinishedGoods._id);
+        if (index !== -1) {
+          state.finishedGoods[index] = updatedFinishedGoods;
+        }
+        if (state.currentFinishedGoods && state.currentFinishedGoods._id === updatedFinishedGoods._id) {
+          state.currentFinishedGoods = updatedFinishedGoods;
+        }
+        state.error = null;
+      })
+      .addCase(updateFinishedGoodsStock.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+
+      // Get inventory stats
+      .addCase(getInventoryStats.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(getInventoryStats.fulfilled, (state, action) => {
+        state.loading = false;
+        state.stats = action.payload.data.stats;
+        state.error = null;
+      })
+      .addCase(getInventoryStats.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+        state.stats = null;
+      })
+
       // Create or update inventory
       .addCase(createOrUpdateInventory.pending, (state) => {
         state.loading = true;
@@ -123,82 +214,15 @@ const inventorySlice = createSlice({
       })
       .addCase(createOrUpdateInventory.fulfilled, (state, action) => {
         state.loading = false;
-        const inventory = action.payload.data.inventory || action.payload.data;
-        const index = state.inventory.findIndex(item => item._id === inventory._id);
-        if (index !== -1) {
-          state.inventory[index] = inventory;
-        } else {
-          state.inventory.unshift(inventory);
-        }
-        state.success = action.payload.message;
+        // The actual update will be handled by the individual create/update cases
         state.error = null;
       })
       .addCase(createOrUpdateInventory.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
-      })
-      
-      // Update inventory stock
-      .addCase(updateInventoryStock.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(updateInventoryStock.fulfilled, (state, action) => {
-        state.loading = false;
-        const inventory = action.payload.data.inventory || action.payload.data;
-        const index = state.inventory.findIndex(item => item._id === inventory._id);
-        if (index !== -1) {
-          state.inventory[index] = inventory;
-        }
-        state.success = action.payload.message;
-        state.error = null;
-      })
-      .addCase(updateInventoryStock.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
-      })
-      
-      // Delete inventory
-      .addCase(deleteInventory.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(deleteInventory.fulfilled, (state, action) => {
-        state.loading = false;
-        state.inventory = state.inventory.filter(item => item._id !== action.payload.inventoryId);
-        state.success = action.payload.message;
-        state.error = null;
-      })
-      .addCase(deleteInventory.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
-      })
-      
-      // Get inventory stats
-      .addCase(getInventoryStats.pending, (state) => {
-        state.statsLoading = true;
-        state.statsError = null;
-      })
-      .addCase(getInventoryStats.fulfilled, (state, action) => {
-        state.statsLoading = false;
-        state.stats = action.payload.data || action.payload;
-        state.statsError = null;
-      })
-      .addCase(getInventoryStats.rejected, (state, action) => {
-        state.statsLoading = false;
-        state.statsError = action.payload;
       });
   }
 });
 
-export const {
-  setInventory,
-  addInventory,
-  updateInventoryInState,
-  removeInventory,
-  setInventoryStats,
-  clearError,
-  clearSuccess
-} = inventorySlice.actions;
-
+export const { clearError, clearCurrentRawMaterial, clearRawMaterials } = inventorySlice.actions;
 export default inventorySlice.reducer;

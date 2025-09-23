@@ -4,13 +4,18 @@ import { useSelector, useDispatch } from 'react-redux';
 import { HiArrowLeft, HiCube, HiBuildingOffice2, HiExclamationTriangle, HiCheckCircle, HiPlus, HiXCircle } from 'react-icons/hi2';
 import { Button, Input, Select } from '../../components/common';
 import { createOrUpdateInventory } from '../../redux/actions/inventoryActions';
-import { clearError, clearSuccess } from '../../redux/slices/inventorySlice';
+import { clearError } from '../../redux/slices/inventorySlice';
+import RawMaterialForm from '../../components/inventory/RawMaterialForm';
 
 const InventoryFormPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const params = useParams();
   const dispatch = useDispatch();
+  
+  // Get inventory type from query parameters
+  const searchParams = new URLSearchParams(location.search);
+  const inventoryType = searchParams.get('type') || 'finishedGoods';
   
   // Get inventory data from location state or params
   const selectedInventory = location.state?.inventory || null;
@@ -174,6 +179,11 @@ const InventoryFormPage = () => {
   const handleBack = () => {
     navigate('/inventory');
   };
+
+  // Render raw materials form if type is rawMaterials
+  if (inventoryType === 'rawMaterials') {
+    return <RawMaterialForm />;
+  }
 
   return (
     <div className="min-h-screen bg-white">
