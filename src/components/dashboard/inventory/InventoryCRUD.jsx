@@ -11,7 +11,7 @@ import {
   HiCheckCircle,
   HiInformationCircle
 } from 'react-icons/hi2';
-import { Table, ActionButton, StatusBadge, ConfirmationModal } from '../../common';
+import { Table, ActionButton, StatusBadge, ConfirmationModal, InventoryDetailsModal } from '../../common';
 
 const InventoryCRUD = ({ 
   inventory, 
@@ -32,6 +32,7 @@ const InventoryCRUD = ({
 }) => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const [showInventoryModal, setShowInventoryModal] = useState(false);
 
   // Get users for updatedBy display
   const users = useSelector((state) => state.user?.users || []);
@@ -270,7 +271,8 @@ const InventoryCRUD = ({
   ], [allUsers]);
 
   const handleViewInventory = (inventoryItem) => {
-    navigate(`/inventory/view/${inventoryItem._id}`);
+    onSelectInventory(inventoryItem);
+    setShowInventoryModal(true);
   };
 
   const handleDeleteInventory = (inventoryItem) => {
@@ -344,6 +346,16 @@ const InventoryCRUD = ({
           loading={deleteLoading}
         />
       )}
+
+      {/* Inventory Details Modal */}
+      <InventoryDetailsModal
+        isOpen={showInventoryModal}
+        onClose={() => setShowInventoryModal(false)}
+        inventoryItem={selectedInventory}
+        onEdit={!isFinishedProduction ? onEditInventory : null}
+        onDelete={!isFinishedProduction ? handleDeleteInventory : null}
+        isFinishedProduction={isFinishedProduction}
+      />
     </div>
   );
 };

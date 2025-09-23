@@ -143,6 +143,7 @@ export const Select = ({
       helperText={helperText}
       className={className}
       labelClassName={labelClassName}
+      name={name}
       {...props}
     />
   );
@@ -170,5 +171,8 @@ export const SearchInput = ({
     />
   );
 };
+
+// TextArea Component
+export { default as TextArea } from './TextArea';
 
 export default Input;

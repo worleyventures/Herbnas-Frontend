@@ -18,14 +18,13 @@ import {
   HiPencil
 } from 'react-icons/hi2';
 import { StatCard, Button, SearchInput, Select, Pagination, ConfirmationModal, Table } from '../../common';
+import { getAllProducts, deleteProduct } from '../../../redux/actions/productActions';
 import {
-  getAllProducts,
   getProductsByStage,
   getProductionStats,
   updateProductionStage,
-  moveToInventory,
-  deleteProduct
-} from '../../../redux/actions/productActions';
+  moveToInventory
+} from '../../../redux/actions/productionActions';
 import { addNotification } from '../../../redux/slices/uiSlice';
 import StageManagement from './StageManagement';
 

@@ -7,35 +7,24 @@ export const getAllProducts = createAsyncThunk(
   async (params = {}, { rejectWithValue }) => {
     try {
       const queryParams = new URLSearchParams();
+      
+      // Add pagination params
       if (params.page) queryParams.append('page', params.page);
       if (params.limit) queryParams.append('limit', params.limit);
+      
+      // Add filter params
       if (params.search) queryParams.append('search', params.search);
+      if (params.category) queryParams.append('category', params.category);
       if (params.isActive !== undefined) queryParams.append('isActive', params.isActive);
-      if (params.incentiveType) queryParams.append('incentiveType', params.incentiveType);
-      if (params.minPrice) queryParams.append('minPrice', params.minPrice);
-      if (params.maxPrice) queryParams.append('maxPrice', params.maxPrice);
-      if (params.minWeight) queryParams.append('minWeight', params.minWeight);
-      if (params.maxWeight) queryParams.append('maxWeight', params.maxWeight);
+      
+      // Add sort params
       if (params.sortBy) queryParams.append('sortBy', params.sortBy);
       if (params.sortOrder) queryParams.append('sortOrder', params.sortOrder);
 
       const response = await api.get(`/products?${queryParams.toString()}`);
       return response.data;
-    } catch (err) {
-      return rejectWithValue(err.response?.data?.message || err.message);
-    }
-  }
-);
-
-// Get active products
-export const getActiveProducts = createAsyncThunk(
-  'products/getActiveProducts',
-  async (_, { rejectWithValue }) => {
-    try {
-      const response = await api.get('/products/active');
-      return response.data;
-    } catch (err) {
-      return rejectWithValue(err.response?.data?.message || err.message);
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch products');
     }
   }
 );
@@ -47,8 +36,8 @@ export const getProductById = createAsyncThunk(
     try {
       const response = await api.get(`/products/${productId}`);
       return response.data;
-    } catch (err) {
-      return rejectWithValue(err.response?.data?.message || err.message);
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch product');
     }
   }
 );
@@ -60,8 +49,8 @@ export const createProduct = createAsyncThunk(
     try {
       const response = await api.post('/products', productData);
       return response.data;
-    } catch (err) {
-      return rejectWithValue(err.response?.data?.message || err.message);
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to create product');
     }
   }
 );
@@ -73,8 +62,8 @@ export const updateProduct = createAsyncThunk(
     try {
       const response = await api.put(`/products/${productId}`, productData);
       return response.data;
-    } catch (err) {
-      return rejectWithValue(err.response?.data?.message || err.message);
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to update product');
     }
   }
 );
@@ -86,78 +75,34 @@ export const deleteProduct = createAsyncThunk(
     try {
       const response = await api.delete(`/products/${productId}`);
       return response.data;
-    } catch (err) {
-      return rejectWithValue(err.response?.data?.message || err.message);
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to delete product');
     }
   }
 );
 
-// Get product stats
+// Get active products only
+export const getActiveProducts = createAsyncThunk(
+  'products/getActiveProducts',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await api.get('/products?isActive=true');
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch active products');
+    }
+  }
+);
+
+// Get product statistics
 export const getProductStats = createAsyncThunk(
   'products/getProductStats',
   async (_, { rejectWithValue }) => {
     try {
       const response = await api.get('/products/stats');
       return response.data;
-    } catch (err) {
-      return rejectWithValue(err.response?.data?.message || err.message);
-    }
-  }
-);
-
-// Update production stage
-export const updateProductionStage = createAsyncThunk(
-  'products/updateProductionStage',
-  async ({ productId, stage, notes }, { rejectWithValue }) => {
-    try {
-      const response = await api.put(`/products/${productId}/stage`, { stage, notes });
-      return response.data;
-    } catch (err) {
-      return rejectWithValue(err.response?.data?.message || err.message);
-    }
-  }
-);
-
-// Get products by stage
-export const getProductsByStage = createAsyncThunk(
-  'products/getProductsByStage',
-  async ({ stage, params = {} }, { rejectWithValue }) => {
-    try {
-      const queryParams = new URLSearchParams();
-      if (params.page) queryParams.append('page', params.page);
-      if (params.limit) queryParams.append('limit', params.limit);
-      if (params.search) queryParams.append('search', params.search);
-
-      const response = await api.get(`/products/stage/${stage}?${queryParams.toString()}`);
-      return response.data;
-    } catch (err) {
-      return rejectWithValue(err.response?.data?.message || err.message);
-    }
-  }
-);
-
-// Get production statistics
-export const getProductionStats = createAsyncThunk(
-  'products/getProductionStats',
-  async (_, { rejectWithValue }) => {
-    try {
-      const response = await api.get('/products/production/stats');
-      return response.data;
-    } catch (err) {
-      return rejectWithValue(err.response?.data?.message || err.message);
-    }
-  }
-);
-
-// Move completed product to inventory
-export const moveToInventory = createAsyncThunk(
-  'products/moveToInventory',
-  async (productId, { rejectWithValue }) => {
-    try {
-      const response = await api.post(`/products/${productId}/move-to-inventory`);
-      return response.data;
-    } catch (err) {
-      return rejectWithValue(err.response?.data?.message || err.message);
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch product statistics');
     }
   }
 );

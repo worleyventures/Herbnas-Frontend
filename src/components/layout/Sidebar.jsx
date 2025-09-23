@@ -18,6 +18,7 @@ import {
   HiBars3,
   HiChevronLeft,
   HiChevronRight,
+  HiShoppingBag,
 } from 'react-icons/hi2';
 
 const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
@@ -78,6 +79,16 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
         color: 'text-gray-600',
         bgColor: 'bg-gray-100',
         hoverColor: 'group-hover:text-gray-600',
+        hoverBgColor: 'group-hover:bg-gray-50'
+      },
+      {
+        name: 'Products',
+        href: '/products',
+        icon: HiShoppingBag,
+        current: isActiveRoute('/products'),
+        color: 'text-green-600',
+        bgColor: 'bg-gray-100',
+        hoverColor: 'group-hover:text-green-600',
         hoverBgColor: 'group-hover:bg-gray-50'
       },
       {

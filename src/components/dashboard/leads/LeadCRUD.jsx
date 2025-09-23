@@ -10,7 +10,7 @@ import {
   HiTrash, 
   HiUser
 } from 'react-icons/hi2';
-import { Table, ActionButton, StatusBadge, PriorityBadge, ConfirmationModal } from '../../common';
+import { Table, ActionButton, StatusBadge, PriorityBadge, ConfirmationModal, LeadDetailsModal } from '../../common';
 
 const LeadCRUD = ({ 
   leads, 
@@ -29,6 +29,7 @@ const LeadCRUD = ({
   deleteLoading
 }) => {
   const navigate = useNavigate();
+  const [showLeadModal, setShowLeadModal] = useState(false);
   
   const dispatch = useDispatch();
   
@@ -117,7 +118,8 @@ const LeadCRUD = ({
   };
 
   const handleView = (lead) => {
-    navigate(`/leads/view/${lead._id}`);
+    onSelectLead(lead);
+    setShowLeadModal(true);
   };
 
   const formatDate = (dateString) => {
@@ -285,6 +287,15 @@ const LeadCRUD = ({
         cancelText="Cancel"
         variant="danger"
         loading={deleteLoading}
+      />
+
+      {/* Lead Details Modal */}
+      <LeadDetailsModal
+        isOpen={showLeadModal}
+        onClose={() => setShowLeadModal(false)}
+        lead={selectedLead}
+        onEdit={onEditLead}
+        onDelete={handleDelete}
       />
     </div>
   );

@@ -356,8 +356,10 @@ const Header = ({ sidebarOpen, setSidebarOpen }) => {
                     alt={user.fullName || user.firstName}
                   />
                 ) : (
-                  <div className="h-9 w-9 rounded-full flex items-center justify-center" style={{background: 'linear-gradient(to bottom right, #22c55e, #16a34a)'}}>
-                    <HiUserCircle className="h-5 w-5 text-white" />
+                  <div className="h-9 w-9 rounded-full flex items-center justify-center bg-gray-100 border-2 border-gray-300">
+                    <svg className="h-6 w-6 text-gray-600" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                    </svg>
                   </div>
                 )}
                 <div className="hidden md:block text-left">

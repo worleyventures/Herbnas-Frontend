@@ -19,7 +19,7 @@ import {
   HiEye,
   HiPlus
 } from 'react-icons/hi2';
-import { StatCard, FilterCard, Button, ActionButton, SearchInput, Select, Pagination, ImportModal } from '../common';
+import { StatCard, FilterCard, Button, ActionButton, SearchInput, Select, Pagination, ImportModal, HealthIssueDetailsModal } from '../common';
 import { addNotification } from '../../redux/slices/uiSlice';
 import {
   getAllHealthIssues,
@@ -35,6 +35,7 @@ const HealthDashboard = () => {
   const dispatch = useDispatch();
   const [selectedHealthIssue, setSelectedHealthIssue] = useState(null);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [showHealthModal, setShowHealthModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterGender, setFilterGender] = useState('all');
   const [filterMaritalStatus, setFilterMaritalStatus] = useState('all');
@@ -155,7 +156,8 @@ const HealthDashboard = () => {
 
   // Handle view health issue
   const handleViewHealthIssue = (issue) => {
-    navigate(`/health-issues/view/${issue._id}`);
+    setSelectedHealthIssue(issue);
+    setShowHealthModal(true);
   };
 
 
@@ -196,6 +198,70 @@ const HealthDashboard = () => {
           }));
         });
     }
+  };
+
+  // Handle resolve health issue
+  const handleResolveHealthIssue = (issue) => {
+    const updatedIssue = {
+      ...issue,
+      isResolved: true,
+      resolvedDate: new Date().toISOString(),
+      resolvedBy: user?._id
+    };
+
+    dispatch(updateHealthIssue({ id: issue._id, healthIssue: updatedIssue }))
+      .then(() => {
+        // Refresh the data
+        dispatch(getAllHealthIssues({ 
+          page: currentPage, 
+          limit: itemsPerPage,
+          search: searchTerm,
+          gender: filterGender !== 'all' ? filterGender : undefined,
+          maritalStatus: filterMaritalStatus !== 'all' ? filterMaritalStatus : undefined
+        }));
+        dispatch(addNotification({
+          type: 'success',
+          message: 'Health issue resolved successfully!'
+        }));
+      })
+      .catch(() => {
+        dispatch(addNotification({
+          type: 'error',
+          message: 'Failed to resolve health issue. Please try again.'
+        }));
+      });
+  };
+
+  // Handle reopen health issue
+  const handleReopenHealthIssue = (issue) => {
+    const updatedIssue = {
+      ...issue,
+      isResolved: false,
+      resolvedDate: null,
+      resolvedBy: null
+    };
+
+    dispatch(updateHealthIssue({ id: issue._id, healthIssue: updatedIssue }))
+      .then(() => {
+        // Refresh the data
+        dispatch(getAllHealthIssues({ 
+          page: currentPage, 
+          limit: itemsPerPage,
+          search: searchTerm,
+          gender: filterGender !== 'all' ? filterGender : undefined,
+          maritalStatus: filterMaritalStatus !== 'all' ? filterMaritalStatus : undefined
+        }));
+        dispatch(addNotification({
+          type: 'success',
+          message: 'Health issue reopened successfully!'
+        }));
+      })
+      .catch(() => {
+        dispatch(addNotification({
+          type: 'error',
+          message: 'Failed to reopen health issue. Please try again.'
+        }));
+      });
   };
 
   // Handle create health issue
@@ -495,6 +561,16 @@ const HealthDashboard = () => {
 
 
 
+      {/* Health Issue Details Modal */}
+      <HealthIssueDetailsModal
+        isOpen={showHealthModal}
+        onClose={() => setShowHealthModal(false)}
+        healthIssue={selectedHealthIssue}
+        onEdit={handleEditHealthIssue}
+        onDelete={handleDeleteHealthIssue}
+        onResolve={handleResolveHealthIssue}
+        onReopen={handleReopenHealthIssue}
+      />
     </div>
   );
 };

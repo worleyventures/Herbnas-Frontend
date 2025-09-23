@@ -1,231 +1,169 @@
 import { createSlice } from '@reduxjs/toolkit';
 import {
   getAllProducts,
-  getActiveProducts,
   getProductById,
   createProduct,
   updateProduct,
   deleteProduct,
+  getActiveProducts,
   getProductStats
 } from '../actions/productActions';
 
 const initialState = {
   products: [],
-  activeProducts: [],
+  currentProduct: null,
+  stats: null,
   loading: false,
   error: null,
-  stats: null,
-  statsLoading: false,
-  statsError: null,
-  createLoading: false,
-  createError: null,
-  createSuccess: null,
-  updateLoading: false,
-  updateError: null,
-  updateSuccess: null,
-  deleteLoading: false,
-  deleteError: null,
-  deleteSuccess: null
+  pagination: {
+    currentPage: 1,
+    totalPages: 1,
+    totalProducts: 0,
+    hasNextPage: false,
+    hasPrevPage: false
+  }
 };
 
 const productSlice = createSlice({
   name: 'products',
   initialState,
   reducers: {
-    setProducts: (state, action) => {
-      state.products = action.payload;
-    },
-    addProduct: (state, action) => {
-      state.products.push(action.payload);
-    },
-    updateProductInState: (state, action) => {
-      const index = state.products.findIndex(product => product._id === action.payload._id);
-      if (index !== -1) {
-        state.products[index] = action.payload;
-      }
-    },
-    removeProduct: (state, action) => {
-      state.products = state.products.filter(product => product._id !== action.payload);
-    },
-    setProductStats: (state, action) => {
-      state.stats = action.payload;
-    },
-    setLoading: (state, action) => {
-      state.loading = action.payload;
-    },
-    setError: (state, action) => {
-      state.error = action.payload;
-    },
     clearError: (state) => {
       state.error = null;
     },
-    clearSuccess: (state) => {
-      state.createSuccess = null;
-      state.updateSuccess = null;
-      state.deleteSuccess = null;
+    clearCurrentProduct: (state) => {
+      state.currentProduct = null;
+    },
+    clearProducts: (state) => {
+      state.products = [];
+      state.pagination = initialState.pagination;
     }
   },
   extraReducers: (builder) => {
-    // Get all products
     builder
+      // Get all products
       .addCase(getAllProducts.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
       .addCase(getAllProducts.fulfilled, (state, action) => {
         state.loading = false;
-        state.products = action.payload.data?.products || action.payload.data || action.payload;
+        state.products = action.payload.data.products || [];
+        state.pagination = action.payload.data.pagination || initialState.pagination;
         state.error = null;
       })
       .addCase(getAllProducts.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
-      });
-
-    // Get active products
-    builder
-      .addCase(getActiveProducts.pending, (state) => {
-        state.loading = true;
-        state.error = null;
+        state.products = [];
+        state.pagination = initialState.pagination;
       })
-      .addCase(getActiveProducts.fulfilled, (state, action) => {
-        state.loading = false;
-        state.activeProducts = action.payload.data?.products || action.payload.data || action.payload;
-        state.error = null;
-      })
-      .addCase(getActiveProducts.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
-      });
 
-    // Get product by ID
-    builder
+      // Get product by ID
       .addCase(getProductById.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
       .addCase(getProductById.fulfilled, (state, action) => {
         state.loading = false;
-        const product = action.payload.data || action.payload;
-        const index = state.products.findIndex(p => p._id === product._id);
-        if (index !== -1) {
-          state.products[index] = product;
-        } else {
-          state.products.push(product);
-        }
+        state.currentProduct = action.payload.data.product;
         state.error = null;
       })
       .addCase(getProductById.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
-      });
+        state.currentProduct = null;
+      })
 
-    // Create product
-    builder
+      // Get active products
+      .addCase(getActiveProducts.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(getActiveProducts.fulfilled, (state, action) => {
+        state.loading = false;
+        state.products = action.payload.data.products || [];
+        state.error = null;
+      })
+      .addCase(getActiveProducts.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+        state.products = [];
+      })
+
+      // Create product
       .addCase(createProduct.pending, (state) => {
-        state.createLoading = true;
-        state.createError = null;
-        state.createSuccess = null;
+        state.loading = true;
+        state.error = null;
       })
       .addCase(createProduct.fulfilled, (state, action) => {
-        state.createLoading = false;
-        state.createSuccess = action.payload.message || 'Product created successfully';
-        const product = action.payload.data || action.payload;
-        state.products.push(product);
-        state.createError = null;
+        state.loading = false;
+        state.products.unshift(action.payload.data.product);
+        state.error = null;
       })
       .addCase(createProduct.rejected, (state, action) => {
-        state.createLoading = false;
-        state.createError = action.payload;
-        state.createSuccess = null;
-      });
+        state.loading = false;
+        state.error = action.payload;
+      })
 
-    // Update product
-    builder
+      // Update product
       .addCase(updateProduct.pending, (state) => {
-        state.updateLoading = true;
-        state.updateError = null;
-        state.updateSuccess = null;
+        state.loading = true;
+        state.error = null;
       })
       .addCase(updateProduct.fulfilled, (state, action) => {
-        state.updateLoading = false;
-        state.updateSuccess = action.payload.message || 'Product updated successfully';
-        const product = action.payload.data || action.payload;
-        const index = state.products.findIndex(p => p._id === product._id);
+        state.loading = false;
+        const updatedProduct = action.payload.data.product;
+        const index = state.products.findIndex(p => p._id === updatedProduct._id);
         if (index !== -1) {
-          state.products[index] = product;
+          state.products[index] = updatedProduct;
         }
-        state.updateError = null;
+        if (state.currentProduct && state.currentProduct._id === updatedProduct._id) {
+          state.currentProduct = updatedProduct;
+        }
+        state.error = null;
       })
       .addCase(updateProduct.rejected, (state, action) => {
-        state.updateLoading = false;
-        state.updateError = action.payload;
-        state.updateSuccess = null;
-      });
+        state.loading = false;
+        state.error = action.payload;
+      })
 
-    // Delete product
-    builder
+      // Delete product
       .addCase(deleteProduct.pending, (state) => {
-        state.deleteLoading = true;
-        state.deleteError = null;
-        state.deleteSuccess = null;
+        state.loading = true;
+        state.error = null;
       })
       .addCase(deleteProduct.fulfilled, (state, action) => {
-        state.deleteLoading = false;
-        state.deleteSuccess = action.payload.message || 'Product deleted successfully';
-        // Remove the deleted product from the state using the productId from response or action meta
-        const productId = action.payload.id || action.meta.arg;
-        state.products = state.products.filter(product => product._id !== productId);
-        state.deleteError = null;
+        state.loading = false;
+        const productId = action.meta.arg;
+        state.products = state.products.filter(p => p._id !== productId);
+        if (state.currentProduct && state.currentProduct._id === productId) {
+          state.currentProduct = null;
+        }
+        state.error = null;
       })
       .addCase(deleteProduct.rejected, (state, action) => {
-        state.deleteLoading = false;
-        state.deleteError = action.payload;
-        state.deleteSuccess = null;
-      });
+        state.loading = false;
+        state.error = action.payload;
+      })
 
-    // Get product stats
-    builder
+      // Get product statistics
       .addCase(getProductStats.pending, (state) => {
-        state.statsLoading = true;
-        state.statsError = null;
+        state.loading = true;
+        state.error = null;
       })
       .addCase(getProductStats.fulfilled, (state, action) => {
-        state.statsLoading = false;
-        state.stats = action.payload.data || action.payload;
-        state.statsError = null;
+        state.loading = false;
+        state.stats = action.payload.data;
+        state.error = null;
       })
       .addCase(getProductStats.rejected, (state, action) => {
-        state.statsLoading = false;
-        state.statsError = action.payload;
+        state.loading = false;
+        state.error = action.payload;
+        state.stats = null;
       });
   }
 });
 
-export const {
-  setProducts,
-  addProduct,
-  updateProductInState,
-  removeProduct,
-  setProductStats,
-  setLoading,
-  setError,
-  clearError,
-  clearSuccess
-} = productSlice.actions;
-
-// Selectors
-export const selectProducts = (state) => state.products.products;
-export const selectActiveProducts = (state) => state.products.activeProducts;
-export const selectProductLoading = (state) => state.products.loading;
-export const selectProductError = (state) => state.products.error;
-export const selectProductStats = (state) => state.products.stats;
-export const selectProductStatsLoading = (state) => state.products.statsLoading;
-export const selectProductStatsError = (state) => state.products.statsError;
-
+export const { clearError, clearCurrentProduct, clearProducts } = productSlice.actions;
 export default productSlice.reducer;
-
-
-
-
-

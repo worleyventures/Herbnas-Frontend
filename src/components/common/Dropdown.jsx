@@ -12,6 +12,7 @@ const Dropdown = ({
   label = "",
   helperText = "",
   className = "",
+  labelClassName = "",
   loading = false,
   searchable = false,
   searchPlaceholder = "Search...",
@@ -19,6 +20,7 @@ const Dropdown = ({
   onAddNew,
   addNewLabel = "Add New",
   showAddNew = false,
+  name,
   ...props
 }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -85,7 +87,7 @@ const Dropdown = ({
   return (
     <div className={`space-y-1 ${className}`} ref={dropdownRef}>
       {label && (
-        <label className="block text-sm font-medium text-gray-700">
+        <label className={`block text-sm font-medium text-gray-700 ${labelClassName}`}>
           {label}
         </label>
       )}

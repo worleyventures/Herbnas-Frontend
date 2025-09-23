@@ -8,7 +8,8 @@ export { default as Card, StatCard, InfoCard, FilterCard } from './Card';
 export { default as Button, ActionButton, ButtonGroup } from './Button';
 
 // Input Components
-export { default as Input, Select, SearchInput } from './Input';
+export { default as Input, Select, SearchInput, TextArea } from './Input';
+export { default as InputWithDropdown } from './InputWithDropdown';
 
 // Badge Components
 export { default as Badge, StatusBadge, PriorityBadge, CustomBadge } from './Badge';
@@ -37,3 +38,10 @@ export { default as ImportModal } from './ImportModal';
 
 // Product Modal Component
 export { default as ProductDetailsModal } from './ProductDetailsModal';
+
+// Details Modal Components
+export { default as UserDetailsModal } from './UserDetailsModal';
+export { default as BranchDetailsModal } from './BranchDetailsModal';
+export { default as InventoryDetailsModal } from './InventoryDetailsModal';
+export { default as LeadDetailsModal } from './LeadDetailsModal';
+export { default as HealthIssueDetailsModal } from './HealthIssueDetailsModal';
