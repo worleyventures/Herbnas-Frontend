@@ -23,6 +23,7 @@ export const getAllProductions = createAsyncThunk(
       if (params.sortOrder) queryParams.append('sortOrder', params.sortOrder);
 
       const response = await api.get(`/productions?${queryParams.toString()}`);
+      console.log('Production API Response:', response.data);
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch productions');

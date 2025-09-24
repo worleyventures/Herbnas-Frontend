@@ -156,16 +156,19 @@ export const createOrUpdateInventory = createAsyncThunk(
   async (inventoryData, { rejectWithValue, dispatch }) => {
     try {
       if (inventoryData._id) {
-        // Update existing inventory
-        const result = await dispatch(updateRawMaterial({ 
-          rawMaterialId: inventoryData._id, 
-          rawMaterialData: inventoryData 
+        // Update existing finished goods stock
+        const result = await dispatch(updateFinishedGoodsStock({ 
+          finishedGoodsId: inventoryData._id, 
+          stockData: {
+            availableQuantity: inventoryData.availableQuantity,
+            notes: inventoryData.notes
+          }
         }));
         return result.payload;
       } else {
-        // Create new inventory
-        const result = await dispatch(createRawMaterial(inventoryData));
-        return result.payload;
+        // For finished goods, we can't create new inventory directly
+        // This should only happen through production approval
+        return rejectWithValue('Finished goods can only be created through production approval process');
       }
     } catch (error) {
       return rejectWithValue(error.message || 'Failed to save inventory');

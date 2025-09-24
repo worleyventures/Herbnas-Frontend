@@ -8,7 +8,8 @@ import {
   HiExclamationTriangle, 
   HiCheckCircle, 
   HiPlus, 
-  HiXCircle 
+  HiXCircle,
+  HiXMark
 } from 'react-icons/hi2';
 import { Button, Input, Select, TextArea } from '../common';
 import { createRawMaterial, updateRawMaterial, getRawMaterialById } from '../../redux/actions/inventoryActions';
@@ -21,7 +22,7 @@ const RawMaterialForm = () => {
   const location = useLocation();
   const isEdit = Boolean(id);
 
-  const { currentRawMaterial, loading } = useSelector((state) => state.inventory);
+  const { currentRawMaterial, loading, updateLoading } = useSelector((state) => state.inventory);
 
   const [formData, setFormData] = useState({
     materialId: '',
@@ -194,18 +195,21 @@ const RawMaterialForm = () => {
 
       console.log('Sending raw material data:', rawMaterialData);
 
+      let result;
       if (isEdit) {
-        await dispatch(updateRawMaterial({ 
+        result = await dispatch(updateRawMaterial({ 
           rawMaterialId: id, 
           rawMaterialData 
         })).unwrap();
+        console.log('Update result:', result);
         dispatch(addNotification({
           type: 'success',
           title: 'Success',
           message: 'Raw material updated successfully'
         }));
       } else {
-        await dispatch(createRawMaterial(rawMaterialData)).unwrap();
+        result = await dispatch(createRawMaterial(rawMaterialData)).unwrap();
+        console.log('Create result:', result);
         dispatch(addNotification({
           type: 'success',
           title: 'Success',
@@ -213,19 +217,26 @@ const RawMaterialForm = () => {
         }));
       }
 
-      navigate('/inventory');
+      // Check if the operation was successful and navigate immediately
+      if (result && (result.success || result.data)) {
+        navigate('/inventory');
+      } else {
+        throw new Error('Operation failed - no success response received');
+      }
     } catch (error) {
+      console.error('Form submission error:', error);
       dispatch(addNotification({
         type: 'error',
         title: 'Error',
         message: error || 'Failed to save raw material'
       }));
+      // Stay on form if there's an error - no navigation
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  if (loading) {
+  if (loading || updateLoading) {
     return (
       <div className="p-6">
         <div className="animate-pulse space-y-4">
@@ -241,11 +252,11 @@ const RawMaterialForm = () => {
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-200">
-          <div className="flex items-center justify-between">
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between py-6">
             <div className="flex items-center space-x-3">
               <Button
                 onClick={() => navigate('/inventory')}
@@ -260,7 +271,7 @@ const RawMaterialForm = () => {
                 <HiCube className="h-6 w-6 text-blue-600" />
               </div>
               <div>
-                <h1 className="text-xl font-semibold text-gray-900">
+                <h1 className="text-2xl font-bold text-gray-900">
                   {isEdit ? 'Edit Raw Material' : 'Add Raw Material'}
                 </h1>
                 <p className="text-sm text-gray-500">
@@ -268,13 +279,23 @@ const RawMaterialForm = () => {
                 </p>
               </div>
             </div>
+            <Button
+              onClick={() => navigate('/inventory')}
+              variant="outline"
+              size="sm"
+              icon={HiXMark}
+            >
+              Cancel
+            </Button>
           </div>
         </div>
+      </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+      {/* Form Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <form onSubmit={handleSubmit} id="raw-material-form" className="space-y-8">
           {/* Basic Information */}
-          <div className="space-y-4">
+          <div id="basic-info-section" className="space-y-4">
             <h3 className="text-lg font-medium text-gray-900">Basic Information</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Input
@@ -324,7 +345,7 @@ const RawMaterialForm = () => {
           </div>
 
           {/* Pricing Information */}
-          <div className="space-y-4">
+          <div id="pricing-section" className="space-y-4">
             <h3 className="text-lg font-medium text-gray-900">Pricing Information</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Input
@@ -399,7 +420,7 @@ const RawMaterialForm = () => {
           </div>
 
           {/* Stock Information */}
-          <div className="space-y-4">
+          <div id="additional-info-section" className="space-y-4">
             <h3 className="text-lg font-medium text-gray-900">Stock Information</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Input
@@ -463,11 +484,11 @@ const RawMaterialForm = () => {
             </Button>
             <Button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || updateLoading}
               className="bg-blue-600 hover:bg-blue-700 text-white"
               icon={isEdit ? HiCheckCircle : HiPlus}
             >
-              {isSubmitting ? 'Saving...' : (isEdit ? 'Update Raw Material' : 'Add Raw Material')}
+              {(isSubmitting || updateLoading) ? 'Saving...' : (isEdit ? 'Update Raw Material' : 'Add Raw Material')}
             </Button>
           </div>
         </form>

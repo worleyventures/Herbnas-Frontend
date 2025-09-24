@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import { HiArrowLeft, HiHeart, HiUser, HiCalendar, HiExclamationTriangle, HiCheckCircle, HiPlus, HiXCircle, HiTag } from 'react-icons/hi2';
+import { HiArrowLeft, HiHeart, HiUser, HiCalendar, HiExclamationTriangle, HiCheckCircle, HiPlus, HiXCircle, HiTag, HiXMark } from 'react-icons/hi2';
 import { Button, Input, Select } from '../../components/common';
 import { createHealthIssue, updateHealthIssue, getHealthIssueById } from '../../redux/actions/healthActions';
 import { clearError, clearSuccess } from '../../redux/slices/healthSlice';
@@ -16,6 +16,7 @@ const HealthFormPage = () => {
   const selectedHealthIssue = location.state?.healthIssue || null;
   const mode = location.state?.mode || (params.id ? 'edit' : 'create');
   const healthIssueId = params.id;
+  const isEdit = mode === 'edit';
   
   // Get loading states, success states, and health issue data from Redux
   const { 
@@ -186,9 +187,48 @@ const HealthFormPage = () => {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-          <form onSubmit={handleSubmit} className="p-6 space-y-6">
+      <div className="min-h-screen bg-gray-50">
+        {/* Header */}
+        <div className="bg-white border-b border-gray-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between py-6">
+              <div className="flex items-center space-x-3">
+                <Button
+                  onClick={() => navigate('/health')}
+                  variant="ghost"
+                  size="sm"
+                  icon={HiArrowLeft}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  Back
+                </Button>
+                <div className="p-2 bg-red-100 rounded-lg">
+                  <HiHeart className="h-6 w-6 text-red-600" />
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">
+                    {isEdit ? 'Edit Health Issue' : 'Add Health Issue'}
+                  </h1>
+                  <p className="text-sm text-gray-500">
+                    {isEdit ? 'Update health issue details' : 'Add new health issue to the system'}
+                  </p>
+                </div>
+              </div>
+              <Button
+                onClick={() => navigate('/health')}
+                variant="outline"
+                size="sm"
+                icon={HiXMark}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Form Content */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <form onSubmit={handleSubmit} className="space-y-8">
             {/* Basic Information */}
             <div className="bg-gray-50 rounded-lg p-4">
               <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">

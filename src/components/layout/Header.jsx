@@ -86,6 +86,33 @@ const Header = ({ sidebarOpen, setSidebarOpen }) => {
       return lead ? lead.customerName || 'Lead Details' : 'Lead Details';
     };
 
+    // Get appropriate name for ObjectId based on context
+    const getObjectIdName = (objectId, pathnames, index) => {
+      // Check if we're in a leads context
+      if (pathnames.includes('leads')) {
+        return getLeadName(objectId);
+      }
+      
+      // For other contexts, return generic names based on the previous path
+      const previousPath = pathnames[index - 1];
+      switch (previousPath) {
+        case 'products':
+          return 'Product Details';
+        case 'branches':
+          return 'Branch Details';
+        case 'health-issues':
+          return 'Health Issue Details';
+        case 'users':
+          return 'User Details';
+        case 'inventory':
+          return 'Inventory Details';
+        case 'production':
+          return 'Production Details';
+        default:
+          return 'Details';
+      }
+    };
+
     const breadcrumbs = [
       { name: 'Home', href: '/dashboard', icon: HiHome, current: false }
     ];
@@ -96,8 +123,8 @@ const Header = ({ sidebarOpen, setSidebarOpen }) => {
       
       let displayName;
       if (isObjectId(pathname)) {
-        // If it's a MongoDB ObjectId, try to get the lead name
-        displayName = getLeadName(pathname);
+        // If it's a MongoDB ObjectId, get appropriate name based on context
+        displayName = getObjectIdName(pathname, pathnames, index);
       } else {
         displayName = breadcrumbNameMap[pathname] || pathname.charAt(0).toUpperCase() + pathname.slice(1);
       }

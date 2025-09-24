@@ -28,7 +28,8 @@ const InventoryDetailsPage = () => {
   });
   
   // Get inventory data from Redux state
-  const inventory = useSelector((state) => state.inventory?.inventory || []);
+  const { rawMaterials = [], finishedGoods = [] } = useSelector((state) => state.inventory || {});
+  const inventory = [...rawMaterials, ...finishedGoods];
   
   // Find the specific inventory item
   const inventoryItem = inventory.find(item => item._id === id);
@@ -188,7 +189,7 @@ const InventoryDetailsPage = () => {
                 Share
               </Button>
               <Button
-                onClick={() => navigate(`/inventory/edit/${inventoryItem._id}`)}
+                onClick={() => navigate(`/inventory/edit/${inventoryItem._id}?type=${inventoryItem.materialId ? 'rawMaterials' : 'finishedGoods'}`)}
                 variant="primary"
                 size="sm"
                 className="flex items-center"
@@ -364,7 +365,7 @@ const InventoryDetailsPage = () => {
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
               <div className="space-y-3">
                 <Button
-                  onClick={() => navigate(`/inventory/edit/${inventoryItem._id}`)}
+                  onClick={() => navigate(`/inventory/edit/${inventoryItem._id}?type=${inventoryItem.materialId ? 'rawMaterials' : 'finishedGoods'}`)}
                   variant="primary"
                   size="sm"
                   className="w-full justify-start"

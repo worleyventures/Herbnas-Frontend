@@ -93,21 +93,8 @@ const ProductionDashboard = () => {
       }));
       dispatch(getProductionStats());
     }
-  }, [dispatch, isAuthenticated]);
+  }, [dispatch, isAuthenticated, currentPage, itemsPerPage, searchTerm, productionStatusFilter, QCstatusFilter, productFilter]);
 
-  // Load productions when filters change
-  useEffect(() => {
-    if (isAuthenticated) {
-      dispatch(getAllProductions({
-        page: currentPage, 
-        limit: itemsPerPage, 
-        search: searchTerm,
-        productionStatus: productionStatusFilter !== 'all' ? productionStatusFilter : undefined,
-        QCstatus: QCstatusFilter !== 'all' ? QCstatusFilter : undefined,
-        productId: productFilter !== 'all' ? productFilter : undefined
-      }));
-    }
-  }, [dispatch, currentPage, searchTerm, productionStatusFilter, QCstatusFilter, productFilter]);
 
   // Calculate stats from productions data
   const calculateStats = () => {

@@ -41,60 +41,34 @@ const ProductionCRUD = ({
 
   // Get status badge for production status
   const getProductionStatusBadge = (status) => {
-    const statusConfig = {
-      'in-progress': { 
-        color: 'bg-blue-100 text-blue-800', 
-        icon: HiPlay, 
-        label: 'In Progress' 
-      },
-      'on-hold': { 
-        color: 'bg-yellow-100 text-yellow-800', 
-        icon: HiPause, 
-        label: 'On Hold' 
-      },
-      'completed': { 
-        color: 'bg-green-100 text-green-800', 
-        icon: HiCheckCircle, 
-        label: 'Completed' 
-      }
+    console.log('Production status:', status);
+    const statusMap = {
+      'in-progress': { variant: 'info', label: 'In Progress' },
+      'on-hold': { variant: 'warning', label: 'On Hold' },
+      'completed': { variant: 'success', label: 'Completed' }
     };
     
-    const config = statusConfig[status] || statusConfig['in-progress'];
     return (
       <StatusBadge
-        color={config.color}
-        icon={config.icon}
-        label={config.label}
+        status={status}
+        statusMap={statusMap}
       />
     );
   };
 
   // Get status badge for QC status
   const getQCStatusBadge = (status) => {
-    const statusConfig = {
-      'Pending': { 
-        color: 'bg-yellow-100 text-yellow-800', 
-        icon: HiClock, 
-        label: 'Pending' 
-      },
-      'Approved': { 
-        color: 'bg-green-100 text-green-800', 
-        icon: HiCheckCircle, 
-        label: 'Approved' 
-      },
-      'Rejected': { 
-        color: 'bg-red-100 text-red-800', 
-        icon: HiExclamationTriangle, 
-        label: 'Rejected' 
-      }
+    console.log('QC status:', status);
+    const statusMap = {
+      'Pending': { variant: 'warning', label: 'Pending' },
+      'Approved': { variant: 'success', label: 'Approved' },
+      'Rejected': { variant: 'error', label: 'Rejected' }
     };
     
-    const config = statusConfig[status] || statusConfig['Pending'];
     return (
       <StatusBadge
-        color={config.color}
-        icon={config.icon}
-        label={config.label}
+        status={status}
+        statusMap={statusMap}
       />
     );
   };
@@ -136,16 +110,19 @@ const ProductionCRUD = ({
     {
       key: 'product',
       label: 'Product',
-      render: (production) => (
-        <div>
-          <p className="font-medium text-gray-900">
-            {production.product?.productName || 'N/A'}
-          </p>
-          <p className="text-sm text-gray-500">
-            {production.product?.category || 'No category'}
-          </p>
-        </div>
-      )
+      render: (production) => {
+        console.log('Product data:', production.productId);
+        return (
+          <div>
+            <p className="font-medium text-gray-900">
+              {production.productId?.productName || 'N/A'}
+            </p>
+            <p className="text-sm text-gray-500">
+              {production.productId?.category || 'No category'}
+            </p>
+          </div>
+        );
+      }
     },
     {
       key: 'manufacturedDate',
@@ -154,7 +131,7 @@ const ProductionCRUD = ({
         <div className="flex items-center space-x-2">
           <HiCalendar className="h-4 w-4 text-gray-400" />
           <span className="text-sm text-gray-900">
-            {new Date(production.manufacturedDate).toLocaleDateString()}
+            {production.manufacturedDate ? new Date(production.manufacturedDate).toLocaleDateString() : 'N/A'}
           </span>
         </div>
       )
@@ -178,7 +155,7 @@ const ProductionCRUD = ({
         <div className="flex items-center space-x-2">
           <HiCube className="h-4 w-4 text-gray-400" />
           <span className="font-medium text-gray-900">
-            {production.quantity} {production.product?.UOM || 'units'}
+            {production.quantity || 0} {production.productId?.UOM || 'units'}
           </span>
         </div>
       )
@@ -186,23 +163,31 @@ const ProductionCRUD = ({
     {
       key: 'productionStatus',
       label: 'Production Status',
-      render: (production) => getProductionStatusBadge(production.productionStatus)
+      render: (production) => {
+        console.log('Full production object:', production);
+        console.log('Production status field:', production.productionStatus);
+        return getProductionStatusBadge(production.productionStatus);
+      }
     },
     {
       key: 'QCstatus',
       label: 'QC Status',
-      render: (production) => getQCStatusBadge(production.QCstatus)
+      render: (production) => {
+        console.log('QC status field:', production.QCstatus);
+        return getQCStatusBadge(production.QCstatus);
+      }
     },
     {
       key: 'isActive',
       label: 'Status',
-      render: (production) => (
-        <StatusBadge
-          color={production.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}
-          icon={production.isActive ? HiCheckCircle : HiXCircle}
-          label={production.isActive ? 'Active' : 'Inactive'}
-        />
-      )
+      render: (production) => {
+        console.log('Production isActive:', production.isActive);
+        return (
+          <StatusBadge
+            status={production.isActive ? 'active' : 'inactive'}
+          />
+        );
+      }
     },
     {
       key: 'actions',
@@ -255,3 +240,5 @@ const ProductionCRUD = ({
 };
 
 export default ProductionCRUD;
+
+

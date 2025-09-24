@@ -114,9 +114,6 @@ const InventoryCRUD = ({
               <p className="text-sm text-gray-500 truncate">
                 ID: {inventoryItem.materialId || 'N/A'}
               </p>
-              <p className="text-xs text-gray-400 truncate">
-                ₹{inventoryItem.price || 'N/A'} | {inventoryItem.UOM || 'N/A'}
-              </p>
             </div>
           )
         },
@@ -128,12 +125,6 @@ const InventoryCRUD = ({
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-900 truncate">
                 {inventoryItem.supplierName || 'Unknown Supplier'}
-              </p>
-              <p className="text-sm text-gray-500 truncate">
-                GST: {inventoryItem.gstNumber || 'N/A'}
-              </p>
-              <p className="text-xs text-gray-400 truncate">
-                HSN: {inventoryItem.hsn || 'N/A'}
               </p>
             </div>
           )

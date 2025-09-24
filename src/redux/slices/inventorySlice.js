@@ -19,6 +19,7 @@ const initialState = {
   currentFinishedGoods: null,
   stats: null,
   loading: false,
+  updateLoading: false,
   error: null,
   pagination: {
     currentPage: 1,
@@ -96,12 +97,12 @@ const inventorySlice = createSlice({
 
       // Update raw material
       .addCase(updateRawMaterial.pending, (state) => {
-        state.loading = true;
+        state.updateLoading = true;
         state.error = null;
       })
       .addCase(updateRawMaterial.fulfilled, (state, action) => {
-        state.loading = false;
-        const updatedRawMaterial = action.payload.data.rawMaterial;
+        state.updateLoading = false;
+        const updatedRawMaterial = action.payload.data.rawMaterials;
         const index = state.rawMaterials.findIndex(rm => rm._id === updatedRawMaterial._id);
         if (index !== -1) {
           state.rawMaterials[index] = updatedRawMaterial;
@@ -112,7 +113,7 @@ const inventorySlice = createSlice({
         state.error = null;
       })
       .addCase(updateRawMaterial.rejected, (state, action) => {
-        state.loading = false;
+        state.updateLoading = false;
         state.error = action.payload;
       })
 

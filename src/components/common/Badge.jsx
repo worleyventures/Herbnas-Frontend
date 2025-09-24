@@ -64,7 +64,12 @@ export const StatusBadge = ({
     'order_completed': { variant: 'success', label: 'Order Completed' },
     lost: { variant: 'error', label: 'Lost' },
     pending: { variant: 'warning', label: 'Pending' },
+    'Pending': { variant: 'warning', label: 'Pending' },
     completed: { variant: 'success', label: 'Completed' },
+    'in-progress': { variant: 'info', label: 'In Progress' },
+    'on-hold': { variant: 'warning', label: 'On Hold' },
+    'Approved': { variant: 'success', label: 'Approved' },
+    'Rejected': { variant: 'error', label: 'Rejected' },
     cancelled: { variant: 'error', label: 'Cancelled' },
     active: { variant: 'success', label: 'Active' },
     inactive: { variant: 'error', label: 'Inactive' },
@@ -80,10 +85,13 @@ export const StatusBadge = ({
     return status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
-  const statusConfig = defaultStatusMap[status] || { 
+  // Check custom statusMap first, then defaultStatusMap
+  console.log('StatusBadge - status:', status, 'statusMap:', statusMap);
+  const statusConfig = statusMap[status] || defaultStatusMap[status] || { 
     variant: 'default', 
     label: formatStatus(status) 
   };
+  console.log('StatusBadge - statusConfig:', statusConfig);
 
   return (
     <Badge

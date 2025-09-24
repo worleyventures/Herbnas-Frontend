@@ -193,7 +193,7 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
   // Handle form submissions
 
   const handleEditInventory = (inventoryItem) => {
-    navigate(`/inventory/edit/${inventoryItem._id}`, { 
+    navigate(`/inventory/edit/${inventoryItem._id}?type=${activeTab}`, { 
       state: { 
         inventory: inventoryItem,
         returnTo: '/inventory'

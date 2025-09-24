@@ -27,62 +27,37 @@ const ProductionDetailsModal = ({
 }) => {
   if (!isOpen || !production) return null;
 
+  // Debug logging
+  console.log('ProductionDetailsModal - production data:', production);
+
   // Get status badge for production status
   const getProductionStatusBadge = (status) => {
-    const statusConfig = {
-      'in-progress': { 
-        color: 'bg-blue-100 text-blue-800', 
-        icon: HiPlay, 
-        label: 'In Progress' 
-      },
-      'on-hold': { 
-        color: 'bg-yellow-100 text-yellow-800', 
-        icon: HiPause, 
-        label: 'On Hold' 
-      },
-      'completed': { 
-        color: 'bg-green-100 text-green-800', 
-        icon: HiCheckCircle, 
-        label: 'Completed' 
-      }
+    const statusMap = {
+      'in-progress': { variant: 'info', label: 'In Progress' },
+      'on-hold': { variant: 'warning', label: 'On Hold' },
+      'completed': { variant: 'success', label: 'Completed' }
     };
     
-    const config = statusConfig[status] || statusConfig['in-progress'];
     return (
       <StatusBadge
-        color={config.color}
-        icon={config.icon}
-        label={config.label}
+        status={status}
+        statusMap={statusMap}
       />
     );
   };
 
   // Get status badge for QC status
   const getQCStatusBadge = (status) => {
-    const statusConfig = {
-      'Pending': { 
-        color: 'bg-yellow-100 text-yellow-800', 
-        icon: HiClock, 
-        label: 'Pending' 
-      },
-      'Approved': { 
-        color: 'bg-green-100 text-green-800', 
-        icon: HiCheckCircle, 
-        label: 'Approved' 
-      },
-      'Rejected': { 
-        color: 'bg-red-100 text-red-800', 
-        icon: HiExclamationTriangle, 
-        label: 'Rejected' 
-      }
+    const statusMap = {
+      'Pending': { variant: 'warning', label: 'Pending' },
+      'Approved': { variant: 'success', label: 'Approved' },
+      'Rejected': { variant: 'error', label: 'Rejected' }
     };
     
-    const config = statusConfig[status] || statusConfig['Pending'];
     return (
       <StatusBadge
-        color={config.color}
-        icon={config.icon}
-        label={config.label}
+        status={status}
+        statusMap={statusMap}
       />
     );
   };
@@ -146,7 +121,7 @@ const ProductionDetailsModal = ({
                       <div className="flex-1">
                         <p className="text-xs font-medium text-gray-600">Quantity</p>
                         <p className="text-sm font-semibold text-gray-900">
-                          {production.quantity} {production.product?.UOM || 'units'}
+                          {production.quantity} {production.productId?.UOM || 'units'}
                         </p>
                       </div>
                     </div>
@@ -165,7 +140,7 @@ const ProductionDetailsModal = ({
                       <div className="flex-1">
                         <p className="text-xs font-medium text-gray-600">Product Name</p>
                         <p className="text-sm font-semibold text-gray-900">
-                          {production.product?.productName || 'N/A'}
+                          {production.productId?.productName || 'N/A'}
                         </p>
                       </div>
                     </div>
@@ -175,7 +150,7 @@ const ProductionDetailsModal = ({
                       <div className="flex-1">
                         <p className="text-xs font-medium text-gray-600">Category</p>
                         <p className="text-sm font-semibold text-gray-900">
-                          {production.product?.category || 'N/A'}
+                          {production.productId?.category || 'N/A'}
                         </p>
                       </div>
                     </div>
@@ -215,9 +190,7 @@ const ProductionDetailsModal = ({
                         <p className="text-xs font-medium text-gray-600">Active Status</p>
                         <div className="mt-1">
                           <StatusBadge
-                            color={production.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}
-                            icon={production.isActive ? HiCheckCircle : HiXCircle}
-                            label={production.isActive ? 'Active' : 'Inactive'}
+                            status={production.isActive ? 'active' : 'inactive'}
                           />
                         </div>
                       </div>
@@ -267,6 +240,40 @@ const ProductionDetailsModal = ({
               </div>
             </div>
 
+            {/* Raw Materials Section */}
+            {production.rawMaterials && production.rawMaterials.length > 0 && (
+              <div className="mt-6 bg-gray-50 rounded-lg p-4">
+                <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+                  <HiCube className="h-5 w-5 mr-2 text-gray-600" />
+                  Raw Materials Used
+                </h3>
+                <div className="space-y-3">
+                  {production.rawMaterials.map((rawMaterial, index) => (
+                    <div key={index} className="p-3 bg-white border border-gray-200 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <p className="text-sm font-semibold text-gray-900">
+                            {rawMaterial.rawMaterialId?.materialName || 'Unknown Material'}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            ID: {rawMaterial.rawMaterialId?.materialId || 'N/A'}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-semibold text-gray-900">
+                            {rawMaterial.quantity} {rawMaterial.rawMaterialId?.UOM || 'units'}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            Available: {rawMaterial.rawMaterialId?.stockQuantity || 0} {rawMaterial.rawMaterialId?.UOM || 'units'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Notes Section */}
             {(production.notes || production.QCNotes) && (
               <div className="mt-6 bg-gray-50 rounded-lg p-4">
@@ -285,6 +292,33 @@ const ProductionDetailsModal = ({
                     <div className="p-3 bg-white border border-gray-200 rounded-lg">
                       <p className="text-xs font-medium text-gray-600 mb-1">QC Notes</p>
                       <p className="text-sm text-gray-900">{production.QCNotes}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* User Information */}
+            {(production.createdBy || production.updatedBy) && (
+              <div className="mt-6 bg-gray-50 rounded-lg p-4">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">User Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {production.createdBy && (
+                    <div className="p-3 bg-white border border-gray-200 rounded-lg">
+                      <p className="text-xs font-medium text-gray-600">Created By</p>
+                      <p className="text-sm text-gray-900">
+                        {production.createdBy.firstName} {production.createdBy.lastName}
+                      </p>
+                      <p className="text-xs text-gray-500">{production.createdBy.email}</p>
+                    </div>
+                  )}
+                  {production.updatedBy && (
+                    <div className="p-3 bg-white border border-gray-200 rounded-lg">
+                      <p className="text-xs font-medium text-gray-600">Updated By</p>
+                      <p className="text-sm text-gray-900">
+                        {production.updatedBy.firstName} {production.updatedBy.lastName}
+                      </p>
+                      <p className="text-xs text-gray-500">{production.updatedBy.email}</p>
                     </div>
                   )}
                 </div>
@@ -354,3 +388,5 @@ const ProductionDetailsModal = ({
 };
 
 export default ProductionDetailsModal;
+
+

@@ -51,6 +51,7 @@ const productionSlice = createSlice({
       })
       .addCase(getAllProductions.fulfilled, (state, action) => {
         state.loading = false;
+        console.log('Production slice fulfilled:', action.payload);
         state.productions = action.payload.data.productions || [];
         state.pagination = action.payload.data.pagination || initialState.pagination;
         state.error = null;
