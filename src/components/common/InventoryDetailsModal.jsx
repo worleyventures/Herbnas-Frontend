@@ -17,7 +17,8 @@ import {
   HiChartBar,
   HiShoppingCart,
   HiClipboardDocumentList,
-  HiTruck
+  HiTruck,
+  HiDocumentArrowDown
 } from 'react-icons/hi2';
 import Button from './Button';
 
@@ -48,6 +49,159 @@ const InventoryDetailsModal = ({
       style: 'currency',
       currency: 'INR'
     }).format(amount);
+  };
+
+  const generateInvoice = () => {
+    if (!inventoryItem) return;
+
+    // Create invoice data
+    const invoiceData = {
+      invoiceNumber: `INV-${inventoryItem.materialId || inventoryItem._id}-${Date.now()}`,
+      date: new Date().toLocaleDateString('en-IN'),
+      item: {
+        id: itemId,
+        name: itemName,
+        category: itemCategory,
+        uom: inventoryItem.UOM || inventoryItem.product?.UOM || 'units',
+        quantity: inventoryItem.stockQuantity || inventoryItem.quantity || 0,
+        unitPrice: inventoryItem.price || inventoryItem.product?.price || 0,
+        gstPercentage: inventoryItem.gstPercentage || 0,
+        totalPrice: inventoryItem.totalPrice || inventoryItem.formattedTotalPrice || 0
+      },
+      supplier: {
+        name: inventoryItem.supplierName || 'N/A',
+        id: inventoryItem.supplierId || 'N/A',
+        gstNumber: inventoryItem.gstNumber || 'N/A',
+        hsn: inventoryItem.hsn || 'N/A'
+      },
+      company: {
+        name: 'HerbNas Ayurveda',
+        address: '123 Ayurveda Street, Health City, India - 123456',
+        gstNumber: '29ABCDE1234F1Z5',
+        phone: '+91 9876543210',
+        email: 'info@herbnas.com'
+      }
+    };
+
+    // Calculate totals
+    const subtotal = invoiceData.item.quantity * invoiceData.item.unitPrice;
+    const gstAmount = (subtotal * invoiceData.item.gstPercentage) / 100;
+    const total = subtotal + gstAmount;
+
+    // Create invoice HTML
+    const invoiceHTML = `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Invoice - ${invoiceData.invoiceNumber}</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f5f5f5; }
+          .invoice-container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 0 20px rgba(0,0,0,0.1); }
+          .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #e5e7eb; padding-bottom: 20px; }
+          .company-name { font-size: 28px; font-weight: bold; color: #1f2937; margin-bottom: 5px; }
+          .company-details { color: #6b7280; font-size: 14px; }
+          .invoice-title { font-size: 24px; font-weight: bold; color: #1f2937; margin-bottom: 20px; }
+          .invoice-info { display: flex; justify-content: space-between; margin-bottom: 30px; }
+          .invoice-details, .supplier-details { flex: 1; }
+          .section-title { font-size: 16px; font-weight: bold; color: #374151; margin-bottom: 10px; }
+          .detail-row { margin-bottom: 5px; color: #6b7280; }
+          .items-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+          .items-table th, .items-table td { padding: 12px; text-align: left; border-bottom: 1px solid #e5e7eb; }
+          .items-table th { background-color: #f9fafb; font-weight: bold; color: #374151; }
+          .items-table td { color: #6b7280; }
+          .totals { text-align: right; }
+          .total-row { display: flex; justify-content: space-between; margin-bottom: 10px; padding: 5px 0; }
+          .total-label { font-weight: bold; color: #374151; }
+          .total-amount { font-weight: bold; color: #1f2937; }
+          .grand-total { border-top: 2px solid #e5e7eb; padding-top: 10px; font-size: 18px; }
+          .footer { text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 12px; }
+        </style>
+      </head>
+      <body>
+        <div class="invoice-container">
+          <div class="header">
+            <div class="company-name">${invoiceData.company.name}</div>
+            <div class="company-details">
+              ${invoiceData.company.address}<br>
+              GST: ${invoiceData.company.gstNumber} | Phone: ${invoiceData.company.phone} | Email: ${invoiceData.company.email}
+            </div>
+          </div>
+          
+          <div class="invoice-title">Raw Material Invoice</div>
+          
+          <div class="invoice-info">
+            <div class="invoice-details">
+              <div class="section-title">Invoice Details</div>
+              <div class="detail-row"><strong>Invoice Number:</strong> ${invoiceData.invoiceNumber}</div>
+              <div class="detail-row"><strong>Date:</strong> ${invoiceData.date}</div>
+            </div>
+            <div class="supplier-details">
+              <div class="section-title">Supplier Details</div>
+              <div class="detail-row"><strong>Name:</strong> ${invoiceData.supplier.name}</div>
+              <div class="detail-row"><strong>ID:</strong> ${invoiceData.supplier.id}</div>
+              <div class="detail-row"><strong>GST:</strong> ${invoiceData.supplier.gstNumber}</div>
+              <div class="detail-row"><strong>HSN:</strong> ${invoiceData.supplier.hsn}</div>
+            </div>
+          </div>
+          
+          <table class="items-table">
+            <thead>
+              <tr>
+                <th>Item ID</th>
+                <th>Description</th>
+                <th>Category</th>
+                <th>UOM</th>
+                <th>Quantity</th>
+                <th>Unit Price</th>
+                <th>Subtotal</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>${invoiceData.item.id}</td>
+                <td>${invoiceData.item.name}</td>
+                <td>${invoiceData.item.category}</td>
+                <td>${invoiceData.item.uom}</td>
+                <td>${invoiceData.item.quantity}</td>
+                <td>₹${invoiceData.item.unitPrice.toFixed(2)}</td>
+                <td>₹${subtotal.toFixed(2)}</td>
+              </tr>
+            </tbody>
+          </table>
+          
+          <div class="totals">
+            <div class="total-row">
+              <span class="total-label">Subtotal:</span>
+              <span class="total-amount">₹${subtotal.toFixed(2)}</span>
+            </div>
+            <div class="total-row">
+              <span class="total-label">GST (${invoiceData.item.gstPercentage}%):</span>
+              <span class="total-amount">₹${gstAmount.toFixed(2)}</span>
+            </div>
+            <div class="total-row grand-total">
+              <span class="total-label">Total Amount:</span>
+              <span class="total-amount">₹${total.toFixed(2)}</span>
+            </div>
+          </div>
+          
+          <div class="footer">
+            <p>Thank you for your business!</p>
+            <p>This is a computer-generated invoice.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    // Open invoice in new window
+    const invoiceWindow = window.open('', '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
+    invoiceWindow.document.write(invoiceHTML);
+    invoiceWindow.document.close();
+    
+    // Focus the new window
+    invoiceWindow.focus();
   };
 
   const getStockStatus = (quantity, minStock = 0) => {
@@ -104,12 +258,25 @@ const InventoryDetailsModal = ({
                 </p>
               </div>
             </div>
-            <button
-              onClick={onClose}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <HiXMark className="h-5 w-5 text-gray-500" />
-            </button>
+            <div className="flex items-center space-x-2">
+              {/* Invoice button - only for raw materials, positioned near X button */}
+              {isRawMaterial && (
+                <Button
+                  variant="primary"
+                  onClick={generateInvoice}
+                  className="px-4 py-2 flex items-center space-x-2"
+                >
+                  <HiDocumentArrowDown className="h-4 w-4" />
+                  <span>Invoice</span>
+                </Button>
+              )}
+              <button
+                onClick={onClose}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <HiXMark className="h-5 w-5 text-gray-500" />
+              </button>
+            </div>
           </div>
 
           {/* Content */}
@@ -412,42 +579,6 @@ const InventoryDetailsModal = ({
               </div>
             )}
 
-            {/* Action Buttons */}
-            <div className="flex items-center justify-end space-x-3 pt-4 border-t border-gray-200">
-              <Button
-                variant="outline"
-                onClick={onClose}
-                className="px-4 py-2"
-              >
-                Close
-              </Button>
-              {!isFinishedProduction && onEdit && (
-                <Button
-                  variant="primary"
-                  onClick={() => {
-                    onEdit(inventoryItem);
-                    onClose();
-                  }}
-                  className="px-4 py-2 flex items-center space-x-2"
-                >
-                  <HiPencil className="h-4 w-4" />
-                  <span>Edit {isRawMaterial ? 'Raw Material' : 'Product'}</span>
-                </Button>
-              )}
-              {!isFinishedProduction && onDelete && (
-                <Button
-                  variant="danger"
-                  onClick={() => {
-                    onDelete(inventoryItem);
-                    onClose();
-                  }}
-                  className="px-4 py-2 flex items-center space-x-2"
-                >
-                  <HiTrash className="h-4 w-4" />
-                  <span>Delete {isRawMaterial ? 'Raw Material' : 'Product'}</span>
-                </Button>
-              )}
-            </div>
           </div>
         </div>
       </div>
