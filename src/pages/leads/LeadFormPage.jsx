@@ -139,7 +139,7 @@ const LeadFormPage = () => {
   const isLoading = createLoading || updateLoading || leadLoading;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
 
       {/* Form Content */}
       <div className="max-w-7xl mx-auto py-6" style={{overflow: 'visible'}}>

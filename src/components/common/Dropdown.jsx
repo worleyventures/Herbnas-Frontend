@@ -12,6 +12,7 @@ const Dropdown = ({
   label = "",
   helperText = "",
   className = "",
+  labelClassName = "",
   loading = false,
   searchable = false,
   searchPlaceholder = "Search...",
@@ -19,6 +20,7 @@ const Dropdown = ({
   onAddNew,
   addNewLabel = "Add New",
   showAddNew = false,
+  name,
   ...props
 }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -29,16 +31,20 @@ const Dropdown = ({
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        console.log('Dropdown: Clicking outside, closing dropdown');
         setIsOpen(false);
         setSearchTerm('');
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, []);
+  }, [isOpen]);
 
   // Filter options based on search term
   const filteredOptions = searchable 
@@ -48,7 +54,22 @@ const Dropdown = ({
     : options;
 
   const handleSelectChange = (optionValue) => {
-    onChange(optionValue);
+    console.log('Dropdown: handleSelectChange called with:', optionValue);
+    console.log('Dropdown: onChange function:', onChange);
+    
+    if (onChange) {
+      // Create an event-like object to maintain compatibility with existing onChange handlers
+      const syntheticEvent = {
+        target: {
+          value: optionValue,
+          name: name || ''
+        }
+      };
+      onChange(syntheticEvent);
+    } else {
+      console.error('Dropdown: onChange function is not provided');
+    }
+    
     setIsOpen(false);
     setSearchTerm('');
   };
@@ -66,7 +87,7 @@ const Dropdown = ({
   return (
     <div className={`space-y-1 ${className}`} ref={dropdownRef}>
       {label && (
-        <label className="block text-sm font-medium text-gray-700">
+        <label className={`block text-sm font-medium text-gray-700 ${labelClassName}`}>
           {label}
         </label>
       )}
@@ -74,7 +95,13 @@ const Dropdown = ({
       <div className="relative">
         <button
           type="button"
-          onClick={() => !disabled && !loading && setIsOpen(!isOpen)}
+          onClick={() => {
+            console.log('Dropdown: Button clicked, disabled:', disabled, 'loading:', loading);
+            if (!disabled && !loading) {
+              console.log('Dropdown: Opening dropdown, current isOpen:', isOpen);
+              setIsOpen(!isOpen);
+            }
+          }}
           disabled={disabled || loading}
           className={`
             w-full px-4 py-2.5 pr-8 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#22c55e] focus:border-[#22c55e] text-sm bg-white shadow-sm hover:border-gray-400 cursor-pointer text-left
@@ -135,7 +162,12 @@ const Dropdown = ({
                 <button
                   key={option.value}
                   type="button"
-                  onClick={() => handleSelectChange(option.value)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Dropdown: Option clicked:', option.value, option.label);
+                    handleSelectChange(option.value);
+                  }}
                   className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-100 focus:outline-none focus:bg-gray-100 ${
                     value === option.value ? 'bg-[#22c55e]/10 text-[#22c55e] font-medium' : 'text-gray-900'
                   }`}

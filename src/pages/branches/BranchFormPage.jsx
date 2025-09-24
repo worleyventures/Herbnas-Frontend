@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import { HiArrowLeft, HiBuildingOffice2, HiMapPin, HiCog6Tooth, HiExclamationTriangle, HiCheckCircle } from 'react-icons/hi2';
+import { HiArrowLeft, HiBuildingOffice2, HiMapPin, HiCog6Tooth, HiExclamationTriangle, HiCheckCircle, HiXMark } from 'react-icons/hi2';
 import { Button, Input, Select } from '../../components/common';
 import { createBranch, updateBranch, getBranchById } from '../../redux/actions/branchActions';
 import { clearError, clearBranchSuccess } from '../../redux/slices/branchSlice';
@@ -16,6 +16,7 @@ const BranchFormPage = () => {
   const selectedBranch = location.state?.branch || null;
   const mode = location.state?.mode || (params.id ? 'edit' : 'create');
   const branchId = params.id;
+  const isEdit = mode === 'edit';
   
   // Get loading states, success states, and branch data from Redux
   const { 
@@ -144,7 +145,7 @@ const BranchFormPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -174,9 +175,48 @@ const BranchFormPage = () => {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-          <form onSubmit={handleSubmit} className="p-6 space-y-6">
+      <div className="min-h-screen bg-gray-50">
+        {/* Header */}
+        <div className="bg-white border-b border-gray-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between py-6">
+              <div className="flex items-center space-x-3">
+                <Button
+                  onClick={() => navigate('/branches')}
+                  variant="ghost"
+                  size="sm"
+                  icon={HiArrowLeft}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  Back
+                </Button>
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <HiBuildingOffice2 className="h-6 w-6 text-blue-600" />
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">
+                    {isEdit ? 'Edit Branch' : 'Add Branch'}
+                  </h1>
+                  <p className="text-sm text-gray-500">
+                    {isEdit ? 'Update branch details' : 'Add new branch to the system'}
+                  </p>
+                </div>
+              </div>
+              <Button
+                onClick={() => navigate('/branches')}
+                variant="outline"
+                size="sm"
+                icon={HiXMark}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Form Content */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <form onSubmit={handleSubmit} className="space-y-8">
             {/* Basic Information */}
             <div className="bg-gray-50 rounded-lg p-4">
               <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">

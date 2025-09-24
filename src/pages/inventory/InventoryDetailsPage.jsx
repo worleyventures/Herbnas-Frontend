@@ -28,14 +28,15 @@ const InventoryDetailsPage = () => {
   });
   
   // Get inventory data from Redux state
-  const inventory = useSelector((state) => state.inventory?.inventory || []);
+  const { rawMaterials = [], finishedGoods = [] } = useSelector((state) => state.inventory || {});
+  const inventory = [...rawMaterials, ...finishedGoods];
   
   // Find the specific inventory item
   const inventoryItem = inventory.find(item => item._id === id);
   
   if (!inventoryItem) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center max-w-md mx-auto px-6">
           <div className="bg-white rounded-2xl shadow-xl p-8">
             <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -148,7 +149,7 @@ const InventoryDetailsPage = () => {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -188,7 +189,7 @@ const InventoryDetailsPage = () => {
                 Share
               </Button>
               <Button
-                onClick={() => navigate(`/inventory/edit/${inventoryItem._id}`)}
+                onClick={() => navigate(`/inventory/edit/${inventoryItem._id}?type=${inventoryItem.materialId ? 'rawMaterials' : 'finishedGoods'}`)}
                 variant="primary"
                 size="sm"
                 className="flex items-center"
@@ -364,7 +365,7 @@ const InventoryDetailsPage = () => {
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
               <div className="space-y-3">
                 <Button
-                  onClick={() => navigate(`/inventory/edit/${inventoryItem._id}`)}
+                  onClick={() => navigate(`/inventory/edit/${inventoryItem._id}?type=${inventoryItem.materialId ? 'rawMaterials' : 'finishedGoods'}`)}
                   variant="primary"
                   size="sm"
                   className="w-full justify-start"

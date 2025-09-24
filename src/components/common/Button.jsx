@@ -13,6 +13,8 @@ const Button = ({
   type = "button",
   ...props
 }) => {
+  // Filter out the icon prop to prevent it from being passed to the DOM element
+  const { icon, ...restProps } = props;
   const getVariantClasses = () => {
     const baseClasses = "inline-flex items-center justify-center font-semibold rounded-xl transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 btn-hover";
     
@@ -88,7 +90,7 @@ const Button = ({
       style={getPrimaryStyle()}
       onClick={onClick}
       disabled={isDisabled}
-      {...props}
+      {...restProps}
     >
       {loading && (
         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
@@ -117,6 +119,8 @@ export const ActionButton = ({
   className = "",
   ...props
 }) => {
+  // Filter out the icon prop to prevent it from being passed to the DOM element
+  const { icon, ...restProps } = props;
   const getActionVariantClasses = () => {
     switch (variant) {
       case 'view':
@@ -179,7 +183,7 @@ export const ActionButton = ({
       className={`${getActionSizeClasses()} rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 ${getActionVariantClasses()} ${className}`}
       style={getActionStyle()}
       title={title}
-      {...props}
+      {...restProps}
     >
       <Icon className={getIconSize()} />
     </button>

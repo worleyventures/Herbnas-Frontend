@@ -31,7 +31,7 @@ const Layout = () => {
   }, [location]);
 
   return (
-    <div className="h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 flex overflow-hidden">
+    <div className="h-screen bg-white flex overflow-hidden">
       {/* Sidebar */}
       <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
@@ -41,7 +41,7 @@ const Layout = () => {
         <Header sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
         {/* Content */}
-        <main className="flex-1 overflow-y-auto bg-gradient-to-br from-gray-50">
+        <main className="flex-1 overflow-y-auto bg-white">
           <div className="py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
             <div className="animate-fade-in">
               <Outlet />

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { HiUserGroup, HiPlus, HiMagnifyingGlass, HiEye, HiPencil, HiTrash } from 'react-icons/hi2';
-import { StatCard, Table, Button, ActionButton, Input, Select, Loading, EmptyState } from '../../components/common';
+import { StatCard, Table, Button, ActionButton, Input, Select, Loading, EmptyState, UserDetailsModal } from '../../components/common';
 import { PageHeader } from '../../components/layout';
 import { getAllUsers, deleteUser } from '../../redux/actions/userActions';
 import { getAllBranches } from '../../redux/actions/branchActions';
@@ -50,6 +50,8 @@ const UsersPage = () => {
   const [filterStatus, setFilterStatus] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
+  const [showUserModal, setShowUserModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
 
   // Load all users for stats and branches on component mount
   useEffect(() => {
@@ -309,9 +311,9 @@ const UsersPage = () => {
 
   // Handle view user
   const handleViewUser = (user) => {
-    console.log('UsersPage: Navigating to view user:', user);
-    console.log('UsersPage: User ID:', user._id);
-    navigate(`/users/view/${user._id}`);
+    console.log('UsersPage: Opening user modal:', user);
+    setSelectedUser(user);
+    setShowUserModal(true);
   };
 
   // Handle edit user
@@ -519,6 +521,15 @@ const UsersPage = () => {
           )}
         </div>
       </div>
+
+      {/* User Details Modal */}
+      <UserDetailsModal
+        isOpen={showUserModal}
+        onClose={() => setShowUserModal(false)}
+        user={selectedUser}
+        onEdit={handleEditUser}
+        onDelete={handleDeleteUser}
+      />
     </div>
   );
 };

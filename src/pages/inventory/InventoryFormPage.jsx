@@ -1,16 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import { HiArrowLeft, HiCube, HiBuildingOffice2, HiExclamationTriangle, HiCheckCircle, HiPlus, HiXCircle } from 'react-icons/hi2';
+import { HiArrowLeft, HiCube, HiBuildingOffice2, HiExclamationTriangle, HiCheckCircle, HiPlus, HiXCircle, HiXMark } from 'react-icons/hi2';
 import { Button, Input, Select } from '../../components/common';
-import { createOrUpdateInventory } from '../../redux/actions/inventoryActions';
-import { clearError, clearSuccess } from '../../redux/slices/inventorySlice';
+import { createOrUpdateInventory, getAllFinishedGoods } from '../../redux/actions/inventoryActions';
+import { getAllProducts } from '../../redux/actions/productActions';
+import { clearError } from '../../redux/slices/inventorySlice';
+import RawMaterialForm from '../../components/inventory/RawMaterialForm';
 
 const InventoryFormPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const params = useParams();
   const dispatch = useDispatch();
+  
+  // Get inventory type from query parameters
+  const searchParams = new URLSearchParams(location.search);
+  const inventoryType = searchParams.get('type') || 'finishedGoods';
   
   // Get inventory data from location state or params
   const selectedInventory = location.state?.inventory || null;
@@ -21,12 +27,15 @@ const InventoryFormPage = () => {
   const { 
     loading: inventoryLoading,
     error: inventoryError,
-    inventory
+    finishedGoods
   } = useSelector(state => state.inventory || {});
+  
+  // Get products for the dropdown
+  const { products } = useSelector(state => state.products || {});
   
   // Find the inventory by ID if we're editing
   const reduxInventory = mode === 'edit' && inventoryId ? 
-    inventory.find(item => item._id === inventoryId) : null;
+    (finishedGoods || []).find(item => item._id === inventoryId) : null;
   
   const [inventoryItems, setInventoryItems] = useState([
     {
@@ -43,22 +52,26 @@ const InventoryFormPage = () => {
 
   const [errors, setErrors] = useState({});
 
-  // Note: For editing, inventory data should be passed through location state
+  // Load products on component mount
+  useEffect(() => {
+    dispatch(getAllProducts({ isActive: true }));
+  }, [dispatch]);
 
   // Initialize form data
   useEffect(() => {
     const inventoryData = selectedInventory || reduxInventory;
-    if (inventoryData && Array.isArray(inventoryData)) {
-      setInventoryItems(inventoryData.map((item, index) => ({
-        id: index + 1,
-        productId: item.product?._id || item.product || '',
-        batchId: item.batchId || '',
-        availableStock: item.availableStock || '',
-        minStockLevel: item.minStockLevel || '',
-        maxStockLevel: item.maxStockLevel || '',
+    if (inventoryData && !Array.isArray(inventoryData)) {
+      // Single inventory item for editing
+      setInventoryItems([{
+        id: 1,
+        productId: inventoryData.product?._id || inventoryData.product || '',
+        batchId: inventoryData.batchId || '',
+        availableStock: inventoryData.availableQuantity || inventoryData.availableStock || '',
+        minStockLevel: inventoryData.minStockLevel || '',
+        maxStockLevel: inventoryData.maxStockLevel || '',
         stockUpdate: '',
         stockUpdateType: 'add'
-      })));
+      }]);
     } else if (mode === 'create') {
       setInventoryItems([{
         id: 1,
@@ -78,13 +91,27 @@ const InventoryFormPage = () => {
 
   // Handle input changes
   const handleInputChange = (itemId, field, value) => {
-    setInventoryItems(prev => 
-      prev.map(item => 
-        item.id === itemId 
-          ? { ...item, [field]: value }
-          : item
-      )
-    );
+    // For numeric fields, ensure only valid numbers are entered
+    if (['availableStock', 'minStockLevel', 'maxStockLevel'].includes(field)) {
+      // Allow empty string, numbers, and decimal points
+      if (value === '' || /^\d*\.?\d*$/.test(value)) {
+        setInventoryItems(prev => 
+          prev.map(item => 
+            item.id === itemId 
+              ? { ...item, [field]: value }
+              : item
+          )
+        );
+      }
+    } else {
+      setInventoryItems(prev => 
+        prev.map(item => 
+          item.id === itemId 
+            ? { ...item, [field]: value }
+            : item
+        )
+      );
+    }
     
     // Clear error when user starts typing
     if (errors[`${itemId}_${field}`]) {
@@ -126,17 +153,36 @@ const InventoryFormPage = () => {
       if (!item.productId) {
         newErrors[`${item.id}_productId`] = 'Product is required';
       }
-      if (!item.batchId) {
+      if (!item.batchId || item.batchId.trim() === '') {
         newErrors[`${item.id}_batchId`] = 'Batch ID is required';
       }
-      if (!item.availableStock) {
-        newErrors[`${item.id}_availableStock`] = 'Available stock is required';
+      if (!item.availableStock || item.availableStock === '' || isNaN(parseInt(item.availableStock))) {
+        newErrors[`${item.id}_availableStock`] = 'Available stock must be a valid number';
+      } else if (parseInt(item.availableStock) < 0) {
+        newErrors[`${item.id}_availableStock`] = 'Available stock cannot be negative';
       }
-      if (item.minStockLevel && item.maxStockLevel) {
+      
+      // Validate min stock level
+      if (item.minStockLevel && item.minStockLevel !== '' && isNaN(parseInt(item.minStockLevel))) {
+        newErrors[`${item.id}_minStockLevel`] = 'Min stock level must be a valid number';
+      } else if (item.minStockLevel && parseInt(item.minStockLevel) < 0) {
+        newErrors[`${item.id}_minStockLevel`] = 'Min stock level cannot be negative';
+      }
+      
+      // Validate max stock level
+      if (item.maxStockLevel && item.maxStockLevel !== '' && isNaN(parseInt(item.maxStockLevel))) {
+        newErrors[`${item.id}_maxStockLevel`] = 'Max stock level must be a valid number';
+      } else if (item.maxStockLevel && parseInt(item.maxStockLevel) < 0) {
+        newErrors[`${item.id}_maxStockLevel`] = 'Max stock level cannot be negative';
+      }
+      
+      // Validate min vs max stock
+      if (item.minStockLevel && item.maxStockLevel && 
+          item.minStockLevel !== '' && item.maxStockLevel !== '') {
         const minStock = parseInt(item.minStockLevel);
         const maxStock = parseInt(item.maxStockLevel);
-        if (minStock > maxStock) {
-          newErrors[`${item.id}_maxStockLevel`] = 'Max stock must be greater than min stock';
+        if (!isNaN(minStock) && !isNaN(maxStock) && minStock > maxStock) {
+          newErrors[`${item.id}_maxStockLevel`] = 'Max stock must be greater than or equal to min stock';
         }
       }
     });
@@ -153,16 +199,23 @@ const InventoryFormPage = () => {
       return;
     }
 
-    const inventoryData = inventoryItems.map(item => ({
-      product: item.productId,
-      batchId: item.batchId,
-      availableStock: parseInt(item.availableStock),
-      minStockLevel: item.minStockLevel ? parseInt(item.minStockLevel) : 0,
-      maxStockLevel: item.maxStockLevel ? parseInt(item.maxStockLevel) : 0
-    }));
+    // Only allow editing existing finished goods
+    if (mode !== 'edit' || !inventoryId) {
+      alert('Finished goods can only be created through the production approval process. Please use the production module to create new finished goods.');
+      return;
+    }
 
     try {
-      await dispatch(createOrUpdateInventory(inventoryData)).unwrap();
+      for (const item of inventoryItems) {
+        const inventoryData = {
+          _id: inventoryId,
+          availableQuantity: parseInt(item.availableStock),
+          notes: `Updated via inventory form - ${new Date().toLocaleString()}`
+        };
+
+        await dispatch(createOrUpdateInventory(inventoryData)).unwrap();
+      }
+      
       // Navigate back on success
       navigate('/inventory');
     } catch (error) {
@@ -175,8 +228,91 @@ const InventoryFormPage = () => {
     navigate('/inventory');
   };
 
+  // Render raw materials form if type is rawMaterials
+  if (inventoryType === 'rawMaterials') {
+    return <RawMaterialForm />;
+  }
+
+  // Show message for create mode since finished goods can't be created directly
+  if (mode === 'create') {
+    return (
+      <div className="min-h-screen bg-white">
+        {/* Header */}
+        <div className="bg-white border-b border-gray-200 sticky top-0 z-50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-16">
+              <div className="flex items-center space-x-4">
+                <Button
+                  onClick={handleBack}
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center"
+                >
+                  <HiArrowLeft className="h-4 w-4 mr-2" />
+                  Back to Inventory
+                </Button>
+                <div className="h-6 w-px bg-gray-300" />
+                <div>
+                  <h1 className="text-xl font-semibold text-gray-900">
+                    Create Finished Goods
+                  </h1>
+                  <p className="text-sm text-gray-500">
+                    Finished goods are created through production approval
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Main Content */}
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+            <div className="p-8 text-center">
+              <HiCube className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+              <h2 className="text-2xl font-semibold text-gray-900 mb-2">
+                Finished Goods Creation
+              </h2>
+              <p className="text-gray-600 mb-6 max-w-md mx-auto">
+                Finished goods inventory is automatically created when production batches are approved. 
+                You cannot create finished goods directly through this form.
+              </p>
+              <div className="space-y-4">
+                <p className="text-sm text-gray-500">
+                  To create finished goods:
+                </p>
+                <ol className="text-sm text-gray-600 text-left max-w-md mx-auto space-y-2">
+                  <li>1. Go to the Production module</li>
+                  <li>2. Create a new production batch</li>
+                  <li>3. Complete the production process</li>
+                  <li>4. Approve the production (QC status)</li>
+                  <li>5. Finished goods will be automatically created</li>
+                </ol>
+                <div className="pt-4">
+                  <Button
+                    onClick={() => navigate('/production')}
+                    variant="primary"
+                    className="mr-4"
+                  >
+                    Go to Production
+                  </Button>
+                  <Button
+                    onClick={handleBack}
+                    variant="outline"
+                  >
+                    Back to Inventory
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -206,11 +342,50 @@ const InventoryFormPage = () => {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-          <form onSubmit={handleSubmit} className="p-6 space-y-6">
+      <div className="min-h-screen bg-gray-50">
+        {/* Header */}
+        <div className="bg-white border-b border-gray-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between py-6">
+              <div className="flex items-center space-x-3">
+                <Button
+                  onClick={() => navigate('/inventory')}
+                  variant="ghost"
+                  size="sm"
+                  icon={HiArrowLeft}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  Back
+                </Button>
+                <div className="p-2 bg-green-100 rounded-lg">
+                  <HiCube className="h-6 w-6 text-green-600" />
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">
+                    {mode === 'edit' ? 'Edit Finished Product' : 'Add Finished Product'}
+                  </h1>
+                  <p className="text-sm text-gray-500">
+                    {mode === 'edit' ? 'Update finished product details' : 'Add new finished product to inventory'}
+                  </p>
+                </div>
+              </div>
+              <Button
+                onClick={() => navigate('/inventory')}
+                variant="outline"
+                size="sm"
+                icon={HiXMark}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Form Content */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <form onSubmit={handleSubmit} id="inventory-form" className="space-y-8">
             {/* Inventory Items */}
-            <div className="bg-gray-50 rounded-lg p-4">
+            <div id="basic-info-section" className="bg-gray-50 rounded-lg p-4">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-gray-900 flex items-center">
                   <HiCube className="h-5 w-5 mr-2 text-[#22c55e]" />
@@ -256,7 +431,10 @@ const InventoryFormPage = () => {
                           onChange={(e) => handleInputChange(item.id, 'productId', e.target.value)}
                           options={[
                             { value: '', label: 'Select Product' },
-                            // Add product options here
+                            ...(products || []).map(product => ({
+                              value: product._id,
+                              label: `${product.productName} (${product.productId || 'N/A'})`
+                            }))
                           ]}
                         />
                         {errors[`${item.id}_productId`] && (

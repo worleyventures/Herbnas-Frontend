@@ -189,12 +189,14 @@ const LeadForm = ({
 
   // Handle branch selection
   const handleBranchSelect = (branch) => {
+    console.log('Branch selected:', branch);
     setFormData(prev => ({
       ...prev,
       dispatchedFrom: branch._id
     }));
     setBranchSearch(branch.branchName);
     setShowBranchDropdown(false);
+    console.log('Branch selection completed');
     // Clear user selection when branch changes
     setFormData(prev => ({
       ...prev,
@@ -230,16 +232,21 @@ const LeadForm = ({
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
+      console.log('Click outside detected, target:', event.target);
       if (showProductDropdown && !event.target.closest('.product-dropdown-container')) {
+        console.log('Closing product dropdown');
         setShowProductDropdown(false);
       }
       if (showHealthIssueDropdown && !event.target.closest('.health-issue-dropdown-container')) {
+        console.log('Closing health issue dropdown');
         setShowHealthIssueDropdown(false);
       }
       if (showBranchDropdown && !event.target.closest('.branch-dropdown-container')) {
+        console.log('Closing branch dropdown');
         setShowBranchDropdown(false);
       }
       if (showUserDropdown && !event.target.closest('.user-dropdown-container')) {
+        console.log('Closing user dropdown');
         setShowUserDropdown(false);
       }
     };
@@ -1393,7 +1400,12 @@ const LeadForm = ({
                         filteredBranches.map(branch => (
                           <div
                             key={branch._id}
-                            onClick={() => handleBranchSelect(branch)}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              console.log('Branch option clicked:', branch);
+                              handleBranchSelect(branch);
+                            }}
                             className="px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
                           >
                             <div className="flex items-center">

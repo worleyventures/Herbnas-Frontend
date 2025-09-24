@@ -86,6 +86,33 @@ const Header = ({ sidebarOpen, setSidebarOpen }) => {
       return lead ? lead.customerName || 'Lead Details' : 'Lead Details';
     };
 
+    // Get appropriate name for ObjectId based on context
+    const getObjectIdName = (objectId, pathnames, index) => {
+      // Check if we're in a leads context
+      if (pathnames.includes('leads')) {
+        return getLeadName(objectId);
+      }
+      
+      // For other contexts, return generic names based on the previous path
+      const previousPath = pathnames[index - 1];
+      switch (previousPath) {
+        case 'products':
+          return 'Product Details';
+        case 'branches':
+          return 'Branch Details';
+        case 'health-issues':
+          return 'Health Issue Details';
+        case 'users':
+          return 'User Details';
+        case 'inventory':
+          return 'Inventory Details';
+        case 'production':
+          return 'Production Details';
+        default:
+          return 'Details';
+      }
+    };
+
     const breadcrumbs = [
       { name: 'Home', href: '/dashboard', icon: HiHome, current: false }
     ];
@@ -96,8 +123,8 @@ const Header = ({ sidebarOpen, setSidebarOpen }) => {
       
       let displayName;
       if (isObjectId(pathname)) {
-        // If it's a MongoDB ObjectId, try to get the lead name
-        displayName = getLeadName(pathname);
+        // If it's a MongoDB ObjectId, get appropriate name based on context
+        displayName = getObjectIdName(pathname, pathnames, index);
       } else {
         displayName = breadcrumbNameMap[pathname] || pathname.charAt(0).toUpperCase() + pathname.slice(1);
       }
@@ -356,8 +383,10 @@ const Header = ({ sidebarOpen, setSidebarOpen }) => {
                     alt={user.fullName || user.firstName}
                   />
                 ) : (
-                  <div className="h-9 w-9 rounded-full flex items-center justify-center" style={{background: 'linear-gradient(to bottom right, #22c55e, #16a34a)'}}>
-                    <HiUserCircle className="h-5 w-5 text-white" />
+                  <div className="h-9 w-9 rounded-full flex items-center justify-center bg-gray-100 border-2 border-gray-300">
+                    <svg className="h-6 w-6 text-gray-600" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                    </svg>
                   </div>
                 )}
                 <div className="hidden md:block text-left">
