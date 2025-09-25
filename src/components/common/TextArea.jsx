@@ -14,7 +14,7 @@ const TextArea = ({
 }) => {
   const baseClasses = `
     block w-full px-3 py-2 border rounded-md shadow-sm
-    focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+    focus:outline-none focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a]
     disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed
     transition-colors duration-200
   `;
@@ -55,3 +55,6 @@ const TextArea = ({
 };
 
 export default TextArea;
+
+
+

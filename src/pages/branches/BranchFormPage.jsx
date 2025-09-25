@@ -146,33 +146,6 @@ const BranchFormPage = () => {
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-4">
-              <Button
-                onClick={handleBack}
-                variant="outline"
-                size="sm"
-                className="flex items-center"
-              >
-                <HiArrowLeft className="h-4 w-4 mr-2" />
-                Back to Branches
-              </Button>
-              <div className="h-6 w-px bg-gray-300" />
-              <div>
-                <h1 className="text-xl font-semibold text-gray-900">
-                  {mode === 'create' ? 'Create Branch' : 'Edit Branch'}
-                </h1>
-                <p className="text-sm text-gray-500">
-                  {mode === 'create' ? 'Add a new branch to the system' : 'Update branch information'}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* Main Content */}
       <div className="min-h-screen bg-gray-50">
@@ -181,15 +154,6 @@ const BranchFormPage = () => {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between py-6">
               <div className="flex items-center space-x-3">
-                <Button
-                  onClick={() => navigate('/branches')}
-                  variant="ghost"
-                  size="sm"
-                  icon={HiArrowLeft}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  Back
-                </Button>
                 <div className="p-2 bg-blue-100 rounded-lg">
                   <HiBuildingOffice2 className="h-6 w-6 text-blue-600" />
                 </div>

@@ -20,6 +20,7 @@ const InputWithDropdown = ({
   name,
   dropdownName,
   type = "text",
+  size = "md",
   ...props
 }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -63,6 +64,21 @@ const InputWithDropdown = ({
 
   const selectedOption = dropdownOptions.find(option => option.value === dropdownValue);
 
+  const getSizeClasses = () => {
+    switch (size) {
+      case 'xs':
+        return 'px-3 py-1.5 text-xs';
+      case 'sm':
+        return 'px-3 py-2 text-sm';
+      case 'md':
+        return 'px-4 py-2.5 text-sm';
+      case 'lg':
+        return 'px-5 py-3 text-base';
+      default:
+        return 'px-4 py-2.5 text-sm';
+    }
+  };
+
   return (
     <div className={`space-y-1 ${className}`}>
       {label && (
@@ -82,7 +98,8 @@ const InputWithDropdown = ({
             placeholder={placeholder}
             disabled={disabled}
             className={`
-              flex-1 px-4 py-2.5 border rounded-l-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#22c55e] focus:border-[#22c55e] text-sm bg-white shadow-sm hover:border-gray-400
+              flex-1 border rounded-l-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] bg-white shadow-sm hover:border-gray-400
+              ${getSizeClasses()}
               ${error ? 'border-red-300 focus:ring-red-500' : 'border-gray-300'}
               ${disabled ? 'bg-gray-50 cursor-not-allowed' : ''}
               ${inputClassName}
@@ -100,10 +117,11 @@ const InputWithDropdown = ({
             }}
             disabled={disabled}
             className={`
-              px-3 py-2.5 border border-l-0 rounded-r-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#22c55e] focus:border-[#22c55e] text-sm bg-white shadow-sm hover:border-gray-400 cursor-pointer
+              border border-l-0 rounded-r-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] bg-white shadow-sm hover:border-gray-400 cursor-pointer
+              ${getSizeClasses()}
               ${error ? 'border-red-300 focus:ring-red-500' : 'border-gray-300'}
               ${disabled ? 'bg-gray-50 cursor-not-allowed' : ''}
-              ${isDropdownOpen ? 'border-[#22c55e]' : ''}
+              ${isDropdownOpen ? 'border-[#8bc34a]' : ''}
             `}
           >
             <div className="flex items-center space-x-1">
@@ -133,7 +151,7 @@ const InputWithDropdown = ({
                     handleDropdownChange(option.value);
                   }}
                   className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-100 focus:outline-none focus:bg-gray-100 ${
-                    dropdownValue === option.value ? 'bg-[#22c55e]/10 text-[#22c55e] font-medium' : 'text-gray-900'
+                    dropdownValue === option.value ? 'bg-[#8bc34a]/10 text-[#8bc34a] font-medium' : 'text-gray-900'
                   }`}
                 >
                   {option.label}
@@ -163,3 +181,6 @@ const InputWithDropdown = ({
 };
 
 export default InputWithDropdown;
+
+
+
