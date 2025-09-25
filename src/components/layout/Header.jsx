@@ -235,8 +235,8 @@ const Header = ({ sidebarOpen, setSidebarOpen }) => {
                     to={breadcrumb.href}
                     className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                       breadcrumb.current
-                        ? 'text-gray-900 bg-gray-100/50 cursor-default font-semibold'
-                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/30'
+                        ? 'text-gray-900 cursor-default font-semibold'
+                        : 'text-gray-600'
                     }`}
                     aria-current={breadcrumb.current ? 'page' : undefined}
                   >

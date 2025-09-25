@@ -194,12 +194,6 @@ const ProductForm = () => {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-3">
-          <button
-            onClick={handleBack}
-            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <HiArrowLeft className="h-5 w-5" />
-          </button>
           <div className="flex items-center space-x-3">
             <div className="p-2 bg-green-100 rounded-lg">
               <HiShoppingBag className="h-6 w-6 text-green-600" />
@@ -218,14 +212,14 @@ const ProductForm = () => {
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white p-4">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Product Information</h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Product ID */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Product ID <span className="text-gray-400">(Optional - Auto-generated if empty)</span>
+                Product ID 
               </label>
               <Input
                 type="text"

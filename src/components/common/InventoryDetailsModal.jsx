@@ -246,7 +246,7 @@ const InventoryDetailsModal = ({
                 {isRawMaterial ? (
                   <HiTruck className="h-6 w-6 text-blue-600" />
                 ) : (
-                  <HiCube className="h-6 w-6 text-purple-600" />
+                <HiCube className="h-6 w-6 text-purple-600" />
                 )}
               </div>
               <div>
@@ -270,12 +270,12 @@ const InventoryDetailsModal = ({
                   <span>Invoice</span>
                 </Button>
               )}
-              <button
-                onClick={onClose}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <HiXMark className="h-5 w-5 text-gray-500" />
-              </button>
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <HiXMark className="h-5 w-5 text-gray-500" />
+            </button>
             </div>
           </div>
 
@@ -291,7 +291,7 @@ const InventoryDetailsModal = ({
                 {isRawMaterial ? (
                   <HiTruck className="h-8 w-8" />
                 ) : (
-                  <HiCube className="h-8 w-8" />
+                <HiCube className="h-8 w-8" />
                 )}
               </div>
               <div className="flex-1">
@@ -418,33 +418,33 @@ const InventoryDetailsModal = ({
                   <HiCurrencyDollar className="h-5 w-5 text-gray-400" />
                   <div className="flex-1">
                     <p className="text-xs font-medium text-gray-600">Unit Price</p>
-                    <p className="text-sm font-semibold text-gray-900">
+                      <p className="text-sm font-semibold text-gray-900">
                       {formatCurrency(inventoryItem.price || inventoryItem.product?.price)}
-                    </p>
+                      </p>
+                    </div>
                   </div>
-                </div>
 
-                <div className="flex items-center space-x-3 p-3 bg-white border border-gray-200 rounded-lg">
+                  <div className="flex items-center space-x-3 p-3 bg-white border border-gray-200 rounded-lg">
                   <HiChartBar className="h-5 w-5 text-gray-400" />
-                  <div className="flex-1">
+                    <div className="flex-1">
                     <p className="text-xs font-medium text-gray-600">GST Percentage</p>
-                    <p className="text-sm font-semibold text-gray-900">
+                      <p className="text-sm font-semibold text-gray-900">
                       {inventoryItem.gstPercentage || 'N/A'}%
-                    </p>
+                      </p>
+                    </div>
                   </div>
-                </div>
 
-                <div className="flex items-center space-x-3 p-3 bg-white border border-gray-200 rounded-lg">
+                  <div className="flex items-center space-x-3 p-3 bg-white border border-gray-200 rounded-lg">
                   <HiCurrencyDollar className="h-5 w-5 text-gray-400" />
-                  <div className="flex-1">
+                    <div className="flex-1">
                     <p className="text-xs font-medium text-gray-600">Total Price (with GST)</p>
-                    <p className="text-sm font-semibold text-gray-900">
+                      <p className="text-sm font-semibold text-gray-900">
                       {formatCurrency(inventoryItem.totalPrice || inventoryItem.formattedTotalPrice)}
-                    </p>
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
 
             {/* Supplier Information (for Raw Materials) */}
             {isRawMaterial && (inventoryItem.supplierName || inventoryItem.supplierId) && (
@@ -498,8 +498,8 @@ const InventoryDetailsModal = ({
               </div>
             )}
 
-            {/* Management Information */}
-            <div className="space-y-4">
+              {/* Management Information */}
+              <div className="space-y-4">
               <h4 className="text-sm font-semibold text-gray-900 uppercase tracking-wide flex items-center">
                 <HiUser className="h-4 w-4 mr-2" />
                 Management Information
@@ -519,38 +519,38 @@ const InventoryDetailsModal = ({
                   </div>
                 </div>
 
-                <div className="flex items-center space-x-3 p-3 bg-white border border-gray-200 rounded-lg">
-                  <HiUser className="h-5 w-5 text-gray-400" />
-                  <div className="flex-1">
-                    <p className="text-xs font-medium text-gray-600">Updated By</p>
-                    <p className="text-sm font-semibold text-gray-900">
-                      {inventoryItem.updatedBy ? 
-                        `${inventoryItem.updatedBy.firstName} ${inventoryItem.updatedBy.lastName}` : 
-                        'Unknown User'
-                      }
-                    </p>
+                  <div className="flex items-center space-x-3 p-3 bg-white border border-gray-200 rounded-lg">
+                    <HiUser className="h-5 w-5 text-gray-400" />
+                    <div className="flex-1">
+                      <p className="text-xs font-medium text-gray-600">Updated By</p>
+                      <p className="text-sm font-semibold text-gray-900">
+                        {inventoryItem.updatedBy ? 
+                          `${inventoryItem.updatedBy.firstName} ${inventoryItem.updatedBy.lastName}` : 
+                          'Unknown User'
+                        }
+                      </p>
+                    </div>
                   </div>
-                </div>
 
-                <div className="flex items-center space-x-3 p-3 bg-white border border-gray-200 rounded-lg">
-                  <HiCalendar className="h-5 w-5 text-gray-400" />
-                  <div className="flex-1">
+                  <div className="flex items-center space-x-3 p-3 bg-white border border-gray-200 rounded-lg">
+                    <HiCalendar className="h-5 w-5 text-gray-400" />
+                    <div className="flex-1">
                     <p className="text-xs font-medium text-gray-600">Created Date</p>
-                    <p className="text-sm font-semibold text-gray-900">
+                      <p className="text-sm font-semibold text-gray-900">
                       {formatDate(inventoryItem.createdAt)}
-                    </p>
+                      </p>
+                    </div>
                   </div>
-                </div>
 
-                <div className="flex items-center space-x-3 p-3 bg-white border border-gray-200 rounded-lg">
-                  <HiCalendar className="h-5 w-5 text-gray-400" />
-                  <div className="flex-1">
+                  <div className="flex items-center space-x-3 p-3 bg-white border border-gray-200 rounded-lg">
+                    <HiCalendar className="h-5 w-5 text-gray-400" />
+                    <div className="flex-1">
                     <p className="text-xs font-medium text-gray-600">Last Updated</p>
-                    <p className="text-sm font-semibold text-gray-900">
+                      <p className="text-sm font-semibold text-gray-900">
                       {formatDate(inventoryItem.lastUpdated || inventoryItem.updatedAt)}
-                    </p>
+                      </p>
+                    </div>
                   </div>
-                </div>
 
                 {inventoryItem.lastRestocked && (
                   <div className="flex items-center space-x-3 p-3 bg-white border border-gray-200 rounded-lg">
@@ -560,7 +560,7 @@ const InventoryDetailsModal = ({
                       <p className="text-sm font-semibold text-gray-900">
                         {formatDate(inventoryItem.lastRestocked)}
                       </p>
-                    </div>
+                </div>
                   </div>
                 )}
               </div>

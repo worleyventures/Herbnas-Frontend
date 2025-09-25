@@ -484,7 +484,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
   // Show loading state only when actually loading
   if (loading || statsLoading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="flex items-center justify-center py-12">
         <div className="flex flex-col items-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#22c55e]"></div>
           <p className="mt-4 text-gray-600">Loading leads...</p>
@@ -496,8 +496,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
   // Show empty state when no leads are available
   if (!leads || leads.length === 0) {
     return (
-      <div className="min-h-screen bg-white">
-        <div className="p-6 space-y-6">
+      <div className="space-y-6">
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -635,7 +634,6 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
               </Button>
             </div>
           </div>
-        </div>
 
         {/* Import Modal */}
         <ImportModal
@@ -646,11 +644,10 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
       </div>
     );
   }
-
   // Show error state
   if (error) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="flex items-center justify-center py-12">
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 max-w-md w-full mx-4">
           <div className="flex items-center mb-4">
             <HiExclamationTriangle className="h-8 w-8 text-red-500 mr-3" />
@@ -677,8 +674,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="p-6 space-y-6">
+    <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -880,7 +876,6 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
           )}
           {renderViewContent()}
         </div>
-      </div>
 
       {/* Import Modal */}
       <ImportModal

@@ -230,134 +230,132 @@ const ProductionDashboard = () => {
 
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="p-6 space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Production Management</h1>
-            <p className="mt-1 text-sm text-gray-500">
-              Track and manage production batches, QC status, and manufacturing processes
-            </p>
-          </div>
-          <div className="mt-4 sm:mt-0 flex space-x-3">
-            <Button
-              onClick={handleCreateProduction}
-              icon={HiPlus}
-              variant="gradient"
-              size="sm"
-              className="shadow-lg"
-            >
-              Add Production Batch
-            </Button>
-          </div>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Production Management</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Track and manage production batches, QC status, and manufacturing processes
+          </p>
+        </div>
+        <div className="mt-4 sm:mt-0 flex space-x-3">
+          <Button
+            onClick={handleCreateProduction}
+            icon={HiPlus}
+            variant="gradient"
+            size="sm"
+            className="shadow-lg"
+          >
+            Add Production Batch
+          </Button>
+        </div>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
+        <StatCard
+          title="Total Batches"
+          value={stats.total}
+          icon={HiClipboardDocumentList}
+          gradient="blue"
+          animation="bounce"
+          change="+5%"
+          changeType="increase"
+          className="h-full"
+        />
+        <StatCard
+          title="In Progress"
+          value={stats.inProgress}
+          icon={HiPlay}
+          gradient="indigo"
+          animation="pulse"
+          change="+2%"
+          changeType="increase"
+          className="h-full"
+        />
+        <StatCard
+          title="On Hold"
+          value={stats.onHold}
+          icon={HiPause}
+          gradient="yellow"
+          animation="float"
+          change="+1%"
+          changeType="increase"
+          className="h-full"
+        />
+        <StatCard
+          title="Completed"
+          value={stats.completed}
+          icon={HiCheckCircle}
+          gradient="green"
+          animation="bounce"
+          change="+8%"
+          changeType="increase"
+          className="h-full"
+        />
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
-              <StatCard
-            title="Total Batches"
-                value={stats.total}
-            icon={HiClipboardDocumentList}
-                gradient="blue"
-                animation="bounce"
-                change="+5%"
-                changeType="increase"
-                className="h-full"
-              />
-              <StatCard
-            title="In Progress"
-            value={stats.inProgress}
-                icon={HiPlay}
-                gradient="indigo"
-                animation="pulse"
-                change="+2%"
-                changeType="increase"
-                className="h-full"
-              />
-              <StatCard
-                title="On Hold"
-                value={stats.onHold}
-                icon={HiPause}
-                gradient="yellow"
-                animation="float"
-                change="+1%"
-                changeType="increase"
-                className="h-full"
-              />
-              <StatCard
-                title="Completed"
-                value={stats.completed}
-                icon={HiCheckCircle}
-                gradient="green"
-                animation="bounce"
-                change="+8%"
-                changeType="increase"
-                className="h-full"
-              />
+      {/* Search and Filter Section */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+        <div className="flex-1">
+          <SearchInput
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search production batches..."
+            icon={HiMagnifyingGlass}
+          />
         </div>
+        <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0">
+          <Select
+            value={productionStatusFilter}
+            onChange={(e) => setProductionStatusFilter(e.target.value)}
+            options={productionStatusOptions}
+            className="w-full sm:w-48"
+          />
+          <Select
+            value={QCstatusFilter}
+            onChange={(e) => setQCstatusFilter(e.target.value)}
+            options={QCstatusOptions}
+            className="w-full sm:w-48"
+          />
+          <Select
+            value={productFilter}
+            onChange={(e) => setProductFilter(e.target.value)}
+            options={productOptions}
+            className="w-full sm:w-48"
+          />
+        </div>
+      </div>
 
-        {/* Search and Filter Section */}
-          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-            <div className="flex-1">
-              <SearchInput
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search production batches..."
-                icon={HiMagnifyingGlass}
-              />
-            </div>
-            <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0">
-              <Select
-              value={productionStatusFilter}
-              onChange={(e) => setProductionStatusFilter(e.target.value)}
-              options={productionStatusOptions}
-              className="w-full sm:w-48"
-            />
-            <Select
-              value={QCstatusFilter}
-              onChange={(e) => setQCstatusFilter(e.target.value)}
-              options={QCstatusOptions}
-              className="w-full sm:w-48"
-            />
-            <Select
-              value={productFilter}
-              onChange={(e) => setProductFilter(e.target.value)}
-              options={productOptions}
-                className="w-full sm:w-48"
-              />
-            </div>
+      {/* Main Content */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <div className="text-sm text-gray-500">
+            Showing {productions.length} production batches
           </div>
-
-        {/* Main Content */}
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <div className="text-sm text-gray-500">
-              Showing {productions.length} production batches
-              </div>
-            </div>
-            <div className="overflow-hidden">
-            <ProductionCRUD
-              productions={productions}
-              onSelectProduction={handleSelectProduction}
-              onEditProduction={handleEditProduction}
-              onDeleteProduction={handleDeleteProduction}
-              onUpdateProduction={handleUpdateProduction}
-              onDeleteProductionConfirm={handleDeleteProductionConfirm}
-              showDeleteModal={showDeleteModal}
-              showDisableModal={showDisableModal}
-              showActivateModal={showActivateModal}
-              selectedProduction={selectedProduction}
-              setShowDeleteModal={setShowDeleteModal}
-              setShowDisableModal={setShowDisableModal}
-              setShowActivateModal={setShowActivateModal}
-                loading={loading}
-              createLoading={createLoading}
-              updateLoading={updateLoading}
-              deleteLoading={deleteLoading}
-              />
-            </div>
-          </div>
+        </div>
+        <div className="overflow-hidden">
+          <ProductionCRUD
+            productions={productions}
+            onSelectProduction={handleSelectProduction}
+            onEditProduction={handleEditProduction}
+            onDeleteProduction={handleDeleteProduction}
+            onUpdateProduction={handleUpdateProduction}
+            onDeleteProductionConfirm={handleDeleteProductionConfirm}
+            showDeleteModal={showDeleteModal}
+            showDisableModal={showDisableModal}
+            showActivateModal={showActivateModal}
+            selectedProduction={selectedProduction}
+            setShowDeleteModal={setShowDeleteModal}
+            setShowDisableModal={setShowDisableModal}
+            setShowActivateModal={setShowActivateModal}
+            loading={loading}
+            createLoading={createLoading}
+            updateLoading={updateLoading}
+            deleteLoading={deleteLoading}
+          />
+        </div>
       </div>
 
       {/* Delete Confirmation Modal */}

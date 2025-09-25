@@ -3,7 +3,6 @@ import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { HiShoppingBag, HiPlus, HiMagnifyingGlass, HiCube, HiCheckCircle, HiTag, HiCurrencyRupee } from 'react-icons/hi2';
 import { StatCard, Button, Input, Select, Loading, EmptyState } from '../../components/common';
-import { PageHeader } from '../../components/layout';
 import ProductCRUD from '../../components/dashboard/products/ProductCRUD';
 import { getAllProducts, deleteProduct, updateProduct, getProductStats } from '../../redux/actions/productActions';
 import { addNotification } from '../../redux/slices/uiSlice';
@@ -216,21 +215,25 @@ const ProductsPage = () => {
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
-      <PageHeader
-        title="Product Management"
-        subtitle="Manage all products and their details"
-        icon={HiShoppingBag}
-        action={
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Product Management</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Manage all products and their details
+          </p>
+        </div>
+        <div className="mt-4 sm:mt-0 flex space-x-3">
           <Button
+            className='sm:w-auto w-full'
             onClick={handleCreateProduct}
             variant="gradient"
             icon={HiPlus}
           >
             Add Product
           </Button>
-        }
-      />
+        </div>
+      </div>
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -261,7 +264,7 @@ const ProductsPage = () => {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-lg shadow p-6">
+      <div className="bg-white rounded-lg p-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">

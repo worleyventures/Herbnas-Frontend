@@ -3,7 +3,6 @@ import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { HiUserGroup, HiPlus, HiMagnifyingGlass, HiEye, HiPencil, HiTrash } from 'react-icons/hi2';
 import { StatCard, Table, Button, ActionButton, Input, Select, Loading, EmptyState, UserDetailsModal } from '../../components/common';
-import { PageHeader } from '../../components/layout';
 import { getAllUsers, deleteUser } from '../../redux/actions/userActions';
 import { getAllBranches } from '../../redux/actions/branchActions';
 import { addNotification } from '../../redux/slices/uiSlice';
@@ -386,12 +385,15 @@ const UsersPage = () => {
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
-      <PageHeader
-        title="User Management"
-        subtitle="Manage all users and their branch assignments"
-        icon={HiUserGroup}
-        action={
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">User Management</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Manage all users and their branch assignments
+          </p>
+        </div>
+        <div className="mt-4 sm:mt-0">
           <Button
             onClick={handleAddUser}
             variant="gradient"
@@ -399,8 +401,8 @@ const UsersPage = () => {
           >
             Add User
           </Button>
-        }
-      />
+        </div>
+      </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6">
