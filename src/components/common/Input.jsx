@@ -1,5 +1,6 @@
 import React from 'react';
 import Dropdown from './Dropdown';
+import { HiDocumentText } from 'react-icons/hi2';
 
 const Input = ({
   type = "text",
@@ -156,6 +157,7 @@ export const SearchInput = ({
   placeholder = "Search...",
   className = "",
   size = "sm",
+  icon = HiDocumentText,
   ...props
 }) => {
   return (
@@ -164,7 +166,7 @@ export const SearchInput = ({
       value={value}
       onChange={onChange}
       placeholder={placeholder}
-      icon={props.icon}
+      icon={icon}
       size={size}
       className={className}
       {...props}

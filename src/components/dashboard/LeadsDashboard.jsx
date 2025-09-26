@@ -3,7 +3,6 @@ import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import {
   HiPlus,
-  HiMagnifyingGlass,
   HiUser,
   HiCheckCircle,
   HiXCircle,
@@ -576,7 +575,6 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search leads..."
-                icon={HiMagnifyingGlass}
               />
             </div>
             <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0">
@@ -830,7 +828,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search leads..."
-                icon={HiMagnifyingGlass}
+                icon={HiCommandLine}
                 />
               </div>
             <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0">

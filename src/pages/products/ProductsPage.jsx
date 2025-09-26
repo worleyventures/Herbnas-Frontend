@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { HiShoppingBag, HiPlus, HiMagnifyingGlass, HiCube, HiCheckCircle, HiTag, HiCurrencyRupee } from 'react-icons/hi2';
-import { StatCard, Button, Input, Select, Loading, EmptyState } from '../../components/common';
+import { HiShoppingBag, HiPlus, HiCube, HiCheckCircle, HiTag, HiCurrencyRupee } from 'react-icons/hi2';
+import { StatCard, Button, Input, Select, Loading, EmptyState, SearchInput } from '../../components/common';
 import ProductCRUD from '../../components/dashboard/products/ProductCRUD';
 import { getAllProducts, deleteProduct, updateProduct, getProductStats } from '../../redux/actions/productActions';
 import { addNotification } from '../../redux/slices/uiSlice';
@@ -270,12 +270,10 @@ const ProductsPage = () => {
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Search Products
             </label>
-            <Input
-              type="text"
+            <SearchInput
               placeholder="Search by name, ID, or description..."
               value={searchTerm}
               onChange={(e) => handleSearch(e.target.value)}
-              icon={HiMagnifyingGlass}
             />
           </div>
           <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0">

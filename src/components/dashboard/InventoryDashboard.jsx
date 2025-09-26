@@ -3,7 +3,6 @@ import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { 
   HiCube, 
-  HiMagnifyingGlass, 
   HiExclamationTriangle,
   HiInformationCircle,
   HiCheckCircle,
@@ -391,7 +390,6 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
             value={searchTerm}
             onChange={setSearchTerm}
             placeholder={`Search ${activeTab === 'rawMaterials' ? 'raw materials' : 'finished goods'}...`}
-            icon={HiMagnifyingGlass}
           />
           {activeTab === 'finishedGoods' && (
             <Select

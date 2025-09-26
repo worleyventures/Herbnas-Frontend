@@ -10,7 +10,6 @@ import {
   HiPlay,
   HiCube,
   HiDocumentText,
-  HiMagnifyingGlass,
   HiTag,
   HiBuildingOffice2,
   HiCurrencyDollar,
@@ -303,7 +302,6 @@ const ProductionDashboard = () => {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search production batches..."
-            icon={HiMagnifyingGlass}
           />
         </div>
         <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0">

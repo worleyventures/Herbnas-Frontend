@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import {
-  HiMagnifyingGlass,
   HiDocumentText,
   HiCheckCircle,
   HiXCircle,
@@ -302,7 +301,6 @@ const ProductsDashboard = () => {
               value={searchTerm}
               onChange={handleSearch}
               placeholder="Search products..."
-              icon={HiMagnifyingGlass}
             />
           </div>
           <div className="w-full sm:w-48">

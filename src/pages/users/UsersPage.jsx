@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { HiUserGroup, HiPlus, HiMagnifyingGlass, HiEye, HiPencil, HiTrash } from 'react-icons/hi2';
-import { StatCard, Table, Button, ActionButton, Input, Select, Loading, EmptyState, UserDetailsModal } from '../../components/common';
+import { HiUserGroup, HiPlus, HiEye, HiPencil, HiTrash } from 'react-icons/hi2';
+import { StatCard, Table, Button, ActionButton, Input, Select, Loading, EmptyState, UserDetailsModal, SearchInput } from '../../components/common';
 import { getAllUsers, deleteUser } from '../../redux/actions/userActions';
 import { getAllBranches } from '../../redux/actions/branchActions';
 import { addNotification } from '../../redux/slices/uiSlice';
@@ -459,16 +459,11 @@ const UsersPage = () => {
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Search Users
             </label>
-            <div className="relative">
-              <Input
-                type="text"
-                placeholder="Search by name or email..."
-                value={searchTerm}
-                onChange={(e) => handleSearch(e.target.value)}
-                className="pl-10"
-              />
-              <HiMagnifyingGlass className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            </div>
+            <SearchInput
+              placeholder="Search by name or email..."
+              value={searchTerm}
+              onChange={(e) => handleSearch(e.target.value)}
+            />
           </div>
 
           <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0">

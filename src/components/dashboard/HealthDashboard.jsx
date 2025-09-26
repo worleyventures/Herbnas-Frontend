@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import {
-  HiMagnifyingGlass,
   HiDocumentText,
   HiCheckCircle,
   HiXCircle,
@@ -362,7 +361,6 @@ const HealthDashboard = () => {
               value={searchTerm}
               onChange={handleSearch}
               placeholder="Search health issues..."
-              icon={HiMagnifyingGlass}
             />
           </div>
           <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0">

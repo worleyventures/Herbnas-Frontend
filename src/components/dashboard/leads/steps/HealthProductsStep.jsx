@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo } from 'react';
-import { HiExclamationTriangle, HiBuildingOffice2, HiPlus, HiTrash } from 'react-icons/hi2';
+import { HiExclamationTriangle, HiBuildingOffice2, HiPlus, HiTrash, HiDocumentText } from 'react-icons/hi2';
 
 const HealthProductsStep = ({
   formData,
@@ -104,8 +104,9 @@ const HealthProductsStep = ({
             }}
             onFocus={() => setShowHealthIssueDropdown(true)}
             placeholder="Search health issues..."
-            className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-[#22c55e] focus:border-[#22c55e] transition-all duration-200 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md"
+            className="w-full pl-10 pr-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-[#22c55e] focus:border-[#22c55e] transition-all duration-200 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md"
           />
+          <HiDocumentText className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
           {showHealthIssueDropdown && (
             <div className="absolute z-[99999] w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 overflow-y-auto">
               <div className="flex justify-between items-center px-4 py-2 bg-gray-50 border-b border-gray-200 rounded-t-lg">
@@ -240,12 +241,13 @@ const HealthProductsStep = ({
             }}
             onFocus={() => setShowProductDropdown(true)}
             placeholder="Search products..."
-            className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-[#22c55e] focus:border-[#22c55e] transition-all duration-200 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md ${
+            className={`w-full pl-10 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-[#22c55e] focus:border-[#22c55e] transition-all duration-200 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md ${
               showProductDropdown 
                 ? 'border-[#22c55e] ring-2 ring-[#22c55e]' 
                 : 'border-gray-300/50'
             }`}
           />
+          <HiDocumentText className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
           {showProductDropdown && (
             <div className="absolute z-[99998] w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-48 overflow-y-auto">
               <div className="flex justify-between items-center px-4 py-2 bg-gray-50 border-b border-gray-200 rounded-t-lg">
