@@ -26,13 +26,13 @@ const Input = ({
       case 'xs':
         return 'px-3 py-1.5 text-xs';
       case 'sm':
-        return 'px-3 py-2 text-sm';
+        return 'px-3 py-1.5 text-sm';
       case 'md':
-        return 'px-4 py-2.5 text-sm';
+        return 'px-4 py-2 text-sm';
       case 'lg':
-        return 'px-5 py-3 text-base';
+        return 'px-5 py-2.5 text-base';
       default:
-        return 'px-4 py-2.5 text-sm';
+        return 'px-4 py-2 text-sm';
     }
   };
 

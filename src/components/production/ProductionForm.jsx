@@ -314,26 +314,17 @@ const ProductionForm = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen">
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between py-6">
             <div className="flex items-center space-x-3">
-              <Button
-                onClick={() => navigate('/productions')}
-                variant="ghost"
-                size="sm"
-                icon={HiArrowLeft}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                Back
-              </Button>
-              <div className="p-2 bg-blue-100 rounded-lg">
+              <div className="p-2">
                 <HiClipboardDocumentList className="h-6 w-6 text-blue-600" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">
+                <h1 className="text-2xl font-bold">
                   {isEdit ? 'Edit Production Batch' : 'Create Production Batch'}
                 </h1>
                 <p className="text-sm text-gray-500">
@@ -341,14 +332,6 @@ const ProductionForm = () => {
                 </p>
               </div>
             </div>
-            <Button
-              onClick={() => navigate('/productions')}
-              variant="outline"
-              size="sm"
-              icon={HiXMark}
-            >
-              Cancel
-            </Button>
           </div>
         </div>
       </div>
@@ -547,6 +530,7 @@ const ProductionForm = () => {
 
           {/* QC Notes */}
           <div className="space-y-4">
+            <h4 className=''>Notes</h4>
             <TextArea
               label="QC Notes"
               name="QCNotes"

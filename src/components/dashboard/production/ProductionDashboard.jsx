@@ -298,7 +298,7 @@ const ProductionDashboard = () => {
 
       {/* Search and Filter Section */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-        <div className="flex-1">
+        <div className="w-full sm:w-80">
           <SearchInput
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -307,24 +307,27 @@ const ProductionDashboard = () => {
           />
         </div>
         <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0">
-          <Select
-            value={productionStatusFilter}
-            onChange={(e) => setProductionStatusFilter(e.target.value)}
-            options={productionStatusOptions}
-            className="w-full sm:w-48"
-          />
-          <Select
-            value={QCstatusFilter}
-            onChange={(e) => setQCstatusFilter(e.target.value)}
-            options={QCstatusOptions}
-            className="w-full sm:w-48"
-          />
-          <Select
-            value={productFilter}
-            onChange={(e) => setProductFilter(e.target.value)}
-            options={productOptions}
-            className="w-full sm:w-48"
-          />
+          <div className="w-full sm:w-48">
+            <Select
+              value={productionStatusFilter}
+              onChange={(e) => setProductionStatusFilter(e.target.value)}
+              options={productionStatusOptions}
+            />
+          </div>
+          <div className="w-full sm:w-48">
+            <Select
+              value={QCstatusFilter}
+              onChange={(e) => setQCstatusFilter(e.target.value)}
+              options={QCstatusOptions}
+            />
+          </div>
+          <div className="w-full sm:w-48">
+            <Select
+              value={productFilter}
+              onChange={(e) => setProductFilter(e.target.value)}
+              options={productOptions}
+            />
+          </div>
         </div>
       </div>
 

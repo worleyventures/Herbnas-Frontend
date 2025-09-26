@@ -296,19 +296,23 @@ const ProductsDashboard = () => {
 
       {/* Filters */}
       <FilterCard>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <SearchInput
-            value={searchTerm}
-            onChange={handleSearch}
-            placeholder="Search products..."
-            icon={HiMagnifyingGlass}
-          />
-          <Select
-            value={filterStatus}
-            onChange={(value) => handleFilterChange('status', value)}
-            options={statusOptions}
-            placeholder="Filter by status"
-          />
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+          <div className="w-full sm:w-80">
+            <SearchInput
+              value={searchTerm}
+              onChange={handleSearch}
+              placeholder="Search products..."
+              icon={HiMagnifyingGlass}
+            />
+          </div>
+          <div className="w-full sm:w-48">
+            <Select
+              value={filterStatus}
+              onChange={(value) => handleFilterChange('status', value)}
+              options={statusOptions}
+              placeholder="Filter by status"
+            />
+          </div>
         </div>
       </FilterCard>
 

@@ -265,8 +265,8 @@ const ProductsPage = () => {
 
       {/* Filters */}
       <div className="bg-white rounded-lg p-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+          <div className="w-full sm:w-80">
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Search Products
             </label>
@@ -278,30 +278,32 @@ const ProductsPage = () => {
               icon={HiMagnifyingGlass}
             />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Category
-            </label>
-            <Select
-              value={filterCategory}
-              onChange={(e) => handleFilterChange('category', e.target.value)}
-              options={[
-                { value: 'all', label: 'All Categories' },
-                ...categories.map(category => ({
-                  value: category,
-                  label: category
-                }))
-              ]}
-            />
-          </div>
-          <div className="flex items-end">
-            <Button
-              onClick={clearFilters}
-              variant="outline"
-              className="w-full"
-            >
-              Clear Filters
-            </Button>
+          <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0">
+            <div className="w-full sm:w-48">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Category
+              </label>
+              <Select
+                value={filterCategory}
+                onChange={(e) => handleFilterChange('category', e.target.value)}
+                options={[
+                  { value: 'all', label: 'All Categories' },
+                  ...categories.map(category => ({
+                    value: category,
+                    label: category
+                  }))
+                ]}
+              />
+            </div>
+            {/* <div className="w-full sm:w-48 flex items-end">
+              <Button
+                onClick={clearFilters}
+                variant="outline"
+                className="w-full"
+              >
+                Clear Filters
+              </Button>
+            </div> */}
           </div>
         </div>
       </div>

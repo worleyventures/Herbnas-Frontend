@@ -454,8 +454,8 @@ const UsersPage = () => {
 
       {/* Filters */}
       <div className="bg-white rounded-lg shadow p-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <div>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+          <div className="w-full sm:w-80">
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Search Users
             </label>
@@ -471,30 +471,32 @@ const UsersPage = () => {
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Role
-            </label>
-            <Select
-              value={filterRole}
-              onChange={(value) => handleFilterChange('role', value)}
-              options={availableRoles}
-            />
-          </div>
+          <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0">
+            <div className="w-full sm:w-48">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Role
+              </label>
+              <Select
+                value={filterRole}
+                onChange={(value) => handleFilterChange('role', value)}
+                options={availableRoles}
+              />
+            </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Status
-            </label>
-            <Select
-              value={filterStatus}
-              onChange={(value) => handleFilterChange('status', value)}
-              options={[
-                { value: 'all', label: 'All Status' },
-                { value: 'active', label: 'Active' },
-                { value: 'inactive', label: 'Inactive' }
-              ]}
-            />
+            <div className="w-full sm:w-48">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Status
+              </label>
+              <Select
+                value={filterStatus}
+                onChange={(value) => handleFilterChange('status', value)}
+                options={[
+                  { value: 'all', label: 'All Status' },
+                  { value: 'active', label: 'Active' },
+                  { value: 'inactive', label: 'Inactive' }
+                ]}
+              />
+            </div>
           </div>
         </div>
       </div>

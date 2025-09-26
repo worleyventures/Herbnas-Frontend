@@ -140,6 +140,7 @@ const LeadFormStepper = ({
   });
 
   const [errors, setErrors] = useState({});
+  const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
   const [productSearch, setProductSearch] = useState('');
   const [showProductDropdown, setShowProductDropdown] = useState(false);
   const [healthIssueSearch, setHealthIssueSearch] = useState('');
@@ -407,7 +408,7 @@ const LeadFormStepper = ({
   };
 
   // Step validation functions
-  const validateStep = (stepNumber) => {
+  const validateStep = (stepNumber, showErrors = false) => {
     const newErrors = {};
     
     // Get the step configuration for the given step number
@@ -459,7 +460,11 @@ const LeadFormStepper = ({
         break;
     }
     
-    setErrors(prev => ({ ...prev, ...newErrors }));
+    // Only set errors if showErrors is true AND form has been submitted
+    if (showErrors && hasAttemptedSubmit) {
+      setErrors(prev => ({ ...prev, ...newErrors }));
+    }
+    
     return Object.keys(newErrors).length === 0;
   };
 
@@ -469,8 +474,8 @@ const LeadFormStepper = ({
     if (stepNumber < currentStep || completedSteps.has(stepNumber)) {
       setCurrentStep(stepNumber);
     } else if (stepNumber === currentStep + 1) {
-      // Validate current step before moving to next
-      if (validateStep(currentStep)) {
+      // Validate current step before moving to next (without showing errors)
+      if (validateStep(currentStep, false)) {
         setCompletedSteps(prev => new Set([...prev, currentStep]));
         setCurrentStep(stepNumber);
       }
@@ -478,7 +483,7 @@ const LeadFormStepper = ({
   };
 
   const handleNext = () => {
-    if (validateStep(currentStep)) {
+    if (validateStep(currentStep, false)) {
       setCompletedSteps(prev => new Set([...prev, currentStep]));
       if (currentStep < steps.length) {
         setCurrentStep(currentStep + 1);
@@ -531,10 +536,16 @@ const LeadFormStepper = ({
       return;
     }
     
-    // Validate all steps before submitting
+    // Set flag that form submission has been attempted
+    setHasAttemptedSubmit(true);
+    
+    // Clear previous errors first
+    setErrors({});
+    
+    // Validate all steps before submitting (with errors shown)
     let allValid = true;
     for (let i = 1; i <= steps.length; i++) {
-      if (!validateStep(i)) {
+      if (!validateStep(i, true)) {
         allValid = false;
       }
     }
@@ -546,7 +557,7 @@ const LeadFormStepper = ({
       console.log('❌ Form validation failed, errors:', errors);
       // Go to first step with errors
       for (let i = 1; i <= steps.length; i++) {
-        if (!validateStep(i)) {
+        if (!validateStep(i, false)) {
           console.log(`❌ Validation failed at step ${i}`);
           setCurrentStep(i);
           break;
@@ -574,12 +585,14 @@ const LeadFormStepper = ({
           setNewReminder={setNewReminder}
         />;
       case 'basic-info':
-        return <BasicInfoStep formData={formData} setFormData={setFormData} errors={errors} />;
+        return <BasicInfoStep formData={formData} setFormData={setFormData} errors={errors} setErrors={setErrors} hasAttemptedSubmit={hasAttemptedSubmit} />;
       case 'customer-info':
         return <CustomerDetailsStep 
           formData={formData} 
           setFormData={setFormData} 
           errors={errors}
+          setErrors={setErrors}
+          hasAttemptedSubmit={hasAttemptedSubmit}
         />;
       case 'health-products':
         return <HealthProductsStep 
@@ -622,7 +635,7 @@ const LeadFormStepper = ({
   return (
     <div className="w-full h-full flex flex-col">
       {/* Stepper */}
-      <div className="px-6 py-4 bg-gray-50/50">
+      <div className="px-6 py-4">
         <MaterialStepper
           steps={steps}
           currentStep={currentStep}
@@ -639,7 +652,7 @@ const LeadFormStepper = ({
           </div>
 
           {/* Form Actions */}
-          <div className="mt-6 pt-4 border-t border-gray-200 flex-shrink-0">
+          <div className="mt-6 pt-4 border-t flex-shrink-0">
             <div className="flex justify-between">
               <button
                 type="button"

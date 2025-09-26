@@ -437,23 +437,25 @@ const BranchesDashboard = ({ propActiveView = 'table' }) => {
 
           {/* Filters */}
           <FilterCard>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <SearchInput
-                placeholder="Search branches..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full"
-              />
-              <Select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-                options={[
-                  { value: 'all', label: 'All Status' },
-                  { value: 'active', label: 'Active' },
-                  { value: 'inactive', label: 'Inactive' }
-                ]}
-                className="w-full"
-              />
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+              <div className="w-full sm:w-80">
+                <SearchInput
+                  placeholder="Search branches..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              <div className="w-full sm:w-48">
+                <Select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  options={[
+                    { value: 'all', label: 'All Status' },
+                    { value: 'active', label: 'Active' },
+                    { value: 'inactive', label: 'Inactive' }
+                  ]}
+                />
+              </div>
             </div>
           </FilterCard>
 

@@ -571,7 +571,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
 
           {/* Search and Filter Section */}
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-            <div className="flex-1">
+            <div className="w-full sm:w-80">
               <SearchInput
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -589,7 +589,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
                   { value: 'unqualified', label: 'Unqualified' },
                   { value: 'converted', label: 'Order Completed' }
                 ]}
-                className="w-full sm:w-40"
+                className="w-full sm:w-48"
               />
               <Select
                 value={filterBranch}
@@ -601,7 +601,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
                     label: branch.branchName || branch
                   })) || [])
                 ]}
-                className="w-full sm:w-40"
+                className="w-full sm:w-48"
               />
             </div>
           </div>
@@ -825,7 +825,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
         {/* Search and Filter Section - Show for all tabs when there are leads */}
         {leads && leads.length > 0 && (
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-            <div className="flex-1">
+            <div className="w-full sm:w-80">
               <SearchInput
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -846,7 +846,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
                   { value: 'not_answered', label: 'Not Answered' },
                   { value: 'pending', label: 'Pending' }
                 ]}
-                className="w-full sm:w-40"
+                className="w-full sm:w-48"
               />
               <Select
                   value={filterBranch}
@@ -858,7 +858,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
                     label: branch.branchName || branch
                   })) || [])
                 ]}
-                className="w-full sm:w-40"
+                className="w-full sm:w-48"
               />
             </div>
           </div>

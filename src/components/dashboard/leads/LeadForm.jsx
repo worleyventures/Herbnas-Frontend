@@ -609,7 +609,7 @@ const LeadForm = ({
     <div className="max-w-6xl mx-auto p-6">
 
       {/* Form */}
-      <form onSubmit={handleSubmit} className="bg-white rounded-b-2xl shadow-2xl">
+      <form onSubmit={handleSubmit} className="bg-white ">
         <div className="p-6 space-y-6" style={{overflow: 'visible'}}>
           {/* Basic Lead Information */}
           <div className="bg-white/70 backdrop-blur-sm rounded-xl p-4 border border-gray-200/60 shadow-sm hover:shadow-md transition-shadow duration-200 relative z-10">
@@ -690,9 +690,9 @@ const LeadForm = ({
           </div>
 
            {/* Reminders */}
-          <div className="bg-white/70 backdrop-blur-sm rounded-xl p-4 border border-gray-200/60 shadow-sm hover:shadow-md transition-shadow duration-200 relative z-10">
-            <div className="flex items-center space-x-3 mb-4 pb-3 border-b border-gray-200/50">
-              <div className="h-10 w-10 bg-yellow-100 rounded-xl flex items-center justify-center">
+          <div className="backdrop-blur-sm p-4 shadow-sm hover:shadow-md duration-200 relative z-10">
+            <div className="flex items-center space-x-3 mb-4 pb-3">
+              <div className="h-10 w-10 flex items-center justify-center">
                 <HiBell className="h-5 w-5 text-yellow-600" />
               </div>
               <div>
@@ -748,11 +748,11 @@ const LeadForm = ({
                   <button
                     type="button"
                     onClick={addReminder}
-                    className="w-full px-4 py-3 text-white rounded-xl transition-colors duration-200 flex items-center justify-center space-x-2"
+                    className="px-4 py-3 text-white transition-colors duration-200 flex items-center justify-center space-x-2"
                     style={{backgroundColor: '#22c55e'}}
                   >
                     <HiPlus className="h-4 w-4" />
-                    <span>Add Reminder</span>
+                    <span>Add</span>
                   </button>
                 </div>
               </div>

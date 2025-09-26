@@ -356,25 +356,33 @@ const HealthDashboard = () => {
 
       {/* Filters */}
       <FilterCard>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          <SearchInput
-            value={searchTerm}
-            onChange={handleSearch}
-            placeholder="Search health issues..."
-            icon={HiMagnifyingGlass}
-          />
-          <Select
-            value={filterGender}
-            onChange={(value) => handleFilterChange('gender', value)}
-            options={genderOptions}
-            placeholder="Filter by gender"
-          />
-          <Select
-            value={filterMaritalStatus}
-            onChange={(value) => handleFilterChange('maritalStatus', value)}
-            options={maritalStatusOptions}
-            placeholder="Filter by marital status"
-          />
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+          <div className="w-full sm:w-80">
+            <SearchInput
+              value={searchTerm}
+              onChange={handleSearch}
+              placeholder="Search health issues..."
+              icon={HiMagnifyingGlass}
+            />
+          </div>
+          <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0">
+            <div className="w-full sm:w-48">
+              <Select
+                value={filterGender}
+                onChange={(value) => handleFilterChange('gender', value)}
+                options={genderOptions}
+                placeholder="Filter by gender"
+              />
+            </div>
+            <div className="w-full sm:w-48">
+              <Select
+                value={filterMaritalStatus}
+                onChange={(value) => handleFilterChange('maritalStatus', value)}
+                options={maritalStatusOptions}
+                placeholder="Filter by marital status"
+              />
+            </div>
+          </div>
         </div>
       </FilterCard>
 
