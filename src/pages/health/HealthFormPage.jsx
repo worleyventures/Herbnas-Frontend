@@ -158,50 +158,14 @@ const HealthFormPage = () => {
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-4">
-              <Button
-                onClick={handleBack}
-                variant="outline"
-                size="sm"
-                className="flex items-center"
-              >
-                <HiArrowLeft className="h-4 w-4 mr-2" />
-                Back to Health Issues
-              </Button>
-              <div className="h-6 w-px bg-gray-300" />
-              <div>
-                <h1 className="text-xl font-semibold text-gray-900">
-                  {mode === 'create' ? 'Create Health Issue' : 'Edit Health Issue'}
-                </h1>
-                <p className="text-sm text-gray-500">
-                  {mode === 'create' ? 'Add a new health issue to the system' : 'Update health issue information'}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* Main Content */}
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen">
         {/* Header */}
         <div className="bg-white border-b border-gray-200">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between py-6">
               <div className="flex items-center space-x-3">
-                <Button
-                  onClick={() => navigate('/health')}
-                  variant="ghost"
-                  size="sm"
-                  icon={HiArrowLeft}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  Back
-                </Button>
                 <div className="p-2 bg-red-100 rounded-lg">
                   <HiHeart className="h-6 w-6 text-red-600" />
                 </div>
@@ -230,7 +194,7 @@ const HealthFormPage = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <form onSubmit={handleSubmit} className="space-y-8">
             {/* Basic Information */}
-            <div className="bg-gray-50 rounded-lg p-4">
+            <div className=" rounded-lg p-4">
               <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                 <HiHeart className="h-5 w-5 mr-2 text-[#22c55e]" />
                 Health Issue Information
