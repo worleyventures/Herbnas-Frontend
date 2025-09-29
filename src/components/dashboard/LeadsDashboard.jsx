@@ -13,7 +13,8 @@ import {
   HiPencil,
   HiCloudArrowUp,
   HiArchiveBox,
-  HiArrowPath
+  HiArrowPath,
+  HiCommandLine
 } from 'react-icons/hi2';
 import { StatCard, FilterCard, Button, SearchInput, Select, Pagination, ImportModal } from '../common';
 import {
