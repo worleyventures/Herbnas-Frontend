@@ -20,13 +20,7 @@ const UsersPage = () => {
   const loading = userState?.loading || false;
   const error = userState?.error || null;
   const branches = branchState?.branches || [];
-
-  // Debug logging
-  console.log('User state:', userState);
-  console.log('Branch state:', branchState);
-  console.log('Users array:', users);
-  console.log('All users array:', allUsers);
-  console.log('Branches array:', branches);
+  const pagination = userState?.pagination || null;
 
   // Refresh all users for stats
   const refreshAllUsers = () => {
@@ -77,6 +71,18 @@ const UsersPage = () => {
     }));
   }, [dispatch, currentPage, itemsPerPage, searchTerm, filterRole, filterBranch, filterStatus]);
 
+  // Update allUsers when users change (for stats calculation)
+  useEffect(() => {
+    if (users.length > 0) {
+      // If we have users from API, use them for stats
+      const usersForStats = users;
+      // Update allUsers in Redux state for stats calculation
+      if (JSON.stringify(usersForStats) !== JSON.stringify(allUsers)) {
+        // This will be handled by the Redux slice
+      }
+    }
+  }, [users, allUsers]);
+
   // Filter users based on search and filters
   const filteredUsers = users.filter(user => {
     const matchesSearch = !searchTerm ||
@@ -93,20 +99,16 @@ const UsersPage = () => {
     return matchesSearch && matchesRole && matchesBranch && matchesStatus;
   });
 
-  // Calculate stats from all users (not filtered)
-  const totalUsers = allUsers.length;
-  const adminUsers = allUsers.filter(user => user.role === 'admin').length;
-  const supervisorUsers = allUsers.filter(user => user.role === 'supervisor').length;
-  const salesExecutiveUsers = allUsers.filter(user => user.role === 'sales_executive').length;
-  
-  // Debug stats
-  console.log('Stats calculation:', {
-    totalUsers,
-    adminUsers,
-    supervisorUsers,
-    salesExecutiveUsers,
-    allUsersCount: allUsers.length
-  });
+  // Calculate stats from users data (use users array for stats)
+  const usersForStats = users.length > 0 ? users : allUsers;
+  const totalUsers = usersForStats.length;
+  const adminUsers = usersForStats.filter(user => user.role === 'admin').length;
+  const supervisorUsers = usersForStats.filter(user => user.role === 'supervisor').length;
+  const salesExecutiveUsers = usersForStats.filter(user => user.role === 'sales_executive').length;
+  const productionManagerUsers = usersForStats.filter(user => user.role === 'production_manager').length;
+  const accountsManagerUsers = usersForStats.filter(user => user.role === 'accounts_manager').length;
+  const activeUsers = usersForStats.filter(user => user.isActive === true).length;
+  const inactiveUsers = usersForStats.filter(user => user.isActive === false).length;
 
   // Available roles for filtering
   const availableRoles = [
@@ -407,12 +409,26 @@ const UsersPage = () => {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6">
         <StatCard
-          title="All Users"
+          title="Total Users"
           value={totalUsers}
           icon={HiUserGroup}
-          iconBg="bg-gradient-to-r from-purple-500 to-purple-600"
+          gradient="purple"
+          animation="bounce"
           onClick={() => {
             setFilterRole('all');
+            setFilterStatus('all');
+            setCurrentPage(1);
+          }}
+          className="cursor-pointer hover:shadow-lg transition-shadow duration-200"
+        />
+        <StatCard
+          title="Active Users"
+          value={activeUsers}
+          icon={HiUserGroup}
+          gradient="green"
+          animation="pulse"
+          onClick={() => {
+            setFilterStatus('active');
             setCurrentPage(1);
           }}
           className="cursor-pointer hover:shadow-lg transition-shadow duration-200"
@@ -421,20 +437,10 @@ const UsersPage = () => {
           title="Admin Users"
           value={adminUsers}
           icon={HiUserGroup}
-          iconBg="bg-gradient-to-r from-blue-500 to-blue-600"
+          gradient="blue"
+          animation="float"
           onClick={() => {
             setFilterRole('admin');
-            setCurrentPage(1);
-          }}
-          className="cursor-pointer hover:shadow-lg transition-shadow duration-200"
-        />
-        <StatCard
-          title="Supervisors"
-          value={supervisorUsers}
-          icon={HiUserGroup}
-          iconBg="bg-gradient-to-r from-yellow-500 to-yellow-600"
-          onClick={() => {
-            setFilterRole('supervisor');
             setCurrentPage(1);
           }}
           className="cursor-pointer hover:shadow-lg transition-shadow duration-200"
@@ -443,7 +449,8 @@ const UsersPage = () => {
           title="Sales Executives"
           value={salesExecutiveUsers}
           icon={HiUserGroup}
-          iconBg="bg-gradient-to-r from-orange-500 to-orange-600"
+          gradient="orange"
+          animation="bounce"
           onClick={() => {
             setFilterRole('sales_executive');
             setCurrentPage(1);
@@ -453,53 +460,85 @@ const UsersPage = () => {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-lg p-6">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-          <div className="w-full sm:w-80">
-            <SearchInput
-              placeholder="Search by name or email..."
-              value={searchTerm}
-              onChange={(e) => handleSearch(e.target.value)}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+        <div className="w-full sm:w-80">
+          <SearchInput
+            placeholder="Search by name or email..."
+            value={searchTerm}
+            onChange={(e) => handleSearch(e.target.value)}
+          />
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0">
+          <div className="w-full sm:w-48">
+            <Select
+              value={filterRole}
+              onChange={(value) => handleFilterChange('role', value)}
+              options={availableRoles}
             />
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0">
-            <div className="w-full sm:w-48">
-              <Select
-                value={filterRole}
-                onChange={(value) => handleFilterChange('role', value)}
-                options={availableRoles}
-              />
-            </div>
+          <div className="w-full sm:w-48">
+            <Select
+              value={filterBranch}
+              onChange={(value) => handleFilterChange('branch', value)}
+              options={availableBranches}
+            />
+          </div>
 
-            <div className="w-full sm:w-48">
-              <Select
-                value={filterStatus}
-                onChange={(value) => handleFilterChange('status', value)}
-                options={[
-                  { value: 'all', label: 'All Status' },
-                  { value: 'active', label: 'Active' },
-                  { value: 'inactive', label: 'Inactive' }
-                ]}
-              />
-            </div>
+          <div className="w-full sm:w-48">
+            <Select
+              value={filterStatus}
+              onChange={(value) => handleFilterChange('status', value)}
+              options={[
+                { value: 'all', label: 'All Status' },
+                { value: 'active', label: 'Active' },
+                { value: 'inactive', label: 'Inactive' }
+              ]}
+            />
           </div>
         </div>
       </div>
 
       {/* Users Table */}
-      <div className="bg-white rounded-lg shadow">
+      <div className="bg-white rounded-lg">
         <div className="p-6">
           <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-medium text-gray-900">
+              Users ({filteredUsers.length})
+            </h3>
+            <div className="text-sm text-gray-500">
+              {pagination && (
+                `Showing ${((currentPage - 1) * itemsPerPage) + 1} to ${Math.min(currentPage * itemsPerPage, pagination.totalUsers || filteredUsers.length)} of ${pagination.totalUsers || filteredUsers.length} users`
+              )}
+            </div>
           </div>
 
           {loading ? (
-            <Loading />
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#22c55e]"></div>
+              <span className="ml-2 text-gray-500">Loading users...</span>
+            </div>
           ) : filteredUsers.length === 0 ? (
             <EmptyState
               icon={HiUserGroup}
               title="No users found"
-              description="No users match your current filters"
+              description={searchTerm || filterRole !== 'all' || filterBranch !== 'all' || filterStatus !== 'all' 
+                ? "No users match your current filters. Try adjusting your search criteria."
+                : "No users have been created yet. Get started by adding your first user."
+              }
+              action={
+                !searchTerm && filterRole === 'all' && filterBranch === 'all' && filterStatus === 'all' && (
+                  <Button
+                    variant="gradient"
+                    onClick={handleAddUser}
+                    icon={HiPlus}
+                    size="sm"
+                  >
+                    Add First User
+                  </Button>
+                )
+              }
             />
           ) : (
             <Table
@@ -511,6 +550,33 @@ const UsersPage = () => {
           )}
         </div>
       </div>
+
+      {/* Pagination */}
+      {pagination && pagination.totalPages > 1 && (
+        <div className="flex justify-center">
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+            >
+              Previous
+            </Button>
+            <span className="text-sm text-gray-700">
+              Page {currentPage} of {pagination.totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(prev => Math.min(pagination.totalPages, prev + 1))}
+              disabled={currentPage === pagination.totalPages}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* User Details Modal */}
       <UserDetailsModal
