@@ -1,7 +1,8 @@
 import React from 'react';
 import { HiPhone, HiEnvelope, HiUser } from 'react-icons/hi2';
+import Dropdown from '../../../common/Dropdown';
 
-const CustomerDetailsStep = ({ formData, setFormData, errors }) => {
+const CustomerDetailsStep = ({ formData, setFormData, errors, setErrors, hasAttemptedSubmit }) => {
   const genderOptions = [
     { value: 'Male', label: 'Male' },
     { value: 'Female', label: 'Female' },
@@ -33,6 +34,14 @@ const CustomerDetailsStep = ({ formData, setFormData, errors }) => {
         [name]: value
       }));
     }
+    
+    // Clear error for this field when user starts typing
+    if (errors[name]) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: null
+      }));
+    }
   };
 
   return (
@@ -58,11 +67,11 @@ const CustomerDetailsStep = ({ formData, setFormData, errors }) => {
             value={formData.customerName}
             onChange={handleInputChange}
             placeholder="Enter customer name"
-            className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md ${
-              errors.customerName ? 'border-red-500' : 'border-gray-300/50'
+            className={`w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md ${
+              hasAttemptedSubmit && errors.customerName ? 'border-red-500' : 'border-gray-300/50'
             }`}
           />
-          {errors.customerName && (
+          {hasAttemptedSubmit && errors.customerName && (
             <p className="mt-1 text-sm text-red-600">{errors.customerName}</p>
           )}
         </div>
@@ -77,11 +86,11 @@ const CustomerDetailsStep = ({ formData, setFormData, errors }) => {
             value={formData.customerMobile}
             onChange={handleInputChange}
             placeholder="Enter mobile number"
-            className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md ${
-              errors.customerMobile ? 'border-red-500' : 'border-gray-300/50'
+            className={`w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md ${
+              hasAttemptedSubmit && errors.customerMobile ? 'border-red-500' : 'border-gray-300/50'
             }`}
           />
-          {errors.customerMobile && (
+          {hasAttemptedSubmit && errors.customerMobile && (
             <p className="mt-1 text-sm text-red-600">{errors.customerMobile}</p>
           )}
         </div>
@@ -96,11 +105,11 @@ const CustomerDetailsStep = ({ formData, setFormData, errors }) => {
             value={formData.customerEmail}
             onChange={handleInputChange}
             placeholder="Enter email address"
-            className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md ${
-              errors.customerEmail ? 'border-red-500' : 'border-gray-300/50'
+            className={`w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md ${
+              hasAttemptedSubmit && errors.customerEmail ? 'border-red-500' : 'border-gray-300/50'
             }`}
           />
-          {errors.customerEmail && (
+          {hasAttemptedSubmit && errors.customerEmail && (
             <p className="mt-1 text-sm text-red-600">{errors.customerEmail}</p>
           )}
         </div>
@@ -117,48 +126,34 @@ const CustomerDetailsStep = ({ formData, setFormData, errors }) => {
             placeholder="Enter age"
             min="1"
             max="120"
-            className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md"
+            className="w-full px-4 py-2 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md"
           />
         </div>
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Gender
-          </label>
-          <select
+          <Dropdown
+            label="Gender"
             name="gender"
             value={formData.gender}
             onChange={handleInputChange}
-            className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md"
-          >
-            <option value="">Select Gender</option>
-            {genderOptions.map(option => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+            options={[{ value: '', label: 'Select Gender' }, ...genderOptions]}
+            placeholder="Select Gender"
+            className="focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a]"
+          />
         </div>
         
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Marital Status
-          </label>
-          <select
+          <Dropdown
+            label="Marital Status"
             name="maritalStatus"
             value={formData.maritalStatus}
             onChange={handleInputChange}
-            className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md"
-          >
-            <option value="">Select Marital Status</option>
-            {maritalStatusOptions.map(option => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+            options={[{ value: '', label: 'Select Marital Status' }, ...maritalStatusOptions]}
+            placeholder="Select Marital Status"
+            className="focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a]"
+          />
         </div>
       </div>
       
@@ -172,7 +167,7 @@ const CustomerDetailsStep = ({ formData, setFormData, errors }) => {
           onChange={handleInputChange}
           rows={2}
           placeholder="Enter street address"
-          className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md resize-none"
+          className="w-full px-4 py-2 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md resize-none"
         />
       </div>
       
@@ -187,7 +182,7 @@ const CustomerDetailsStep = ({ formData, setFormData, errors }) => {
             value={formData.address.city}
             onChange={handleInputChange}
             placeholder="Enter city"
-            className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md"
+            className="w-full px-4 py-2 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md"
           />
         </div>
         
@@ -201,7 +196,7 @@ const CustomerDetailsStep = ({ formData, setFormData, errors }) => {
             value={formData.address.state}
             onChange={handleInputChange}
             placeholder="Enter state"
-            className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md"
+            className="w-full px-4 py-2 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md"
           />
         </div>
         
@@ -215,7 +210,7 @@ const CustomerDetailsStep = ({ formData, setFormData, errors }) => {
             value={formData.address.pinCode}
             onChange={handleInputChange}
             placeholder="Enter pin code"
-            className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md"
+            className="w-full px-4 py-2 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md"
           />
         </div>
 
@@ -229,7 +224,7 @@ const CustomerDetailsStep = ({ formData, setFormData, errors }) => {
             value={formData.address.country}
             onChange={handleInputChange}
             placeholder="Enter country"
-            className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md"
+            className="w-full px-4 py-2 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md"
           />
         </div>
       </div>

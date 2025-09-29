@@ -12,8 +12,8 @@ const PageHeader = ({
   stats 
 }) => {
   return (
-    <div className="bg-white shadow-sm border-b border-gray-200 mb-6">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="bg-white mb-2">
+      <div className="max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="py-6">
           {/* Breadcrumbs */}
           {breadcrumbs && breadcrumbs.length > 0 && (

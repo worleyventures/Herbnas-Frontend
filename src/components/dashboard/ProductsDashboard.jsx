@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import {
-  HiMagnifyingGlass,
   HiDocumentText,
   HiCheckCircle,
   HiXCircle,
@@ -296,19 +295,22 @@ const ProductsDashboard = () => {
 
       {/* Filters */}
       <FilterCard>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <SearchInput
-            value={searchTerm}
-            onChange={handleSearch}
-            placeholder="Search products..."
-            icon={HiMagnifyingGlass}
-          />
-          <Select
-            value={filterStatus}
-            onChange={(value) => handleFilterChange('status', value)}
-            options={statusOptions}
-            placeholder="Filter by status"
-          />
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+          <div className="w-full sm:w-80">
+            <SearchInput
+              value={searchTerm}
+              onChange={handleSearch}
+              placeholder="Search products..."
+            />
+          </div>
+          <div className="w-full sm:w-48">
+            <Select
+              value={filterStatus}
+              onChange={(value) => handleFilterChange('status', value)}
+              options={statusOptions}
+              placeholder="Filter by status"
+            />
+          </div>
         </div>
       </FilterCard>
 

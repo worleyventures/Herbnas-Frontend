@@ -1,5 +1,6 @@
 import React from 'react';
 import { HiCreditCard, HiBuildingOffice2 } from 'react-icons/hi2';
+import Dropdown from '../../../common/Dropdown';
 
 const PaymentAssignmentStep = ({
   formData,
@@ -70,39 +71,27 @@ const PaymentAssignmentStep = ({
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Payment Type
-          </label>
-          <select
+          <Dropdown
+            label="Payment Type"
             name="payment.paymentType"
             value={formData.payment.paymentType}
             onChange={handleInputChange}
-            className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-[#22c55e] focus:border-[#22c55e] transition-all duration-200 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md"
-          >
-            {paymentTypeOptions.map(option => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+            options={paymentTypeOptions}
+            placeholder="Select payment type"
+            className="focus:ring-2 focus:ring-[#22c55e] focus:border-[#22c55e]"
+          />
         </div>
         
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Payment Mode
-          </label>
-          <select
+          <Dropdown
+            label="Payment Mode"
             name="payment.paymentMode"
             value={formData.payment.paymentMode}
             onChange={handleInputChange}
-            className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-[#22c55e] focus:border-[#22c55e] transition-all duration-200 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md"
-          >
-            {paymentModeOptions.map(option => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+            options={paymentModeOptions}
+            placeholder="Select payment mode"
+            className="focus:ring-2 focus:ring-[#22c55e] focus:border-[#22c55e]"
+          />
         </div>
         
         <div>

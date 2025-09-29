@@ -3,7 +3,6 @@ import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import {
   HiPlus,
-  HiMagnifyingGlass,
   HiUser,
   HiCheckCircle,
   HiXCircle,
@@ -484,7 +483,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
   // Show loading state only when actually loading
   if (loading || statsLoading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="flex items-center justify-center py-12">
         <div className="flex flex-col items-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#22c55e]"></div>
           <p className="mt-4 text-gray-600">Loading leads...</p>
@@ -496,8 +495,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
   // Show empty state when no leads are available
   if (!leads || leads.length === 0) {
     return (
-      <div className="min-h-screen bg-white">
-        <div className="p-6 space-y-6">
+      <div className="space-y-6">
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -572,12 +570,11 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
 
           {/* Search and Filter Section */}
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-            <div className="flex-1">
+            <div className="w-full sm:w-80">
               <SearchInput
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search leads..."
-                icon={HiMagnifyingGlass}
               />
             </div>
             <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0">
@@ -590,7 +587,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
                   { value: 'unqualified', label: 'Unqualified' },
                   { value: 'converted', label: 'Order Completed' }
                 ]}
-                className="w-full sm:w-40"
+                className="w-full sm:w-48"
               />
               <Select
                 value={filterBranch}
@@ -602,7 +599,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
                     label: branch.branchName || branch
                   })) || [])
                 ]}
-                className="w-full sm:w-40"
+                className="w-full sm:w-48"
               />
             </div>
           </div>
@@ -635,7 +632,6 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
               </Button>
             </div>
           </div>
-        </div>
 
         {/* Import Modal */}
         <ImportModal
@@ -646,11 +642,10 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
       </div>
     );
   }
-
   // Show error state
   if (error) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="flex items-center justify-center py-12">
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 max-w-md w-full mx-4">
           <div className="flex items-center mb-4">
             <HiExclamationTriangle className="h-8 w-8 text-red-500 mr-3" />
@@ -677,8 +672,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="p-6 space-y-6">
+    <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -829,12 +823,12 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
         {/* Search and Filter Section - Show for all tabs when there are leads */}
         {leads && leads.length > 0 && (
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-            <div className="flex-1">
+            <div className="w-full sm:w-80">
               <SearchInput
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search leads..."
-                icon={HiMagnifyingGlass}
+                icon={HiCommandLine}
                 />
               </div>
             <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0">
@@ -850,7 +844,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
                   { value: 'not_answered', label: 'Not Answered' },
                   { value: 'pending', label: 'Pending' }
                 ]}
-                className="w-full sm:w-40"
+                className="w-full sm:w-48"
               />
               <Select
                   value={filterBranch}
@@ -862,7 +856,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
                     label: branch.branchName || branch
                   })) || [])
                 ]}
-                className="w-full sm:w-40"
+                className="w-full sm:w-48"
               />
             </div>
           </div>
@@ -880,7 +874,6 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
           )}
           {renderViewContent()}
         </div>
-      </div>
 
       {/* Import Modal */}
       <ImportModal

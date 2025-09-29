@@ -1,7 +1,8 @@
 import React from 'react';
 import { HiUser, HiCalendar, HiExclamationTriangle } from 'react-icons/hi2';
+import Dropdown from '../../../common/Dropdown';
 
-const BasicInfoStep = ({ formData, setFormData, errors }) => {
+const BasicInfoStep = ({ formData, setFormData, errors, setErrors, hasAttemptedSubmit }) => {
   const statusOptions = [
     { value: 'new_lead', label: 'New Lead', color: 'bg-blue-500/10 text-blue-500' },
     { value: 'not_answered', label: 'Not Answered', color: 'bg-yellow-500/10 text-yellow-500' },
@@ -23,6 +24,14 @@ const BasicInfoStep = ({ formData, setFormData, errors }) => {
       ...prev,
       [name]: value
     }));
+    
+    // Clear error for this field when user starts typing
+    if (errors[name]) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: null
+      }));
+    }
   };
 
   return (
@@ -47,44 +56,32 @@ const BasicInfoStep = ({ formData, setFormData, errors }) => {
             name="leadDate"
             value={formData.leadDate}
             onChange={handleInputChange}
-            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+            className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white shadow-sm hover:shadow-md"
           />
         </div>
         
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Lead Status *
-          </label>
-          <select
+          <Dropdown
+            label="Lead Status *"
             name="leadStatus"
             value={formData.leadStatus}
             onChange={handleInputChange}
-            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white shadow-sm hover:shadow-md"
-          >
-            {statusOptions.map(option => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+            options={statusOptions}
+            placeholder="Select lead status"
+            className="focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a]"
+          />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Priority
-          </label>
-          <select
+          <Dropdown
+            label="Priority"
             name="priority"
             value={formData.priority}
             onChange={handleInputChange}
-            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white shadow-sm hover:shadow-md"
-          >
-            {priorityOptions.map(option => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+            options={priorityOptions}
+            placeholder="Select priority"
+            className="focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a]"
+          />
         </div>
       </div>
       
@@ -98,7 +95,7 @@ const BasicInfoStep = ({ formData, setFormData, errors }) => {
           onChange={handleInputChange}
           rows={3}
           placeholder="Additional notes about this lead..."
-          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white shadow-sm hover:shadow-md resize-none"
+          className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white shadow-sm hover:shadow-md resize-none"
         />
       </div>
     </div>

@@ -198,7 +198,7 @@ const ProductCRUD = ({
   return (
     <div className="space-y-6">
       {/* Products Table */}
-      <div className="bg-white rounded-lg shadow">
+      <div className="bg-white rounded-lg">
         <div className="p-6">
           <Table
             data={products}

@@ -1,5 +1,6 @@
 import React from 'react';
 import { HiBell, HiPlus, HiTrash } from 'react-icons/hi2';
+import Dropdown from '../../../common/Dropdown';
 
 const RemindersStep = ({ formData, setFormData, errors, newReminder, setNewReminder }) => {
   // Helper function to format datetime for display (12-hour format)
@@ -78,7 +79,7 @@ const RemindersStep = ({ formData, setFormData, errors, newReminder, setNewRemin
       </div>
 
       {/* Add Reminder Form */}
-      <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
+      <div className=" p-6">
         <h5 className="text-sm font-medium text-gray-700 mb-4">Add New Reminder</h5>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
@@ -89,7 +90,7 @@ const RemindersStep = ({ formData, setFormData, errors, newReminder, setNewRemin
               name="date"
               value={newReminder.date}
               onChange={handleReminderChange}
-              className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-[#558b2f] focus:border-[#558b2f] transition-all duration-200 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md"
+              className="w-full  px-3 py-2 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-[#558b2f] focus:border-[#558b2f] transition-all duration-200 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md"
             />
           </div>
           
@@ -100,21 +101,23 @@ const RemindersStep = ({ formData, setFormData, errors, newReminder, setNewRemin
               name="time"
               value={newReminder.time}
               onChange={handleReminderChange}
-              className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-[#558b2f] focus:border-[#558b2f] transition-all duration-200 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md"
+              className="w-full px-4 py-2 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-[#558b2f] focus:border-[#558b2f] transition-all duration-200 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md"
             />
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">AM/PM</label>
-            <select
+            <Dropdown
+              label="AM/PM"
               name="ampm"
               value={newReminder.ampm}
               onChange={handleReminderChange}
-              className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-[#558b2f] focus:border-[#558b2f] transition-all duration-200 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md"
-            >
-              <option value="AM">AM</option>
-              <option value="PM">PM</option>
-            </select>
+              options={[
+                { value: 'AM', label: 'AM' },
+                { value: 'PM', label: 'PM' }
+              ]}
+              placeholder="Select AM/PM"
+              className="focus:ring-2 focus:ring-[#558b2f] focus:border-[#558b2f]"
+            />
           </div>
         </div>
         
@@ -125,17 +128,17 @@ const RemindersStep = ({ formData, setFormData, errors, newReminder, setNewRemin
             value={newReminder.note}
             onChange={handleReminderChange}
             placeholder="Enter reminder note..."
-            className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-[#22c55e] focus:border-[#22c55e] transition-all duration-200 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md"
+            className="w-full px-4 py-2 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-[#22c55e] focus:border-[#22c55e] transition-all duration-200 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md"
           />
         </div>
         
         <button
           type="button"
           onClick={handleAddReminder}
-          className="w-full px-4 py-3 text-white rounded-xl transition-colors duration-200 flex items-center justify-center space-x-2"
+          className="w-[200px] h-[35px] px-4 py-3 text-white rounded-xl transition-colors duration-200 flex items-center justify-center space-x-2"
           style={{background: 'linear-gradient(90deg, #8bc34a, #558b2f)'}}
         >
-          <HiPlus className="h-4 w-4" />
+          <HiPlus className="h-2 w-2" />
           <span>Add Reminder</span>
         </button>
       </div>

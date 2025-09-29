@@ -190,42 +190,34 @@ const ProductForm = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
+    <div className="max-w-3xl mx-auto p-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-3">
-          <button
-            onClick={handleBack}
-            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <HiArrowLeft className="h-5 w-5" />
-          </button>
-          <div className="flex items-center space-x-3">
-            <div className="p-2 bg-green-100 rounded-lg">
-              <HiShoppingBag className="h-6 w-6 text-green-600" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                {isEditing ? 'Edit Product' : 'Create New Product'}
-              </h1>
-              <p className="text-sm text-gray-500">
-                {isEditing ? 'Update product information' : 'Add a new product to the system'}
-              </p>
-            </div>
+          <div className="h-12 w-12 rounded-xl flex items-center justify-center shadow-lg" style={{background: 'linear-gradient(90deg, rgb(139, 195, 74), rgb(85, 139, 47))'}}>
+            <HiShoppingBag className="h-6 w-6 text-white" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">
+              {isEditing ? 'Edit Product' : 'Create New Product'}
+            </h1>
+            <p className="text-sm text-gray-500">
+              {isEditing ? 'Update product information' : 'Add a new product to the system'}
+            </p>
           </div>
         </div>
       </div>
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Product Information</h2>
+        <div className="bg-white p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-6">Product Information</h2>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Product ID */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Product ID <span className="text-gray-400">(Optional - Auto-generated if empty)</span>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Product ID 
               </label>
               <Input
                 type="text"
@@ -235,12 +227,14 @@ const ProductForm = () => {
                 placeholder="e.g., PROD001"
                 error={errors.productId}
                 disabled={isSubmitting}
+                size="sm"
+                className="focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a]"
               />
             </div>
 
             {/* Product Name */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
                 Product Name <span className="text-red-500">*</span>
               </label>
               <Input
@@ -251,12 +245,14 @@ const ProductForm = () => {
                 placeholder="Enter product name"
                 error={errors.productName}
                 disabled={isSubmitting}
+                size="sm"
+                className="focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a]"
               />
             </div>
 
             {/* Category */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
                 Category <span className="text-red-500">*</span>
               </label>
               <Select
@@ -266,6 +262,7 @@ const ProductForm = () => {
                 options={categoryOptions}
                 error={errors.category}
                 disabled={isSubmitting}
+                className="focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a]"
               />
             </div>
 
@@ -287,12 +284,14 @@ const ProductForm = () => {
                 errorMessage={errors.quantity || errors.UOM}
                 disabled={isSubmitting}
                 required
+                size="sm"
+                className="focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a]"
               />
             </div>
 
             {/* Price */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+            <div className='bg-transparent'>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
                 Price (₹) <span className="text-red-500">*</span>
               </label>
               <Input
@@ -305,12 +304,14 @@ const ProductForm = () => {
                 min="0"
                 error={errors.price}
                 disabled={isSubmitting}
+                size="sm"
+                className="focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] "
               />
             </div>
 
             {/* Status */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
                 Status
               </label>
               <Select
@@ -322,13 +323,14 @@ const ProductForm = () => {
                   { value: false, label: 'Inactive' }
                 ]}
                 disabled={isSubmitting}
+                className="focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a]"
               />
             </div>
           </div>
 
           {/* Description */}
-          <div className="mt-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+          <div className="mt-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
               Description <span className="text-red-500">*</span>
             </label>
             <TextArea
@@ -336,20 +338,23 @@ const ProductForm = () => {
               value={formData.description}
               onChange={handleInputChange}
               placeholder="Enter product description"
-              rows={4}
+              rows={3}
               error={errors.description}
               disabled={isSubmitting}
+              className="focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a]"
             />
           </div>
         </div>
 
         {/* Form Actions */}
-        <div className="flex items-center justify-end space-x-3">
+        <div className="flex items-center justify-end space-x-3 pt-4">
           <Button
             type="button"
             onClick={handleBack}
             variant="outline"
             disabled={isSubmitting}
+            size="sm"
+            className="px-6 py-2"
           >
             Cancel
           </Button>
@@ -359,6 +364,8 @@ const ProductForm = () => {
             icon={HiCheck}
             loading={isSubmitting}
             disabled={isSubmitting}
+            size="sm"
+            className="px-6 py-2"
           >
             {isSubmitting ? 'Saving...' : (isEditing ? 'Update Product' : 'Create Product')}
           </Button>

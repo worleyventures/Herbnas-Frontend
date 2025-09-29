@@ -223,12 +223,6 @@ const InventoryCRUD = ({
               <p className="text-sm font-medium text-gray-900 truncate">
                 {inventoryItem.product?.productName || 'Unknown Product'}
               </p>
-              <p className="text-sm text-gray-500 truncate">
-                Batch: {inventoryItem.batchId || 'N/A'}
-              </p>
-              <p className="text-xs text-gray-400 truncate">
-                ₹{inventoryItem.product?.price || 'N/A'} | {inventoryItem.product?.UOM || 'N/A'}
-              </p>
             </div>
           )
         },
@@ -239,11 +233,8 @@ const InventoryCRUD = ({
       render: (inventoryItem) => (
         <div className="flex flex-col space-y-1">
           <span className="text-sm font-medium text-gray-900">
-            {isFinishedProduction ? 'F6 - Completed' : 'F6 - Completed'}
+            {isFinishedProduction ? 'Completed' : 'Completed'}
           </span>
-          <div className="text-xs text-gray-500">
-            {isFinishedProduction ? 'Production finished' : 'Production finished'}
-          </div>
         </div>
       )
     },
@@ -278,17 +269,17 @@ const InventoryCRUD = ({
           <div className="space-y-1">
             <div className="flex items-center space-x-2">
               <span className="text-sm font-medium text-gray-900">
-                {inventoryItem.availableStock || 0} units
+                {inventoryItem.availableQuantity || 0} units
               </span>
-              <StatusBadge 
+              {/* <StatusBadge 
                 status={stockStatus.status}
                 variant={stockStatus.variant}
                 className="text-xs"
-              />
+              /> */}
             </div>
-            <div className="text-xs text-gray-500">
-              Available: {inventoryItem.availableStock || 0}
-            </div>
+            {/* <div className="text-xs text-gray-500">
+              Available: {inventoryItem.availableQuantity || 0}
+            </div> */}
           </div>
         );
       }
@@ -328,12 +319,12 @@ const InventoryCRUD = ({
           );
         }
 
-        const availableStock = inventoryItem.availableStock || 0;
+        const availableStock = inventoryItem.availableQuantity || 0;
         const totalValue = availableStock * (inventoryItem.product?.price || 0);
         return (
           <div className="text-sm">
             <p className="font-medium text-gray-900">₹{totalValue.toLocaleString()}</p>
-            <p className="text-xs text-gray-500">available stock value</p>
+            <p className="text-xs text-gray-500">Stock value</p>
           </div>
         );
       }
@@ -346,12 +337,12 @@ const InventoryCRUD = ({
       render: (inventoryItem) => (
         <div className="text-sm">
           <p className="text-gray-900">{formatDate(inventoryItem.lastUpdated)}</p>
-          <p className="text-xs text-gray-500">
+          {/* <p className="text-xs text-gray-500">
             by {inventoryItem.updatedBy ? 
               `${inventoryItem.updatedBy.firstName} ${inventoryItem.updatedBy.lastName}` : 
               'Unknown User'
             }
-          </p>
+          </p> */}
         </div>
       )
     },

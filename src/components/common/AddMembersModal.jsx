@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { HiXMark, HiUserGroup, HiPlus, HiTrash, HiEye, HiEyeSlash, HiUser } from 'react-icons/hi2';
-import { Modal, Button, Input, Select } from './index';
+import { HiXMark, HiUserGroup, HiPlus, HiTrash, HiEye, HiEyeSlash, HiUser, HiCommandLine } from 'react-icons/hi2';
+import { Modal, Button, Input, Select, SearchInput } from './index';
 import { addNotification } from '../../redux/slices/uiSlice';
 import { getAllUsers } from '../../redux/actions/userActions';
 
@@ -345,18 +345,15 @@ const AddMembersModal = ({ isOpen, onClose, branch, onAddMembers }) => {
              <label className="block text-sm font-medium text-gray-700 mb-2">
                Search Existing Users
              </label>
-           <div className="relative">
-             <Input
-               type="text"
-               placeholder="Search by name or email..."
-               value={userSearch}
-               onChange={(e) => {
-                 setUserSearch(e.target.value);
-                 setShowUserDropdown(true);
-               }}
-               onFocus={() => setShowUserDropdown(true)}
-               className="w-full"
-             />
+           <SearchInput
+             placeholder="Search by name or email..."
+             value={userSearch}
+             onChange={(e) => {
+               setUserSearch(e.target.value);
+               setShowUserDropdown(true);
+             }}
+             onFocus={() => setShowUserDropdown(true)}
+           />
              
              {/* User Dropdown */}
              {showUserDropdown && userSearch && (

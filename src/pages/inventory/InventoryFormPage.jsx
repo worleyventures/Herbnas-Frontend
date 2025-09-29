@@ -313,33 +313,6 @@ const InventoryFormPage = () => {
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-4">
-              <Button
-                onClick={handleBack}
-                variant="outline"
-                size="sm"
-                className="flex items-center"
-              >
-                <HiArrowLeft className="h-4 w-4 mr-2" />
-                Back to Inventory
-              </Button>
-              <div className="h-6 w-px bg-gray-300" />
-              <div>
-                <h1 className="text-xl font-semibold text-gray-900">
-                  {mode === 'create' ? 'Create Inventory' : 'Edit Inventory'}
-                </h1>
-                <p className="text-sm text-gray-500">
-                  {mode === 'create' ? 'Add new inventory items to the system' : 'Update inventory information'}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* Main Content */}
       <div className="min-h-screen bg-gray-50">
@@ -348,15 +321,7 @@ const InventoryFormPage = () => {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between py-6">
               <div className="flex items-center space-x-3">
-                <Button
-                  onClick={() => navigate('/inventory')}
-                  variant="ghost"
-                  size="sm"
-                  icon={HiArrowLeft}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  Back
-                </Button>
+
                 <div className="p-2 bg-green-100 rounded-lg">
                   <HiCube className="h-6 w-6 text-green-600" />
                 </div>
@@ -369,14 +334,6 @@ const InventoryFormPage = () => {
                   </p>
                 </div>
               </div>
-              <Button
-                onClick={() => navigate('/inventory')}
-                variant="outline"
-                size="sm"
-                icon={HiXMark}
-              >
-                Cancel
-              </Button>
             </div>
           </div>
         </div>
@@ -390,17 +347,7 @@ const InventoryFormPage = () => {
                 <h3 className="text-lg font-semibold text-gray-900 flex items-center">
                   <HiCube className="h-5 w-5 mr-2 text-[#22c55e]" />
                   Inventory Items
-                </h3>
-                <Button
-                  type="button"
-                  onClick={addInventoryItem}
-                  variant="outline"
-                  size="sm"
-                  className="flex items-center"
-                >
-                  <HiPlus className="h-4 w-4 mr-2" />
-                  Add Item
-                </Button>
+                </h3> 
               </div>
               
               <div className="space-y-6">

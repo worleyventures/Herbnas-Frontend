@@ -252,22 +252,13 @@ const RawMaterialForm = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200">
+      <div className="bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between py-6">
             <div className="flex items-center space-x-3">
-              <Button
-                onClick={() => navigate('/inventory')}
-                variant="ghost"
-                size="sm"
-                icon={HiArrowLeft}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                Back
-              </Button>
-              <div className="p-2 bg-blue-100 rounded-lg">
+              <div className="p-2">
                 <HiCube className="h-6 w-6 text-blue-600" />
               </div>
               <div>
@@ -279,14 +270,6 @@ const RawMaterialForm = () => {
                 </p>
               </div>
             </div>
-            <Button
-              onClick={() => navigate('/inventory')}
-              variant="outline"
-              size="sm"
-              icon={HiXMark}
-            >
-              Cancel
-            </Button>
           </div>
         </div>
       </div>

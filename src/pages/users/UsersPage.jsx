@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { HiUserGroup, HiPlus, HiMagnifyingGlass, HiEye, HiPencil, HiTrash } from 'react-icons/hi2';
-import { StatCard, Table, Button, ActionButton, Input, Select, Loading, EmptyState, UserDetailsModal } from '../../components/common';
-import { PageHeader } from '../../components/layout';
+import { HiUserGroup, HiPlus, HiEye, HiPencil, HiTrash } from 'react-icons/hi2';
+import { StatCard, Table, Button, ActionButton, Input, Select, Loading, EmptyState, UserDetailsModal, SearchInput } from '../../components/common';
 import { getAllUsers, deleteUser } from '../../redux/actions/userActions';
 import { getAllBranches } from '../../redux/actions/branchActions';
 import { addNotification } from '../../redux/slices/uiSlice';
@@ -386,12 +385,15 @@ const UsersPage = () => {
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
-      <PageHeader
-        title="User Management"
-        subtitle="Manage all users and their branch assignments"
-        icon={HiUserGroup}
-        action={
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">User Management</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Manage all users and their branch assignments
+          </p>
+        </div>
+        <div className="mt-4 sm:mt-0">
           <Button
             onClick={handleAddUser}
             variant="gradient"
@@ -399,8 +401,8 @@ const UsersPage = () => {
           >
             Add User
           </Button>
-        }
-      />
+        </div>
+      </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6">
@@ -452,47 +454,44 @@ const UsersPage = () => {
 
       {/* Filters */}
       <div className="bg-white rounded-lg shadow p-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <div>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+          <div className="w-full sm:w-80">
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Search Users
             </label>
-            <div className="relative">
-              <Input
-                type="text"
-                placeholder="Search by name or email..."
-                value={searchTerm}
-                onChange={(e) => handleSearch(e.target.value)}
-                className="pl-10"
+            <SearchInput
+              placeholder="Search by name or email..."
+              value={searchTerm}
+              onChange={(e) => handleSearch(e.target.value)}
+            />
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0">
+            <div className="w-full sm:w-48">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Role
+              </label>
+              <Select
+                value={filterRole}
+                onChange={(value) => handleFilterChange('role', value)}
+                options={availableRoles}
               />
-              <HiMagnifyingGlass className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
             </div>
-          </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Role
-            </label>
-            <Select
-              value={filterRole}
-              onChange={(value) => handleFilterChange('role', value)}
-              options={availableRoles}
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Status
-            </label>
-            <Select
-              value={filterStatus}
-              onChange={(value) => handleFilterChange('status', value)}
-              options={[
-                { value: 'all', label: 'All Status' },
-                { value: 'active', label: 'Active' },
-                { value: 'inactive', label: 'Inactive' }
-              ]}
-            />
+            <div className="w-full sm:w-48">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Status
+              </label>
+              <Select
+                value={filterStatus}
+                onChange={(value) => handleFilterChange('status', value)}
+                options={[
+                  { value: 'all', label: 'All Status' },
+                  { value: 'active', label: 'Active' },
+                  { value: 'inactive', label: 'Inactive' }
+                ]}
+              />
+            </div>
           </div>
         </div>
       </div>

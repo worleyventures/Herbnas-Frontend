@@ -3,7 +3,6 @@ import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { 
   HiCube, 
-  HiMagnifyingGlass, 
   HiExclamationTriangle,
   HiInformationCircle,
   HiCheckCircle,
@@ -385,13 +384,12 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
       </div>
 
       {/* Filters */}
-      <FilterCard>
+      {/* <FilterCard>
         <div className={`grid grid-cols-1 sm:grid-cols-2 ${activeTab === 'finishedGoods' ? 'lg:grid-cols-3' : 'lg:grid-cols-2'} gap-3`}>
           <SearchInput
             value={searchTerm}
             onChange={setSearchTerm}
             placeholder={`Search ${activeTab === 'rawMaterials' ? 'raw materials' : 'finished goods'}...`}
-            icon={HiMagnifyingGlass}
           />
           {activeTab === 'finishedGoods' && (
             <Select
@@ -408,7 +406,7 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
             placeholder="Filter by stock status"
           />
         </div>
-      </FilterCard>
+      </FilterCard> */}
 
       {/* Results Info */}
       <div className="flex items-center justify-between">

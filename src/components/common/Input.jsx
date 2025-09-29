@@ -1,5 +1,6 @@
 import React from 'react';
 import Dropdown from './Dropdown';
+import { HiDocumentText } from 'react-icons/hi2';
 
 const Input = ({
   type = "text",
@@ -20,19 +21,19 @@ const Input = ({
   inputClassName = "",
   labelClassName = "",
   ...props
-}) => {
+}) => { 
   const getSizeClasses = () => {
     switch (size) {
       case 'xs':
         return 'px-3 py-1.5 text-xs';
       case 'sm':
-        return 'px-3 py-2 text-sm';
+        return 'px-3 py-1.5 text-sm';
       case 'md':
-        return 'px-4 py-2.5 text-sm';
+        return 'px-4 py-2 text-sm';
       case 'lg':
-        return 'px-5 py-3 text-base';
+        return 'px-5 py-2.5 text-base';
       default:
-        return 'px-4 py-2.5 text-sm';
+        return 'px-4 py-2 text-sm';
     }
   };
 
@@ -57,10 +58,10 @@ const Input = ({
   };
 
   const baseInputClasses = `
-    w-full border-2 rounded-xl transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm hover:shadow-md
+    w-full border-2 rounded-xl transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] shadow-sm hover:shadow-md
     ${getSizeClasses()}
     ${getIconPadding()}
-    ${error ? 'border-red-500 focus:ring-red-500 bg-red-50/50' : 'border-gray-300 hover:border-blue-500/50 focus:border-blue-500 bg-white/80 backdrop-blur-sm'}
+    ${error ? 'border-red-500 focus:ring-red-500 bg-red-50/50' : 'border-gray-300 hover:border-[#8bc34a]/50 focus:border-[#8bc34a] bg-white/80 backdrop-blur-sm'}
     ${disabled ? 'bg-gray-100 cursor-not-allowed opacity-60' : ''}
     ${inputClassName}
   `;
@@ -73,10 +74,10 @@ const Input = ({
         </label>
       )}
       
-      <div className="relative">
+      <div className="relative group">
         {Icon && iconPosition === 'left' && (
           <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-            <Icon className={`${getIconSize()} text-gray-400 transition-colors duration-200 ${error ? 'text-red-500' : ''}`} />
+            <Icon className={`${getIconSize()} text-gray-400 transition-colors duration-200 ${error ? 'text-red-500' : 'group-focus-within:text-[#8bc34a]'}`} />
           </div>
         )}
         
@@ -94,7 +95,7 @@ const Input = ({
         
         {Icon && iconPosition === 'right' && (
           <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
-            <Icon className={`${getIconSize()} text-gray-400 transition-colors duration-200 ${error ? 'text-red-500' : ''}`} />
+            <Icon className={`${getIconSize()} text-gray-400 transition-colors duration-200 ${error ? 'text-red-500' : 'group-focus-within:text-[#8bc34a]'}`} />
           </div>
         )}
       </div>
@@ -156,6 +157,7 @@ export const SearchInput = ({
   placeholder = "Search...",
   className = "",
   size = "sm",
+  icon = HiDocumentText,
   ...props
 }) => {
   return (
@@ -164,7 +166,7 @@ export const SearchInput = ({
       value={value}
       onChange={onChange}
       placeholder={placeholder}
-      icon={props.icon}
+      icon={icon}
       size={size}
       className={className}
       {...props}

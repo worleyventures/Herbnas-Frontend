@@ -104,10 +104,10 @@ const Dropdown = ({
           }}
           disabled={disabled || loading}
           className={`
-            w-full px-4 py-2.5 pr-8 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#22c55e] focus:border-[#22c55e] text-sm bg-white shadow-sm hover:border-gray-400 cursor-pointer text-left
+            w-full px-4 py-2.5 pr-8 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] text-sm bg-white shadow-sm hover:border-[#8bc34a]/50 cursor-pointer text-left
             ${error ? 'border-red-300 focus:ring-red-500' : 'border-gray-300'}
             ${disabled || loading ? 'bg-gray-50 cursor-not-allowed' : ''}
-            ${isOpen ? 'border-[#22c55e]' : ''}
+            ${isOpen ? 'border-[#8bc34a]' : ''}
           `}
           {...props}
         >
@@ -136,7 +136,7 @@ const Dropdown = ({
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder={searchPlaceholder}
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#22c55e] focus:border-[#22c55e]"
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a]"
                   onClick={(e) => e.stopPropagation()}
                 />
               </div>
@@ -148,7 +148,7 @@ const Dropdown = ({
                 <button
                   type="button"
                   onClick={handleAddNewClick}
-                  className="w-full px-4 py-2 text-left text-sm text-[#22c55e] hover:bg-gray-100 focus:outline-none focus:bg-gray-100 flex items-center font-medium"
+                  className="w-full px-4 py-2 text-left text-sm text-[#8bc34a] hover:bg-gray-100 focus:outline-none focus:bg-gray-100 flex items-center font-medium"
                 >
                   <span className="mr-2">+</span>
                   {addNewLabel}
@@ -169,7 +169,7 @@ const Dropdown = ({
                     handleSelectChange(option.value);
                   }}
                   className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-100 focus:outline-none focus:bg-gray-100 ${
-                    value === option.value ? 'bg-[#22c55e]/10 text-[#22c55e] font-medium' : 'text-gray-900'
+                    value === option.value ? 'bg-[#8bc34a]/10 text-[#8bc34a] font-medium' : 'text-gray-900'
                   }`}
                 >
                   {option.label}
