@@ -221,7 +221,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
           isCollapsed ? 'px-3 py-2.5 justify-center' : 'px-3 py-2.5'
         } ${
           isActive
-            ? `bg-gradient-to-r from-gray-100 to-gray-50 text-gray-900 border-r-4 border-[#558b2f] shadow-sm hover:shadow-md`
+            ? `bg-gradient-to-r from-[#8bc34a] to-[#558b2f] text-white shadow-sm hover:shadow-md hover:from-[#558b2f]`
             : `text-gray-700 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 hover:shadow-sm`
         }`}
         style={getItemStyle()}
@@ -235,12 +235,12 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
       >
         <item.icon
           className={`h-4 w-4 flex-shrink-0 transition-all duration-300 ${
-            isActive ? (item.gradient ? 'text-white' : item.color) : item.color
+            isActive ? 'text-white' : item.color
           } ${isCollapsed ? '' : 'mr-3'} ${isActive ? 'scale-105' : 'group-hover:scale-105'}`}
           aria-hidden="true"
         />
         {!isCollapsed && (
-          <span className="truncate font-medium text-sm">{item.name}</span>
+          <span className={`truncate font-medium text-sm ${isActive ? 'text-white' : ''}`}>{item.name}</span>
         )}
       </Link>
     );
