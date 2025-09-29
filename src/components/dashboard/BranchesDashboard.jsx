@@ -11,7 +11,7 @@ import {
   HiCog6Tooth,
   HiCloudArrowUp
 } from 'react-icons/hi2';
-import { StatCard, FilterCard, Button, SearchInput, Select, Pagination, ImportModal } from '../common';
+import { StatCard, Button, SearchInput, Select, Pagination, ImportModal } from '../common';
 import { addNotification } from '../../redux/slices/uiSlice';
 import {
   getAllBranches,
@@ -436,28 +436,26 @@ const BranchesDashboard = ({ propActiveView = 'table' }) => {
           </div>
 
           {/* Filters */}
-          <FilterCard>
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-              <div className="w-full sm:w-80">
-                <SearchInput
-                  placeholder="Search branches..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-              <div className="w-full sm:w-48">
-                <Select
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value)}
-                  options={[
-                    { value: 'all', label: 'All Status' },
-                    { value: 'active', label: 'Active' },
-                    { value: 'inactive', label: 'Inactive' }
-                  ]}
-                />
-              </div>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            <div className="w-full sm:w-80">
+              <SearchInput
+                placeholder="Search branches..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
             </div>
-          </FilterCard>
+            <div className="w-full sm:w-48">
+              <Select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                options={[
+                  { value: 'all', label: 'All Status' },
+                  { value: 'active', label: 'Active' },
+                  { value: 'inactive', label: 'Inactive' }
+                ]}
+              />
+            </div>
+          </div>
 
           {/* Main Content */}
           <div>

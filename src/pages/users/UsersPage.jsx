@@ -453,12 +453,9 @@ const UsersPage = () => {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-lg shadow p-6">
+      <div className="bg-white rounded-lg p-6">
         <div className="flex flex-col sm:flex-row sm:items-center gap-4">
           <div className="w-full sm:w-80">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Search Users
-            </label>
             <SearchInput
               placeholder="Search by name or email..."
               value={searchTerm}
@@ -468,9 +465,6 @@ const UsersPage = () => {
 
           <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0">
             <div className="w-full sm:w-48">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Role
-              </label>
               <Select
                 value={filterRole}
                 onChange={(value) => handleFilterChange('role', value)}
@@ -479,9 +473,6 @@ const UsersPage = () => {
             </div>
 
             <div className="w-full sm:w-48">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Status
-              </label>
               <Select
                 value={filterStatus}
                 onChange={(value) => handleFilterChange('status', value)}

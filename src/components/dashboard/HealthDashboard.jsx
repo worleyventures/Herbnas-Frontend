@@ -18,7 +18,7 @@ import {
   HiEye,
   HiPlus
 } from 'react-icons/hi2';
-import { StatCard, FilterCard, Button, ActionButton, SearchInput, Select, Pagination, ImportModal, HealthIssueDetailsModal } from '../common';
+import { StatCard, Button, ActionButton, SearchInput, Select, Pagination, ImportModal, HealthIssueDetailsModal } from '../common';
 import { addNotification } from '../../redux/slices/uiSlice';
 import {
   getAllHealthIssues,
@@ -354,35 +354,33 @@ const HealthDashboard = () => {
       </div>
 
       {/* Filters */}
-      <FilterCard>
-        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-          <div className="w-full sm:w-80">
-            <SearchInput
-              value={searchTerm}
-              onChange={handleSearch}
-              placeholder="Search health issues..."
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+        <div className="w-full sm:w-80">
+          <SearchInput
+            value={searchTerm}
+            onChange={handleSearch}
+            placeholder="Search health issues..."
+          />
+        </div>
+        <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0">
+          <div className="w-full sm:w-48">
+            <Select
+              value={filterGender}
+              onChange={(value) => handleFilterChange('gender', value)}
+              options={genderOptions}
+              placeholder="Filter by gender"
             />
           </div>
-          <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0">
-            <div className="w-full sm:w-48">
-              <Select
-                value={filterGender}
-                onChange={(value) => handleFilterChange('gender', value)}
-                options={genderOptions}
-                placeholder="Filter by gender"
-              />
-            </div>
-            <div className="w-full sm:w-48">
-              <Select
-                value={filterMaritalStatus}
-                onChange={(value) => handleFilterChange('maritalStatus', value)}
-                options={maritalStatusOptions}
-                placeholder="Filter by marital status"
-              />
-            </div>
+          <div className="w-full sm:w-48">
+            <Select
+              value={filterMaritalStatus}
+              onChange={(value) => handleFilterChange('maritalStatus', value)}
+              options={maritalStatusOptions}
+              placeholder="Filter by marital status"
+            />
           </div>
         </div>
-      </FilterCard>
+      </div>
 
       {/* Main Content */}
       <div>
