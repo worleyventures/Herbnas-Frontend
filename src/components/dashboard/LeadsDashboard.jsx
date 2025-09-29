@@ -116,19 +116,49 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
 
   // Clear success/error messages after a delay and close modals on success
   useEffect(() => {
+    console.log('🔍 Success states check:', { createSuccess, updateSuccess, deleteSuccess });
     if (createSuccess || updateSuccess || deleteSuccess) {
       if (createSuccess) {
+        console.log('🔄 Lead created successfully, refreshing dashboard data...');
         setShowCreateModal(false);
         // Refresh stats after creating a lead
         dispatch(getLeadStats()).then((result) => {
           if (result.payload && result.payload.data) {
+            console.log('📊 Stats refreshed:', result.payload.data);
             setUnfilteredStats(result.payload.data);
           }
         });
+        // Immediately add the new lead to unfiltered leads if we have it from Redux
+        if (leads.length > 0) {
+          const newLead = leads[0]; // New lead is added to the front of the array
+          setUnfilteredLeads(prev => {
+            const exists = prev.some(lead => lead._id === newLead._id);
+            if (!exists) {
+              console.log('➕ Adding new lead to unfiltered leads immediately:', newLead.materialName);
+              return [newLead, ...prev];
+            }
+            return prev;
+          });
+        }
+        
         // Refresh unfiltered leads
         dispatch(getAllLeads({ limit: 1000, page: 1 })).then((result) => {
           if (result.payload && result.payload.data) {
+            console.log('👥 Leads refreshed:', result.payload.data.leads?.length, 'leads');
             setUnfilteredLeads(result.payload.data.leads);
+          }
+        });
+        
+        // Also refresh the main leads list for the filtered display
+        dispatch(getAllLeads({
+          page: currentPage,
+          limit: itemsPerPage,
+          search: searchTerm,
+          leadStatus: filterStatus === 'all' ? '' : filterStatus,
+          dispatchedFrom: filterBranch === 'all' ? '' : filterBranch
+        })).then((result) => {
+          if (result.payload && result.payload.data) {
+            console.log('📋 Main leads list refreshed:', result.payload.data.leads?.length, 'leads');
           }
         });
       }
@@ -141,6 +171,15 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
             setUnfilteredStats(result.payload.data);
           }
         });
+        
+        // Also refresh the main leads list for the filtered display
+        dispatch(getAllLeads({
+          page: currentPage,
+          limit: itemsPerPage,
+          search: searchTerm,
+          leadStatus: filterStatus === 'all' ? '' : filterStatus,
+          dispatchedFrom: filterBranch === 'all' ? '' : filterBranch
+        }));
       }
       if (deleteSuccess) {
         setShowDeleteModal(false);
@@ -157,6 +196,15 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
             setUnfilteredLeads(result.payload.data.leads);
           }
         });
+        
+        // Also refresh the main leads list for the filtered display
+        dispatch(getAllLeads({
+          page: currentPage,
+          limit: itemsPerPage,
+          search: searchTerm,
+          leadStatus: filterStatus === 'all' ? '' : filterStatus,
+          dispatchedFrom: filterBranch === 'all' ? '' : filterBranch
+        }));
       }
       
       const timer = setTimeout(() => {
@@ -177,24 +225,40 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
 
   // Manual refresh function
   const refreshDashboardData = useCallback(() => {
+    console.log('🔄 Manual refresh triggered');
     setIsRefreshing(true);
     
     // Refresh unfiltered leads
     dispatch(getAllLeads({ limit: 1000, page: 1 })).then((result) => {
       if (result.payload && result.payload.data) {
+        console.log('👥 Manual refresh - Leads updated:', result.payload.data.leads?.length, 'leads');
         setUnfilteredLeads(result.payload.data.leads);
+      }
+    });
+    
+    // Also refresh the main leads list for the filtered display
+    dispatch(getAllLeads({
+      page: currentPage,
+      limit: itemsPerPage,
+      search: searchTerm,
+      leadStatus: filterStatus === 'all' ? '' : filterStatus,
+      dispatchedFrom: filterBranch === 'all' ? '' : filterBranch
+    })).then((result) => {
+      if (result.payload && result.payload.data) {
+        console.log('📋 Manual refresh - Main leads list updated:', result.payload.data.leads?.length, 'leads');
       }
     });
     
     // Refresh stats
     dispatch(getLeadStats()).then((result) => {
       if (result.payload && result.payload.data) {
+        console.log('📊 Manual refresh - Stats updated:', result.payload.data);
         setUnfilteredStats(result.payload.data);
       }
     }).finally(() => {
       setIsRefreshing(false);
     });
-  }, [dispatch]);
+  }, [dispatch, currentPage, itemsPerPage, searchTerm, filterStatus, filterBranch]);
 
   // Periodic refresh every 30 seconds to keep data up-to-date
   useEffect(() => {
@@ -387,21 +451,59 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
     // Data refresh dispatched
   };
 
-  // Calculate stable counts from stats data (always use unfiltered stats for cards)
+  // Calculate stable counts from actual leads data (prioritize real data over API stats)
   const getStatusCount = (status) => {
+    // First try to use actual leads data
+    const leadsToCount = unfilteredLeads.length > 0 ? unfilteredLeads : leads;
+    if (Array.isArray(leadsToCount) && leadsToCount.length > 0) {
+      const count = leadsToCount.filter(lead => lead.leadStatus === status).length;
+      console.log(`📊 Status count for ${status}:`, count, 'from', leadsToCount.length, 'leads');
+      return count;
+    }
+    
+    // Fallback to API stats if no leads data available
     const statsToUse = unfilteredStats || stats;
-    if (!statsToUse?.leadsByStatus || !Array.isArray(statsToUse.leadsByStatus)) return 0;
-    const statusData = statsToUse.leadsByStatus.find(item => item._id === status);
-    return statusData ? statusData.count : 0;
+    if (statsToUse?.leadsByStatus && Array.isArray(statsToUse.leadsByStatus)) {
+      const statusData = statsToUse.leadsByStatus.find(item => item._id === status);
+      return statusData ? statusData.count : 0;
+    }
+    
+    return 0;
   };
 
-  // Calculate card counts - use unfiltered stats if available, otherwise fall back to Redux stats
+  // Calculate card counts - prioritize actual leads data over API stats
+  const leadsToCount = unfilteredLeads.length > 0 ? unfilteredLeads : leads;
   const cardCounts = {
-    total: (unfilteredStats || stats)?.overview?.totalLeads || totalLeads || 0,
+    total: leadsToCount.length || (unfilteredStats || stats)?.overview?.totalLeads || totalLeads || 0,
+    newLead: getStatusCount('new_lead'),
     qualified: getStatusCount('qualified'),
     unqualified: getStatusCount('unqualified'), // Only actual unqualified status
     converted: getStatusCount('order_completed')
   };
+
+  // Debug card counts
+  console.log('📈 Card counts calculated:', {
+    total: cardCounts.total,
+    newLead: cardCounts.newLead,
+    qualified: cardCounts.qualified,
+    unqualified: cardCounts.unqualified,
+    converted: cardCounts.converted,
+    leadsToCount: leadsToCount.length,
+    unfilteredLeads: unfilteredLeads.length,
+    reduxLeads: leads.length,
+    unfilteredStats: !!unfilteredStats,
+    stats: !!stats,
+    totalLeads: totalLeads
+  });
+  
+  // Debug lead statuses
+  if (leadsToCount.length > 0) {
+    const statusCounts = leadsToCount.reduce((acc, lead) => {
+      acc[lead.leadStatus] = (acc[lead.leadStatus] || 0) + 1;
+      return acc;
+    }, {});
+    console.log('📋 Lead status breakdown:', statusCounts);
+  }
 
   // Filter leads client-side for special status groups
   const getFilteredLeads = () => {
@@ -588,46 +690,74 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
 
           {/* Stats Cards - Show zeros for empty collection */}
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
-            <StatCard
-              title="Total Leads"
-              value={0}
-              icon={HiUser}
-              iconBg="bg-gradient-to-br from-blue-500 to-blue-600"
-              gradient="blue"
-              change="+5%"
-              changeType="increase"
-              className="h-full"
-            />
-            <StatCard
-              title="Qualified"
-              value={0}
-              icon={HiCheckCircle}
-              iconBg="bg-gradient-to-br from-green-500 to-green-600"
-              gradient="green"
-              change="+2%"
-              changeType="increase"
-              className="h-full"
-            />
-            <StatCard
-              title="Unqualified"
-              value={0}
-              icon={HiXCircle}
-              iconBg="bg-gradient-to-br from-red-500 to-red-600"
-              gradient="red"
-              change="+2%"
-              changeType="increase"
-              className="h-full"
-            />
-            <StatCard
-              title="Order Completed"
-              value={0}
-              icon={HiCheckCircle}
-              iconBg="bg-gradient-to-br from-purple-500 to-purple-600"
-              gradient="purple"
-              change="+8%"
-              changeType="increase"
-              className="h-full"
-            />
+            <div
+              onClick={() => handleCardFilter('all')}
+              className={`cursor-pointer transition-all duration-200 ${
+                filterStatus === 'all' ? 'opacity-90 shadow-lg' : 'hover:shadow-md'
+              }`}
+            >
+              <StatCard
+                title="Total Leads"
+                value={cardCounts.total}
+                icon={HiUser}
+                iconBg="bg-gradient-to-br from-blue-500 to-blue-600"
+                gradient="blue"
+                change="+5%"
+                changeType="increase"
+                className="h-full"
+              />
+            </div>
+            <div
+              onClick={() => handleCardFilter('new_lead')}
+              className={`cursor-pointer transition-all duration-200 ${
+                filterStatus === 'new_lead' ? 'opacity-90 shadow-lg' : 'hover:shadow-md'
+              }`}
+            >
+              <StatCard
+                title="New Lead"
+                value={cardCounts.newLead}
+                icon={HiUser}
+                iconBg="bg-gradient-to-br from-blue-500 to-blue-600"
+                gradient="blue"
+                change="+5%"
+                changeType="increase"
+                className="h-full"
+              />
+            </div>
+            <div
+              onClick={() => handleCardFilter('qualified')}
+              className={`cursor-pointer transition-all duration-200 ${
+                filterStatus === 'qualified' ? 'opacity-90 shadow-lg' : 'hover:shadow-md'
+              }`}
+            >
+              <StatCard
+                title="Qualified"
+                value={cardCounts.qualified}
+                icon={HiCheckCircle}
+                iconBg="bg-gradient-to-br from-green-500 to-green-600"
+                gradient="green"
+                change="+2%"
+                changeType="increase"
+                className="h-full"
+              />
+            </div>
+            <div
+              onClick={() => handleCardFilter('order_completed')}
+              className={`cursor-pointer transition-all duration-200 ${
+                filterStatus === 'order_completed' ? 'opacity-90 shadow-lg' : 'hover:shadow-md'
+              }`}
+            >
+              <StatCard
+                title="Order Completed"
+                value={cardCounts.converted}
+                icon={HiCheckCircle}
+                iconBg="bg-gradient-to-br from-purple-500 to-purple-600"
+                gradient="purple"
+                change="+8%"
+                changeType="increase"
+                className="h-full"
+              />
+            </div>
           </div>
 
           {/* Search and Filter Section */}

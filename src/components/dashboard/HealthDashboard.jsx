@@ -18,7 +18,7 @@ import {
   HiEye,
   HiPlus
 } from 'react-icons/hi2';
-import { StatCard, FilterCard, Button, ActionButton, SearchInput, Select, Pagination, ImportModal, HealthIssueDetailsModal } from '../common';
+import { StatCard, Button, ActionButton, SearchInput, Select, Pagination, ImportModal, HealthIssueDetailsModal } from '../common';
 import { addNotification } from '../../redux/slices/uiSlice';
 import {
   getAllHealthIssues,
@@ -354,35 +354,33 @@ const HealthDashboard = () => {
       </div>
 
       {/* Filters */}
-      <FilterCard>
-        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-          <div className="w-full sm:w-80">
-            <SearchInput
-              value={searchTerm}
-              onChange={handleSearch}
-              placeholder="Search health issues..."
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+        <div className="w-full sm:w-80">
+          <SearchInput
+            value={searchTerm}
+            onChange={handleSearch}
+            placeholder="Search health issues..."
+          />
+        </div>
+        <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0">
+          <div className="w-full sm:w-48">
+            <Select
+              value={filterGender}
+              onChange={(value) => handleFilterChange('gender', value)}
+              options={genderOptions}
+              placeholder="Filter by gender"
             />
           </div>
-          <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0">
-            <div className="w-full sm:w-48">
-              <Select
-                value={filterGender}
-                onChange={(value) => handleFilterChange('gender', value)}
-                options={genderOptions}
-                placeholder="Filter by gender"
-              />
-            </div>
-            <div className="w-full sm:w-48">
-              <Select
-                value={filterMaritalStatus}
-                onChange={(value) => handleFilterChange('maritalStatus', value)}
-                options={maritalStatusOptions}
-                placeholder="Filter by marital status"
-              />
-            </div>
+          <div className="w-full sm:w-48">
+            <Select
+              value={filterMaritalStatus}
+              onChange={(value) => handleFilterChange('maritalStatus', value)}
+              options={maritalStatusOptions}
+              placeholder="Filter by marital status"
+            />
           </div>
         </div>
-      </FilterCard>
+      </div>
 
       {/* Main Content */}
       <div>
@@ -582,3 +580,587 @@ const HealthDashboard = () => {
 };
 
 export default HealthDashboard;
+
+            onClick={() => setShowImportModal(true)}
+
+            icon={HiCloudArrowUp}
+
+            variant="warning"
+
+            size="sm"
+
+          >
+
+            Import Health Issues
+
+          </Button>
+
+          <Button
+
+            onClick={() => navigate('/health-issues/create')}
+
+            icon={HiPlus}
+
+            variant="gradient"
+
+            size="sm"
+
+          >
+
+            Add New Health Issue
+
+          </Button>
+
+        </div>
+
+      </div>
+
+
+
+      {/* Stats Cards */}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
+
+        <StatCard
+
+          title="Total Health Issues"
+
+          value={stats?.overview?.totalHealthIssues || healthIssues.length}
+
+          icon={HiDocumentText}
+
+          gradient="green"
+
+          animation="bounce"
+
+          change="+5%"
+
+          changeType="increase"
+
+          loading={statsLoading || loading}
+
+        />
+
+        <StatCard
+
+          title="Active Issues"
+
+          value={stats?.overview?.activeHealthIssues || healthIssues.filter(i => i.isActive === true).length}
+
+          icon={HiCheckCircle}
+
+          gradient="emerald"
+
+          animation="pulse"
+
+          change="+2%"
+
+          changeType="increase"
+
+          loading={statsLoading || loading}
+
+        />
+
+        <StatCard
+
+          title="Male Specific"
+
+          value={stats?.genderDistribution?.find(g => g._id === 'male')?.count || healthIssues.filter(i => i.gender === 'male').length}
+
+          icon={HiUser}
+
+          gradient="blue"
+
+          animation="float"
+
+          change="+1%"
+
+          changeType="increase"
+
+          loading={statsLoading || loading}
+
+        />
+
+        <StatCard
+
+          title="Female Specific"
+
+          value={stats?.genderDistribution?.find(g => g._id === 'female')?.count || healthIssues.filter(i => i.gender === 'female').length}
+
+          icon={HiHeart}
+
+          gradient="pink"
+
+          animation="bounce"
+
+          change="+3%"
+
+          changeType="increase"
+
+          loading={statsLoading || loading}
+
+        />
+
+      </div>
+
+
+
+      {/* Filters */}
+
+      <FilterCard>
+
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+
+          <div className="w-full sm:w-80">
+
+            <SearchInput
+
+              value={searchTerm}
+
+              onChange={handleSearch}
+
+              placeholder="Search health issues..."
+
+            />
+
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0">
+
+            <div className="w-full sm:w-48">
+
+              <Select
+
+                value={filterGender}
+
+                onChange={(value) => handleFilterChange('gender', value)}
+
+                options={genderOptions}
+
+                placeholder="Filter by gender"
+
+              />
+
+            </div>
+
+            <div className="w-full sm:w-48">
+
+              <Select
+
+                value={filterMaritalStatus}
+
+                onChange={(value) => handleFilterChange('maritalStatus', value)}
+
+                options={maritalStatusOptions}
+
+                placeholder="Filter by marital status"
+
+              />
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </FilterCard>
+
+
+
+      {/* Main Content */}
+
+      <div>
+
+        {/* Table */}
+
+        <div className="overflow-x-auto">
+
+          <table className="min-w-full divide-y divide-gray-200">
+
+            <thead className="bg-gray-50">
+
+              <tr>
+
+                <th className="px-3 sm:px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+
+                  Health Issue
+
+                </th>
+
+                <th className="hidden sm:table-cell px-3 sm:px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+
+                  Gender
+
+                </th>
+
+                <th className="hidden md:table-cell px-3 sm:px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+
+                  Marital Status
+
+                </th>
+
+                <th className="hidden lg:table-cell px-3 sm:px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+
+                  Age Range
+
+                </th>
+
+                <th className="px-3 sm:px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+
+                  Status
+
+                </th>
+
+                <th className="px-3 sm:px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+
+                  Actions
+
+                </th>
+
+              </tr>
+
+            </thead>
+
+            <tbody className="bg-white divide-y divide-gray-200">
+
+              {loading ? (
+
+                <tr>
+
+                  <td colSpan="6" className="px-6 py-12 text-center">
+
+                    <div className="flex items-center justify-center">
+
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#22c55e]"></div>
+
+                      <span className="ml-2 text-gray-500">Loading health issues...</span>
+
+                    </div>
+
+                  </td>
+
+                </tr>
+
+              ) : paginatedHealthIssues.length === 0 ? (
+
+                <tr>
+
+                  <td colSpan="6" className="px-6 py-12 text-center">
+
+                    <div className="text-center">
+
+                      <HiDocumentText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">No health issues found</h3>
+
+                      <p className="text-gray-500 mb-4">
+
+                        {searchTerm || filterGender !== 'all' || filterMaritalStatus !== 'all'
+
+                          ? 'Try adjusting your search or filters'
+
+                          : 'Get started by creating your first health issue'
+
+                        }
+
+                      </p>
+
+                      {!searchTerm && filterGender === 'all' && filterMaritalStatus === 'all' && (
+
+                        <Button
+
+                          variant="gradient"
+
+                          onClick={() => navigate('/health-issues/create')}
+
+                          size="xs"
+
+                          className="flex items-center mx-auto"
+
+                        >
+
+                          <HiPencil className="h-4 w-4 mr-2" />
+
+                          Add Health Issue
+
+                        </Button>
+
+                      )}
+
+                    </div>
+
+                  </td>
+
+                </tr>
+
+              ) : (
+
+                paginatedHealthIssues.map((issue) => (
+
+                  <tr key={issue._id} className="hover:bg-gray-50">
+
+                    <td className="px-3 sm:px-4 py-3">
+
+                      <div className="flex flex-col">
+
+                        <div className="text-sm font-medium text-gray-900">
+
+                          {issue.healthIssue}
+
+                        </div>
+
+                        {/* Mobile: Show additional info */}
+
+                        <div className="sm:hidden mt-1 space-y-1">
+
+                          <div className="flex items-center space-x-2">
+
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+
+                              issue.gender === 'male' 
+
+                                ? 'bg-blue-100 text-blue-800'
+
+                                : issue.gender === 'female'
+
+                                ? 'bg-pink-100 text-pink-800'
+
+                                : 'bg-gray-100 text-gray-800'
+
+                            }`}>
+
+                              {issue.gender === 'male' ? 'Male' : issue.gender === 'female' ? 'Female' : 'Both'}
+
+                            </span>
+
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+
+                              issue.maritalStatus === 'married' 
+
+                                ? 'bg-green-100 text-green-800'
+
+                                : issue.maritalStatus === 'unmarried'
+
+                                ? 'bg-yellow-100 text-yellow-800'
+
+                                : 'bg-gray-100 text-gray-800'
+
+                            }`}>
+
+                              {issue.maritalStatus === 'married' ? 'Married' : issue.maritalStatus === 'unmarried' ? 'Unmarried' : 'Both'}
+
+                            </span>
+
+                          </div>
+
+                          <div className="text-xs text-gray-500">
+
+                            Age: {issue.fromAge} - {issue.toAge} years
+
+                          </div>
+
+                        </div>
+
+                      </div>
+
+                    </td>
+
+                    <td className="hidden sm:table-cell px-3 sm:px-4 py-3 whitespace-nowrap">
+
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+
+                        issue.gender === 'male' 
+
+                          ? 'bg-blue-100 text-blue-800'
+
+                          : issue.gender === 'female'
+
+                          ? 'bg-pink-100 text-pink-800'
+
+                          : 'bg-gray-100 text-gray-800'
+
+                      }`}>
+
+                        {issue.gender === 'male' ? 'Male' : issue.gender === 'female' ? 'Female' : 'Both'}
+
+                      </span>
+
+                    </td>
+
+                    <td className="hidden md:table-cell px-3 sm:px-4 py-3 whitespace-nowrap">
+
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+
+                        issue.maritalStatus === 'married' 
+
+                          ? 'bg-green-100 text-green-800'
+
+                          : issue.maritalStatus === 'unmarried'
+
+                          ? 'bg-yellow-100 text-yellow-800'
+
+                          : 'bg-gray-100 text-gray-800'
+
+                      }`}>
+
+                        {issue.maritalStatus === 'married' ? 'Married' : issue.maritalStatus === 'unmarried' ? 'Unmarried' : 'Both'}
+
+                      </span>
+
+                    </td>
+
+                    <td className="hidden lg:table-cell px-3 sm:px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+
+                      {issue.fromAge} - {issue.toAge} years
+
+                    </td>
+
+                    <td className="px-3 sm:px-4 py-3 whitespace-nowrap">
+
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+
+                        issue.isActive 
+
+                          ? 'bg-green-100 text-green-800'
+
+                          : 'bg-red-100 text-red-800'
+
+                      }`}>
+
+                        {issue.isActive ? 'Active' : 'Inactive'}
+
+                      </span>
+
+                    </td>
+
+                    <td className="px-3 sm:px-4 py-3 whitespace-nowrap text-sm font-medium">
+
+                      <div className="flex flex-wrap gap-1 sm:gap-2">
+
+                        <ActionButton
+
+                          icon={HiEye}
+
+                          onClick={() => handleViewHealthIssue(issue)}
+
+                          variant="view"
+
+                          size="sm"
+
+                          title="View Details"
+
+                        />
+
+                        <ActionButton
+
+                          icon={HiPencil}
+
+                          onClick={() => handleEditHealthIssue(issue)}
+
+                          variant="edit"
+
+                          size="sm"
+
+                          title="Edit"
+
+                        />
+
+                        <ActionButton
+
+                          icon={HiXCircle}
+
+                          onClick={() => handleDeleteHealthIssue(issue)}
+
+                          variant="delete"
+
+                          size="sm"
+
+                          title="Delete"
+
+                        />
+
+                      </div>
+
+                    </td>
+
+                  </tr>
+
+                ))
+
+              )}
+
+            </tbody>
+
+          </table>
+
+        </div>
+
+      </div>
+
+
+
+      {/* Pagination */}
+
+      {totalPages > 1 && (
+
+        <div className="flex justify-center">
+
+          <Pagination
+
+            currentPage={pagination.currentPage || currentPage}
+
+            totalPages={totalPages}
+
+            onPageChange={setCurrentPage}
+
+            itemsPerPage={itemsPerPage}
+
+            totalItems={pagination.totalHealthIssues || filteredHealthIssues.length}
+
+          />
+
+        </div>
+
+      )}
+
+
+
+
+
+
+
+
+
+
+
+      {/* Health Issue Details Modal */}
+
+      <HealthIssueDetailsModal
+
+        isOpen={showHealthModal}
+
+        onClose={() => setShowHealthModal(false)}
+
+        healthIssue={selectedHealthIssue}
+
+        onEdit={handleEditHealthIssue}
+
+        onDelete={handleDeleteHealthIssue}
+
+        onResolve={handleResolveHealthIssue}
+
+        onReopen={handleReopenHealthIssue}
+
+      />
+
+    </div>
+
+  );
+
+};
+
+
+
+export default HealthDashboard;
+
+
