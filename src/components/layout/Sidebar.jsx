@@ -17,7 +17,6 @@ import {
   HiCube,
   HiBars3,
   HiChevronLeft,
-  HiChevronRight,
   HiShoppingBag,
 } from 'react-icons/hi2';
 
@@ -264,9 +263,15 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
             <div className="flex items-center w-full">
               <div className="w-full flex items-center justify-center">
                 {isCollapsed ? (
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg" style={{background: 'linear-gradient(90deg, rgb(139, 195, 74), rgb(85, 139, 47))'}}>
+                  <button
+                    type="button"
+                    className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer"
+                    style={{background: 'linear-gradient(90deg, rgb(139, 195, 74), rgb(85, 139, 47))'}}
+                    onClick={() => setIsCollapsed(!isCollapsed)}
+                    title="Expand sidebar"
+                  >
                     <span className="text-white font-bold text-lg">H</span>
-                  </div>
+                  </button>
                 ) : (
                   <div className="flex flex-col items-center space-y-2">
                     <img 
@@ -279,20 +284,18 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
               </div>
             </div>
             <div className="flex items-center space-x-2">
-              {/* Desktop toggle button */}
-              <button
-                type="button"
-                className="hidden md:inline-flex items-center justify-center w-8 h-8 text-gray-500 hover:text-gray-700 hover:bg-gray-100/50 rounded-lg transition-all duration-200"
-                onClick={() => setIsCollapsed(!isCollapsed)}
-                title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-              >
-                <span className="sr-only">{isCollapsed ? "Expand sidebar" : "Collapse sidebar"}</span>
-                {isCollapsed ? (
-                  <HiChevronRight className="h-4 w-4" aria-hidden="true" />
-                ) : (
+              {/* Desktop collapse button - only show when expanded */}
+              {!isCollapsed && (
+                <button
+                  type="button"
+                  className="hidden md:inline-flex items-center justify-center w-8 h-8 text-gray-500 hover:text-gray-700 hover:bg-gray-100/50 rounded-lg transition-all duration-200"
+                  onClick={() => setIsCollapsed(!isCollapsed)}
+                  title="Collapse sidebar"
+                >
+                  <span className="sr-only">Collapse sidebar</span>
                   <HiChevronLeft className="h-4 w-4" aria-hidden="true" />
-                )}
-              </button>
+                </button>
+              )}
               {/* Mobile close button */}
             <button
               type="button"
