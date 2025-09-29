@@ -23,39 +23,9 @@ api.interceptors.request.use(
       tokenSource = 'localStorage';
     }
     
-    console.log('🔐 Axios Request Interceptor Debug:', {
-      url: config.url,
-      method: config.method,
-      tokenSource,
-      hasToken: !!token,
-      tokenValue: token ? token.substring(0, 20) + '...' : 'null',
-      tokenLength: token ? token.length : 0,
-      allCookies: document.cookie,
-      currentHeaders: config.headers,
-      localStorage: localStorage.getItem('token') ? localStorage.getItem('token').substring(0, 20) + '...' : 'null'
-    });
-    
     if (token && token !== 'undefined' && token !== 'null' && token.trim() !== '') {
       config.headers.Authorization = `Bearer ${token}`;
-      console.log('✅ Authorization header added:', {
-        header: config.headers.Authorization,
-        headerLength: config.headers.Authorization.length
-      });
-    } else {
-      console.log('❌ No valid token found:', {
-        token,
-        isUndefined: token === 'undefined',
-        isNull: token === 'null',
-        isEmpty: token === '',
-        isWhitespace: token && token.trim() === ''
-      });
     }
-    
-    console.log('📤 Final request config:', {
-      url: config.url,
-      headers: config.headers,
-      method: config.method
-    });
     
     return config;
   },

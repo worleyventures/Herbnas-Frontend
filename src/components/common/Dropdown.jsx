@@ -31,7 +31,7 @@ const Dropdown = ({
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        console.log('Dropdown: Clicking outside, closing dropdown');
+        // Clicking outside, closing dropdown
         setIsOpen(false);
         setSearchTerm('');
       }
@@ -54,8 +54,8 @@ const Dropdown = ({
     : options;
 
   const handleSelectChange = (optionValue) => {
-    console.log('Dropdown: handleSelectChange called with:', optionValue);
-    console.log('Dropdown: onChange function:', onChange);
+    // handleSelectChange called
+    // onChange function called
     
     if (onChange) {
       // Create an event-like object to maintain compatibility with existing onChange handlers
@@ -96,9 +96,7 @@ const Dropdown = ({
         <button
           type="button"
           onClick={() => {
-            console.log('Dropdown: Button clicked, disabled:', disabled, 'loading:', loading);
             if (!disabled && !loading) {
-              console.log('Dropdown: Opening dropdown, current isOpen:', isOpen);
               setIsOpen(!isOpen);
             }
           }}
@@ -165,7 +163,7 @@ const Dropdown = ({
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    console.log('Dropdown: Option clicked:', option.value, option.label);
+                    // Option clicked
                     handleSelectChange(option.value);
                   }}
                   className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-100 focus:outline-none focus:bg-gray-100 ${

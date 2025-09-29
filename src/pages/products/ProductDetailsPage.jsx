@@ -158,7 +158,7 @@ const ProductDetailsPage = () => {
           <div className="space-y-4">
             <div className="flex justify-between items-center py-2 border-b border-gray-100">
               <span className="text-sm font-medium text-gray-600">Product ID</span>
-              <span className="text-sm text-gray-900">{currentProduct.productId}</span>
+              <span className="text-sm text-gray-900">{currentProduct.batchNumber}</span>
             </div>
             
             <div className="flex justify-between items-center py-2 border-b border-gray-100">

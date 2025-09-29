@@ -26,13 +26,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
   const { user } = useSelector((state) => state.auth);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
-  // Debug logging for user state
-  console.log('Sidebar Debug:', {
-    user,
-    userRole: user?.role,
-    isAdmin: user?.role === 'admin' || user?.role === 'super_admin',
-    currentPath: location.pathname
-  });
+  // Debug logging for user state (removed for production)
 
   // Get auth loading state to prevent flickering during user validation
   const { loading: authLoading } = useSelector((state) => state.auth || {});

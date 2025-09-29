@@ -92,14 +92,13 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
   // State for unfiltered leads (for pipeline and performance)
   const [unfilteredLeads, setUnfilteredLeads] = useState([]);
   const [unfilteredStats, setUnfilteredStats] = useState(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Fetch unfiltered data on mount
   useEffect(() => {
-    console.log('Fetching unfiltered leads on mount...');
     dispatch(getAllLeads({ limit: 1000, page: 1 })).then((result) => {
       if (result.payload && result.payload.data) {
         setUnfilteredLeads(result.payload.data.leads);
-        console.log('Set unfiltered leads on mount:', result.payload.data.leads.length);
       }
     }).catch((error) => {
       console.error('Error fetching unfiltered leads on mount:', error);
@@ -109,7 +108,6 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
     dispatch(getLeadStats()).then((result) => {
       if (result.payload && result.payload.data) {
         setUnfilteredStats(result.payload.data);
-        console.log('Set unfiltered stats on mount');
       }
     }).catch((error) => {
       console.error('Error fetching unfiltered stats on mount:', error);
@@ -121,14 +119,44 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
     if (createSuccess || updateSuccess || deleteSuccess) {
       if (createSuccess) {
         setShowCreateModal(false);
+        // Refresh stats after creating a lead
+        dispatch(getLeadStats()).then((result) => {
+          if (result.payload && result.payload.data) {
+            setUnfilteredStats(result.payload.data);
+          }
+        });
+        // Refresh unfiltered leads
+        dispatch(getAllLeads({ limit: 1000, page: 1 })).then((result) => {
+          if (result.payload && result.payload.data) {
+            setUnfilteredLeads(result.payload.data.leads);
+          }
+        });
       }
       if (updateSuccess) {
         setShowEditModal(false);
         setSelectedLead(null);
+        // Refresh stats after updating a lead
+        dispatch(getLeadStats()).then((result) => {
+          if (result.payload && result.payload.data) {
+            setUnfilteredStats(result.payload.data);
+          }
+        });
       }
       if (deleteSuccess) {
         setShowDeleteModal(false);
         setSelectedLead(null);
+        // Refresh stats after deleting a lead
+        dispatch(getLeadStats()).then((result) => {
+          if (result.payload && result.payload.data) {
+            setUnfilteredStats(result.payload.data);
+          }
+        });
+        // Refresh unfiltered leads
+        dispatch(getAllLeads({ limit: 1000, page: 1 })).then((result) => {
+          if (result.payload && result.payload.data) {
+            setUnfilteredLeads(result.payload.data.leads);
+          }
+        });
       }
       
       const timer = setTimeout(() => {
@@ -136,7 +164,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
       }, 5000);
       return () => clearTimeout(timer);
     }
-  }, [createSuccess, updateSuccess, deleteSuccess]);
+  }, [createSuccess, updateSuccess, deleteSuccess, dispatch]);
 
   useEffect(() => {
     if (createError || updateError || deleteError) {
@@ -146,6 +174,36 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
       return () => clearTimeout(timer);
     }
   }, [createError, updateError, deleteError, dispatch]);
+
+  // Manual refresh function
+  const refreshDashboardData = useCallback(() => {
+    setIsRefreshing(true);
+    
+    // Refresh unfiltered leads
+    dispatch(getAllLeads({ limit: 1000, page: 1 })).then((result) => {
+      if (result.payload && result.payload.data) {
+        setUnfilteredLeads(result.payload.data.leads);
+      }
+    });
+    
+    // Refresh stats
+    dispatch(getLeadStats()).then((result) => {
+      if (result.payload && result.payload.data) {
+        setUnfilteredStats(result.payload.data);
+      }
+    }).finally(() => {
+      setIsRefreshing(false);
+    });
+  }, [dispatch]);
+
+  // Periodic refresh every 30 seconds to keep data up-to-date
+  useEffect(() => {
+    const interval = setInterval(() => {
+      refreshDashboardData();
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(interval);
+  }, [refreshDashboardData]);
 
   const viewOptions = [
     { id: 'pipeline', name: 'Pipeline View', icon: HiChartBar },
@@ -219,9 +277,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
   const handleUpdateLead = (leadData) => {
     try {
       if (selectedLead) {
-        console.log('Selected lead object:', selectedLead);
-        console.log('Lead ID:', selectedLead._id);
-        console.log('Lead data to update:', leadData);
+        // Debug logging removed for production
         
         // Validate lead ID
         if (!selectedLead._id) {
@@ -270,6 +326,13 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
               lead._id === updatedLead._id ? updatedLead : lead
             )
           );
+          
+          // Refresh stats after status update
+          dispatch(getLeadStats()).then((statsResult) => {
+            if (statsResult.payload && statsResult.payload.data) {
+              setUnfilteredStats(statsResult.payload.data);
+            }
+          });
         }
       });
     } catch (error) {
@@ -278,13 +341,13 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
   };
 
   const handleCardFilter = (status) => {
-    console.log('Card filter clicked:', status);
+    // Card filter clicked
     setFilterStatus(status);
     setCurrentPage(1);
   };
 
   const handleImportSuccess = (importResult) => {
-    console.log('🔄 Import success - refreshing data...');
+    // Import success - refreshing data
     
     // Show success notification
     dispatch(addNotification({
@@ -310,18 +373,18 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
     dispatch(getAllLeads({})).then((result) => {
       if (result.payload && result.payload.data) {
         setUnfilteredLeads(result.payload.data);
-        console.log('Refreshed unfiltered leads after import');
+        // Refreshed unfiltered leads after import
       }
     });
     
     dispatch(getLeadStats()).then((result) => {
       if (result.payload && result.payload.data) {
         setUnfilteredStats(result.payload.data);
-        console.log('Refreshed unfiltered stats after import');
+        // Refreshed unfiltered stats after import
       }
     });
     
-    console.log('✅ Data refresh dispatched');
+    // Data refresh dispatched
   };
 
   // Calculate stable counts from stats data (always use unfiltered stats for cards)
@@ -332,9 +395,9 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
     return statusData ? statusData.count : 0;
   };
 
-  // Calculate card counts - always use unfiltered stats for consistency
+  // Calculate card counts - use unfiltered stats if available, otherwise fall back to Redux stats
   const cardCounts = {
-    total: (unfilteredStats || stats)?.overview?.totalLeads || 0,
+    total: (unfilteredStats || stats)?.overview?.totalLeads || totalLeads || 0,
     qualified: getStatusCount('qualified'),
     unqualified: getStatusCount('unqualified'), // Only actual unqualified status
     converted: getStatusCount('order_completed')
@@ -342,7 +405,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
 
   // Filter leads client-side for special status groups
   const getFilteredLeads = () => {
-    console.log('Filtering leads with status:', filterStatus, 'Total leads:', leads.length);
+    // Filtering leads with status
     
     // For special filters, we need to use unfiltered data if available
     const dataSource = (filterStatus === 'unqualified' || filterStatus === 'converted') && unfilteredLeads.length > 0 
@@ -353,7 +416,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
       const unqualifiedLeads = dataSource.filter(lead => 
         lead.leadStatus === 'unqualified'
       );
-      console.log('Unqualified leads found:', unqualifiedLeads.length);
+      // Unqualified leads found
       return unqualifiedLeads;
     }
     
@@ -361,18 +424,18 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
       const convertedLeads = dataSource.filter(lead => 
         lead.leadStatus === 'order_completed'
       );
-      console.log('Order completed leads found:', convertedLeads.length);
+      // Order completed leads found
       return convertedLeads;
     }
     
     // For other statuses, filter normally using the main leads array
     if (filterStatus !== 'all') {
       const filteredLeads = leads.filter(lead => lead.leadStatus === filterStatus);
-      console.log(`Filtered leads for ${filterStatus}:`, filteredLeads.length);
+      // Filtered leads for status
       return filteredLeads;
     }
     
-    console.log('Returning all leads:', leads.length);
+    // Returning all leads
     return leads;
   };
 
@@ -401,20 +464,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
     ? allFilteredLeads.slice(paginationData.startIndex - 1, paginationData.endIndex)
     : leads; // For regular filters, use the paginated leads from Redux
 
-  // Debug logging for pagination
-  console.log('Pagination Debug:', {
-    isPaginationReady,
-    filterStatus,
-    isSpecialFilter,
-    currentPage,
-    itemsPerPage,
-    totalPages,
-    totalLeads,
-    leadsLength: leads.length,
-    filteredLeadsLength: filteredLeads.length,
-    allFilteredLeadsLength: allFilteredLeads.length,
-    paginationData
-  });
+  // Debug logging for pagination (removed for production)
 
   const renderViewContent = () => {
     switch (activeView) {
@@ -506,6 +556,17 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
               </p>
             </div>
             <div className="mt-4 sm:mt-0 flex space-x-2">
+              <Button
+                onClick={refreshDashboardData}
+                icon={HiArrowPath}
+                variant="outline"
+                size="sm"
+                title="Refresh data"
+                loading={isRefreshing}
+                disabled={isRefreshing}
+              >
+                {isRefreshing ? 'Refreshing...' : 'Refresh'}
+              </Button>
               <Button
                 onClick={() => setShowImportModal(true)}
                 icon={HiCloudArrowUp}

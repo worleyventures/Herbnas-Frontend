@@ -23,22 +23,15 @@ export const setCookie = (name, value, days = 7) => {
 export const getCookie = (name) => {
   const nameEQ = name + "=";
   const ca = document.cookie.split(';');
-  console.log('🍪 getCookie debug:', {
-    name,
-    allCookies: document.cookie,
-    cookieArray: ca
-  });
-  
   for (let i = 0; i < ca.length; i++) {
     let c = ca[i];
     while (c.charAt(0) === ' ') c = c.substring(1, c.length);
     if (c.indexOf(nameEQ) === 0) {
       const value = c.substring(nameEQ.length, c.length);
-      console.log('🍪 Found cookie:', { name, value: value.substring(0, 20) + '...' });
       return value;
     }
   }
-  console.log('🍪 Cookie not found:', name);
+  // Cookie not found
   return null;
 };
 
