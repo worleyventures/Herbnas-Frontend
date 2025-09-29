@@ -9,14 +9,7 @@ const ProtectedRoute = ({ children }) => {
   // Check if user has a valid token in localStorage
   const hasToken = localStorage.getItem('token') || token
   
-  // Debug authentication state
-  console.log('🛡️ ProtectedRoute Auth State:', { 
-    isAuthenticated, 
-    loading,
-    hasToken: !!hasToken,
-    user: user ? { id: user._id, email: user.email } : null,
-    location: location.pathname
-  });
+  // Debug authentication state (removed for production)
 
   // Show loading spinner while checking authentication
   if (loading) {

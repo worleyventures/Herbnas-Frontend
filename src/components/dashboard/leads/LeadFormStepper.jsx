@@ -66,22 +66,7 @@ const LeadFormStepper = ({
   const currentUser = user || fallbackUser;
   const currentIsAuthenticated = isAuthenticated && !!currentUser;
   
-  // Debug authentication status
-  console.log('LeadFormStepper - Auth status:', { 
-    isAuthenticated, 
-    user, 
-    fallbackUser,
-    currentUser,
-    currentIsAuthenticated,
-    authState,
-    hasUser: !!currentUser,
-    userRole: currentUser?.role,
-    userEmail: currentUser?.email,
-    tokenInLocalStorage: !!localStorage.getItem('token'),
-    tokenInCookie: !!getCookie('token'),
-    localStorageUser: localStorage.getItem('user'),
-    localStorageToken: localStorage.getItem('token')?.substring(0, 20) + '...'
-  });
+  // Debug authentication status (removed for production)
   const { branches = [], loading: branchesLoading = false, error: branchesError = null } = useSelector(state => state.branches || {});
   const { activeProducts: products = [], loading: productsLoading = false } = useSelector(state => state.products || {});
   const { activeHealthIssues = [], loading: healthIssuesLoading = false, error: healthIssuesError = null } = useSelector(state => state.health || {});

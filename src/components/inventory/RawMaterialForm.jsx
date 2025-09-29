@@ -14,6 +14,7 @@ import {
 import { Button, Input, Select, TextArea } from '../common';
 import { createRawMaterial, updateRawMaterial, getRawMaterialById } from '../../redux/actions/inventoryActions';
 import { addNotification } from '../../redux/slices/uiSlice';
+import { GST_PERCENTAGE_OPTIONS, getGstPercentageError } from '../../utils/gstUtils';
 
 const RawMaterialForm = () => {
   const navigate = useNavigate();
@@ -65,6 +66,9 @@ const RawMaterialForm = () => {
     { value: 'packaging', label: 'Packaging' },
     { value: 'other', label: 'Other' }
   ];
+
+  // GST percentage options (imported from utility)
+  const gstPercentageOptions = GST_PERCENTAGE_OPTIONS;
 
   // Load raw material data for editing
   useEffect(() => {
@@ -146,8 +150,9 @@ const RawMaterialForm = () => {
       newErrors.hsn = 'HSN code is required';
     }
 
-    if (!formData.gstPercentage || parseFloat(formData.gstPercentage) < 0) {
-      newErrors.gstPercentage = 'GST percentage must be 0 or greater';
+    const gstError = getGstPercentageError(formData.gstPercentage);
+    if (gstError) {
+      newErrors.gstPercentage = gstError;
     }
 
     if (!formData.stockQuantity || parseFloat(formData.stockQuantity) < 0) {
@@ -343,14 +348,13 @@ const RawMaterialForm = () => {
                 errorMessage={errors.price}
                 required
               />
-              <Input
+              <Select
                 label="GST Percentage"
                 name="gstPercentage"
-                type="number"
-                step="0.01"
                 value={formData.gstPercentage}
                 onChange={handleChange}
-                placeholder="0.00"
+                options={gstPercentageOptions}
+                placeholder="Select GST percentage"
                 error={!!errors.gstPercentage}
                 errorMessage={errors.gstPercentage}
                 required

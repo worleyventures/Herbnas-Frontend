@@ -61,7 +61,7 @@ const ProductCRUD = ({
       sortable: true,
       render: (product) => (
         <div className="text-sm">
-          <div className="font-medium text-gray-900">{product.productId}</div>
+          <div className="font-medium text-gray-900">{product.batchNumber}</div>
         </div>
       )
     },

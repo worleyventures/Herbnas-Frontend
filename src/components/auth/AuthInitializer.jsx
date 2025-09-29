@@ -20,20 +20,9 @@ const AuthInitializer = ({ children }) => {
       userData = localStorage.getItem('user');
     }
 
-    console.log('🔄 AuthInitializer Debug:', {
-      tokenSource,
-      hasToken: !!token,
-      tokenValue: token ? token.substring(0, 20) + '...' : 'null',
-      hasUserData: !!userData,
-      allCookies: document.cookie,
-      localStorageToken: localStorage.getItem('token') ? 'exists' : 'missing',
-      localStorageUser: localStorage.getItem('user') ? 'exists' : 'missing'
-    });
-
     if (token && userData) {
       try {
         const parsedUser = JSON.parse(userData);
-        console.log('🔄 AuthInitializer: Restoring auth state from', tokenSource);
         dispatch({ type: 'auth/restoreAuthState', payload: { user: parsedUser, token } });
       } catch (error) {
         console.error('Error parsing user data in AuthInitializer:', error);
@@ -41,8 +30,6 @@ const AuthInitializer = ({ children }) => {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
       }
-    } else {
-      console.log('❌ AuthInitializer: No token or user data found');
     }
   }, [dispatch]);
 

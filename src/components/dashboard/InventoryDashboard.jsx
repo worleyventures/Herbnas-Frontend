@@ -121,10 +121,13 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
   }, [error, dispatch]);
 
   // Get current inventory data based on active tab
-  const currentInventory = activeTab === 'rawMaterials' ? rawMaterials : finishedGoods;
+  const currentInventory = activeTab === 'rawMaterials' 
+    ? (Array.isArray(rawMaterials) ? rawMaterials : [])
+    : (Array.isArray(finishedGoods) ? finishedGoods : []);
   
   // Filter inventory based on search and filters
   const filteredInventory = currentInventory.filter(inventoryItem => {
+    if (!inventoryItem) return false; // Skip null/undefined items
     const matchesSearch = !searchTerm || (() => {
       if (activeTab === 'rawMaterials') {
         return inventoryItem.materialName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -168,18 +171,21 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
   // Calculate stats from current inventory data
   const totalInventory = currentInventory.length;
   const lowStockItems = currentInventory.filter(item => {
+    if (!item) return false; // Skip null/undefined items
     const availableStock = activeTab === 'rawMaterials' 
       ? (item.stockQuantity || 0)
       : (item.availableQuantity || 0);
     return availableStock <= (item.minStockLevel || 0);
   }).length;
   const highStockItems = currentInventory.filter(item => {
+    if (!item) return false; // Skip null/undefined items
     const availableStock = activeTab === 'rawMaterials' 
       ? (item.stockQuantity || 0)
       : (item.availableQuantity || 0);
     return availableStock >= (item.maxStockLevel || 0);
   }).length;
   const totalValue = currentInventory.reduce((sum, item) => {
+    if (!item) return sum; // Skip null/undefined items
     const availableStock = activeTab === 'rawMaterials' 
       ? (item.stockQuantity || 0)
       : (item.availableQuantity || 0);

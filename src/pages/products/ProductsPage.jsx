@@ -214,7 +214,7 @@ const ProductsPage = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -264,12 +264,9 @@ const ProductsPage = () => {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-lg p-6">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+      <div className="bg-white rounded-lg p-2">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
           <div className="w-full sm:w-80">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Search Products
-            </label>
             <SearchInput
               placeholder="Search by name, ID, or description..."
               value={searchTerm}
@@ -278,9 +275,6 @@ const ProductsPage = () => {
           </div>
           <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0">
             <div className="w-full sm:w-48">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Category
-              </label>
               <Select
                 value={filterCategory}
                 onChange={(e) => handleFilterChange('category', e.target.value)}

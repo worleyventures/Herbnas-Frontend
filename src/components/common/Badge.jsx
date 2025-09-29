@@ -86,12 +86,10 @@ export const StatusBadge = ({
   };
 
   // Check custom statusMap first, then defaultStatusMap
-  console.log('StatusBadge - status:', status, 'statusMap:', statusMap);
   const statusConfig = statusMap[status] || defaultStatusMap[status] || { 
     variant: 'default', 
     label: formatStatus(status) 
   };
-  console.log('StatusBadge - statusConfig:', statusConfig);
 
   return (
     <Badge

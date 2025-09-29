@@ -24,31 +24,10 @@ const Header = ({ sidebarOpen, setSidebarOpen }) => {
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [notificationDropdownOpen, setNotificationDropdownOpen] = useState(false);
 
-  // Debug user data and refresh if needed
+  // Refresh user profile if needed
   React.useEffect(() => {
-    console.log('🔍 Header - User data:', user);
-    console.log('🔍 Header - User keys:', user ? Object.keys(user) : 'No user');
-    console.log('🔍 Header - firstName:', user?.firstName);
-    console.log('🔍 Header - lastName:', user?.lastName);
-    console.log('🔍 Header - fullName:', user?.fullName);
-    console.log('🔍 Header - role:', user?.role);
-    
-    // Check localStorage for user data
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      try {
-        const parsedUser = JSON.parse(storedUser);
-        console.log('🔍 Header - Stored user data:', parsedUser);
-        console.log('🔍 Header - Stored user firstName:', parsedUser?.firstName);
-        console.log('🔍 Header - Stored user lastName:', parsedUser?.lastName);
-      } catch (error) {
-        console.error('❌ Error parsing stored user data:', error);
-      }
-    }
-    
     // If user exists but firstName/lastName are missing, try to refresh profile
     if (user && (!user.firstName || !user.lastName)) {
-      console.log('🔄 Refreshing user profile due to missing name data');
       dispatch(getProfile());
     }
   }, [user, dispatch]);
