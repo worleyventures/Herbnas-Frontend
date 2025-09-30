@@ -57,6 +57,19 @@ export const createRawMaterial = createAsyncThunk(
   }
 );
 
+// Create batch with all 3 sets
+export const createBatchWithSets = createAsyncThunk(
+  'inventory/createBatchWithSets',
+  async (batchData, { rejectWithValue }) => {
+    try {
+      const response = await api.post('/inventory/raw-materials/batch', batchData);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to create batch with sets');
+    }
+  }
+);
+
 // Update raw material
 export const updateRawMaterial = createAsyncThunk(
   'inventory/updateRawMaterial',
