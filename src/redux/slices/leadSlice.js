@@ -205,13 +205,29 @@ const leadSlice = createSlice({
         state.createSuccess = action.payload.message;
         state.createError = null;
         
-        // Always add the new lead to the list and increment total count
-        state.leads.unshift(action.payload.data.lead);
+        // Add the new lead to the list and increment total count
+        const newLead = action.payload.data.lead;
+        state.leads.unshift(newLead);
         state.totalLeads += 1;
         
         // Update pagination to reflect the new total
         state.pagination.totalLeads = state.totalLeads;
         state.pagination.totalPages = Math.ceil(state.totalLeads / (state.pagination.limit || 10));
+        
+        // Update stats immediately
+        if (state.stats?.overview) {
+          state.stats.overview.totalLeads = state.totalLeads;
+        }
+        
+        // Update leadsByStatus count
+        if (state.stats?.leadsByStatus) {
+          const statusIndex = state.stats.leadsByStatus.findIndex(item => item._id === newLead.leadStatus);
+          if (statusIndex !== -1) {
+            state.stats.leadsByStatus[statusIndex].count += 1;
+          } else {
+            state.stats.leadsByStatus.push({ _id: newLead.leadStatus, count: 1 });
+          }
+        }
       })
       .addCase(createLead.rejected, (state, action) => {
         state.createLoading = false;
@@ -234,7 +250,25 @@ const leadSlice = createSlice({
         const updatedLead = action.payload.data.lead;
         const index = state.leads.findIndex(lead => lead._id === updatedLead._id);
         if (index !== -1) {
+          const oldLead = state.leads[index];
           state.leads[index] = updatedLead;
+          
+          // Update stats if status changed
+          if (oldLead.leadStatus !== updatedLead.leadStatus && state.stats?.leadsByStatus) {
+            // Decrease count for old status
+            const oldStatusIndex = state.stats.leadsByStatus.findIndex(item => item._id === oldLead.leadStatus);
+            if (oldStatusIndex !== -1) {
+              state.stats.leadsByStatus[oldStatusIndex].count = Math.max(0, state.stats.leadsByStatus[oldStatusIndex].count - 1);
+            }
+            
+            // Increase count for new status
+            const newStatusIndex = state.stats.leadsByStatus.findIndex(item => item._id === updatedLead.leadStatus);
+            if (newStatusIndex !== -1) {
+              state.stats.leadsByStatus[newStatusIndex].count += 1;
+            } else {
+              state.stats.leadsByStatus.push({ _id: updatedLead.leadStatus, count: 1 });
+            }
+          }
         }
         if (state.selectedLead && state.selectedLead._id === updatedLead._id) {
           state.selectedLead = updatedLead;
@@ -259,11 +293,29 @@ const leadSlice = createSlice({
         
         // Remove lead from list
         const leadId = action.payload.leadId;
+        const deletedLead = state.leads.find(lead => lead._id === leadId);
         state.leads = state.leads.filter(lead => lead._id !== leadId);
         if (state.selectedLead && state.selectedLead._id === leadId) {
           state.selectedLead = null;
         }
         state.totalLeads = Math.max(0, state.totalLeads - 1);
+        
+        // Update pagination
+        state.pagination.totalLeads = state.totalLeads;
+        state.pagination.totalPages = Math.ceil(state.totalLeads / (state.pagination.limit || 10));
+        
+        // Update stats immediately
+        if (state.stats?.overview) {
+          state.stats.overview.totalLeads = state.totalLeads;
+        }
+        
+        // Update leadsByStatus count
+        if (deletedLead && state.stats?.leadsByStatus) {
+          const statusIndex = state.stats.leadsByStatus.findIndex(item => item._id === deletedLead.leadStatus);
+          if (statusIndex !== -1) {
+            state.stats.leadsByStatus[statusIndex].count = Math.max(0, state.stats.leadsByStatus[statusIndex].count - 1);
+          }
+        }
       })
       .addCase(deleteLead.rejected, (state, action) => {
         state.deleteLoading = false;
@@ -286,7 +338,25 @@ const leadSlice = createSlice({
         const updatedLead = action.payload.data.lead;
         const index = state.leads.findIndex(lead => lead._id === updatedLead._id);
         if (index !== -1) {
+          const oldLead = state.leads[index];
           state.leads[index] = updatedLead;
+          
+          // Update stats if status changed
+          if (oldLead.leadStatus !== updatedLead.leadStatus && state.stats?.leadsByStatus) {
+            // Decrease count for old status
+            const oldStatusIndex = state.stats.leadsByStatus.findIndex(item => item._id === oldLead.leadStatus);
+            if (oldStatusIndex !== -1) {
+              state.stats.leadsByStatus[oldStatusIndex].count = Math.max(0, state.stats.leadsByStatus[oldStatusIndex].count - 1);
+            }
+            
+            // Increase count for new status
+            const newStatusIndex = state.stats.leadsByStatus.findIndex(item => item._id === updatedLead.leadStatus);
+            if (newStatusIndex !== -1) {
+              state.stats.leadsByStatus[newStatusIndex].count += 1;
+            } else {
+              state.stats.leadsByStatus.push({ _id: updatedLead.leadStatus, count: 1 });
+            }
+          }
         }
         if (state.selectedLead && state.selectedLead._id === updatedLead._id) {
           state.selectedLead = updatedLead;

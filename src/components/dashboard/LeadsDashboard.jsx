@@ -89,122 +89,39 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
     }
   }, [isAuthenticated, user]);
 
-  // State for unfiltered leads (for pipeline and performance)
-  const [unfilteredLeads, setUnfilteredLeads] = useState([]);
-  const [unfilteredStats, setUnfilteredStats] = useState(null);
+  // State for refresh indicator
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Fetch unfiltered data on mount
+  // Fetch initial data on mount
   useEffect(() => {
-    dispatch(getAllLeads({ limit: 1000, page: 1 })).then((result) => {
-      if (result.payload && result.payload.data) {
-        setUnfilteredLeads(result.payload.data.leads);
-      }
-    }).catch((error) => {
-      console.error('Error fetching unfiltered leads on mount:', error);
-    });
-
-    // Fetch stats
-    dispatch(getLeadStats()).then((result) => {
-      if (result.payload && result.payload.data) {
-        setUnfilteredStats(result.payload.data);
-      }
-    }).catch((error) => {
-      console.error('Error fetching unfiltered stats on mount:', error);
-    });
-  }, [dispatch]);
+    if (isAuthenticated && user) {
+      // Fetch leads with current filters
+      dispatch(getAllLeads({
+        page: currentPage,
+        limit: itemsPerPage,
+        search: searchTerm,
+        leadStatus: filterStatus === 'all' ? '' : filterStatus,
+        dispatchedFrom: filterBranch === 'all' ? '' : filterBranch
+      }));
+      
+      // Fetch stats
+      dispatch(getLeadStats());
+    }
+  }, [dispatch, isAuthenticated, user]);
 
   // Clear success/error messages after a delay and close modals on success
   useEffect(() => {
-    console.log('🔍 Success states check:', { createSuccess, updateSuccess, deleteSuccess });
     if (createSuccess || updateSuccess || deleteSuccess) {
       if (createSuccess) {
-        console.log('🔄 Lead created successfully, refreshing dashboard data...');
         setShowCreateModal(false);
-        // Refresh stats after creating a lead
-        dispatch(getLeadStats()).then((result) => {
-          if (result.payload && result.payload.data) {
-            console.log('📊 Stats refreshed:', result.payload.data);
-            setUnfilteredStats(result.payload.data);
-          }
-        });
-        // Immediately add the new lead to unfiltered leads if we have it from Redux
-        if (leads.length > 0) {
-          const newLead = leads[0]; // New lead is added to the front of the array
-          setUnfilteredLeads(prev => {
-            const exists = prev.some(lead => lead._id === newLead._id);
-            if (!exists) {
-              console.log('➕ Adding new lead to unfiltered leads immediately:', newLead.materialName);
-              return [newLead, ...prev];
-            }
-            return prev;
-          });
-        }
-        
-        // Refresh unfiltered leads
-        dispatch(getAllLeads({ limit: 1000, page: 1 })).then((result) => {
-          if (result.payload && result.payload.data) {
-            console.log('👥 Leads refreshed:', result.payload.data.leads?.length, 'leads');
-            setUnfilteredLeads(result.payload.data.leads);
-          }
-        });
-        
-        // Also refresh the main leads list for the filtered display
-        dispatch(getAllLeads({
-          page: currentPage,
-          limit: itemsPerPage,
-          search: searchTerm,
-          leadStatus: filterStatus === 'all' ? '' : filterStatus,
-          dispatchedFrom: filterBranch === 'all' ? '' : filterBranch
-        })).then((result) => {
-          if (result.payload && result.payload.data) {
-            console.log('📋 Main leads list refreshed:', result.payload.data.leads?.length, 'leads');
-          }
-        });
       }
       if (updateSuccess) {
         setShowEditModal(false);
         setSelectedLead(null);
-        // Refresh stats after updating a lead
-        dispatch(getLeadStats()).then((result) => {
-          if (result.payload && result.payload.data) {
-            setUnfilteredStats(result.payload.data);
-          }
-        });
-        
-        // Also refresh the main leads list for the filtered display
-        dispatch(getAllLeads({
-          page: currentPage,
-          limit: itemsPerPage,
-          search: searchTerm,
-          leadStatus: filterStatus === 'all' ? '' : filterStatus,
-          dispatchedFrom: filterBranch === 'all' ? '' : filterBranch
-        }));
       }
       if (deleteSuccess) {
         setShowDeleteModal(false);
         setSelectedLead(null);
-        // Refresh stats after deleting a lead
-        dispatch(getLeadStats()).then((result) => {
-          if (result.payload && result.payload.data) {
-            setUnfilteredStats(result.payload.data);
-          }
-        });
-        // Refresh unfiltered leads
-        dispatch(getAllLeads({ limit: 1000, page: 1 })).then((result) => {
-          if (result.payload && result.payload.data) {
-            setUnfilteredLeads(result.payload.data.leads);
-          }
-        });
-        
-        // Also refresh the main leads list for the filtered display
-        dispatch(getAllLeads({
-          page: currentPage,
-          limit: itemsPerPage,
-          search: searchTerm,
-          leadStatus: filterStatus === 'all' ? '' : filterStatus,
-          dispatchedFrom: filterBranch === 'all' ? '' : filterBranch
-        }));
       }
       
       const timer = setTimeout(() => {
@@ -225,49 +142,21 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
 
   // Manual refresh function
   const refreshDashboardData = useCallback(() => {
-    console.log('🔄 Manual refresh triggered');
     setIsRefreshing(true);
     
-    // Refresh unfiltered leads
-    dispatch(getAllLeads({ limit: 1000, page: 1 })).then((result) => {
-      if (result.payload && result.payload.data) {
-        console.log('👥 Manual refresh - Leads updated:', result.payload.data.leads?.length, 'leads');
-        setUnfilteredLeads(result.payload.data.leads);
-      }
-    });
-    
-    // Also refresh the main leads list for the filtered display
+    // Refresh current leads list and stats
     dispatch(getAllLeads({
       page: currentPage,
       limit: itemsPerPage,
       search: searchTerm,
       leadStatus: filterStatus === 'all' ? '' : filterStatus,
       dispatchedFrom: filterBranch === 'all' ? '' : filterBranch
-    })).then((result) => {
-      if (result.payload && result.payload.data) {
-        console.log('📋 Manual refresh - Main leads list updated:', result.payload.data.leads?.length, 'leads');
-      }
-    });
+    }));
     
-    // Refresh stats
-    dispatch(getLeadStats()).then((result) => {
-      if (result.payload && result.payload.data) {
-        console.log('📊 Manual refresh - Stats updated:', result.payload.data);
-        setUnfilteredStats(result.payload.data);
-      }
-    }).finally(() => {
+    dispatch(getLeadStats()).finally(() => {
       setIsRefreshing(false);
     });
   }, [dispatch, currentPage, itemsPerPage, searchTerm, filterStatus, filterBranch]);
-
-  // Periodic refresh every 30 seconds to keep data up-to-date
-  useEffect(() => {
-    const interval = setInterval(() => {
-      refreshDashboardData();
-    }, 30000); // 30 seconds
-
-    return () => clearInterval(interval);
-  }, [refreshDashboardData]);
 
   const viewOptions = [
     { id: 'pipeline', name: 'Pipeline View', icon: HiChartBar },
@@ -303,31 +192,18 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
   const startIndex = ((currentPage - 1) * itemsPerPage) + 1;
   const endIndex = Math.min(currentPage * itemsPerPage, totalLeads);
 
-  // Sync unfilteredLeads with Redux leads state when leads change
-  React.useEffect(() => {
-    if (leads.length > 0 && unfilteredLeads.length > 0) {
-      // Update unfilteredLeads with any changes from the Redux leads state
-      const updatedUnfilteredLeads = unfilteredLeads.map(unfilteredLead => {
-        const reduxLead = leads.find(lead => lead._id === unfilteredLead._id);
-        return reduxLead || unfilteredLead;
-      });
-      
-      // Check if there are any differences before updating (compare specific fields to avoid unnecessary re-renders)
-      const hasChanges = updatedUnfilteredLeads.some((lead, index) => {
-        const originalLead = unfilteredLeads[index];
-        return lead.leadStatus !== originalLead.leadStatus || 
-               lead.updatedAt !== originalLead.updatedAt ||
-               lead.priority !== originalLead.priority;
-      });
-      
-      if (hasChanges) {
-        setUnfilteredLeads(updatedUnfilteredLeads);
-      }
+  // Fetch data when filters change
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      dispatch(getAllLeads({
+        page: currentPage,
+        limit: itemsPerPage,
+        search: searchTerm,
+        leadStatus: filterStatus === 'all' ? '' : filterStatus,
+        dispatchedFrom: filterBranch === 'all' ? '' : filterBranch
+      }));
     }
-  }, [leads]);
-
-  // Ensure pagination is properly initialized
-  const isPaginationReady = pagination.totalPages && pagination.totalLeads;
+  }, [dispatch, isAuthenticated, user, currentPage, searchTerm, filterStatus, filterBranch]);
 
   // Reset to first page when filters change
   useEffect(() => {
@@ -381,24 +257,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
 
   const handleStatusUpdate = (leadId, newStatus) => {
     try {
-      dispatch(updateLeadStatus({ leadId, leadStatus: newStatus })).then((result) => {
-        if (result.payload && result.payload.data) {
-          // Update the unfilteredLeads state with the updated lead
-          const updatedLead = result.payload.data.lead;
-          setUnfilteredLeads(prev => 
-            prev.map(lead => 
-              lead._id === updatedLead._id ? updatedLead : lead
-            )
-          );
-          
-          // Refresh stats after status update
-          dispatch(getLeadStats()).then((statsResult) => {
-            if (statsResult.payload && statsResult.payload.data) {
-              setUnfilteredStats(statsResult.payload.data);
-            }
-          });
-        }
-      });
+      dispatch(updateLeadStatus({ leadId, leadStatus: newStatus }));
     } catch (error) {
       console.error('Error updating lead status:', error);
     }
@@ -411,8 +270,6 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
   };
 
   const handleImportSuccess = (importResult) => {
-    // Import success - refreshing data
-    
     // Show success notification
     dispatch(addNotification({
       type: 'success',
@@ -433,140 +290,42 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
       dispatchedFrom: filterBranch === 'all' ? '' : filterBranch
     }));
     
-    // Refresh unfiltered data for cards, pipeline, and performance
-    dispatch(getAllLeads({})).then((result) => {
-      if (result.payload && result.payload.data) {
-        setUnfilteredLeads(result.payload.data);
-        // Refreshed unfiltered leads after import
-      }
-    });
-    
-    dispatch(getLeadStats()).then((result) => {
-      if (result.payload && result.payload.data) {
-        setUnfilteredStats(result.payload.data);
-        // Refreshed unfiltered stats after import
-      }
-    });
-    
-    // Data refresh dispatched
+    dispatch(getLeadStats());
   };
 
-  // Calculate stable counts from actual leads data (prioritize real data over API stats)
+  // Calculate card counts from Redux state
   const getStatusCount = (status) => {
-    // First try to use actual leads data
-    const leadsToCount = unfilteredLeads.length > 0 ? unfilteredLeads : leads;
-    if (Array.isArray(leadsToCount) && leadsToCount.length > 0) {
-      const count = leadsToCount.filter(lead => lead.leadStatus === status).length;
-      console.log(`📊 Status count for ${status}:`, count, 'from', leadsToCount.length, 'leads');
-      return count;
+    if (Array.isArray(leads) && leads.length > 0) {
+      return leads.filter(lead => lead.leadStatus === status).length;
     }
     
     // Fallback to API stats if no leads data available
-    const statsToUse = unfilteredStats || stats;
-    if (statsToUse?.leadsByStatus && Array.isArray(statsToUse.leadsByStatus)) {
-      const statusData = statsToUse.leadsByStatus.find(item => item._id === status);
+    if (stats?.leadsByStatus && Array.isArray(stats.leadsByStatus)) {
+      const statusData = stats.leadsByStatus.find(item => item._id === status);
       return statusData ? statusData.count : 0;
     }
     
     return 0;
   };
 
-  // Calculate card counts - prioritize actual leads data over API stats
-  const leadsToCount = unfilteredLeads.length > 0 ? unfilteredLeads : leads;
   const cardCounts = {
-    total: leadsToCount.length || (unfilteredStats || stats)?.overview?.totalLeads || totalLeads || 0,
+    total: leads.length || stats?.overview?.totalLeads || totalLeads || 0,
     newLead: getStatusCount('new_lead'),
     qualified: getStatusCount('qualified'),
-    unqualified: getStatusCount('unqualified'), // Only actual unqualified status
+    unqualified: getStatusCount('unqualified'),
     converted: getStatusCount('order_completed')
   };
 
-  // Debug card counts
-  console.log('📈 Card counts calculated:', {
-    total: cardCounts.total,
-    newLead: cardCounts.newLead,
-    qualified: cardCounts.qualified,
-    unqualified: cardCounts.unqualified,
-    converted: cardCounts.converted,
-    leadsToCount: leadsToCount.length,
-    unfilteredLeads: unfilteredLeads.length,
-    reduxLeads: leads.length,
-    unfilteredStats: !!unfilteredStats,
-    stats: !!stats,
-    totalLeads: totalLeads
-  });
+  // Use leads directly from Redux state (server-side filtering)
+  const filteredLeads = leads;
   
-  // Debug lead statuses
-  if (leadsToCount.length > 0) {
-    const statusCounts = leadsToCount.reduce((acc, lead) => {
-      acc[lead.leadStatus] = (acc[lead.leadStatus] || 0) + 1;
-      return acc;
-    }, {});
-    console.log('📋 Lead status breakdown:', statusCounts);
-  }
-
-  // Filter leads client-side for special status groups
-  const getFilteredLeads = () => {
-    // Filtering leads with status
-    
-    // For special filters, we need to use unfiltered data if available
-    const dataSource = (filterStatus === 'unqualified' || filterStatus === 'converted') && unfilteredLeads.length > 0 
-      ? unfilteredLeads 
-      : leads;
-    
-    if (filterStatus === 'unqualified') {
-      const unqualifiedLeads = dataSource.filter(lead => 
-        lead.leadStatus === 'unqualified'
-      );
-      // Unqualified leads found
-      return unqualifiedLeads;
-    }
-    
-    if (filterStatus === 'converted') {
-      const convertedLeads = dataSource.filter(lead => 
-        lead.leadStatus === 'order_completed'
-      );
-      // Order completed leads found
-      return convertedLeads;
-    }
-    
-    // For other statuses, filter normally using the main leads array
-    if (filterStatus !== 'all') {
-      const filteredLeads = leads.filter(lead => lead.leadStatus === filterStatus);
-      // Filtered leads for status
-      return filteredLeads;
-    }
-    
-    // Returning all leads
-    return leads;
-  };
-
-  const allFilteredLeads = getFilteredLeads();
-  
-  // Determine pagination method based on filter type
-  const isSpecialFilter = filterStatus === 'unqualified' || filterStatus === 'converted';
-  
-  // Calculate pagination data
-  const paginationData = isSpecialFilter ? {
-    // Client-side pagination for special filters
-    totalPages: Math.ceil(allFilteredLeads.length / itemsPerPage),
-    totalLeads: allFilteredLeads.length,
-    startIndex: ((currentPage - 1) * itemsPerPage) + 1,
-    endIndex: Math.min(currentPage * itemsPerPage, allFilteredLeads.length)
-  } : {
-    // Server-side pagination for regular filters
+  // Use server-side pagination data
+  const paginationData = {
     totalPages: pagination.totalPages || 1,
     totalLeads: pagination.totalLeads || 0,
     startIndex: startIndex,
     endIndex: endIndex
   };
-  
-  // Get leads to display - ensure proper pagination
-  const filteredLeads = isSpecialFilter 
-    ? allFilteredLeads.slice(paginationData.startIndex - 1, paginationData.endIndex)
-    : leads; // For regular filters, use the paginated leads from Redux
-
-  // Debug logging for pagination (removed for production)
 
   const renderViewContent = () => {
     switch (activeView) {
@@ -612,7 +371,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
       case 'pipeline':
         return (
           <LeadPipeline
-            leads={unfilteredLeads.length > 0 ? unfilteredLeads : leads}
+            leads={leads}
             onStatusUpdate={handleStatusUpdate}
             onSelectLead={setSelectedLead}
             onEditLead={(lead) => {
