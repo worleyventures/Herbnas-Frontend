@@ -16,6 +16,8 @@ const ProductDetailsModal = ({
 }) => {
   if (!isOpen || !product) return null;
 
+  // Layout: Additional Info (left) | Basic Info (right)
+
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -114,13 +116,19 @@ const ProductDetailsModal = ({
       onClose={onClose}
       title="Product Details"
       subtitle={product.productId}
-      size="lg"
+      size="xl"
       showFooter={true}
       footerContent={footerContent}
     >
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <DetailsView sections={[basicInfo]} />
-        <DetailsView sections={[additionalInfo]} />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Left Column - Additional Information */}
+        <div>
+          <DetailsView sections={[additionalInfo]} />
+        </div>
+        {/* Right Column - Basic Information */}
+        <div>
+          <DetailsView sections={[basicInfo]} />
+        </div>
       </div>
     </CommonModal>
   );
