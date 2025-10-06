@@ -113,10 +113,20 @@ const ProductionDetailsModal = ({
 
   const rawMaterialsInfo = production.rawMaterials && production.rawMaterials.length > 0 ? {
     title: 'Raw Materials Used',
-    fields: production.rawMaterials.map((rawMaterial, index) => ({
-      label: rawMaterial.rawMaterialId?.materialName || 'Unknown Material',
-      value: `${rawMaterial.quantity} ${rawMaterial.rawMaterialId?.UOM || 'units'} (Available: ${rawMaterial.rawMaterialId?.stockQuantity || 0})`
-    }))
+    fields: production.rawMaterials.map((rawMaterial, index) => {
+      // Handle SETs materials differently
+      if (rawMaterial.rawMaterialId?.materialType === 'sets') {
+        return {
+          label: `${rawMaterial.rawMaterialId?.set || 'SET'} - Batch: ${rawMaterial.rawMaterialId?.batchId || 'N/A'}`,
+          value: `${rawMaterial.quantity} ${rawMaterial.rawMaterialId?.UOM || 'units'} (Available: ${rawMaterial.rawMaterialId?.stockQuantity || 0})`
+        };
+      }
+      // Handle individual materials
+      return {
+        label: rawMaterial.rawMaterialId?.materialName || 'Unknown Material',
+        value: `${rawMaterial.quantity} ${rawMaterial.rawMaterialId?.UOM || 'units'} (Available: ${rawMaterial.rawMaterialId?.stockQuantity || 0})`
+      };
+    })
   } : null;
 
   const notesInfo = (production.notes || production.QCNotes) ? {
@@ -185,9 +195,18 @@ const ProductionDetailsModal = ({
       showFooter={true}
       footerContent={footerContent}
     >
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <DetailsView sections={sections.slice(0, Math.ceil(sections.length / 2))} />
-        <DetailsView sections={sections.slice(Math.ceil(sections.length / 2))} />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Left Column - Additional Info and Notes */}
+        <div className="space-y-4">
+          <DetailsView sections={[additionalInfo]} />
+          {notesInfo && <DetailsView sections={[notesInfo]} />}
+        </div>
+        
+        {/* Right Column - Basic Info */}
+        <div className="space-y-4">
+          <DetailsView sections={[basicInfo]} />
+          {rawMaterialsInfo && <DetailsView sections={[rawMaterialsInfo]} />}
+        </div>
       </div>
     </CommonModal>
   );

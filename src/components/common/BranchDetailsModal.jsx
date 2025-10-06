@@ -149,13 +149,17 @@ const BranchDetailsModal = ({
       onClose={onClose}
       title="Branch Details"
       subtitle={branch.branchName}
-      size="lg"
+      size="xl"
       showFooter={true}
       footerContent={footerContent}
     >
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <DetailsView sections={[basicInfo]} />
-        <DetailsView sections={[additionalInfo]} />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <DetailsView sections={[additionalInfo]} />
+        </div>
+        <div>
+          <DetailsView sections={[basicInfo]} />
+        </div>
       </div>
     </CommonModal>
   );

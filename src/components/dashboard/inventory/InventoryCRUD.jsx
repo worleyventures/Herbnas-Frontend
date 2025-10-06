@@ -109,7 +109,7 @@ const InventoryCRUD = ({
           render: (inventoryItem) => (
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-900 truncate">
-                {inventoryItem.materialName || 'Unknown Material'}
+                {inventoryItem.set || 'Unknown Material'}
               </p>
               <p className="text-sm text-gray-500 truncate">
                 ID: {inventoryItem.materialId || 'N/A'}

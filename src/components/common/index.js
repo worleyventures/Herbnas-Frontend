@@ -46,3 +46,4 @@ export { default as InventoryDetailsModal } from './InventoryDetailsModal';
 export { default as LeadDetailsModal } from './LeadDetailsModal';
 export { default as HealthIssueDetailsModal } from './HealthIssueDetailsModal';
 export { default as ProductionDetailsModal } from './ProductionDetailsModal';
+export { default as SendInventoryModal } from './SendInventoryModal';

@@ -2,6 +2,7 @@ import { createSlice } from '@reduxjs/toolkit';
 import {
   getAllRawMaterials,
   getRawMaterialById,
+  getUniqueSuppliers,
   createRawMaterial,
   updateRawMaterial,
   deleteRawMaterial,
@@ -9,12 +10,14 @@ import {
   getFinishedGoodsById,
   updateFinishedGoodsStock,
   getInventoryStats,
-  createOrUpdateInventory
+  createOrUpdateInventory,
+  sendInventoryToBranch
 } from '../actions/inventoryActions';
 
 const initialState = {
   rawMaterials: [],
   currentRawMaterial: null,
+  suppliers: [],
   finishedGoods: [],
   currentFinishedGoods: null,
   stats: null,
@@ -78,6 +81,22 @@ const inventorySlice = createSlice({
         state.loading = false;
         state.error = action.payload;
         state.currentRawMaterial = null;
+      })
+
+      // Get unique suppliers
+      .addCase(getUniqueSuppliers.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(getUniqueSuppliers.fulfilled, (state, action) => {
+        state.loading = false;
+        state.suppliers = action.payload.data.suppliers || [];
+        state.error = null;
+      })
+      .addCase(getUniqueSuppliers.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+        state.suppliers = [];
       })
 
       // Create raw material
@@ -219,6 +238,21 @@ const inventorySlice = createSlice({
         state.error = null;
       })
       .addCase(createOrUpdateInventory.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // Send inventory to branch
+      .addCase(sendInventoryToBranch.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(sendInventoryToBranch.fulfilled, (state, action) => {
+        state.loading = false;
+        state.error = null;
+        // Optionally update the finished goods list if needed
+        // The inventory quantities will be updated on the backend
+      })
+      .addCase(sendInventoryToBranch.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       });

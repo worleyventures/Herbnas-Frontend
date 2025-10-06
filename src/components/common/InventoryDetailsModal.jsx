@@ -353,9 +353,13 @@ const InventoryDetailsModal = ({
       showFooter={true}
       footerContent={footerContent}
     >
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <DetailsView sections={sections.slice(0, Math.ceil(sections.length / 2))} />
-        <DetailsView sections={sections.slice(Math.ceil(sections.length / 2))} />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <DetailsView sections={sections.slice(0, Math.ceil(sections.length / 2))} />
+        </div>
+        <div>
+          <DetailsView sections={sections.slice(Math.ceil(sections.length / 2))} />
+        </div>
       </div>
     </CommonModal>
   );

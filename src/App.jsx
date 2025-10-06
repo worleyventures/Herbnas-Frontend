@@ -26,6 +26,7 @@ import HealthDetailsPage from './pages/health/HealthDetailsPage';
 import InventoryPage from './components/dashboard/InventoryDashboard';
 import InventoryFormPage from './pages/inventory/InventoryFormPage';
 import InventoryDetailsPage from './pages/inventory/InventoryDetailsPage';
+import SentGoodsPage from './pages/inventory/SentGoodsPage';
 import ProductionPage from './pages/production/ProductionPage';
 import ProductionFormPage from './pages/production/ProductionFormPage';
 import ProductionDetailsPage from './pages/production/ProductionDetailsPage';
@@ -85,6 +86,7 @@ function App() {
             <Route path="/inventory/create" element={<InventoryFormPage />} />
             <Route path="/inventory/edit/:id" element={<InventoryFormPage />} />
             <Route path="/inventory/view/:id" element={<InventoryDetailsPage />} />
+            <Route path="/inventory/sent-goods" element={<SentGoodsPage />} />
             <Route path="/settings" element={<div>Settings Page</div>} />
             <Route path="/profile" element={<div>Profile Page</div>} />
           </Route>

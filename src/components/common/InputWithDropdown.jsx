@@ -1,186 +1,181 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { HiChevronDown } from 'react-icons/hi2';
+import { HiChevronDown, HiXMark } from 'react-icons/hi2';
 
 const InputWithDropdown = ({
+  label,
+  name,
   value,
   onChange,
-  dropdownValue,
-  onDropdownChange,
-  dropdownOptions = [],
-  placeholder = "Enter value",
-  dropdownPlaceholder = "Select unit",
-  disabled = false,
+  placeholder,
+  options = [],
   error = false,
-  errorMessage = "",
-  label = "",
-  helperText = "",
-  className = "",
-  inputClassName = "",
-  labelClassName = "",
-  name,
-  dropdownName,
-  type = "text",
-  size = "md",
+  errorMessage = '',
+  helperText = '',
+  required = false,
+  disabled = false,
+  className = '',
   ...props
 }) => {
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filteredOptions, setFilteredOptions] = useState(options);
   const dropdownRef = useRef(null);
+  const inputRef = useRef(null);
+
+  // Filter options based on search term
+  useEffect(() => {
+    if (searchTerm) {
+      const filtered = options.filter(option =>
+        option.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        option.value.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+      setFilteredOptions(filtered);
+    } else {
+      setFilteredOptions(options);
+    }
+  }, [searchTerm, options]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsDropdownOpen(false);
+        setIsOpen(false);
+        setSearchTerm('');
       }
     };
 
-    if (isDropdownOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    
+    document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isDropdownOpen]);
+  }, []);
+
+  // Update search term when value changes
+  useEffect(() => {
+    if (value) {
+      const selectedOption = options.find(option => option.value === value);
+      if (selectedOption) {
+        setSearchTerm(selectedOption.label);
+      } else {
+        setSearchTerm(value);
+      }
+    } else {
+      setSearchTerm('');
+    }
+  }, [value, options]);
 
   const handleInputChange = (e) => {
-    if (onChange) {
-      onChange(e);
-    }
+    const newValue = e.target.value;
+    setSearchTerm(newValue);
+    onChange(e);
+    setIsOpen(true);
   };
 
-  const handleDropdownChange = (optionValue) => {
-    if (onDropdownChange) {
-      const syntheticEvent = {
-        target: {
-          value: optionValue,
-          name: dropdownName || ''
-        }
-      };
-      onDropdownChange(syntheticEvent);
-    }
-    setIsDropdownOpen(false);
+  const handleOptionSelect = (option) => {
+    setSearchTerm(option.label);
+    onChange({
+      target: {
+        name,
+        value: option.value
+      }
+    });
+    setIsOpen(false);
   };
 
-  const selectedOption = dropdownOptions.find(option => option.value === dropdownValue);
+  const handleClear = () => {
+    setSearchTerm('');
+    onChange({
+      target: {
+        name,
+        value: ''
+      }
+    });
+    inputRef.current?.focus();
+  };
 
-  const getSizeClasses = () => {
-    switch (size) {
-      case 'xs':
-        return 'px-3 py-1.5 text-xs';
-      case 'sm':
-        return 'px-3 py-2 text-sm';
-      case 'md':
-        return 'px-4 py-2.5 text-sm';
-      case 'lg':
-        return 'px-5 py-3 text-base';
-      default:
-        return 'px-4 py-2.5 text-sm';
-    }
+  const handleInputFocus = () => {
+    setIsOpen(true);
   };
 
   return (
-    <div className={`space-y-1 ${className}`}>
+    <div className={`relative ${className}`}>
       {label && (
-        <label className={`block text-sm font-medium text-gray-700 ${labelClassName}`}>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
           {label}
+          {required && <span className="text-red-500 ml-1">*</span>}
         </label>
       )}
       
       <div className="relative" ref={dropdownRef}>
-        <div className="flex">
-          {/* Input Field */}
-          <input
-            type={type}
-            name={name}
-            value={value}
-            onChange={handleInputChange}
-            placeholder={placeholder}
-            disabled={disabled}
-            className={`
-              flex-1 border rounded-l-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] bg-white shadow-sm hover:border-gray-400
-              ${getSizeClasses()}
-              ${error ? 'border-red-300 focus:ring-red-500' : 'border-gray-300'}
-              ${disabled ? 'bg-gray-50 cursor-not-allowed' : ''}
-              ${inputClassName}
-            `}
-            {...props}
-          />
-          
-          {/* Dropdown Button */}
+        <input
+          ref={inputRef}
+          type="text"
+          name={name}
+          value={searchTerm}
+          onChange={handleInputChange}
+          onFocus={handleInputFocus}
+          placeholder={placeholder}
+          disabled={disabled}
+          className={`
+            w-full px-3 py-2 pr-20 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+            ${error ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : 'border-gray-300'}
+            ${disabled ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}
+          `}
+          {...props}
+        />
+        
+        <div className="absolute inset-y-0 right-0 flex items-center">
+          {value && !disabled && (
+            <button
+              type="button"
+              onClick={handleClear}
+              className="p-1 text-gray-400 hover:text-gray-600 focus:outline-none"
+            >
+              <HiXMark className="h-4 w-4" />
+            </button>
+          )}
           <button
             type="button"
-            onClick={() => {
-              if (!disabled) {
-                setIsDropdownOpen(!isDropdownOpen);
-              }
-            }}
+            onClick={() => setIsOpen(!isOpen)}
             disabled={disabled}
-            className={`
-              border border-l-0 rounded-r-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] bg-white shadow-sm hover:border-gray-400 cursor-pointer
-              ${getSizeClasses()}
-              ${error ? 'border-red-300 focus:ring-red-500' : 'border-gray-300'}
-              ${disabled ? 'bg-gray-50 cursor-not-allowed' : ''}
-              ${isDropdownOpen ? 'border-[#8bc34a]' : ''}
-            `}
+            className="p-1 text-gray-400 hover:text-gray-600 focus:outline-none disabled:cursor-not-allowed"
           >
-            <div className="flex items-center space-x-1">
-              <span className={selectedOption ? 'text-gray-900' : 'text-gray-500'}>
-                {selectedOption ? selectedOption.label : dropdownPlaceholder}
-              </span>
-              <HiChevronDown 
-                className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${
-                  isDropdownOpen ? 'rotate-180' : ''
-                }`}
-              />
-            </div>
+            <HiChevronDown className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
           </button>
         </div>
 
-        {/* Dropdown Menu */}
-        {isDropdownOpen && (
-          <div className="absolute z-[110] w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-            {dropdownOptions.length > 0 ? (
-              dropdownOptions.map((option) => (
+        {isOpen && (
+          <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+            {filteredOptions.length > 0 ? (
+              filteredOptions.map((option) => (
                 <button
                   key={option.value}
                   type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleDropdownChange(option.value);
-                  }}
-                  className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-100 focus:outline-none focus:bg-gray-100 ${
-                    dropdownValue === option.value ? 'bg-[#8bc34a]/10 text-[#8bc34a] font-medium' : 'text-gray-900'
-                  }`}
+                  onClick={() => handleOptionSelect(option)}
+                  className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 focus:outline-none focus:bg-gray-100"
                 >
-                  {option.label}
+                  <div className="font-medium text-gray-900">{option.label}</div>
+                  {option.description && (
+                    <div className="text-xs text-gray-500">{option.description}</div>
+                  )}
                 </button>
               ))
             ) : (
-              <div className="px-4 py-2 text-sm text-gray-500">
-                No options available
-              </div>
+              <div className="px-3 py-2 text-sm text-gray-500">No options found</div>
             )}
           </div>
         )}
       </div>
-      
-      {error && errorMessage && (
-        <div className="flex items-center space-x-1">
-          <div className="w-1 h-1 bg-red-500 rounded-full"></div>
-          <p className="text-sm text-red-500 font-medium">{errorMessage}</p>
-        </div>
+
+      {helperText && !error && (
+        <p className="mt-1 text-sm text-gray-500">{helperText}</p>
       )}
       
-      {!error && helperText && (
-        <p className="text-sm text-gray-500">{helperText}</p>
+      {error && errorMessage && (
+        <p className="mt-1 text-sm text-red-600">{errorMessage}</p>
       )}
     </div>
   );
 };
 
 export default InputWithDropdown;
-
-
-

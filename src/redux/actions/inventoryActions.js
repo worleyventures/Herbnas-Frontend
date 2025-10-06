@@ -44,6 +44,19 @@ export const getRawMaterialById = createAsyncThunk(
   }
 );
 
+// Get unique suppliers
+export const getUniqueSuppliers = createAsyncThunk(
+  'inventory/getUniqueSuppliers',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await api.get('/inventory/suppliers');
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch suppliers');
+    }
+  }
+);
+
 // Create raw material
 export const createRawMaterial = createAsyncThunk(
   'inventory/createRawMaterial',
@@ -53,6 +66,19 @@ export const createRawMaterial = createAsyncThunk(
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to create raw material');
+    }
+  }
+);
+
+// Create batch with all 3 sets
+export const createBatchWithSets = createAsyncThunk(
+  'inventory/createBatchWithSets',
+  async (batchData, { rejectWithValue }) => {
+    try {
+      const response = await api.post('/inventory/raw-materials/batch', batchData);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to create batch with sets');
     }
   }
 );
@@ -172,6 +198,19 @@ export const createOrUpdateInventory = createAsyncThunk(
       }
     } catch (error) {
       return rejectWithValue(error.message || 'Failed to save inventory');
+    }
+  }
+);
+
+// Send inventory to branch
+export const sendInventoryToBranch = createAsyncThunk(
+  'inventory/sendInventoryToBranch',
+  async (sendData, { rejectWithValue }) => {
+    try {
+      const response = await api.post('/inventory/send-to-branch', sendData);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to send inventory to branch');
     }
   }
 );
