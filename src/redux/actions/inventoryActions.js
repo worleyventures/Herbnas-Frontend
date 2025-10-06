@@ -202,6 +202,19 @@ export const createOrUpdateInventory = createAsyncThunk(
   }
 );
 
+// Send inventory to branch
+export const sendInventoryToBranch = createAsyncThunk(
+  'inventory/sendInventoryToBranch',
+  async (sendData, { rejectWithValue }) => {
+    try {
+      const response = await api.post('/inventory/send-to-branch', sendData);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to send inventory to branch');
+    }
+  }
+);
+
 // Legacy functions for backward compatibility
 export const getAllInventory = getAllFinishedGoods;
 export const getInventoryById = getFinishedGoodsById;

@@ -10,7 +10,8 @@ import {
   getFinishedGoodsById,
   updateFinishedGoodsStock,
   getInventoryStats,
-  createOrUpdateInventory
+  createOrUpdateInventory,
+  sendInventoryToBranch
 } from '../actions/inventoryActions';
 
 const initialState = {
@@ -237,6 +238,21 @@ const inventorySlice = createSlice({
         state.error = null;
       })
       .addCase(createOrUpdateInventory.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // Send inventory to branch
+      .addCase(sendInventoryToBranch.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(sendInventoryToBranch.fulfilled, (state, action) => {
+        state.loading = false;
+        state.error = null;
+        // Optionally update the finished goods list if needed
+        // The inventory quantities will be updated on the backend
+      })
+      .addCase(sendInventoryToBranch.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       });

@@ -155,7 +155,7 @@ const ProductionCRUD = ({
         <div className="flex items-center space-x-2">
           <HiCube className="h-4 w-4 text-gray-400" />
           <span className="font-medium text-gray-900">
-            {production.quantity || 0} {production.productId?.UOM || 'units'}
+            {production.quantity || 0} Kgs
           </span>
         </div>
       )

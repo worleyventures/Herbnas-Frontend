@@ -9,7 +9,8 @@ import {
   HiCurrencyDollar,
   HiChartBar,
   HiCog6Tooth,
-  HiPlus
+  HiPlus,
+  HiTruck
 } from 'react-icons/hi2';
 import { StatCard, FilterCard, Button, SearchInput, Select, Pagination } from '../common';
 import { addNotification } from '../../redux/slices/uiSlice';
@@ -255,6 +256,7 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
     }
   };
 
+
   // Prepare options for selects
   const productOptions = [
     { value: 'all', label: 'All Products' },
@@ -303,13 +305,23 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
           </p>
         </div>
         <div className="mt-4 sm:mt-0">
-          <Button
-            onClick={() => navigate(`/inventory/create?type=${activeTab}`)}
-            className="bg-blue-600 hover:bg-blue-700 text-white"
-            icon={HiPlus}
-          >
-            Add {activeTab === 'rawMaterials' ? 'Raw Material' : 'Finished Good'}
-          </Button>
+          {activeTab === 'rawMaterials' ? (
+            <Button
+              onClick={() => navigate(`/inventory/create?type=${activeTab}`)}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+              icon={HiPlus}
+            >
+              Add Raw Material
+            </Button>
+          ) : (
+            <Button
+              onClick={() => navigate('/inventory/sent-goods')}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+              icon={HiTruck}
+            >
+              View Sent Goods
+            </Button>
+          )}
         </div>
       </div>
 
@@ -452,8 +464,6 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
           endIndex={endIndex}
         />
       )}
-
-
 
     </div>
   );
