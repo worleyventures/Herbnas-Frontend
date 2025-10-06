@@ -6,7 +6,8 @@ import {
   createBranch,
   updateBranch,
   deleteBranch,
-  getBranchStats
+  getBranchStats,
+  getBranchInventory
 } from '../actions/branchActions';
 
 const initialState = {
@@ -16,6 +17,9 @@ const initialState = {
   stats: null,
   statsLoading: false,
   statsError: null,
+  branchInventory: [],
+  inventoryLoading: false,
+  inventoryError: null,
 };
 
 const branchSlice = createSlice({
@@ -75,6 +79,31 @@ const branchSlice = createSlice({
     // Clear success
     clearBranchSuccess: (state) => {
       state.success = false;
+    },
+    
+    // Set branch inventory
+    setBranchInventory: (state, action) => {
+      state.branchInventory = action.payload;
+    },
+    
+    // Clear branch inventory
+    clearBranchInventory: (state) => {
+      state.branchInventory = [];
+    },
+    
+    // Set inventory loading
+    setInventoryLoading: (state, action) => {
+      state.inventoryLoading = action.payload;
+    },
+    
+    // Set inventory error
+    setInventoryError: (state, action) => {
+      state.inventoryError = action.payload;
+    },
+    
+    // Clear inventory error
+    clearInventoryError: (state) => {
+      state.inventoryError = null;
     },
   },
   extraReducers: (builder) => {
@@ -173,6 +202,22 @@ const branchSlice = createSlice({
       .addCase(getBranchStats.rejected, (state, action) => {
         state.statsLoading = false;
         state.statsError = action.payload;
+      })
+      
+      // Get branch inventory
+      .addCase(getBranchInventory.pending, (state) => {
+        state.inventoryLoading = true;
+        state.inventoryError = null;
+      })
+      .addCase(getBranchInventory.fulfilled, (state, action) => {
+        state.inventoryLoading = false;
+        state.branchInventory = action.payload.data.inventory || [];
+        state.inventoryError = null;
+      })
+      .addCase(getBranchInventory.rejected, (state, action) => {
+        state.inventoryLoading = false;
+        state.inventoryError = action.payload;
+        state.branchInventory = [];
       });
   }
 });
@@ -188,12 +233,20 @@ export const {
   clearError,
   clearBranchErrors,
   clearBranchSuccess,
+  setBranchInventory,
+  clearBranchInventory,
+  setInventoryLoading,
+  setInventoryError,
+  clearInventoryError,
 } = branchSlice.actions;
 
 // Selectors
 export const selectBranches = (state) => state.branches.branches;
 export const selectBranchLoading = (state) => state.branches.loading;
 export const selectBranchError = (state) => state.branches.error;
+export const selectBranchInventory = (state) => state.branches.branchInventory;
+export const selectInventoryLoading = (state) => state.branches.inventoryLoading;
+export const selectInventoryError = (state) => state.branches.inventoryError;
 export const selectBranchStats = (state) => state.branches.stats;
 export const selectBranchStatsLoading = (state) => state.branches.statsLoading;
 export const selectBranchStatsError = (state) => state.branches.statsError;

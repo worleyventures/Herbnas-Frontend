@@ -166,4 +166,13 @@ const productSlice = createSlice({
 });
 
 export const { clearError, clearCurrentProduct, clearProducts } = productSlice.actions;
+
+// Selectors
+export const selectProducts = (state) => state.products.products;
+export const selectCurrentProduct = (state) => state.products.currentProduct;
+export const selectProductLoading = (state) => state.products.loading;
+export const selectProductError = (state) => state.products.error;
+export const selectProductStats = (state) => state.products.stats;
+export const selectProductPagination = (state) => state.products.pagination;
+
 export default productSlice.reducer;

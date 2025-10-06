@@ -271,4 +271,17 @@ export const {
   clearError,
 } = userSlice.actions;
 
+// Selectors
+export const selectUsers = (state) => state.user.users;
+export const selectAllUsers = (state) => state.user.allUsers;
+export const selectCurrentUser = (state) => state.user.currentUser;
+export const selectUserLoading = (state) => state.user.loading;
+export const selectUserError = (state) => state.user.error;
+export const selectUserStats = (state) => state.user.stats;
+export const selectUserStatsLoading = (state) => state.user.statsLoading;
+export const selectUserStatsError = (state) => state.user.statsError;
+export const selectBranchUsers = (state) => state.user.branchUsers;
+export const selectBranchUsersLoading = (state) => state.user.branchUsersLoading;
+export const selectBranchUsersError = (state) => state.user.branchUsersError;
+
 export default userSlice.reducer; 

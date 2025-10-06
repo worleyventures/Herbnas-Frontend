@@ -175,6 +175,19 @@ export const getBranchUsers = createAsyncThunk(
   }
 );
 
+// Get branch inventory
+export const getBranchInventory = createAsyncThunk(
+  'branches/getBranchInventory',
+  async (branchId, { rejectWithValue }) => {
+    try {
+      const response = await api.get(`/branches/${branchId}/inventory`);
+      return response.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || err.message);
+    }
+  }
+);
+
 // Clear branch errors
 export const clearBranchErrors = createAsyncThunk(
   'branches/clearErrors',
