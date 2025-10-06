@@ -2,6 +2,7 @@ import { createSlice } from '@reduxjs/toolkit';
 import {
   getAllRawMaterials,
   getRawMaterialById,
+  getUniqueSuppliers,
   createRawMaterial,
   updateRawMaterial,
   deleteRawMaterial,
@@ -15,6 +16,7 @@ import {
 const initialState = {
   rawMaterials: [],
   currentRawMaterial: null,
+  suppliers: [],
   finishedGoods: [],
   currentFinishedGoods: null,
   stats: null,
@@ -78,6 +80,22 @@ const inventorySlice = createSlice({
         state.loading = false;
         state.error = action.payload;
         state.currentRawMaterial = null;
+      })
+
+      // Get unique suppliers
+      .addCase(getUniqueSuppliers.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(getUniqueSuppliers.fulfilled, (state, action) => {
+        state.loading = false;
+        state.suppliers = action.payload.data.suppliers || [];
+        state.error = null;
+      })
+      .addCase(getUniqueSuppliers.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+        state.suppliers = [];
       })
 
       // Create raw material

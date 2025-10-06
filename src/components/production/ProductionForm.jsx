@@ -43,6 +43,7 @@ const ProductionForm = () => {
 
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSetsMode, setIsSetsMode] = useState(false);
 
   // Production status options
   const productionStatusOptions = [
@@ -78,11 +79,17 @@ const ProductionForm = () => {
       // Always show current available stock in the dropdown options (like add form)
       const availableStock = rawMaterial.stockQuantity;
       
+      // For SETs, show the complete sets quantity in the label
+      const displayLabel = rawMaterial.materialType === 'sets' 
+        ? `${rawMaterial.materialName} (${rawMaterial.materialId}) - Complete Sets: ${availableStock} ${rawMaterial.UOM}`
+        : `${rawMaterial.materialName} (${rawMaterial.materialId}) - Stock: ${availableStock} ${rawMaterial.UOM}`;
+      
       return {
         value: rawMaterial._id,
-        label: `${rawMaterial.materialName} (${rawMaterial.materialId}) - Stock: ${availableStock} ${rawMaterial.UOM}`,
+        label: displayLabel,
         stock: availableStock,
-        uom: rawMaterial.UOM
+        uom: rawMaterial.UOM,
+        materialType: rawMaterial.materialType
       };
     });
 
@@ -102,6 +109,13 @@ const ProductionForm = () => {
   // Update form data when production is loaded for editing
   useEffect(() => {
     if (isEdit && currentProduction) {
+      // Check if any raw materials are SETs
+      const hasSetsMaterials = currentProduction.rawMaterials?.some(
+        rm => rm.rawMaterialId?.materialType === 'sets'
+      );
+      
+      setIsSetsMode(hasSetsMaterials);
+      
       setFormData({
         batchId: currentProduction.batchId || '',
         productId: currentProduction.productId?._id || '',
@@ -162,6 +176,11 @@ const ProductionForm = () => {
               updatedItem.uom = selectedRawMaterial.UOM;
               // Always use current available stock (like add form)
               updatedItem.stock = selectedRawMaterial.stockQuantity;
+              
+              // If the selected raw material is SETs, automatically set quantity to complete sets quantity
+              if (selectedRawMaterial.materialType === 'sets') {
+                updatedItem.quantity = selectedRawMaterial.stockQuantity.toString();
+              }
             }
           }
           
@@ -216,18 +235,30 @@ const ProductionForm = () => {
         newErrors.quantity = 'Quantity must be greater than 0';
       }
 
-      // Validate raw materials only when creating
-      if (!formData.rawMaterials || formData.rawMaterials.length === 0) {
-        newErrors.rawMaterials = 'At least one raw material is required';
-      } else {
-        formData.rawMaterials.forEach((rawMaterial, index) => {
-          if (!rawMaterial.rawMaterialId) {
-            newErrors[`rawMaterial_${index}`] = 'Raw material is required';
-          }
-          if (!rawMaterial.quantity || rawMaterial.quantity <= 0) {
-            newErrors[`quantity_${index}`] = 'Quantity must be greater than 0';
-          }
-        });
+      // Validate raw materials only when creating and not in SETs mode
+      if (!isSetsMode) {
+        if (!formData.rawMaterials || formData.rawMaterials.length === 0) {
+          newErrors.rawMaterials = 'At least one raw material is required';
+        } else {
+          formData.rawMaterials.forEach((rawMaterial, index) => {
+            if (!rawMaterial.rawMaterialId) {
+              newErrors[`rawMaterial_${index}`] = 'Raw material is required';
+            }
+            if (!rawMaterial.quantity || rawMaterial.quantity <= 0) {
+              newErrors[`quantity_${index}`] = 'Quantity must be greater than 0';
+            }
+            
+            // For SETs, validate that the quantity matches the available stock
+            if (rawMaterial.rawMaterialId) {
+              const selectedRawMaterial = rawMaterials.find(rm => rm._id === rawMaterial.rawMaterialId);
+              if (selectedRawMaterial && selectedRawMaterial.materialType === 'sets') {
+                if (parseInt(rawMaterial.quantity) !== selectedRawMaterial.stockQuantity) {
+                  newErrors[`quantity_${index}`] = 'For SETs, quantity must match the complete sets available';
+                }
+              }
+            }
+          });
+        }
       }
     }
 
@@ -268,12 +299,16 @@ const ProductionForm = () => {
         productionStatus: formData.productionStatus,
         QCstatus: formData.QCstatus,
         quantity: parseInt(formData.quantity),
-        rawMaterials: formData.rawMaterials.map(rm => ({
-          rawMaterialId: rm.rawMaterialId,
-          quantity: parseInt(rm.quantity)
-        })),
         QCNotes: formData.QCNotes.trim() || undefined
       };
+
+      // Only include rawMaterials if not in SETs mode (for editing SETs, raw materials are read-only)
+      if (!isSetsMode) {
+        productionData.rawMaterials = formData.rawMaterials.map(rm => ({
+          rawMaterialId: rm.rawMaterialId,
+          quantity: parseInt(rm.quantity)
+        }));
+      }
 
       console.log('Sending production data:', productionData);
       console.log('Raw materials being sent:', productionData.rawMaterials);
@@ -433,66 +468,128 @@ const ProductionForm = () => {
           {/* Raw Materials */}
           <div className="space-y-6">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-medium text-gray-900">Raw Materials</h3>
-              <Button
-                type="button"
-                onClick={addRawMaterial}
-                variant="outline"
-                size="sm"
-                icon={HiPlus}
-              >
-                Add Raw Material
-              </Button>
+              <h3 className="text-lg font-medium text-gray-900">
+                {isSetsMode ? 'Raw Materials (SETs)' : 'Raw Materials'}
+              </h3>
+              {!isSetsMode && (
+                <Button
+                  type="button"
+                  onClick={addRawMaterial}
+                  variant="outline"
+                  size="sm"
+                  icon={HiPlus}
+                >
+                  Add Raw Material
+                </Button>
+              )}
             </div>
             
             {/* Raw Material Selection Fields */}
-            {formData.rawMaterials.map((rawMaterial, index) => (
-              <div key={index} className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 border border-gray-200 rounded-lg">
-                <div className="md:col-span-2">
-                  <Select
-                    label={`Raw Material ${index + 1}`}
-                    name={`rawMaterial_${index}`}
-                    value={rawMaterial.rawMaterialId}
-                    onChange={(e) => handleRawMaterialChange(index, 'rawMaterialId', e.target.value)}
-                    options={rawMaterialOptions}
-                    placeholder="Select a raw material"
-                    error={!!errors[`rawMaterial_${index}`]}
-                    errorMessage={errors[`rawMaterial_${index}`]}
-                    required={!isEdit}
-                  />
-                </div>
-                <div>
-                  <Input
-                    label={`Quantity (${rawMaterial.uom || 'units'})`}
-                    name={`quantity_${index}`}
-                    type="number"
-                    value={rawMaterial.quantity}
-                    onChange={(e) => handleRawMaterialChange(index, 'quantity', e.target.value)}
-                    placeholder={`Enter quantity (Available: ${rawMaterial.stock || 0} ${rawMaterial.uom || 'units'})`}
-                    helperText={rawMaterial.stock ? `Available: ${rawMaterial.stock} ${rawMaterial.uom || 'units'}` : ''}
-                    error={!!errors[`quantity_${index}`]}
-                    errorMessage={errors[`quantity_${index}`]}
-                    required={!isEdit}
-                    min="1"
-                    max={rawMaterial.stock || undefined}
-                  />
-                </div>
-                {formData.rawMaterials.length > 1 && (
-                  <div className="flex items-end">
-                    <Button
-                      type="button"
-                      onClick={() => removeRawMaterial(index)}
-                      variant="outline"
-                      size="sm"
-                      icon={HiTrash}
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                    >
-                      Remove
-                    </Button>
+            {isSetsMode ? (
+              /* SETs Mode - Show existing SETs materials as read-only */
+              <>
+                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                  <div className="flex">
+                    <div className="flex-shrink-0">
+                      <HiCube className="h-5 w-5 text-blue-400" />
+                    </div>
+                    <div className="ml-3">
+                      <p className="text-sm text-blue-700">
+                        This production uses SETs raw materials. Raw materials cannot be modified as they represent complete sets that were used in the production process.
+                      </p>
+                    </div>
                   </div>
-                )}
-              </div>
-            ))}
+                </div>
+                {currentProduction?.rawMaterials?.map((rawMaterial, index) => (
+                <div key={index} className="p-4 border border-gray-200 rounded-lg bg-gray-50">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        SET Information
+                      </label>
+                      <div className="p-3 bg-white border border-gray-300 rounded-md">
+                        <p className="text-sm font-medium text-gray-900">
+                          {rawMaterial.rawMaterialId?.set || 'SET'} - Batch: {rawMaterial.rawMaterialId?.batchId || 'N/A'}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          Material ID: {rawMaterial.rawMaterialId?.materialId || 'N/A'}
+                        </p>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Quantity Used
+                      </label>
+                      <div className="p-3 bg-white border border-gray-300 rounded-md">
+                        <p className="text-sm font-semibold text-gray-900">
+                          {rawMaterial.quantity} {rawMaterial.rawMaterialId?.UOM || 'units'}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          Complete Sets Used
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                ))}
+              </>
+            ) : (
+              /* Individual Materials Mode - Show editable fields */
+              formData.rawMaterials.map((rawMaterial, index) => (
+                <div key={index} className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 border border-gray-200 rounded-lg">
+                  <div className="md:col-span-2">
+                    <Select
+                      label={`Raw Material ${index + 1}`}
+                      name={`rawMaterial_${index}`}
+                      value={rawMaterial.rawMaterialId}
+                      onChange={(e) => handleRawMaterialChange(index, 'rawMaterialId', e.target.value)}
+                      options={rawMaterialOptions}
+                      placeholder="Select a raw material"
+                      error={!!errors[`rawMaterial_${index}`]}
+                      errorMessage={errors[`rawMaterial_${index}`]}
+                      required={!isEdit}
+                    />
+                  </div>
+                  <div>
+                    <Input
+                      label={`Quantity (${rawMaterial.uom || 'units'})`}
+                      name={`quantity_${index}`}
+                      type="number"
+                      value={rawMaterial.quantity}
+                      onChange={(e) => handleRawMaterialChange(index, 'quantity', e.target.value)}
+                      placeholder={`Enter quantity (Available: ${rawMaterial.stock || 0} ${rawMaterial.uom || 'units'})`}
+                      helperText={
+                        rawMaterial.stock 
+                          ? rawMaterial.materialType === 'sets'
+                            ? `Complete Sets Available: ${rawMaterial.stock} ${rawMaterial.uom || 'units'} (Auto-filled)`
+                            : `Available: ${rawMaterial.stock} ${rawMaterial.uom || 'units'}`
+                          : ''
+                      }
+                      error={!!errors[`quantity_${index}`]}
+                      errorMessage={errors[`quantity_${index}`]}
+                      required={!isEdit}
+                      min="1"
+                      max={rawMaterial.stock || undefined}
+                      disabled={rawMaterial.materialType === 'sets'}
+                    />
+                  </div>
+                  {formData.rawMaterials.length > 1 && (
+                    <div className="flex items-end">
+                      <Button
+                        type="button"
+                        onClick={() => removeRawMaterial(index)}
+                        variant="outline"
+                        size="sm"
+                        icon={HiTrash}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
             
             {errors.rawMaterials && (
               <p className="text-sm text-red-600">{errors.rawMaterials}</p>
@@ -507,10 +604,16 @@ const ProductionForm = () => {
                     <div key={index} className="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-lg">
                       <div className="flex-1">
                         <p className="text-sm font-medium text-gray-900">
-                          {rawMaterial.rawMaterialId?.materialName || 'Unknown Material'}
+                          {rawMaterial.rawMaterialId?.materialType === 'sets' 
+                            ? `${rawMaterial.rawMaterialId?.set || 'SET'} - Batch: ${rawMaterial.rawMaterialId?.batchId || 'N/A'}`
+                            : (rawMaterial.rawMaterialId?.materialName || 'Unknown Material')
+                          }
                         </p>
                         <p className="text-xs text-gray-500">
-                          ID: {rawMaterial.rawMaterialId?.materialId || 'N/A'}
+                          {rawMaterial.rawMaterialId?.materialType === 'sets' 
+                            ? `Material ID: ${rawMaterial.rawMaterialId?.materialId || 'N/A'}`
+                            : `ID: ${rawMaterial.rawMaterialId?.materialId || 'N/A'}`
+                          }
                         </p>
                       </div>
                       <div className="text-right">

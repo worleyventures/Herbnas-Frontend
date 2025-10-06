@@ -113,10 +113,20 @@ const ProductionDetailsModal = ({
 
   const rawMaterialsInfo = production.rawMaterials && production.rawMaterials.length > 0 ? {
     title: 'Raw Materials Used',
-    fields: production.rawMaterials.map((rawMaterial, index) => ({
-      label: rawMaterial.rawMaterialId?.materialName || 'Unknown Material',
-      value: `${rawMaterial.quantity} ${rawMaterial.rawMaterialId?.UOM || 'units'} (Available: ${rawMaterial.rawMaterialId?.stockQuantity || 0})`
-    }))
+    fields: production.rawMaterials.map((rawMaterial, index) => {
+      // Handle SETs materials differently
+      if (rawMaterial.rawMaterialId?.materialType === 'sets') {
+        return {
+          label: `${rawMaterial.rawMaterialId?.set || 'SET'} - Batch: ${rawMaterial.rawMaterialId?.batchId || 'N/A'}`,
+          value: `${rawMaterial.quantity} ${rawMaterial.rawMaterialId?.UOM || 'units'} (Available: ${rawMaterial.rawMaterialId?.stockQuantity || 0})`
+        };
+      }
+      // Handle individual materials
+      return {
+        label: rawMaterial.rawMaterialId?.materialName || 'Unknown Material',
+        value: `${rawMaterial.quantity} ${rawMaterial.rawMaterialId?.UOM || 'units'} (Available: ${rawMaterial.rawMaterialId?.stockQuantity || 0})`
+      };
+    })
   } : null;
 
   const notesInfo = (production.notes || production.QCNotes) ? {

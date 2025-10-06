@@ -44,6 +44,19 @@ export const getRawMaterialById = createAsyncThunk(
   }
 );
 
+// Get unique suppliers
+export const getUniqueSuppliers = createAsyncThunk(
+  'inventory/getUniqueSuppliers',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await api.get('/inventory/suppliers');
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch suppliers');
+    }
+  }
+);
+
 // Create raw material
 export const createRawMaterial = createAsyncThunk(
   'inventory/createRawMaterial',

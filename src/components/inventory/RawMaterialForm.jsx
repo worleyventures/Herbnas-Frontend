@@ -11,8 +11,8 @@ import {
   HiXCircle,
   HiXMark
 } from 'react-icons/hi2';
-import { Button, Input, Select, TextArea } from '../common';
-import { createRawMaterial, createBatchWithSets, updateRawMaterial, getRawMaterialById } from '../../redux/actions/inventoryActions';
+import { Button, Input, Select, TextArea, InputWithDropdown } from '../common';
+import { createRawMaterial, createBatchWithSets, updateRawMaterial, getRawMaterialById, getUniqueSuppliers } from '../../redux/actions/inventoryActions';
 import { addNotification } from '../../redux/slices/uiSlice';
 import { GST_PERCENTAGE_OPTIONS, getGstPercentageError } from '../../utils/gstUtils';
 
@@ -23,7 +23,7 @@ const RawMaterialForm = () => {
   const location = useLocation();
   const isEdit = Boolean(id);
 
-  const { currentRawMaterial, loading, updateLoading } = useSelector((state) => state.inventory);
+  const { currentRawMaterial, loading, updateLoading, suppliers } = useSelector((state) => state.inventory);
 
   const [formData, setFormData] = useState({
     materialId: '',
@@ -97,8 +97,22 @@ const RawMaterialForm = () => {
   // GST percentage options (imported from utility)
   const gstPercentageOptions = GST_PERCENTAGE_OPTIONS;
 
-  // Load raw material data for editing
+  // Supplier options for dropdown
+  const supplierOptions = suppliers.map(supplier => ({
+    value: supplier.supplierId,
+    label: `${supplier.supplierName} (${supplier.supplierId})`,
+    // description: `GST: ${supplier.gstNumber} | HSN: ${supplier.hsn} | GST%: ${supplier.gstPercentage}%`,
+    supplierName: supplier.supplierName,
+    gstNumber: supplier.gstNumber,
+    hsn: supplier.hsn,
+    gstPercentage: supplier.gstPercentage
+  }));
+
+  // Load suppliers and raw material data for editing
   useEffect(() => {
+    // Load suppliers for dropdown
+    dispatch(getUniqueSuppliers());
+    
     if (isEdit && id) {
       dispatch(getRawMaterialById(id));
     }
@@ -107,22 +121,50 @@ const RawMaterialForm = () => {
   // Update form data when raw material is loaded
   useEffect(() => {
     if (isEdit && currentRawMaterial) {
-      setFormData({
-        materialId: currentRawMaterial.materialId || '',
-        materialName: currentRawMaterial.materialName || '',
-        category: currentRawMaterial.category || '',
-        UOM: currentRawMaterial.UOM || 'kg',
-        price: currentRawMaterial.price?.toString() || '',
-        supplierId: currentRawMaterial.supplierId || '',
-        supplierName: currentRawMaterial.supplierName || '',
-        gstNumber: currentRawMaterial.gstNumber || '',
-        hsn: currentRawMaterial.hsn || '',
-        gstPercentage: currentRawMaterial.gstPercentage?.toString() || '',
-        stockQuantity: currentRawMaterial.stockQuantity?.toString() || '',
-        minStockLevel: currentRawMaterial.minStockLevel?.toString() || '',
-        maxStockLevel: currentRawMaterial.maxStockLevel?.toString() || '',
-        notes: currentRawMaterial.notes || ''
-      });
+      // Check if this is a SETs material and set the appropriate mode
+      const isSetsMaterial = currentRawMaterial.materialType === 'sets';
+      setIsBuySetsMode(isSetsMaterial);
+      
+      if (isSetsMaterial) {
+        // For SETs materials, populate the sets-specific fields
+        setFormData({
+          materialType: 'sets',
+          batchId: currentRawMaterial.batchId || '',
+          quantity: currentRawMaterial.quantity?.toString() || '',
+          unitPrice: currentRawMaterial.unitPrice?.toString() || '',
+          set: currentRawMaterial.set || '',
+          category: currentRawMaterial.category || '',
+          UOM: currentRawMaterial.UOM || 'kg',
+          supplierId: currentRawMaterial.supplierId || '',
+          supplierName: currentRawMaterial.supplierName || '',
+          gstNumber: currentRawMaterial.gstNumber || '',
+          hsn: currentRawMaterial.hsn || '',
+          gstPercentage: currentRawMaterial.gstPercentage?.toString() || '',
+          stockQuantity: currentRawMaterial.stockQuantity?.toString() || '',
+          minStockLevel: currentRawMaterial.minStockLevel?.toString() || '',
+          maxStockLevel: currentRawMaterial.maxStockLevel?.toString() || '',
+          notes: currentRawMaterial.notes || ''
+        });
+      } else {
+        // For individual materials, populate the individual-specific fields
+        setFormData({
+          materialType: 'individual',
+          materialId: currentRawMaterial.materialId || '',
+          materialName: currentRawMaterial.materialName || '',
+          category: currentRawMaterial.category || '',
+          UOM: currentRawMaterial.UOM || 'kg',
+          price: currentRawMaterial.price?.toString() || '',
+          supplierId: currentRawMaterial.supplierId || '',
+          supplierName: currentRawMaterial.supplierName || '',
+          gstNumber: currentRawMaterial.gstNumber || '',
+          hsn: currentRawMaterial.hsn || '',
+          gstPercentage: currentRawMaterial.gstPercentage?.toString() || '',
+          stockQuantity: currentRawMaterial.stockQuantity?.toString() || '',
+          minStockLevel: currentRawMaterial.minStockLevel?.toString() || '',
+          maxStockLevel: currentRawMaterial.maxStockLevel?.toString() || '',
+          notes: currentRawMaterial.notes || ''
+        });
+      }
     }
   }, [isEdit, currentRawMaterial]);
 
@@ -140,6 +182,44 @@ const RawMaterialForm = () => {
         [name]: ''
       }));
     }
+  };
+
+  // Handle supplier selection with auto-fill
+  const handleSupplierChange = (e) => {
+    const { value } = e.target;
+    
+    // Find the selected supplier
+    const selectedSupplier = suppliers.find(supplier => supplier.supplierId === value);
+    
+    if (selectedSupplier) {
+      // Auto-fill supplier information
+      setFormData(prev => ({
+        ...prev,
+        supplierId: selectedSupplier.supplierId,
+        supplierName: selectedSupplier.supplierName,
+        gstNumber: selectedSupplier.gstNumber,
+        hsn: selectedSupplier.hsn,
+        gstPercentage: selectedSupplier.gstPercentage.toString()
+      }));
+    } else {
+      // If no supplier selected, just update supplierId
+      setFormData(prev => ({
+        ...prev,
+        supplierId: value
+      }));
+    }
+    
+    // Clear supplier-related errors
+    const supplierFields = ['supplierId', 'supplierName', 'gstNumber', 'hsn', 'gstPercentage'];
+    setErrors(prev => {
+      const newErrors = { ...prev };
+      supplierFields.forEach(field => {
+        if (newErrors[field]) {
+          delete newErrors[field];
+        }
+      });
+      return newErrors;
+    });
   };
 
   const validateForm = () => {
@@ -250,6 +330,7 @@ const RawMaterialForm = () => {
         rawMaterialData.quantity = parseFloat(formData.quantity);
         rawMaterialData.UOM = formData.UOM;
         rawMaterialData.unitPrice = parseFloat(formData.unitPrice);
+        rawMaterialData.set = formData.set;
       } else {
         rawMaterialData.materialType = 'individual';
         rawMaterialData.materialId = formData.materialId.trim().toUpperCase();
@@ -345,16 +426,18 @@ const RawMaterialForm = () => {
                 </p>
               </div>
             </div>
-            {/* Toggle Button */}
-            <Button
-              type="button"
-              onClick={toggleBuySetsMode}
-              variant={isBuySetsMode ? "gradient" : "outline"}
-              size="sm"
-              icon={HiCube}
-            >
-              {isBuySetsMode ? 'Switch to Materials' : 'Buy Sets'}
-            </Button>
+            {/* Toggle Button - Only show when creating new materials */}
+            {!isEdit && (
+              <Button
+                type="button"
+                onClick={toggleBuySetsMode}
+                variant={isBuySetsMode ? "gradient" : "outline"}
+                size="sm"
+                icon={HiCube}
+              >
+                {isBuySetsMode ? 'Switch to Materials' : 'Buy Sets'}
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -378,6 +461,8 @@ const RawMaterialForm = () => {
                     error={!!errors.batchId}
                     errorMessage={errors.batchId}
                     required
+                    disabled={isEdit && isBuySetsMode}
+                    helperText={isEdit && isBuySetsMode ? "Batch ID cannot be changed for existing SETs" : ""}
                   />
                   <Input
                     label="Quantity"
@@ -390,6 +475,15 @@ const RawMaterialForm = () => {
                     errorMessage={errors.quantity}
                     required
                   />
+                  {isEdit && isBuySetsMode && (
+                    <Input
+                      label="SET"
+                      name="set"
+                      value={formData.set}
+                      disabled={true}
+                      helperText="SET identifier (read-only)"
+                    />
+                  )}
                   <Select
                     label="Unit of Measure"
                     name="UOM"
@@ -525,12 +619,14 @@ const RawMaterialForm = () => {
           <div className="space-y-4">
             <h3 className="text-lg font-medium text-gray-900">Supplier Information</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input
+              <InputWithDropdown
                 label="Supplier ID"
                 name="supplierId"
                 value={formData.supplierId}
-                onChange={handleChange}
-                placeholder="Enter supplier ID (optional)"
+                onChange={handleSupplierChange}
+                placeholder="Search or select supplier ID"
+                options={supplierOptions}
+                helperText="Select from existing suppliers or type a new ID"
               />
               <Input
                 label="Supplier Name"
