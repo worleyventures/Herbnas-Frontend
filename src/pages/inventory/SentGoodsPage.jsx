@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { HiArrowLeft, HiTruck, HiBuildingOffice2, HiCube, HiCalendar, HiCheckCircle, HiPlus } from 'react-icons/hi2';
-import { Button, Input, Select, TextArea, Table, StatusBadge } from '../../components/common';
+import { Button, Input, Select, TextArea } from '../../components/common';
 import { getAllBranches } from '../../redux/actions/branchActions';
 import { getAllFinishedGoods } from '../../redux/actions/inventoryActions';
-import { getAllSentGoods, createSentGoods, updateSentGoodsStatus, deleteSentGoods } from '../../redux/actions/sentGoodsActions';
+import { createSentGoods } from '../../redux/actions/sentGoodsActions';
 import { addNotification } from '../../redux/slices/uiSlice';
 
 const SentGoodsPage = () => {
@@ -15,35 +15,21 @@ const SentGoodsPage = () => {
   // Redux state
   const { branches = [], loading: branchesLoading = false } = useSelector((state) => state.branches);
   const { finishedGoods = [], loading: inventoryLoading = false } = useSelector((state) => state.inventory);
-  const { sentGoods = [], loading: sentGoodsLoading = false, pagination } = useSelector((state) => state.sentGoods);
   
   // Local state
   const [selectedBranch, setSelectedBranch] = useState('');
   const [trackingId, setTrackingId] = useState('');
   const [notes, setNotes] = useState('');
   const [selectedInventoryItems, setSelectedInventoryItems] = useState([]);
-  const [filterStatus, setFilterStatus] = useState('all');
-  const [searchTerm, setSearchTerm] = useState('');
   const [formErrors, setFormErrors] = useState({});
 
   // Load data on component mount
   useEffect(() => {
     dispatch(getAllBranches({ page: 1, limit: 1000 }));
     dispatch(getAllFinishedGoods({ page: 1, limit: 1000 }));
-    dispatch(getAllSentGoods({ page: 1, limit: 10 }));
   }, [dispatch]);
 
-  // Filter sent goods based on search and status
-  const filteredSentGoods = sentGoods.filter(sg => {
-    const matchesSearch = !searchTerm || 
-      sg.trackingId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      sg.branch?.branchName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      sg.items.some(item => item.productName.toLowerCase().includes(searchTerm.toLowerCase()));
-    
-    const matchesStatus = filterStatus === 'all' || sg.status === filterStatus;
-    
-    return matchesSearch && matchesStatus;
-  });
+
 
   const handleBack = () => {
     navigate('/inventory');
@@ -148,8 +134,7 @@ const SentGoodsPage = () => {
         setSelectedInventoryItems([]);
         setFormErrors({});
         
-        // Refresh sent goods list
-        dispatch(getAllSentGoods({ page: 1, limit: 10 }));
+        // Form submitted successfully
       } else {
         dispatch(addNotification({
           type: 'error',
@@ -164,186 +149,16 @@ const SentGoodsPage = () => {
     }
   };
 
-  const handleUpdateStatus = async (id, newStatus) => {
-    try {
-      const result = await dispatch(updateSentGoodsStatus({ id, status: newStatus }));
-      
-      if (updateSentGoodsStatus.fulfilled.match(result)) {
-        dispatch(addNotification({
-          type: 'success',
-          message: `Status updated to ${newStatus}`
-        }));
-        
-        // Refresh sent goods list
-        dispatch(getAllSentGoods({ page: 1, limit: 10 }));
-      } else {
-        dispatch(addNotification({
-          type: 'error',
-          message: result.payload || 'Failed to update status'
-        }));
-      }
-    } catch (error) {
-      dispatch(addNotification({
-        type: 'error',
-        message: 'Failed to update status'
-      }));
-    }
-  };
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'delivered':
-        return 'green';
-      case 'in-transit':
-        return 'blue';
-      case 'pending':
-        return 'yellow';
-      default:
-        return 'gray';
-    }
-  };
-
-  const getStatusText = (status) => {
-    switch (status) {
-      case 'delivered':
-        return 'Delivered';
-      case 'in-transit':
-        return 'In Transit';
-      case 'pending':
-        return 'Pending';
-      default:
-        return 'Unknown';
-    }
-  };
 
   const branchOptions = branches.map(branch => ({
     value: branch._id,
     label: `${branch.branchName} (${branch.branchCode})`
   }));
 
-  const statusOptions = [
-    { value: 'all', label: 'All Status' },
-    { value: 'pending', label: 'Pending' },
-    { value: 'in-transit', label: 'In Transit' },
-    { value: 'delivered', label: 'Delivered' }
-  ];
 
-  const columns = [
-    {
-      key: 'trackingId',
-      label: 'Tracking ID',
-      sortable: true,
-      render: (item) => (
-        <div className="flex items-center space-x-2">
-          <HiTruck className="h-4 w-4 text-gray-500" />
-          <span className="font-medium text-gray-900">{item.trackingId}</span>
-        </div>
-      )
-    },
-    {
-      key: 'branch',
-      label: 'Destination',
-      sortable: true,
-      render: (item) => (
-        <div className="flex items-center space-x-2">
-          <HiBuildingOffice2 className="h-4 w-4 text-gray-500" />
-          <div>
-            <p className="font-medium text-gray-900">{item.branch?.branchName || 'Unknown Branch'}</p>
-            <p className="text-sm text-gray-500">{item.branch?.branchCode || ''}</p>
-          </div>
-        </div>
-      )
-    },
-    {
-      key: 'items',
-      label: 'Items',
-      sortable: false,
-      render: (item) => (
-        <div className="space-y-1">
-          {item.items?.slice(0, 2).map((itemData, index) => (
-            <div key={index} className="flex items-center space-x-2">
-              <HiCube className="h-4 w-4 text-gray-500" />
-              <span className="text-gray-900 text-sm">
-                {itemData.productName} ({itemData.quantity} units)
-              </span>
-            </div>
-          ))}
-          {item.items?.length > 2 && (
-            <span className="text-xs text-gray-500">
-              +{item.items.length - 2} more items
-            </span>
-          )}
-        </div>
-      )
-    },
-    {
-      key: 'totalAmount',
-      label: 'Total Amount',
-      sortable: true,
-      render: (item) => (
-        <span className="font-medium text-gray-900">₹{item.totalAmount?.toFixed(2) || '0.00'}</span>
-      )
-    },
-    {
-      key: 'sentAt',
-      label: 'Sent Date',
-      sortable: true,
-      render: (item) => (
-        <div className="flex items-center space-x-2">
-          <HiCalendar className="h-4 w-4 text-gray-500" />
-          <span className="text-gray-900">{new Date(item.sentAt).toLocaleDateString()}</span>
-        </div>
-      )
-    },
-    {
-      key: 'status',
-      label: 'Status',
-      sortable: true,
-      render: (item) => (
-        <StatusBadge
-          status={item.statusDisplay || item.status}
-          color={getStatusColor(item.status)}
-          icon={HiCheckCircle}
-        />
-      )
-    },
-    {
-      key: 'actions',
-      label: 'Actions',
-      render: (item) => (
-        <div className="flex space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => console.log('View details:', item._id)}
-          >
-            View
-          </Button>
-          {item.status === 'pending' && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleUpdateStatus(item._id, 'in-transit')}
-            >
-              Ship
-            </Button>
-          )}
-          {item.status === 'in-transit' && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleUpdateStatus(item._id, 'delivered')}
-            >
-              Deliver
-            </Button>
-          )}
-        </div>
-      )
-    }
-  ];
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -515,36 +330,6 @@ const SentGoodsPage = () => {
           </div>
         </div>
 
-        {/* Sent Goods History */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-          <div className="p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-medium text-gray-900">Sent Goods History</h2>
-              <div className="flex space-x-4">
-                <Input
-                  placeholder="Search tracking ID, product, or branch..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-64"
-                />
-                <Select
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value)}
-                  options={statusOptions}
-                  className="w-40"
-                />
-              </div>
-            </div>
-
-            <Table
-              data={filteredSentGoods}
-              columns={columns}
-              loading={sentGoodsLoading}
-              emptyMessage="No sent goods found"
-              emptySubMessage="Goods you send to branches will appear here"
-            />
-          </div>
-        </div>
       </div>
     </div>
   );

@@ -159,4 +159,15 @@ const sentGoodsSlice = createSlice({
 });
 
 export const { clearError, clearCurrentSentGoods, updateFilters, resetFilters } = sentGoodsSlice.actions;
+
+// Selectors
+export const selectSentGoods = (state) => state.sentGoods.sentGoods;
+export const selectSentGoodsLoading = (state) => state.sentGoods.loading;
+export const selectSentGoodsError = (state) => state.sentGoods.error;
+export const selectSentGoodsStats = (state) => state.sentGoods.stats;
+export const selectSentGoodsPagination = (state) => state.sentGoods.pagination;
+export const selectCurrentSentGoods = (state) => state.sentGoods.currentSentGoods;
+export const selectSentGoodsFilters = (state) => state.sentGoods.filters;
+
 export default sentGoodsSlice.reducer;
+

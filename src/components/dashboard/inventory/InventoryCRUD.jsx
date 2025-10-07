@@ -9,9 +9,12 @@ import {
   HiBuildingOffice2,
   HiExclamationTriangle,
   HiCheckCircle,
-  HiInformationCircle
+  HiInformationCircle,
+  HiTruck
 } from 'react-icons/hi2';
 import { Table, ActionButton, StatusBadge, ConfirmationModal, InventoryDetailsModal } from '../../common';
+import { updateSentGoodsStatus } from '../../../redux/actions/sentGoodsActions';
+import { addNotification } from '../../../redux/slices/uiSlice';
 
 const InventoryCRUD = ({ 
   inventory, 
@@ -100,6 +103,51 @@ const InventoryCRUD = ({
     }
   };
 
+  // Handle status update for sent goods
+  const handleStatusUpdate = async (id, newStatus) => {
+    console.log('=== STATUS UPDATE START ===');
+    console.log('Updating status for item:', id, 'to:', newStatus);
+    console.log('Current inventory type:', inventoryType);
+    console.log('onUpdateInventory function:', typeof onUpdateInventory);
+    
+    try {
+      console.log('Dispatching updateSentGoodsStatus action...');
+      const result = await dispatch(updateSentGoodsStatus({ id, status: newStatus }));
+      console.log('Status update result:', result);
+      console.log('Result type:', result.type);
+      console.log('Result payload:', result.payload);
+      
+      if (updateSentGoodsStatus.fulfilled.match(result)) {
+        console.log('Status update successful!');
+        dispatch(addNotification({
+          type: 'success',
+          message: `Status updated to ${newStatus}`
+        }));
+        
+        // Refresh the inventory data to reflect the status change
+        if (typeof onUpdateInventory === 'function') {
+          console.log('Calling onUpdateInventory to refresh data...');
+          onUpdateInventory();
+        } else {
+          console.log('onUpdateInventory is not a function:', onUpdateInventory);
+        }
+      } else {
+        console.log('Status update failed:', result.payload);
+        dispatch(addNotification({
+          type: 'error',
+          message: result.payload || 'Failed to update status'
+        }));
+      }
+    } catch (error) {
+      console.error('Error updating status:', error);
+      dispatch(addNotification({
+        type: 'error',
+        message: 'Failed to update status'
+      }));
+    }
+    console.log('=== STATUS UPDATE END ===');
+  };
+
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -130,10 +178,10 @@ const InventoryCRUD = ({
           render: (inventoryItem) => (
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-900 truncate">
-                {inventoryItem.branch?.branchName || 'Unknown Branch'}
+                {inventoryItem.branchId?.branchName || 'Unknown Branch'}
               </p>
               <p className="text-sm text-gray-500 truncate">
-                {inventoryItem.branch?.branchCode || ''}
+                {inventoryItem.branchId?.branchCode || ''}
               </p>
             </div>
           )
@@ -148,7 +196,7 @@ const InventoryCRUD = ({
                 {inventoryItem.items?.length || 0} items
               </span>
               <div className="text-xs text-gray-500 mt-1">
-                {inventoryItem.items?.slice(0, 2).map(item => item.productName).join(', ')}
+                {inventoryItem.items?.slice(0, 2).map(item => item.productName || 'Unknown Product').join(', ')}
                 {inventoryItem.items?.length > 2 && '...'}
               </div>
             </div>
@@ -172,7 +220,7 @@ const InventoryCRUD = ({
           sortable: true,
           render: (inventoryItem) => (
             <span className="text-sm text-gray-900">
-              {formatDate(inventoryItem.createdAt)}
+              {formatDate(inventoryItem.sentAt || inventoryItem.createdAt)}
             </span>
           )
         },
@@ -182,12 +230,60 @@ const InventoryCRUD = ({
           sortable: false,
           render: (inventoryItem) => (
             <div className="flex items-center space-x-2">
-              <ActionButton
-                icon={HiEye}
-                onClick={() => onSelectInventory(inventoryItem)}
-                tooltip="View Details"
-                className="text-blue-600 hover:text-blue-900"
-              />
+               <ActionButton
+                 icon={HiEye}
+                 onClick={() => {
+                   onSelectInventory(inventoryItem);
+                   setShowInventoryModal(true);
+                 }}
+                 tooltip="View Details"
+                 className="text-blue-600 hover:text-blue-900"
+               />
+               <div className="flex flex-col space-y-1">
+                 {inventoryItem.status === 'pending' && (
+                   <button
+                     onClick={(e) => {
+                       e.preventDefault();
+                       e.stopPropagation();
+                       console.log('Clicking Ship to Transit for:', inventoryItem._id);
+                       handleStatusUpdate(inventoryItem._id, 'in-transit');
+                     }}
+                     className="transition-all duration-200 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-opacity-50 rounded-full p-1"
+                     type="button"
+                   >
+                     <StatusBadge
+                       status="Ship to Transit"
+                       variant="warning"
+                       className="cursor-pointer"
+                     />
+                   </button>
+                 )}
+                 {inventoryItem.status === 'in-transit' && (
+                   <button
+                     onClick={(e) => {
+                       e.preventDefault();
+                       e.stopPropagation();
+                       console.log('Clicking Mark Delivered for:', inventoryItem._id);
+                       handleStatusUpdate(inventoryItem._id, 'delivered');
+                     }}
+                     className="transition-all duration-200 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 rounded-full p-1"
+                     type="button"
+                   >
+                     <StatusBadge
+                       status="Mark Delivered"
+                       variant="info"
+                       className="cursor-pointer"
+                     />
+                   </button>
+                 )}
+                 {inventoryItem.status === 'delivered' && (
+                   <StatusBadge
+                     status="Delivered"
+                     variant="success"
+                     className="opacity-75"
+                   />
+                 )}
+               </div>
             </div>
           )
         }
