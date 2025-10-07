@@ -15,7 +15,7 @@ import { Table, ActionButton, StatusBadge, ConfirmationModal, InventoryDetailsMo
 
 const InventoryCRUD = ({ 
   inventory, 
-  inventoryType = 'finishedGoods', // 'rawMaterials' or 'finishedGoods'
+  inventoryType = 'finishedGoods', // 'rawMaterials', 'finishedGoods', or 'sentGoods'
   onSelectInventory, 
   onEditInventory, 
   onDeleteInventory, 
@@ -35,6 +35,9 @@ const InventoryCRUD = ({
   const dispatch = useDispatch();
   const [showInventoryModal, setShowInventoryModal] = useState(false);
 
+  // Get current user for permission checks
+  const { user } = useSelector((state) => state.auth || {});
+
   // Get users for updatedBy display
   const users = useSelector((state) => state.user?.users || []);
   const usersLoading = useSelector((state) => state.user?.loading || false);
@@ -47,6 +50,12 @@ const InventoryCRUD = ({
   ];
 
   const allUsers = users.length > 0 ? users : fallbackUsers;
+
+  // Check if user can delete raw materials (admin or super_admin only)
+  const canDeleteRawMaterials = () => {
+    if (!user?.role) return false;
+    return user.role === 'admin' || user.role === 'super_admin';
+  };
 
   const getStockStatus = (inventoryItem) => {
     const availableStock = inventoryType === 'rawMaterials' 
@@ -100,7 +109,90 @@ const InventoryCRUD = ({
   };
 
   const columns = useMemo(() => {
-    if (inventoryType === 'rawMaterials') {
+    if (inventoryType === 'sentGoods') {
+      return [
+        {
+          key: 'trackingId',
+          label: 'Tracking ID',
+          sortable: true,
+          render: (inventoryItem) => (
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-gray-900 truncate">
+                {inventoryItem.trackingId || 'N/A'}
+              </p>
+            </div>
+          )
+        },
+        {
+          key: 'branch',
+          label: 'Branch',
+          sortable: true,
+          render: (inventoryItem) => (
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-gray-900 truncate">
+                {inventoryItem.branch?.branchName || 'Unknown Branch'}
+              </p>
+              <p className="text-sm text-gray-500 truncate">
+                {inventoryItem.branch?.branchCode || ''}
+              </p>
+            </div>
+          )
+        },
+        {
+          key: 'items',
+          label: 'Items',
+          sortable: false,
+          render: (inventoryItem) => (
+            <div className="text-sm">
+              <span className="font-medium text-gray-900">
+                {inventoryItem.items?.length || 0} items
+              </span>
+              <div className="text-xs text-gray-500 mt-1">
+                {inventoryItem.items?.slice(0, 2).map(item => item.productName).join(', ')}
+                {inventoryItem.items?.length > 2 && '...'}
+              </div>
+            </div>
+          )
+        },
+        {
+          key: 'status',
+          label: 'Status',
+          sortable: true,
+          render: (inventoryItem) => (
+            <StatusBadge 
+              status={inventoryItem.status || 'pending'}
+              variant={inventoryItem.status === 'delivered' ? 'success' : 
+                      inventoryItem.status === 'in-transit' ? 'info' : 'warning'}
+            />
+          )
+        },
+        {
+          key: 'sentDate',
+          label: 'Sent Date',
+          sortable: true,
+          render: (inventoryItem) => (
+            <span className="text-sm text-gray-900">
+              {formatDate(inventoryItem.createdAt)}
+            </span>
+          )
+        },
+        {
+          key: 'actions',
+          label: 'Actions',
+          sortable: false,
+          render: (inventoryItem) => (
+            <div className="flex items-center space-x-2">
+              <ActionButton
+                icon={HiEye}
+                onClick={() => onSelectInventory(inventoryItem)}
+                tooltip="View Details"
+                className="text-blue-600 hover:text-blue-900"
+              />
+            </div>
+          )
+        }
+      ];
+    } else if (inventoryType === 'rawMaterials') {
       return [
         {
           key: 'material',
@@ -202,12 +294,14 @@ const InventoryCRUD = ({
                 tooltip="Edit Inventory"
                 className="text-indigo-600 hover:text-indigo-900"
               />
-              <ActionButton
-                icon={HiTrash}
-                onClick={() => onDeleteInventory(inventoryItem)}
-                tooltip="Delete Inventory"
-                className="text-red-600 hover:text-red-900"
-              />
+              {canDeleteRawMaterials() && (
+                <ActionButton
+                  icon={HiTrash}
+                  onClick={() => onDeleteInventory(inventoryItem)}
+                  tooltip="Delete Inventory"
+                  className="text-red-600 hover:text-red-900"
+                />
+              )}
             </div>
           )
         }
@@ -368,13 +462,15 @@ const InventoryCRUD = ({
                 size="sm"
                 title="Edit Inventory"
               />
-              <ActionButton
-                icon={HiTrash}
-                onClick={() => handleDeleteInventory(inventoryItem)}
-                variant="danger"
-                size="sm"
-                title="Delete Inventory"
-              />
+              {canDeleteRawMaterials() && (
+                <ActionButton
+                  icon={HiTrash}
+                  onClick={() => handleDeleteInventory(inventoryItem)}
+                  variant="danger"
+                  size="sm"
+                  title="Delete Inventory"
+                />
+              )}
             </>
           )}
         </div>
@@ -421,23 +517,27 @@ const InventoryCRUD = ({
         emptyMessage={
           inventoryType === 'rawMaterials' 
             ? "No raw materials found" 
-            : isFinishedProduction 
-              ? "No finished production products yet" 
-              : "No completed production products in inventory yet"
+            : inventoryType === 'sentGoods'
+              ? "No sent goods found"
+              : isFinishedProduction 
+                ? "No finished production products yet" 
+                : "No completed production products in inventory yet"
         }
         emptySubMessage={
           inventoryType === 'rawMaterials'
             ? "Raw materials will appear here once they are added to the system"
-            : isFinishedProduction 
-              ? "Products will appear here once they complete F6 stage with 'completed' status" 
-              : "Products will appear here once they complete F6 stage with 'completed' status"
+            : inventoryType === 'sentGoods'
+              ? "Sent goods will appear here once inventory is transferred to branches"
+              : isFinishedProduction 
+                ? "Products will appear here once they complete F6 stage with 'completed' status" 
+                : "Products will appear here once they complete F6 stage with 'completed' status"
         }
         className="w-full"
       />
 
 
-      {/* Delete Confirmation Modal - Only show for regular inventory, not finished production */}
-      {!isFinishedProduction && (
+      {/* Delete Confirmation Modal - Only show for regular inventory, not finished production or sent goods */}
+      {!isFinishedProduction && inventoryType !== 'sentGoods' && (
         <ConfirmationModal
           isOpen={showDeleteModal}
           onClose={() => setShowDeleteModal(false)}

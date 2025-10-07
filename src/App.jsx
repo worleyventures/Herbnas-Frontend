@@ -30,6 +30,9 @@ import SentGoodsPage from './pages/inventory/SentGoodsPage';
 import ProductionPage from './pages/production/ProductionPage';
 import ProductionFormPage from './pages/production/ProductionFormPage';
 import ProductionDetailsPage from './pages/production/ProductionDetailsPage';
+import OrdersPage from './pages/orders/OrdersPage';
+import OrderFormPage from './pages/orders/OrderFormPage';
+import OrderDetailsPage from './pages/orders/OrderDetailsPage';
 
 function App() {
   return (
@@ -87,6 +90,10 @@ function App() {
             <Route path="/inventory/edit/:id" element={<InventoryFormPage />} />
             <Route path="/inventory/view/:id" element={<InventoryDetailsPage />} />
             <Route path="/inventory/sent-goods" element={<SentGoodsPage />} />
+            <Route path="/orders" element={<OrdersPage />} />
+            <Route path="/orders/new" element={<OrderFormPage />} />
+            <Route path="/orders/edit/:id" element={<OrderFormPage />} />
+            <Route path="/orders/:id" element={<OrderDetailsPage />} />
             <Route path="/settings" element={<div>Settings Page</div>} />
             <Route path="/profile" element={<div>Profile Page</div>} />
           </Route>

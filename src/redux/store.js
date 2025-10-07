@@ -9,6 +9,7 @@ import productionReducer from './slices/productionSlice';
 import healthReducer from './slices/healthSlice';
 import inventoryReducer from './slices/inventorySlice';
 import sentGoodsReducer from './slices/sentGoodsSlice';
+import orderReducer from './slices/orderSlice';
 
 export const store = configureStore({
   reducer: {
@@ -22,6 +23,7 @@ export const store = configureStore({
     health: healthReducer,
     inventory: inventoryReducer,
     sentGoods: sentGoodsReducer,
+    orders: orderReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
