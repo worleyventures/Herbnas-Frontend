@@ -22,6 +22,7 @@ import {
   updateInventoryStock,
   deleteRawMaterial
 } from '../../redux/actions/inventoryActions';
+import { getAllSentGoods } from '../../redux/actions/sentGoodsActions';
 import { clearError as clearInventoryErrors } from '../../redux/slices/inventorySlice';
 import { getAllProducts } from '../../redux/actions/productActions';
 
@@ -46,6 +47,11 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
     loading: productsLoading = false
   } = useSelector((state) => state.products);
 
+  const {
+    sentGoods = [],
+    loading: sentGoodsLoading = false
+  } = useSelector((state) => state.sentGoods);
+
   // Local state
   const [selectedInventory, setSelectedInventory] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -54,7 +60,7 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
   const [filterStockStatus, setFilterStockStatus] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
-  const [activeTab, setActiveTab] = useState('rawMaterials'); // 'rawMaterials' or 'finishedGoods'
+  const [activeTab, setActiveTab] = useState('rawMaterials'); // 'rawMaterials', 'finishedGoods', or 'sentGoods'
 
   // Load data on component mount
   useEffect(() => {
@@ -72,6 +78,7 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
         productId: filterProduct === 'all' ? '' : filterProduct,
         stockStatus: filterStockStatus === 'all' ? '' : filterStockStatus
       }));
+      dispatch(getAllSentGoods({ page: 1, limit: 1000 }));
       dispatch(getInventoryStats());
       dispatch(getAllProducts({ page: 1, limit: 1000, isActive: true }));
     }
@@ -122,9 +129,18 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
   }, [error, dispatch]);
 
   // Get current inventory data based on active tab
-  const currentInventory = activeTab === 'rawMaterials' 
-    ? (Array.isArray(rawMaterials) ? rawMaterials : [])
-    : (Array.isArray(finishedGoods) ? finishedGoods : []);
+  const currentInventory = (() => {
+    switch (activeTab) {
+      case 'rawMaterials':
+        return Array.isArray(rawMaterials) ? rawMaterials : [];
+      case 'finishedGoods':
+        return Array.isArray(finishedGoods) ? finishedGoods : [];
+      case 'sentGoods':
+        return Array.isArray(sentGoods) ? sentGoods : [];
+      default:
+        return [];
+    }
+  })();
   
   // Filter inventory based on search and filters
   const filteredInventory = currentInventory.filter(inventoryItem => {
@@ -133,20 +149,30 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
       if (activeTab === 'rawMaterials') {
         return inventoryItem.materialName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                inventoryItem.supplierName?.toLowerCase().includes(searchTerm.toLowerCase());
-      } else {
+      } else if (activeTab === 'finishedGoods') {
         return inventoryItem.product?.productName?.toLowerCase().includes(searchTerm.toLowerCase());
+      } else if (activeTab === 'sentGoods') {
+        return inventoryItem.trackingId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+               inventoryItem.branch?.branchName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+               inventoryItem.items?.some(item => item.productName?.toLowerCase().includes(searchTerm.toLowerCase()));
       }
+      return false;
     })();
 
     const matchesProduct = filterProduct === 'all' || (() => {
       if (activeTab === 'finishedGoods') {
         return inventoryItem.product?._id === filterProduct;
+      } else if (activeTab === 'sentGoods') {
+        return inventoryItem.items?.some(item => item.productId === filterProduct);
       }
       return true; // Raw materials don't have product filter
     })();
 
     const matchesStockStatus = (() => {
       if (filterStockStatus === 'all') return true;
+      
+      // Sent goods don't have stock status filter, so always return true
+      if (activeTab === 'sentGoods') return true;
 
       const availableStock = activeTab === 'rawMaterials' 
         ? (inventoryItem.stockQuantity || 0)
@@ -171,21 +197,21 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
 
   // Calculate stats from current inventory data
   const totalInventory = currentInventory.length;
-  const lowStockItems = currentInventory.filter(item => {
+  const lowStockItems = activeTab === 'sentGoods' ? 0 : currentInventory.filter(item => {
     if (!item) return false; // Skip null/undefined items
     const availableStock = activeTab === 'rawMaterials' 
       ? (item.stockQuantity || 0)
       : (item.availableQuantity || 0);
     return availableStock <= (item.minStockLevel || 0);
   }).length;
-  const highStockItems = currentInventory.filter(item => {
+  const highStockItems = activeTab === 'sentGoods' ? 0 : currentInventory.filter(item => {
     if (!item) return false; // Skip null/undefined items
     const availableStock = activeTab === 'rawMaterials' 
       ? (item.stockQuantity || 0)
       : (item.availableQuantity || 0);
     return availableStock >= (item.maxStockLevel || 0);
   }).length;
-  const totalValue = currentInventory.reduce((sum, item) => {
+  const totalValue = activeTab === 'sentGoods' ? 0 : currentInventory.reduce((sum, item) => {
     if (!item) return sum; // Skip null/undefined items
     const availableStock = activeTab === 'rawMaterials' 
       ? (item.stockQuantity || 0)
@@ -294,7 +320,7 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
   const endIndex = startIndex + itemsPerPage;
   const paginatedInventory = filteredInventory.slice(startIndex, endIndex);
 
-  if (loading && currentInventory.length === 0) {
+  if ((loading || sentGoodsLoading) && currentInventory.length === 0) {
     return (
       <div className="p-6">
         <div className="animate-pulse space-y-4">
@@ -320,7 +346,7 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
           </p>
         </div>
         <div className="mt-4 sm:mt-0">
-          {activeTab === 'rawMaterials' ? (
+          {activeTab === 'rawMaterials' && (
             <Button
               onClick={() => navigate(`/inventory/create?type=${activeTab}`)}
               className="bg-blue-600 hover:bg-blue-700 text-white"
@@ -328,13 +354,23 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
             >
               Add Raw Material
             </Button>
-          ) : (
+          )}
+          {activeTab === 'finishedGoods' && (
+            <Button
+              onClick={() => navigate(`/inventory/create?type=${activeTab}`)}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+              icon={HiPlus}
+            >
+              Add Finished Good
+            </Button>
+          )}
+          {activeTab === 'sentGoods' && (
             <Button
               onClick={() => navigate('/inventory/sent-goods')}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
+              className="bg-green-600 hover:bg-green-700 text-white"
               icon={HiTruck}
             >
-              View Sent Goods
+              Send Goods
             </Button>
           )}
         </div>
@@ -369,50 +405,63 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
               <span>Finished Goods</span>
             </div>
           </button>
+          <button
+            onClick={() => setActiveTab('sentGoods')}
+            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'sentGoods'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            <div className="flex items-center space-x-2">
+              <HiTruck className="h-5 w-5" />
+              <span>Sent Goods</span>
+            </div>
+          </button>
         </nav>
       </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
         <StatCard
-          title={`Total ${activeTab === 'rawMaterials' ? 'Raw Materials' : 'Finished Goods'}`}
+          title={`Total ${activeTab === 'rawMaterials' ? 'Raw Materials' : activeTab === 'finishedGoods' ? 'Finished Goods' : 'Sent Goods'}`}
           value={totalInventory}
-          icon={activeTab === 'rawMaterials' ? HiCube : HiCheckCircle}
+          icon={activeTab === 'rawMaterials' ? HiCube : activeTab === 'finishedGoods' ? HiCheckCircle : HiTruck}
           gradient="blue"
           animation="bounce"
           change="+5%"
           changeType="increase"
-          loading={loading}
+          loading={loading || sentGoodsLoading}
         />
         <StatCard
-          title="Low Stock Items"
-          value={lowStockItems}
-          icon={HiExclamationTriangle}
-          gradient="red"
+          title={activeTab === 'sentGoods' ? 'Delivered Items' : 'Low Stock Items'}
+          value={activeTab === 'sentGoods' ? currentInventory.filter(item => item.status === 'delivered').length : lowStockItems}
+          icon={activeTab === 'sentGoods' ? HiCheckCircle : HiExclamationTriangle}
+          gradient={activeTab === 'sentGoods' ? 'green' : 'red'}
           animation="pulse"
           change="+2%"
           changeType="increase"
-          loading={loading}
+          loading={loading || sentGoodsLoading}
         />
         <StatCard
-          title="High Stock Items"
-          value={highStockItems}
-          icon={HiInformationCircle}
-          gradient="yellow"
+          title={activeTab === 'sentGoods' ? 'In Transit Items' : 'High Stock Items'}
+          value={activeTab === 'sentGoods' ? currentInventory.filter(item => item.status === 'in-transit').length : highStockItems}
+          icon={activeTab === 'sentGoods' ? HiTruck : HiInformationCircle}
+          gradient={activeTab === 'sentGoods' ? 'blue' : 'yellow'}
           animation="float"
           change="+2%"
           changeType="increase"
-          loading={loading}
+          loading={loading || sentGoodsLoading}
         />
         <StatCard
-          title="Total Value"
-          value={`₹${totalValue.toLocaleString()}`}
-          icon={HiCurrencyDollar}
-          gradient="emerald"
+          title={activeTab === 'sentGoods' ? 'Pending Items' : 'Total Value'}
+          value={activeTab === 'sentGoods' ? currentInventory.filter(item => item.status === 'pending').length : `₹${totalValue.toLocaleString()}`}
+          icon={activeTab === 'sentGoods' ? HiExclamationTriangle : HiCurrencyDollar}
+          gradient={activeTab === 'sentGoods' ? 'yellow' : 'emerald'}
           animation="bounce"
           change="+8%"
           changeType="increase"
-          loading={loading}
+          loading={loading || sentGoodsLoading}
         />
       </div>
 

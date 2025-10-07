@@ -36,15 +36,21 @@ const RawMaterialForm = () => {
     gstNumber: '',
     hsn: '',
     gstPercentage: '',
-    stockQuantity: '',
-    minStockLevel: '',
-    maxStockLevel: '',
+    stockQuantity: '0',
+    minStockLevel: '0',
+    maxStockLevel: '0',
     notes: '',
     // New fields for buy sets option
     materialType: 'individual', // 'individual' or 'sets'
     batchId: '',
     quantity: '',
-    unitPrice: ''
+    unitPrice: '',
+    // Sets data - will contain 3 sets
+    sets: [
+      { set: 'SET1', quantity: '', unitPrice: '' },
+      { set: 'SET2', quantity: '', unitPrice: '' },
+      { set: 'SET3', quantity: '', unitPrice: '' }
+    ]
   });
 
   const [isBuySetsMode, setIsBuySetsMode] = useState(false);
@@ -72,7 +78,37 @@ const RawMaterialForm = () => {
       materialType: !isBuySetsMode ? 'sets' : 'individual',
       batchId: '',
       quantity: '',
-      unitPrice: ''
+      unitPrice: '',
+      sets: [
+        { set: 'SET1', quantity: '', unitPrice: '' },
+        { set: 'SET2', quantity: '', unitPrice: '' },
+        { set: 'SET3', quantity: '', unitPrice: '' }
+      ]
+    }));
+  };
+
+  // Function to split quantity equally among 3 sets
+  const splitQuantityEqually = (totalQuantity) => {
+    if (!totalQuantity || totalQuantity <= 0) return [0, 0, 0];
+    const quantityPerSet = Math.floor(totalQuantity / 3);
+    const remainder = totalQuantity % 3;
+    return [
+      quantityPerSet + (remainder > 0 ? 1 : 0),
+      quantityPerSet + (remainder > 1 ? 1 : 0),
+      quantityPerSet
+    ];
+  };
+
+  // Update sets when total quantity or unit price changes
+  const updateSetsData = (totalQuantity, unitPrice) => {
+    const quantities = splitQuantityEqually(parseInt(totalQuantity) || 0);
+    setFormData(prev => ({
+      ...prev,
+      sets: prev.sets.map((set, index) => ({
+        ...set,
+        quantity: quantities[index].toString(),
+        unitPrice: unitPrice || ''
+      }))
     }));
   };
 
@@ -110,11 +146,24 @@ const RawMaterialForm = () => {
 
   // Load suppliers and raw material data for editing
   useEffect(() => {
+    console.log('Form initialization - isEdit:', isEdit, 'id:', id);
     // Load suppliers for dropdown
     dispatch(getUniqueSuppliers());
     
     if (isEdit && id) {
       dispatch(getRawMaterialById(id));
+    } else {
+      // For new materials, ensure form is in individual mode
+      console.log('Initializing new material form');
+      setIsBuySetsMode(false);
+      setFormData(prev => {
+        const newData = {
+          ...prev,
+          materialType: 'individual'
+        };
+        console.log('Initial form data:', newData);
+        return newData;
+      });
     }
   }, [dispatch, isEdit, id]);
 
@@ -170,10 +219,22 @@ const RawMaterialForm = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    console.log(`Form field changed: ${name} = ${value}`);
+    setFormData(prev => {
+      const newData = {
+        ...prev,
+        [name]: value
+      };
+      console.log('Updated form data:', newData);
+      return newData;
+    });
+    
+    // Update sets data when quantity or unit price changes in sets mode
+    if (isBuySetsMode && (name === 'quantity' || name === 'unitPrice')) {
+      const currentQuantity = name === 'quantity' ? value : formData.quantity;
+      const currentUnitPrice = name === 'unitPrice' ? value : formData.unitPrice;
+      updateSetsData(currentQuantity, currentUnitPrice);
+    }
     
     // Clear error when user starts typing
     if (errors[name]) {
@@ -187,26 +248,36 @@ const RawMaterialForm = () => {
   // Handle supplier selection with auto-fill
   const handleSupplierChange = (e) => {
     const { value } = e.target;
+    console.log('Supplier changed to:', value);
     
     // Find the selected supplier
     const selectedSupplier = suppliers.find(supplier => supplier.supplierId === value);
+    console.log('Selected supplier:', selectedSupplier);
     
     if (selectedSupplier) {
       // Auto-fill supplier information
-      setFormData(prev => ({
-        ...prev,
-        supplierId: selectedSupplier.supplierId,
-        supplierName: selectedSupplier.supplierName,
-        gstNumber: selectedSupplier.gstNumber,
-        hsn: selectedSupplier.hsn,
-        gstPercentage: selectedSupplier.gstPercentage.toString()
-      }));
+      setFormData(prev => {
+        const newData = {
+          ...prev,
+          supplierId: selectedSupplier.supplierId,
+          supplierName: selectedSupplier.supplierName,
+          gstNumber: selectedSupplier.gstNumber,
+          hsn: selectedSupplier.hsn,
+          gstPercentage: selectedSupplier.gstPercentage.toString()
+        };
+        console.log('Updated form data with supplier info:', newData);
+        return newData;
+      });
     } else {
       // If no supplier selected, just update supplierId
-      setFormData(prev => ({
-        ...prev,
-        supplierId: value
-      }));
+      setFormData(prev => {
+        const newData = {
+          ...prev,
+          supplierId: value
+        };
+        console.log('Updated form data with supplier ID only:', newData);
+        return newData;
+      });
     }
     
     // Clear supplier-related errors
@@ -224,6 +295,10 @@ const RawMaterialForm = () => {
 
   const validateForm = () => {
     const newErrors = {};
+    
+    // Debug: Log form data during validation
+    console.log('Validating form data:', formData);
+    console.log('isBuySetsMode:', isBuySetsMode);
 
     if (isBuySetsMode) {
       // Buy sets validations
@@ -242,6 +317,16 @@ const RawMaterialForm = () => {
       if (!formData.unitPrice || parseFloat(formData.unitPrice) <= 0) {
         newErrors.unitPrice = 'Unit price must be greater than 0';
       }
+
+      // Validate each set
+      formData.sets.forEach((set, index) => {
+        if (!set.quantity || parseFloat(set.quantity) <= 0) {
+          newErrors[`set${index + 1}Quantity`] = `SET${index + 1} quantity must be greater than 0`;
+        }
+        if (!set.unitPrice || parseFloat(set.unitPrice) <= 0) {
+          newErrors[`set${index + 1}UnitPrice`] = `SET${index + 1} unit price must be greater than 0`;
+        }
+      });
     } else {
       // Individual material validations
       if (!formData.materialId.trim()) {
@@ -309,18 +394,21 @@ const RawMaterialForm = () => {
     setIsSubmitting(true);
 
     try {
+      // Debug: Log form data before processing
+      console.log('Form data before processing:', formData);
+      
       const rawMaterialData = {
         materialType: formData.materialType,
         category: formData.category,
-        supplierId: formData.supplierId.trim() || undefined,
-        supplierName: formData.supplierName.trim(),
-        gstNumber: formData.gstNumber.trim(),
-        hsn: formData.hsn.trim(),
-        gstPercentage: parseFloat(formData.gstPercentage),
-        stockQuantity: parseFloat(formData.stockQuantity),
+        supplierId: formData.supplierId?.trim() || undefined,
+        supplierName: formData.supplierName?.trim() || '',
+        gstNumber: formData.gstNumber?.trim() || '',
+        hsn: formData.hsn?.trim() || '',
+        gstPercentage: parseFloat(formData.gstPercentage) || 0,
+        stockQuantity: parseFloat(formData.stockQuantity) || 0,
         minStockLevel: formData.minStockLevel ? parseFloat(formData.minStockLevel) : 0,
         maxStockLevel: formData.maxStockLevel ? parseFloat(formData.maxStockLevel) : 0,
-        notes: formData.notes.trim() || undefined
+        notes: formData.notes?.trim() || undefined
       };
 
       // Add fields based on mode
@@ -330,16 +418,41 @@ const RawMaterialForm = () => {
         rawMaterialData.quantity = parseFloat(formData.quantity);
         rawMaterialData.UOM = formData.UOM;
         rawMaterialData.unitPrice = parseFloat(formData.unitPrice);
-        rawMaterialData.set = formData.set;
+        rawMaterialData.sets = formData.sets.map(set => ({
+          set: set.set,
+          quantity: parseFloat(set.quantity),
+          unitPrice: parseFloat(set.unitPrice)
+        }));
       } else {
         rawMaterialData.materialType = 'individual';
-        rawMaterialData.materialId = formData.materialId.trim().toUpperCase();
-        rawMaterialData.materialName = formData.materialName.trim();
-        rawMaterialData.UOM = formData.UOM;
-        rawMaterialData.price = parseFloat(formData.price);
+        rawMaterialData.materialId = formData.materialId?.trim().toUpperCase() || '';
+        rawMaterialData.materialName = formData.materialName?.trim() || '';
+        rawMaterialData.UOM = formData.UOM || 'kg';
+        rawMaterialData.price = parseFloat(formData.price) || 0;
       }
 
       console.log('Sending raw material data:', rawMaterialData);
+      console.log('isBuySetsMode:', isBuySetsMode);
+      console.log('Form data state:', formData);
+      
+      // Additional validation before sending
+      if (!isBuySetsMode) {
+        const missingFields = [];
+        if (!rawMaterialData.materialName) missingFields.push('materialName');
+        if (!rawMaterialData.category) missingFields.push('category');
+        if (!rawMaterialData.UOM) missingFields.push('UOM');
+        if (!rawMaterialData.price) missingFields.push('price');
+        if (!rawMaterialData.supplierName) missingFields.push('supplierName');
+        if (!rawMaterialData.gstNumber) missingFields.push('gstNumber');
+        if (!rawMaterialData.hsn) missingFields.push('hsn');
+        if (rawMaterialData.gstPercentage === undefined) missingFields.push('gstPercentage');
+        
+        if (missingFields.length > 0) {
+          console.error('Missing required fields:', missingFields);
+          console.error('Raw material data:', rawMaterialData);
+          throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
+        }
+      }
 
       let result;
       if (isEdit) {
@@ -465,25 +578,29 @@ const RawMaterialForm = () => {
                     helperText={isEdit && isBuySetsMode ? "Batch ID cannot be changed for existing SETs" : ""}
                   />
                   <Input
-                    label="Quantity"
+                    label="Total Quantity"
                     name="quantity"
                     type="number"
                     value={formData.quantity}
                     onChange={handleChange}
-                    placeholder="Enter total quantity"
+                    placeholder="Enter total quantity (will be split equally)"
                     error={!!errors.quantity}
                     errorMessage={errors.quantity}
                     required
+                    helperText="Quantity will be automatically split equally among 3 sets"
                   />
-                  {isEdit && isBuySetsMode && (
-                    <Input
-                      label="SET"
-                      name="set"
-                      value={formData.set}
-                      disabled={true}
-                      helperText="SET identifier (read-only)"
-                    />
-                  )}
+                  <Input
+                    label="Unit Price"
+                    name="unitPrice"
+                    type="number"
+                    value={formData.unitPrice}
+                    onChange={handleChange}
+                    placeholder="Enter unit price"
+                    error={!!errors.unitPrice}
+                    errorMessage={errors.unitPrice}
+                    required
+                    helperText="Unit price will be applied to all sets"
+                  />
                   <Select
                     label="Unit of Measure"
                     name="UOM"
@@ -614,6 +731,50 @@ const RawMaterialForm = () => {
               </div>
             )}
           </div>
+
+          {/* Sets Preview - Only show in sets mode */}
+          {isBuySetsMode && (
+            <div id="sets-preview-section" className="space-y-4">
+              <h3 className="text-lg font-medium text-gray-900">Sets Preview</h3>
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <p className="text-sm text-gray-600 mb-4">
+                  The total quantity will be split equally among 3 sets:
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {formData.sets.map((set, index) => (
+                    <div key={index} className="bg-white p-3 rounded border">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-medium text-gray-900">{set.set}</span>
+                        <span className="text-sm text-gray-500">
+                          {set.quantity} {formData.UOM}
+                        </span>
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        Unit Price: ₹{set.unitPrice || '0'}
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        Total: ₹{((parseFloat(set.quantity) || 0) * (parseFloat(set.unitPrice) || 0)).toFixed(2)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium text-gray-900">Total Quantity:</span>
+                    <span className="font-medium text-gray-900">
+                      {formData.sets.reduce((sum, set) => sum + (parseFloat(set.quantity) || 0), 0)} {formData.UOM}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium text-gray-900">Total Value:</span>
+                    <span className="font-medium text-gray-900">
+                      ₹{formData.sets.reduce((sum, set) => sum + ((parseFloat(set.quantity) || 0) * (parseFloat(set.unitPrice) || 0)), 0).toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Supplier Information */}
           <div className="space-y-4">
