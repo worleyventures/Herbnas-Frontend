@@ -51,19 +51,31 @@ const LeadDetailsModal = ({
     fields: [
       {
         label: 'Full Name',
-        value: `${lead.firstName} ${lead.lastName}`
+        value: lead.customerName || 'N/A'
       },
       {
         label: 'Email',
-        value: lead.email || 'N/A'
+        value: lead.customerEmail || 'N/A'
       },
       {
         label: 'Phone',
-        value: lead.phone || 'N/A'
+        value: lead.customerMobile || 'N/A'
+      },
+      {
+        label: 'Age',
+        value: lead.age ? `${lead.age} years` : 'N/A'
+      },
+      {
+        label: 'Gender',
+        value: lead.gender || 'N/A'
+      },
+      {
+        label: 'Marital Status',
+        value: lead.maritalStatus || 'N/A'
       },
       {
         label: 'Status',
-        value: getStatusLabel(lead.status),
+        value: getStatusLabel(lead.leadStatus),
         type: 'status'
       },
       {
@@ -79,17 +91,33 @@ const LeadDetailsModal = ({
     fields: [
       {
         label: 'Assigned Branch',
-        value: lead.branch?.branchName || 'N/A'
+        value: lead.dispatchedFrom?.branchName || 'N/A'
       },
       {
-        label: 'Assigned To',
-        value: lead.assignedTo ? 
-                          `${lead.assignedTo.firstName} ${lead.assignedTo.lastName}` : 
-                          'Unassigned'
+        label: 'Address',
+        value: lead.address ? 
+          `${lead.address.street || ''}, ${lead.address.city || ''}, ${lead.address.state || ''} - ${lead.address.pinCode || ''}`.replace(/,\s*,/g, ',').replace(/^,\s*|,\s*$/g, '') || 'N/A' :
+          'N/A'
       },
       {
-        label: 'Source',
-        value: lead.source || 'N/A'
+        label: 'Health Issues',
+        value: lead.healthIssues && lead.healthIssues.length > 0 ? 
+          lead.healthIssues.join(', ') : 'N/A'
+      },
+      {
+        label: 'Products',
+        value: lead.products && lead.products.length > 0 ? 
+          lead.products.map(p => p.productName || p).join(', ') : 'N/A'
+      },
+      {
+        label: 'Payment Type',
+        value: lead.payment?.paymentType ? 
+          lead.payment.paymentType.charAt(0).toUpperCase() + lead.payment.paymentType.slice(1) : 'N/A'
+      },
+      {
+        label: 'Payment Mode',
+        value: lead.payment?.paymentMode ? 
+          lead.payment.paymentMode.charAt(0).toUpperCase() + lead.payment.paymentMode.slice(1) : 'N/A'
       },
       {
         label: 'Created Date',
@@ -162,7 +190,7 @@ const LeadDetailsModal = ({
       isOpen={isOpen}
       onClose={onClose}
       title="Lead Details"
-      subtitle={`${lead.firstName} ${lead.lastName}`}
+      subtitle={lead.customerName || 'Lead Details'}
       size="xl"
       showFooter={true}
       footerContent={footerContent}
