@@ -14,6 +14,7 @@ import {
   HiShoppingBag
 } from 'react-icons/hi2';
 import { Button, Input, Select, TextArea, Loading } from '../../components/common';
+import CustomerSelect from '../../components/common/CustomerSelect';
 import {
   createOrder,
   updateOrder,
@@ -67,6 +68,7 @@ const OrderFormPage = () => {
   
   // Form state
   const [formData, setFormData] = useState({
+    orderId: '',
     customerId: '',
     customerType: 'user', // Default to user
     branchId: '',
@@ -85,7 +87,10 @@ const OrderFormPage = () => {
     taxAmount: 0,
     discountAmount: 0,
     shippingAmount: 0,
-    paymentMethod: 'cash'
+    paymentMethod: 'cash',
+    paymentStatus: 'pending',
+    status: 'pending',
+    expectedDeliveryDate: ''
   });
   
   const [errors, setErrors] = useState({});
@@ -97,7 +102,7 @@ const OrderFormPage = () => {
     dispatch(getAllProducts({ page: 1, limit: 1000, isActive: true }));
     dispatch(getAllBranches({ page: 1, limit: 1000, isActive: true }));
     dispatch(getAllUsers({ page: 1, limit: 1000, isActive: true }));
-    dispatch(getAllLeads({ page: 1, limit: 1000, leadStatus: 'qualified' })); // Load qualified leads
+    dispatch(getAllLeads({ page: 1, limit: 1000 })); // Load all leads for customer selection
     
     if (isEdit && id) {
       dispatch(getOrderById(id));
@@ -107,8 +112,18 @@ const OrderFormPage = () => {
   // Update form data when order is loaded
   useEffect(() => {
     if (isEdit && order) {
+      const customerId = order.customerType === 'user' ? (order.customerId?._id || '') : (order.leadId?._id || '');
+      console.log('Setting form data for edit mode:', {
+        orderId: order.orderId,
+        customerId,
+        customerType: order.customerType,
+        orderCustomerId: order.customerId?._id,
+        orderLeadId: order.leadId?._id
+      });
+      
       setFormData({
-        customerId: order.customerId?._id || '',
+        orderId: order.orderId || '',
+        customerId,
         customerType: order.customerType || 'user',
         branchId: order.branchId?._id || '',
         items: order.items?.map(item => ({
@@ -130,10 +145,14 @@ const OrderFormPage = () => {
         taxAmount: order.taxAmount || 0,
         discountAmount: order.discountAmount || 0,
         shippingAmount: order.shippingAmount || 0,
-        paymentMethod: order.paymentMethod || 'cash'
+        paymentMethod: order.paymentMethod || 'cash',
+        paymentStatus: order.paymentStatus || 'pending',
+        status: order.status || 'pending',
+        expectedDeliveryDate: order.expectedDeliveryDate ? new Date(order.expectedDeliveryDate).toISOString().split('T')[0] : ''
       });
     }
   }, [isEdit, order]);
+
 
   // Handle input change
   const handleInputChange = (field, value) => {
@@ -268,6 +287,10 @@ const OrderFormPage = () => {
   const validateForm = () => {
     const newErrors = {};
     
+    if (!formData.orderId) {
+      newErrors.orderId = 'Order ID is required';
+    }
+    
     if (!formData.customerId) {
       newErrors.customerId = 'Customer is required';
     }
@@ -316,6 +339,14 @@ const OrderFormPage = () => {
       newErrors['shippingAddress.phone'] = 'Phone is required';
     }
     
+    if (!formData.status) {
+      newErrors.status = 'Order status is required';
+    }
+    
+    if (!formData.paymentStatus) {
+      newErrors.paymentStatus = 'Payment status is required';
+    }
+    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -331,13 +362,28 @@ const OrderFormPage = () => {
     setSubmitting(true);
     
     try {
+      // Prepare order data based on customer type
       const orderData = {
-        ...formData,
+        orderId: formData.orderId,
+        customerType: formData.customerType,
+        customerId: formData.customerType === 'user' ? formData.customerId : null,
+        leadId: formData.customerType === 'lead' ? formData.customerId : null, // Use customerId as leadId for lead type
+        branchId: formData.branchId,
         items: formData.items.map(item => ({
           productId: item.productId,
           quantity: parseInt(item.quantity),
           unitPrice: parseFloat(item.unitPrice)
-        }))
+        })),
+        shippingAddress: formData.shippingAddress,
+        notes: formData.notes,
+        internalNotes: formData.internalNotes,
+        taxAmount: formData.taxAmount,
+        discountAmount: formData.discountAmount,
+        shippingAmount: formData.shippingAmount,
+        paymentMethod: formData.paymentMethod,
+        paymentStatus: formData.paymentStatus,
+        status: formData.status,
+        expectedDeliveryDate: formData.expectedDeliveryDate
       };
       
       if (isEdit) {
@@ -365,26 +411,50 @@ const OrderFormPage = () => {
     }
   };
 
-  // Prepare options - Use leads instead of users for customers
+  // Prepare options - Use all leads for customers, prioritizing qualified and converted
   const customerOptions = leads
-    .filter(lead => lead.leadStatus === 'qualified' || lead.leadStatus === 'converted')
     .map(lead => ({
       value: lead._id,
-      label: `${lead.firstName} ${lead.lastName} (${lead.email || lead.phone}) - Lead`,
-      customerType: 'lead'
-    }));
+      label: `${lead.customerName} | ${lead.customerMobile} | Lead [${lead.leadStatus}]`,
+      customerType: 'lead',
+      priority: lead.leadStatus === 'qualified' || lead.leadStatus === 'converted' ? 1 : 2,
+      searchText: `${lead.customerName} ${lead.customerMobile} ${lead.leadStatus}`.toLowerCase()
+    }))
+    .sort((a, b) => a.priority - b.priority); // Sort by priority (qualified/converted first)
 
   // Fallback to users if no leads available
   const userCustomerOptions = users
     .filter(user => user.role === 'customer')
     .map(user => ({
       value: user._id,
-      label: `${user.firstName} ${user.lastName} (${user.email}) - User`,
-      customerType: 'user'
+      label: `${user.firstName} ${user.lastName} | ${user.email} | User`,
+      customerType: 'user',
+      searchText: `${user.firstName} ${user.lastName} ${user.email}`.toLowerCase()
     }));
 
   // Combine leads and users, prioritizing leads
   const allCustomerOptions = [...customerOptions, ...userCustomerOptions];
+
+  // Update customer field when customer options are loaded and we have an order
+  useEffect(() => {
+    if (isEdit && order && allCustomerOptions.length > 0 && !formData.customerId) {
+      const customerId = order.customerType === 'user' ? (order.customerId?._id || '') : (order.leadId?._id || '');
+      console.log('Updating customer field after options loaded:', {
+        customerId,
+        customerType: order.customerType,
+        availableOptions: allCustomerOptions.length,
+        matchingOption: allCustomerOptions.find(opt => opt.value === customerId)
+      });
+      
+      if (customerId) {
+        setFormData(prev => ({
+          ...prev,
+          customerId,
+          customerType: order.customerType || 'user'
+        }));
+      }
+    }
+  }, [isEdit, order, allCustomerOptions, formData.customerId]);
 
   const branchOptions = branches.map(branch => ({
     value: branch._id,
@@ -438,6 +508,24 @@ const OrderFormPage = () => {
     { value: 'cheque', label: 'Cheque' }
   ];
 
+  const orderStatusOptions = [
+    { value: 'pending', label: 'Pending' },
+    { value: 'confirmed', label: 'Confirmed' },
+    { value: 'processing', label: 'Processing' },
+    { value: 'shipped', label: 'Shipped' },
+    { value: 'delivered', label: 'Delivered' },
+    { value: 'cancelled', label: 'Cancelled' },
+    { value: 'returned', label: 'Returned' }
+  ];
+
+  const paymentStatusOptions = [
+    { value: 'pending', label: 'Pending' },
+    { value: 'paid', label: 'Paid' },
+    { value: 'partial', label: 'Partial' },
+    { value: 'refunded', label: 'Refunded' },
+    { value: 'failed', label: 'Failed' }
+  ];
+
   const { subtotal, totalAmount } = calculateTotals();
 
   if (loading && isEdit) {
@@ -449,13 +537,6 @@ const OrderFormPage = () => {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div className="flex items-center space-x-4">
-          <Button
-            onClick={() => navigate('/orders')}
-            variant="outline"
-            icon={HiArrowLeft}
-          >
-            Back
-          </Button>
           <div>
             <h1 className="text-2xl font-bold text-gray-900">
               {isEdit ? 'Edit Order' : 'Create New Order'}
@@ -464,13 +545,6 @@ const OrderFormPage = () => {
               {isEdit ? `Edit order #${order?.orderNumber}` : 'Fill in the details to create a new order'}
             </p>
           </div>
-          <Button
-            onClick={testSelect}
-            variant="outline"
-            size="sm"
-          >
-            Test Select
-          </Button>
         </div>
       </div>
 
@@ -479,20 +553,32 @@ const OrderFormPage = () => {
           {/* Main Form */}
           <div className="lg:col-span-2 space-y-6">
             {/* Customer and Branch Selection */}
-            <div className="bg-white p-6 rounded-lg shadow">
+            <div className="bg-white p-6">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Order Details</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Customer *
-                  </label>
-                  <Select
+                  <Input
+                    label="Order ID *"
+                    name="orderId"
+                    value={formData.orderId}
+                    onChange={(e) => handleInputChange('orderId', e.target.value)}
+                    placeholder="Enter order ID (e.g., ORD-001)"
+                    error={errors.orderId}
+                    required
+                  />
+                </div>
+                <div>
+                  <CustomerSelect
                     options={allCustomerOptions.length > 0 ? allCustomerOptions : testCustomerOptions}
                     value={formData.customerId}
                     onChange={handleSelectChange('customerId')}
-                    placeholder="Select customer (leads or users)"
+                    placeholder="Search and select customer (leads or users)"
                     error={errors.customerId}
                     loading={leadsLoading || usersLoading}
+                    searchPlaceholder="Search customers by name, email, or phone..."
+                    emptyMessage="No customers found"
+                    label="Customer *"
+                    name="customerId"
                   />
                 </div>
                 <div>
@@ -512,7 +598,7 @@ const OrderFormPage = () => {
             </div>
 
             {/* Order Items */}
-            <div className="bg-white p-6 rounded-lg shadow">
+            <div className="bg-white p-6">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-medium text-gray-900">Order Items</h3>
                 <Button
@@ -528,9 +614,9 @@ const OrderFormPage = () => {
               
               <div className="space-y-4">
                 {formData.items.map((item, index) => (
-                  <div key={index} className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 border border-gray-200 rounded-lg">
+                  <div key={index} className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium mb-2">
                         Product *
                       </label>
                       <Select
@@ -593,7 +679,7 @@ const OrderFormPage = () => {
             </div>
 
             {/* Shipping Address */}
-            <div className="bg-white p-6 rounded-lg shadow">
+            <div className="bg-white p-6">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Shipping Address</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2">
@@ -668,8 +754,26 @@ const OrderFormPage = () => {
               </div>
             </div>
 
+            {/* Delivery Information */}
+            <div className="bg-white p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Delivery Information</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Input
+                    label="Expected Delivery Date"
+                    type="date"
+                    value={formData.expectedDeliveryDate}
+                    onChange={(e) => handleInputChange('expectedDeliveryDate', e.target.value)}
+                    placeholder="Select expected delivery date"
+                    error={errors.expectedDeliveryDate}
+                    helperText="Optional: When do you expect this order to be delivered?"
+                  />
+                </div>
+              </div>
+            </div>
+
             {/* Notes */}
-            <div className="bg-white p-6 rounded-lg shadow">
+            <div className="bg-white p-6">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Notes</h3>
               <div className="space-y-4">
                 <TextArea
@@ -677,13 +781,6 @@ const OrderFormPage = () => {
                   value={formData.notes}
                   onChange={(e) => handleInputChange('notes', e.target.value)}
                   placeholder="Notes for the customer"
-                  rows={3}
-                />
-                <TextArea
-                  label="Internal Notes"
-                  value={formData.internalNotes}
-                  onChange={(e) => handleInputChange('internalNotes', e.target.value)}
-                  placeholder="Internal notes (not visible to customer)"
                   rows={3}
                 />
               </div>
@@ -754,6 +851,37 @@ const OrderFormPage = () => {
                 onChange={handleSelectChange('paymentMethod')}
                 placeholder="Select payment method"
               />
+            </div>
+
+            {/* Order Status and Payment Status */}
+            <div className="bg-white p-6 rounded-lg shadow">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Order Status & Payment</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Order Status
+                  </label>
+                  <Select
+                    options={orderStatusOptions}
+                    value={formData.status}
+                    onChange={handleSelectChange('status')}
+                    placeholder="Select order status"
+                    error={errors.status}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Payment Status
+                  </label>
+                  <Select
+                    options={paymentStatusOptions}
+                    value={formData.paymentStatus}
+                    onChange={handleSelectChange('paymentStatus')}
+                    placeholder="Select payment status"
+                    error={errors.paymentStatus}
+                  />
+                </div>
+              </div>
             </div>
 
             {/* Submit Button */}

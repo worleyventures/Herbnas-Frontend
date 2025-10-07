@@ -85,9 +85,9 @@ export const updateOrder = createAsyncThunk(
 // Update order status
 export const updateOrderStatus = createAsyncThunk(
   'orders/updateOrderStatus',
-  async ({ id, status }, { rejectWithValue }) => {
+  async ({ id, status, notes }, { rejectWithValue }) => {
     try {
-      const response = await api.patch(`/orders/${id}/status`, { status });
+      const response = await api.patch(`/orders/${id}/status`, { status, notes });
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to update order status');
@@ -95,19 +95,20 @@ export const updateOrderStatus = createAsyncThunk(
   }
 );
 
-// Update payment status
-export const updatePaymentStatus = createAsyncThunk(
-  'orders/updatePaymentStatus',
-  async ({ id, paymentStatus, paymentMethod, paymentReference }, { rejectWithValue }) => {
+// Update payment information (part of order update)
+export const updateOrderPayment = createAsyncThunk(
+  'orders/updateOrderPayment',
+  async ({ id, paymentStatus, paymentMethod, transactionId, paymentDate }, { rejectWithValue }) => {
     try {
-      const response = await api.patch(`/orders/${id}/payment`, {
+      const response = await api.put(`/orders/${id}`, {
         paymentStatus,
         paymentMethod,
-        paymentReference
+        transactionId,
+        paymentDate
       });
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to update payment status');
+      return rejectWithValue(error.response?.data?.message || 'Failed to update payment information');
     }
   }
 );

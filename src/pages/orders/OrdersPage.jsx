@@ -14,13 +14,13 @@ import {
   HiClock,
   HiExclamationTriangle
 } from 'react-icons/hi2';
-import { Button, Input, Select, Table, StatusBadge, Loading } from '../../components/common';
+import { Button, Input, Select, Table, StatusBadge, Loading, StatCard } from '../../components/common';
 import {
   getAllOrders,
   getOrderStats,
   deleteOrder,
   updateOrderStatus,
-  updatePaymentStatus
+  updateOrderPayment
 } from '../../redux/actions/orderActions';
 import { addNotification } from '../../redux/slices/uiSlice';
 import {
@@ -147,7 +147,7 @@ const OrdersPage = () => {
   // Handle payment status update
   const handlePaymentStatusUpdate = async (orderId, newPaymentStatus) => {
     try {
-      await dispatch(updatePaymentStatus({ id: orderId, paymentStatus: newPaymentStatus })).unwrap();
+      await dispatch(updateOrderPayment({ id: orderId, paymentStatus: newPaymentStatus })).unwrap();
       dispatch(addNotification({
         type: 'success',
         message: `Payment status updated to ${newPaymentStatus}`
@@ -200,27 +200,45 @@ const OrdersPage = () => {
   // Table columns
   const columns = [
     {
-      key: 'orderNumber',
+      key: 'orderId',
       label: 'Order #',
       render: (order) => (
         <div className="font-medium text-gray-900">
-          {order.orderNumber}
+          {order.orderId}
         </div>
       )
     },
     {
       key: 'customer',
       label: 'Customer',
-      render: (order) => (
+      render: (order) => {
+        // Handle both user and lead customers
+        const customerName = order.customerType === 'user' 
+          ? `${order.customerId?.firstName || ''} ${order.customerId?.lastName || ''}`.trim()
+          : order.leadId?.customerName || 'Unknown Customer';
+        
+        const customerEmail = order.customerType === 'user' 
+          ? order.customerId?.email
+          : order.leadId?.email;
+        
+        const customerPhone = order.customerType === 'user' 
+          ? order.customerId?.phone
+          : order.leadId?.customerMobile;
+        
+        return (
         <div>
           <div className="font-medium text-gray-900">
-            {order.customerId?.firstName} {order.customerId?.lastName}
+              {customerName || 'Unknown Customer'}
           </div>
           <div className="text-sm text-gray-500">
-            {order.customerId?.email}
+              {customerEmail || customerPhone || 'No contact info'}
+            </div>
+            <div className="text-xs text-gray-400">
+              {order.customerType === 'lead' ? 'Lead' : 'User'}
           </div>
         </div>
-      )
+        );
+      }
     },
     {
       key: 'branch',
@@ -266,11 +284,23 @@ const OrdersPage = () => {
       )
     },
     {
-      key: 'orderDate',
+      key: 'createdAt',
       label: 'Order Date',
       render: (order) => (
         <div className="text-sm text-gray-900">
-          {new Date(order.orderDate).toLocaleDateString()}
+          {new Date(order.createdAt).toLocaleDateString()}
+        </div>
+      )
+    },
+    {
+      key: 'expectedDeliveryDate',
+      label: 'Expected Delivery',
+      render: (order) => (
+        <div className="text-sm text-gray-900">
+          {order.expectedDeliveryDate 
+            ? new Date(order.expectedDeliveryDate).toLocaleDateString()
+            : <span className="text-gray-400">Not set</span>
+          }
         </div>
       )
     },
@@ -349,66 +379,36 @@ const OrdersPage = () => {
       </div>
 
       {/* Stats Cards */}
-      {statsLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="bg-white p-6 rounded-lg shadow animate-pulse">
-              <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-              <div className="h-8 bg-gray-200 rounded w-1/2"></div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <div className="bg-white p-6 rounded-lg shadow">
-            <div className="flex items-center">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <HiClipboardDocumentList className="h-6 w-6 text-blue-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total Orders</p>
-                <p className="text-2xl font-bold text-gray-900">{stats?.totalOrders || 0}</p>
-              </div>
-            </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
+        <StatCard
+          title="Total Orders"
+          value={stats?.overview?.totalOrders || 0}
+          icon={HiClipboardDocumentList}
+          gradient="blue"
+          loading={statsLoading}
+        />
+        <StatCard
+          title="Total Revenue"
+          value={`₹${stats?.totalRevenue?.toLocaleString() || 0}`}
+          icon={HiCurrencyDollar}
+          gradient="green"
+          loading={statsLoading}
+        />
+        <StatCard
+          title="Pending Orders"
+          value={stats?.overview?.pendingOrders || 0}
+          icon={HiTruck}
+          gradient="yellow"
+          loading={statsLoading}
+        />
+        <StatCard
+          title="Delivered"
+          value={stats?.overview?.deliveredOrders || 0}
+          icon={HiCheckCircle}
+          gradient="purple"
+          loading={statsLoading}
+        />
           </div>
-          
-          <div className="bg-white p-6 rounded-lg shadow">
-            <div className="flex items-center">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <HiCurrencyDollar className="h-6 w-6 text-green-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total Revenue</p>
-                <p className="text-2xl font-bold text-gray-900">₹{stats?.totalAmount?.toLocaleString() || 0}</p>
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-white p-6 rounded-lg shadow">
-            <div className="flex items-center">
-              <div className="p-2 bg-yellow-100 rounded-lg">
-                <HiTruck className="h-6 w-6 text-yellow-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Pending Orders</p>
-                <p className="text-2xl font-bold text-gray-900">{stats?.pending || 0}</p>
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-white p-6 rounded-lg shadow">
-            <div className="flex items-center">
-              <div className="p-2 bg-purple-100 rounded-lg">
-                <HiCheckCircle className="h-6 w-6 text-purple-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Delivered</p>
-                <p className="text-2xl font-bold text-gray-900">{stats?.delivered || 0}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Filters and Search */}
       <div className="bg-white p-6 rounded-lg shadow">
@@ -434,19 +434,12 @@ const OrdersPage = () => {
               onChange={handlePaymentStatusFilter}
               placeholder="Payment"
             />
-            <Button
-              variant="outline"
-              onClick={handleRefresh}
-              icon={HiArrowPath}
-            >
-              Refresh
-            </Button>
           </div>
         </div>
       </div>
 
       {/* Orders Table */}
-      <div className="bg-white rounded-lg shadow">
+      <div className="bg-white">
         <Table
           data={orders}
           columns={columns}

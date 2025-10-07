@@ -20,7 +20,7 @@ import {
   getAllFinishedGoods,
   getInventoryStats,
   updateInventoryStock,
-  deleteInventory
+  deleteRawMaterial
 } from '../../redux/actions/inventoryActions';
 import { clearError as clearInventoryErrors } from '../../redux/slices/inventorySlice';
 import { getAllProducts } from '../../redux/actions/productActions';
@@ -209,21 +209,9 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
 
   const handleUpdateInventory = async (formData) => {
     try {
-      await dispatch(createOrUpdateInventory(formData)).unwrap();
-      setShowEditModal(false);
-      setSelectedInventory(null);
-      
-      // Refresh inventory list
-      dispatch(getAllInventory({
-        page: currentPage,
-        limit: itemsPerPage,
-        search: searchTerm,
-        product: filterProduct === 'all' ? '' : filterProduct,
-        stockStatus: filterStockStatus === 'all' ? '' : filterStockStatus
-      }));
-      
-      // Refresh stats
-      dispatch(getInventoryStats());
+      // This function is not used in the current implementation
+      // Inventory updates are handled through the form pages
+      console.log('Update inventory function called but not implemented in dashboard');
     } catch (error) {
       console.error('Error updating inventory:', error);
     }
@@ -236,23 +224,50 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
 
   const handleDeleteInventoryConfirm = async () => {
     try {
-      await dispatch(deleteInventory(selectedInventory._id)).unwrap();
+      if (activeTab === 'rawMaterials') {
+        await dispatch(deleteRawMaterial(selectedInventory._id)).unwrap();
+        
+        // Show success notification
+        dispatch(addNotification({
+          type: 'success',
+          title: 'Success',
+          message: 'Raw material deleted successfully',
+          duration: 3000
+        }));
+        
+        // Refresh raw materials list
+        dispatch(getAllRawMaterials({
+          page: currentPage,
+          limit: itemsPerPage,
+          search: searchTerm,
+          stockStatus: filterStockStatus === 'all' ? '' : filterStockStatus
+        }));
+      } else {
+        // For finished goods, we need to implement deleteFinishedGoods action
+        dispatch(addNotification({
+          type: 'error',
+          title: 'Error',
+          message: 'Delete finished goods not implemented yet',
+          duration: 5000
+        }));
+        return;
+      }
+      
       setShowDeleteModal(false);
       setSelectedInventory(null);
-      
-      // Refresh inventory list
-      dispatch(getAllInventory({
-        page: currentPage,
-        limit: itemsPerPage,
-        search: searchTerm,
-        product: filterProduct === 'all' ? '' : filterProduct,
-        stockStatus: filterStockStatus === 'all' ? '' : filterStockStatus
-      }));
       
       // Refresh stats
       dispatch(getInventoryStats());
     } catch (error) {
       console.error('Error deleting inventory:', error);
+      
+      // Show error notification
+      dispatch(addNotification({
+        type: 'error',
+        title: 'Delete Failed',
+        message: error.message || 'Failed to delete inventory item. Please check your permissions.',
+        duration: 5000
+      }));
     }
   };
 

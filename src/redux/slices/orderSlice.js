@@ -5,7 +5,7 @@ import {
   createOrder,
   updateOrder,
   updateOrderStatus,
-  updatePaymentStatus,
+  updateOrderPayment,
   deleteOrder,
   getOrderStats
 } from '../actions/orderActions';
@@ -190,12 +190,12 @@ const orderSlice = createSlice({
         state.error = action.payload;
       })
       
-      // Update payment status
-      .addCase(updatePaymentStatus.pending, (state) => {
+      // Update order payment
+      .addCase(updateOrderPayment.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
-      .addCase(updatePaymentStatus.fulfilled, (state, action) => {
+      .addCase(updateOrderPayment.fulfilled, (state, action) => {
         state.loading = false;
         const updatedOrder = action.payload.data.order;
         const index = state.orders.findIndex(order => order._id === updatedOrder._id);
@@ -207,7 +207,7 @@ const orderSlice = createSlice({
         }
         state.error = null;
       })
-      .addCase(updatePaymentStatus.rejected, (state, action) => {
+      .addCase(updateOrderPayment.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })
@@ -237,7 +237,7 @@ const orderSlice = createSlice({
       })
       .addCase(getOrderStats.fulfilled, (state, action) => {
         state.statsLoading = false;
-        state.stats = action.payload.data.stats;
+        state.stats = action.payload.data;
         state.statsError = null;
       })
       .addCase(getOrderStats.rejected, (state, action) => {

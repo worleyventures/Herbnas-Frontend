@@ -24,7 +24,7 @@ import { Button, StatusBadge, Loading } from '../../components/common';
 import {
   getOrderById,
   updateOrderStatus,
-  updatePaymentStatus,
+  updateOrderPayment,
   deleteOrder
 } from '../../redux/actions/orderActions';
 import { addNotification } from '../../redux/slices/uiSlice';
@@ -78,7 +78,7 @@ const OrderDetailsPage = () => {
   // Handle payment status update
   const handlePaymentStatusUpdate = async () => {
     try {
-      await dispatch(updatePaymentStatus({ id, paymentStatus: newPaymentStatus })).unwrap();
+      await dispatch(updateOrderPayment({ id, paymentStatus: newPaymentStatus })).unwrap();
       dispatch(addNotification({
         type: 'success',
         message: `Payment status updated to ${newPaymentStatus}`
@@ -458,17 +458,28 @@ const OrderDetailsPage = () => {
                 <div>
                   <p className="text-sm font-medium text-gray-900">Order Date</p>
                   <p className="text-sm text-gray-600">
-                    {new Date(order.orderDate).toLocaleDateString()}
+                    {new Date(order.createdAt).toLocaleDateString()}
                   </p>
                 </div>
               </div>
-              {order.deliveryDate && (
+              {order.expectedDeliveryDate && (
                 <div className="flex items-center space-x-2">
                   <HiTruck className="h-4 w-4 text-gray-400" />
                   <div>
-                    <p className="text-sm font-medium text-gray-900">Delivery Date</p>
+                    <p className="text-sm font-medium text-gray-900">Expected Delivery</p>
                     <p className="text-sm text-gray-600">
-                      {new Date(order.deliveryDate).toLocaleDateString()}
+                      {new Date(order.expectedDeliveryDate).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+              )}
+              {order.actualDeliveryDate && (
+                <div className="flex items-center space-x-2">
+                  <HiCheckCircle className="h-4 w-4 text-green-500" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">Actual Delivery</p>
+                    <p className="text-sm text-gray-600">
+                      {new Date(order.actualDeliveryDate).toLocaleDateString()}
                     </p>
                   </div>
                 </div>

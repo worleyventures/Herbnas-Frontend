@@ -35,6 +35,9 @@ const InventoryCRUD = ({
   const dispatch = useDispatch();
   const [showInventoryModal, setShowInventoryModal] = useState(false);
 
+  // Get current user for permission checks
+  const { user } = useSelector((state) => state.auth || {});
+
   // Get users for updatedBy display
   const users = useSelector((state) => state.user?.users || []);
   const usersLoading = useSelector((state) => state.user?.loading || false);
@@ -47,6 +50,12 @@ const InventoryCRUD = ({
   ];
 
   const allUsers = users.length > 0 ? users : fallbackUsers;
+
+  // Check if user can delete raw materials (admin or super_admin only)
+  const canDeleteRawMaterials = () => {
+    if (!user?.role) return false;
+    return user.role === 'admin' || user.role === 'super_admin';
+  };
 
   const getStockStatus = (inventoryItem) => {
     const availableStock = inventoryType === 'rawMaterials' 
@@ -202,12 +211,14 @@ const InventoryCRUD = ({
                 tooltip="Edit Inventory"
                 className="text-indigo-600 hover:text-indigo-900"
               />
-              <ActionButton
-                icon={HiTrash}
-                onClick={() => onDeleteInventory(inventoryItem)}
-                tooltip="Delete Inventory"
-                className="text-red-600 hover:text-red-900"
-              />
+              {canDeleteRawMaterials() && (
+                <ActionButton
+                  icon={HiTrash}
+                  onClick={() => onDeleteInventory(inventoryItem)}
+                  tooltip="Delete Inventory"
+                  className="text-red-600 hover:text-red-900"
+                />
+              )}
             </div>
           )
         }
@@ -368,13 +379,15 @@ const InventoryCRUD = ({
                 size="sm"
                 title="Edit Inventory"
               />
-              <ActionButton
-                icon={HiTrash}
-                onClick={() => handleDeleteInventory(inventoryItem)}
-                variant="danger"
-                size="sm"
-                title="Delete Inventory"
-              />
+              {canDeleteRawMaterials() && (
+                <ActionButton
+                  icon={HiTrash}
+                  onClick={() => handleDeleteInventory(inventoryItem)}
+                  variant="danger"
+                  size="sm"
+                  title="Delete Inventory"
+                />
+              )}
             </>
           )}
         </div>
