@@ -160,3 +160,4 @@ const sentGoodsSlice = createSlice({
 
 export const { clearError, clearCurrentSentGoods, updateFilters, resetFilters } = sentGoodsSlice.actions;
 export default sentGoodsSlice.reducer;
+

@@ -587,7 +587,6 @@ const RawMaterialForm = () => {
                     error={!!errors.quantity}
                     errorMessage={errors.quantity}
                     required
-                    helperText="Quantity will be automatically split equally among 3 sets"
                   />
                   <Input
                     label="Unit Price"
