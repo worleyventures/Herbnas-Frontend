@@ -11,7 +11,9 @@ import {
   HiPhone,
   HiEnvelope,
   HiCurrencyDollar,
-  HiShoppingBag
+  HiShoppingBag,
+  HiXMark,
+  HiInformationCircle
 } from 'react-icons/hi2';
 import { Button, Input, Select, TextArea, Loading } from '../../components/common';
 import CustomerSelect from '../../components/common/CustomerSelect';
@@ -95,6 +97,7 @@ const OrderFormPage = () => {
   
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  const [addressAutoPopulated, setAddressAutoPopulated] = useState(false);
 
   // Load data on component mount
   useEffect(() => {
@@ -184,6 +187,31 @@ const OrderFormPage = () => {
           customerId: value,
           customerType: selectedOption.customerType
         }));
+
+        // If it's a lead, populate shipping address with lead's address
+        if (selectedOption.customerType === 'lead') {
+          const selectedLead = leads.find(lead => lead._id === value);
+          if (selectedLead && selectedLead.address) {
+            console.log('Populating shipping address from lead:', selectedLead);
+            setFormData(prev => ({
+              ...prev,
+              shippingAddress: {
+                name: selectedLead.customerName || '',
+                address: selectedLead.address.street || '',
+                city: selectedLead.address.city || '',
+                state: selectedLead.address.state || '',
+                pincode: selectedLead.address.pinCode || '',
+                phone: selectedLead.customerMobile || '',
+                email: selectedLead.customerEmail || ''
+              }
+            }));
+            setAddressAutoPopulated(true);
+          } else {
+            setAddressAutoPopulated(false);
+          }
+        } else {
+          setAddressAutoPopulated(false);
+        }
       }
     } else {
       handleInputChange(field, value);
@@ -211,6 +239,11 @@ const OrderFormPage = () => {
       }
     }));
     
+    // Clear auto-populated flag when user manually edits
+    if (addressAutoPopulated) {
+      setAddressAutoPopulated(false);
+    }
+    
     // Clear error when user starts typing
     if (errors[`shippingAddress.${field}`]) {
       setErrors(prev => ({
@@ -218,6 +251,23 @@ const OrderFormPage = () => {
         [`shippingAddress.${field}`]: ''
       }));
     }
+  };
+
+  // Clear shipping address
+  const clearShippingAddress = () => {
+    setFormData(prev => ({
+      ...prev,
+      shippingAddress: {
+        name: '',
+        address: '',
+        city: '',
+        state: '',
+        pincode: '',
+        phone: '',
+        email: ''
+      }
+    }));
+    setAddressAutoPopulated(false);
   };
 
   // Handle item change
@@ -415,7 +465,7 @@ const OrderFormPage = () => {
   const customerOptions = leads
     .map(lead => ({
       value: lead._id,
-      label: `${lead.customerName} | ${lead.customerMobile} | Lead [${lead.leadStatus}]`,
+      label: `${lead.customerName} | ${lead.customerMobile} `,
       customerType: 'lead',
       priority: lead.leadStatus === 'qualified' || lead.leadStatus === 'converted' ? 1 : 2,
       searchText: `${lead.customerName} ${lead.customerMobile} ${lead.leadStatus}`.toLowerCase()
@@ -680,7 +730,23 @@ const OrderFormPage = () => {
 
             {/* Shipping Address */}
             <div className="bg-white p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Shipping Address</h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-medium text-gray-900">Shipping Address</h3>
+                {addressAutoPopulated && (
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      type="button"
+                      onClick={clearShippingAddress}
+                      variant="outline"
+                      size="sm"
+                      icon={HiXMark}
+                      className="text-gray-500 hover:text-gray-700"
+                    >
+                      Clear
+                    </Button>
+                  </div>
+                )}
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2">
                   <Input
