@@ -104,7 +104,7 @@ const RawMaterialForm = () => {
     const quantities = splitQuantityEqually(parseInt(totalQuantity) || 0);
     setFormData(prev => ({
       ...prev,
-      sets: prev.sets.map((set, index) => ({
+      sets: (prev.sets || []).map((set, index) => ({
         ...set,
         quantity: quantities[index].toString(),
         unitPrice: unitPrice || ''
@@ -134,7 +134,7 @@ const RawMaterialForm = () => {
   const gstPercentageOptions = GST_PERCENTAGE_OPTIONS;
 
   // Supplier options for dropdown
-  const supplierOptions = suppliers.map(supplier => ({
+  const supplierOptions = (suppliers || []).map(supplier => ({
     value: supplier.supplierId,
     label: `${supplier.supplierName} (${supplier.supplierId})`,
     // description: `GST: ${supplier.gstNumber} | HSN: ${supplier.hsn} | GST%: ${supplier.gstPercentage}%`,
@@ -192,7 +192,13 @@ const RawMaterialForm = () => {
           stockQuantity: currentRawMaterial.stockQuantity?.toString() || '',
           minStockLevel: currentRawMaterial.minStockLevel?.toString() || '',
           maxStockLevel: currentRawMaterial.maxStockLevel?.toString() || '',
-          notes: currentRawMaterial.notes || ''
+          notes: currentRawMaterial.notes || '',
+          // Ensure sets array is always present
+          sets: [
+            { set: 'SET1', quantity: '', unitPrice: '' },
+            { set: 'SET2', quantity: '', unitPrice: '' },
+            { set: 'SET3', quantity: '', unitPrice: '' }
+          ]
         });
       } else {
         // For individual materials, populate the individual-specific fields
@@ -211,7 +217,13 @@ const RawMaterialForm = () => {
           stockQuantity: currentRawMaterial.stockQuantity?.toString() || '',
           minStockLevel: currentRawMaterial.minStockLevel?.toString() || '',
           maxStockLevel: currentRawMaterial.maxStockLevel?.toString() || '',
-          notes: currentRawMaterial.notes || ''
+          notes: currentRawMaterial.notes || '',
+          // Ensure sets array is always present
+          sets: [
+            { set: 'SET1', quantity: '', unitPrice: '' },
+            { set: 'SET2', quantity: '', unitPrice: '' },
+            { set: 'SET3', quantity: '', unitPrice: '' }
+          ]
         });
       }
     }
@@ -251,7 +263,7 @@ const RawMaterialForm = () => {
     console.log('Supplier changed to:', value);
     
     // Find the selected supplier
-    const selectedSupplier = suppliers.find(supplier => supplier.supplierId === value);
+    const selectedSupplier = (suppliers || []).find(supplier => supplier.supplierId === value);
     console.log('Selected supplier:', selectedSupplier);
     
     if (selectedSupplier) {
@@ -319,7 +331,7 @@ const RawMaterialForm = () => {
       }
 
       // Validate each set
-      formData.sets.forEach((set, index) => {
+      (formData.sets || []).forEach((set, index) => {
         if (!set.quantity || parseFloat(set.quantity) <= 0) {
           newErrors[`set${index + 1}Quantity`] = `SET${index + 1} quantity must be greater than 0`;
         }
@@ -418,7 +430,7 @@ const RawMaterialForm = () => {
         rawMaterialData.quantity = parseFloat(formData.quantity);
         rawMaterialData.UOM = formData.UOM;
         rawMaterialData.unitPrice = parseFloat(formData.unitPrice);
-        rawMaterialData.sets = formData.sets.map(set => ({
+        rawMaterialData.sets = (formData.sets || []).map(set => ({
           set: set.set,
           quantity: parseFloat(set.quantity),
           unitPrice: parseFloat(set.unitPrice)
@@ -740,7 +752,7 @@ const RawMaterialForm = () => {
                   The total quantity will be split equally among 3 sets:
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {formData.sets.map((set, index) => (
+                  {(formData.sets || []).map((set, index) => (
                     <div key={index} className="bg-white p-3 rounded border">
                       <div className="flex items-center justify-between mb-2">
                         <span className="font-medium text-gray-900">{set.set}</span>
@@ -761,13 +773,13 @@ const RawMaterialForm = () => {
                   <div className="flex justify-between items-center">
                     <span className="font-medium text-gray-900">Total Quantity:</span>
                     <span className="font-medium text-gray-900">
-                      {formData.sets.reduce((sum, set) => sum + (parseFloat(set.quantity) || 0), 0)} {formData.UOM}
+                      {(formData.sets || []).reduce((sum, set) => sum + (parseFloat(set.quantity) || 0), 0)} {formData.UOM}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="font-medium text-gray-900">Total Value:</span>
                     <span className="font-medium text-gray-900">
-                      ₹{formData.sets.reduce((sum, set) => sum + ((parseFloat(set.quantity) || 0) * (parseFloat(set.unitPrice) || 0)), 0).toFixed(2)}
+                      ₹{(formData.sets || []).reduce((sum, set) => sum + ((parseFloat(set.quantity) || 0) * (parseFloat(set.unitPrice) || 0)), 0).toFixed(2)}
                     </span>
                   </div>
                 </div>

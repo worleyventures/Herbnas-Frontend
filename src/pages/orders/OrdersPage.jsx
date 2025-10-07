@@ -12,7 +12,8 @@ import {
   HiCheckCircle,
   HiXCircle,
   HiClock,
-  HiExclamationTriangle
+  HiExclamationTriangle,
+  HiBuildingOffice2
 } from 'react-icons/hi2';
 import { Button, Input, Select, Table, StatusBadge, Loading, StatCard } from '../../components/common';
 import {
@@ -98,34 +99,6 @@ const OrdersPage = () => {
     setCurrentPage(page);
   };
 
-  // Handle view order
-  const handleViewOrder = (orderId) => {
-    navigate(`/orders/${orderId}`);
-  };
-
-  // Handle edit order
-  const handleEditOrder = (orderId) => {
-    navigate(`/orders/edit/${orderId}`);
-  };
-
-  // Handle delete order
-  const handleDeleteOrder = async (orderId) => {
-    if (window.confirm('Are you sure you want to delete this order?')) {
-      try {
-        await dispatch(deleteOrder(orderId)).unwrap();
-        dispatch(addNotification({
-          type: 'success',
-          message: 'Order deleted successfully!'
-        }));
-        handleRefresh();
-      } catch (error) {
-        dispatch(addNotification({
-          type: 'error',
-          message: error || 'Failed to delete order'
-        }));
-      }
-    }
-  };
 
   // Handle status update
   const handleStatusUpdate = async (orderId, newStatus) => {
@@ -161,41 +134,7 @@ const OrdersPage = () => {
     }
   };
 
-  // Get status color
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'delivered':
-        return 'green';
-      case 'shipped':
-        return 'blue';
-      case 'processing':
-        return 'yellow';
-      case 'confirmed':
-        return 'purple';
-      case 'cancelled':
-        return 'red';
-      case 'returned':
-        return 'orange';
-      default:
-        return 'gray';
-    }
-  };
 
-  // Get payment status color
-  const getPaymentStatusColor = (status) => {
-    switch (status) {
-      case 'paid':
-        return 'green';
-      case 'partial':
-        return 'yellow';
-      case 'refunded':
-        return 'blue';
-      case 'failed':
-        return 'red';
-      default:
-        return 'gray';
-    }
-  };
 
   // Table columns
   const columns = [
@@ -335,26 +274,95 @@ const OrdersPage = () => {
     }
   ];
 
+  // Helper functions
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'completed':
+        return 'green';
+      case 'processing':
+        return 'blue';
+      case 'pending':
+        return 'yellow';
+      case 'cancelled':
+        return 'red';
+      default:
+        return 'gray';
+    }
+  };
+
+  const getPaymentStatusColor = (paymentStatus) => {
+    switch (paymentStatus) {
+      case 'paid':
+        return 'green';
+      case 'pending':
+        return 'yellow';
+      case 'failed':
+        return 'red';
+      case 'refunded':
+        return 'blue';
+      default:
+        return 'gray';
+    }
+  };
+
+  // Action handlers
+  const handleViewOrder = (orderId) => {
+    navigate(`/orders/${orderId}`);
+  };
+
+  const handleEditOrder = (orderId) => {
+    navigate(`/orders/edit/${orderId}`);
+  };
+
+  const handleDeleteOrder = async (orderId) => {
+    if (window.confirm('Are you sure you want to delete this order?')) {
+      try {
+        const result = await dispatch(deleteOrder(orderId));
+        
+        if (deleteOrder.fulfilled.match(result)) {
+          dispatch(addNotification({
+            type: 'success',
+            message: 'Order deleted successfully'
+          }));
+          
+          // Refresh orders list
+          dispatch(getAllOrders({
+            page: currentPage,
+            limit: 10,
+            search: searchTerm,
+            status: statusFilter,
+            paymentStatus: paymentStatusFilter
+          }));
+        } else {
+          dispatch(addNotification({
+            type: 'error',
+            message: result.payload || 'Failed to delete order'
+          }));
+        }
+      } catch (error) {
+        dispatch(addNotification({
+          type: 'error',
+          message: 'Failed to delete order'
+        }));
+      }
+    }
+  };
+
   // Status options
   const statusOptions = [
-    { value: 'all', label: 'All Statuses' },
+    { value: 'all', label: 'All Status' },
     { value: 'pending', label: 'Pending' },
-    { value: 'confirmed', label: 'Confirmed' },
     { value: 'processing', label: 'Processing' },
-    { value: 'shipped', label: 'Shipped' },
-    { value: 'delivered', label: 'Delivered' },
-    { value: 'cancelled', label: 'Cancelled' },
-    { value: 'returned', label: 'Returned' }
+    { value: 'completed', label: 'Completed' },
+    { value: 'cancelled', label: 'Cancelled' }
   ];
 
-  // Payment status options
   const paymentStatusOptions = [
-    { value: 'all', label: 'All Payment Statuses' },
+    { value: 'all', label: 'All Payment Status' },
     { value: 'pending', label: 'Pending' },
     { value: 'paid', label: 'Paid' },
-    { value: 'partial', label: 'Partial' },
-    { value: 'refunded', label: 'Refunded' },
-    { value: 'failed', label: 'Failed' }
+    { value: 'failed', label: 'Failed' },
+    { value: 'refunded', label: 'Refunded' }
   ];
 
   if (loading && orders.length === 0) {
@@ -366,15 +374,15 @@ const OrdersPage = () => {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Orders</h1>
-          <p className="text-gray-600">Manage customer orders and track their status</p>
+          <h1 className="text-2xl font-bold text-gray-900">Order Management</h1>
+          <p className="text-gray-600">Track and manage all customer orders</p>
         </div>
         <Button
           onClick={() => navigate('/orders/new')}
           variant="primary"
           icon={HiPlus}
         >
-          New Order
+          Create New Order
         </Button>
       </div>
 
@@ -388,21 +396,21 @@ const OrdersPage = () => {
           loading={statsLoading}
         />
         <StatCard
-          title="Total Revenue"
+          title="Total Value"
           value={`₹${stats?.totalRevenue?.toLocaleString() || 0}`}
           icon={HiCurrencyDollar}
           gradient="green"
           loading={statsLoading}
         />
         <StatCard
-          title="Pending Orders"
-          value={stats?.overview?.pendingOrders || 0}
-          icon={HiTruck}
+          title="Processing"
+          value={stats?.overview?.processingOrders || 0}
+          icon={HiClock}
           gradient="yellow"
           loading={statsLoading}
         />
         <StatCard
-          title="Delivered"
+          title="Completed"
           value={stats?.overview?.deliveredOrders || 0}
           icon={HiCheckCircle}
           gradient="purple"
@@ -415,7 +423,7 @@ const OrdersPage = () => {
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="flex-1">
             <Input
-              placeholder="Search orders..."
+              placeholder="Search order ID, customer, or branch..."
               value={searchTerm}
               onChange={handleSearch}
               icon={HiMagnifyingGlass}
@@ -426,13 +434,13 @@ const OrdersPage = () => {
               options={statusOptions}
               value={statusFilter}
               onChange={handleStatusFilter}
-              placeholder="Status"
+              placeholder="All Status"
             />
             <Select
               options={paymentStatusOptions}
               value={paymentStatusFilter}
               onChange={handlePaymentStatusFilter}
-              placeholder="Payment"
+              placeholder="All Payment Status"
             />
           </div>
         </div>

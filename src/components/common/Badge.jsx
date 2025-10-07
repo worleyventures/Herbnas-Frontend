@@ -38,10 +38,13 @@ const Badge = ({
     }
   };
 
+  // Extract icon prop to prevent it from being passed to DOM element
+  const { icon, ...domProps } = props;
+
   return (
     <span
       className={`inline-flex items-center font-semibold rounded-full ${getVariantClasses()} ${getSizeClasses()} ${className}`}
-      {...props}
+      {...domProps}
     >
       {children}
     </span>

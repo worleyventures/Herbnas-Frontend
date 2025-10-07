@@ -194,9 +194,10 @@ const InventoryDetailsModal = ({
     return 'In Stock';
   };
 
-  // Determine if this is a raw material or finished good
+  // Determine if this is a raw material, finished good, or sent good
   const isRawMaterial = inventoryItem.materialId || inventoryItem.materialName;
   const isFinishedGood = inventoryItem.productId || inventoryItem.product;
+  const isSentGood = inventoryItem.trackingId;
   
   const stockStatus = getStockStatus(
     inventoryItem.stockQuantity || inventoryItem.quantity || 0,
@@ -204,13 +205,49 @@ const InventoryDetailsModal = ({
   );
 
   // Get the appropriate name and ID
-  const itemName = inventoryItem.materialName || inventoryItem.product?.productName || 'Unknown Item';
-  const itemId = inventoryItem.materialId || inventoryItem.product?.productId || 'N/A';
-  const itemCategory = inventoryItem.category || inventoryItem.product?.category || 'N/A';
+  const itemName = isSentGood ? 
+    `Sent Goods - ${inventoryItem.trackingId}` : 
+    (inventoryItem.materialName || inventoryItem.product?.productName || 'Unknown Item');
+  const itemId = isSentGood ? 
+    inventoryItem.trackingId : 
+    (inventoryItem.materialId || inventoryItem.product?.productId || 'N/A');
+  const itemCategory = isSentGood ? 
+    'Sent Goods' : 
+    (inventoryItem.category || inventoryItem.product?.category || 'N/A');
 
   const basicInfo = {
     title: 'Basic Information',
-    fields: [
+    fields: isSentGood ? [
+      {
+        label: 'Tracking ID',
+        value: itemId
+      },
+      {
+        label: 'Status',
+        value: inventoryItem.status || 'Unknown',
+        type: 'status'
+      },
+      {
+        label: 'Destination Branch',
+        value: inventoryItem.branchId?.branchName || 'Unknown Branch'
+      },
+      {
+        label: 'Branch Code',
+        value: inventoryItem.branchId?.branchCode || 'N/A'
+      },
+      {
+        label: 'Total Items',
+        value: inventoryItem.items?.length || 0
+      },
+      {
+        label: 'Total Amount',
+        value: formatCurrency(inventoryItem.totalAmount || inventoryItem.totalValue || 0)
+      },
+      {
+        label: 'Sent Date',
+        value: formatDate(inventoryItem.sentAt || inventoryItem.createdAt)
+      }
+    ] : [
       {
         label: 'Item ID',
         value: itemId
@@ -240,8 +277,13 @@ const InventoryDetailsModal = ({
   };
 
   const additionalInfo = {
-    title: 'Additional Information',
-    fields: [
+    title: isSentGood ? 'Items Being Sent' : 'Additional Information',
+    fields: isSentGood ? [
+      ...(inventoryItem.items?.map((item, index) => ({
+        label: `Item ${index + 1}`,
+        value: `${item.productName || 'Unknown Product'} (${item.quantity} units) - ${formatCurrency(item.unitPrice * item.quantity)}`
+      })) || [])
+    ] : [
       {
         label: 'Unit Price',
         value: formatCurrency(inventoryItem.price || inventoryItem.product?.price)

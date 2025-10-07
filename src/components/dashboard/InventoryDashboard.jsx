@@ -243,6 +243,13 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
     }
   };
 
+  // Refresh function for sent goods status updates
+  const handleRefreshSentGoods = () => {
+    if (activeTab === 'sentGoods') {
+      dispatch(getAllSentGoods({ page: currentPage, limit: itemsPerPage }));
+    }
+  };
+
   const handleDeleteInventory = (inventoryItem) => {
     setSelectedInventory(inventoryItem);
     setShowDeleteModal(true);
@@ -357,11 +364,11 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
           )}
           {activeTab === 'finishedGoods' && (
             <Button
-              onClick={() => navigate(`/inventory/create?type=${activeTab}`)}
+              onClick={() => navigate('/inventory/finished-goods')}
               className="bg-blue-600 hover:bg-blue-700 text-white"
-              icon={HiPlus}
+              icon={HiCube}
             >
-              Add Finished Good
+              Add Finished Goods
             </Button>
           )}
           {activeTab === 'sentGoods' && (
@@ -505,7 +512,7 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
         onEditInventory={handleEditInventory}
         onDeleteInventory={handleDeleteInventory}
         onCreateInventory={() => navigate(`/inventory/create?type=${activeTab}`)}
-        onUpdateInventory={handleUpdateInventory}
+        onUpdateInventory={activeTab === 'sentGoods' ? handleRefreshSentGoods : handleUpdateInventory}
         onDeleteInventoryConfirm={handleDeleteInventoryConfirm}
         showDeleteModal={showDeleteModal}
         selectedInventory={selectedInventory}
