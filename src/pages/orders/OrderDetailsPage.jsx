@@ -291,7 +291,7 @@ const OrderDetailsPage = () => {
           </div>
 
           {/* Order Items */}
-          <div className="bg-white p-6 rounded-lg shadow">
+          <div className="bg-white p-6">
             <h3 className="text-lg font-medium text-gray-900 mb-4">Order Items</h3>
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
