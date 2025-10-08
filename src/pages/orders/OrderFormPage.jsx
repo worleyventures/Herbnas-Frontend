@@ -70,7 +70,7 @@ const OrderFormPage = () => {
   
   // Form state
   const [formData, setFormData] = useState({
-    orderId: '',
+    orderId: '', // Required field - user must enter
     customerId: '',
     customerType: 'user', // Default to user
     branchId: '',
@@ -91,7 +91,7 @@ const OrderFormPage = () => {
     shippingAmount: 0,
     paymentMethod: 'cash',
     paymentStatus: 'pending',
-    status: 'pending',
+    paymentNotes: '',
     expectedDeliveryDate: ''
   });
   
@@ -150,7 +150,7 @@ const OrderFormPage = () => {
         shippingAmount: order.shippingAmount || 0,
         paymentMethod: order.paymentMethod || 'cash',
         paymentStatus: order.paymentStatus || 'pending',
-        status: order.status || 'pending',
+        paymentNotes: order.paymentNotes || '',
         expectedDeliveryDate: order.expectedDeliveryDate ? new Date(order.expectedDeliveryDate).toISOString().split('T')[0] : ''
       });
     }
@@ -334,10 +334,10 @@ const OrderFormPage = () => {
   };
 
   // Validate form
-  const validateForm = () => {
-    const newErrors = {};
+    const validateForm = () => {
+      const newErrors = {};
     
-    if (!formData.orderId) {
+    if (!formData.orderId || formData.orderId.trim() === '') {
       newErrors.orderId = 'Order ID is required';
     }
     
@@ -389,10 +389,6 @@ const OrderFormPage = () => {
       newErrors['shippingAddress.phone'] = 'Phone is required';
     }
     
-    if (!formData.status) {
-      newErrors.status = 'Order status is required';
-    }
-    
     if (!formData.paymentStatus) {
       newErrors.paymentStatus = 'Payment status is required';
     }
@@ -412,9 +408,9 @@ const OrderFormPage = () => {
     setSubmitting(true);
     
     try {
-      // Prepare order data based on customer type
-      const orderData = {
-        orderId: formData.orderId,
+        // Prepare order data based on customer type
+        const orderData = {
+          orderId: formData.orderId.trim(), // Send the Order ID as entered by user
         customerType: formData.customerType,
         customerId: formData.customerType === 'user' ? formData.customerId : null,
         leadId: formData.customerType === 'lead' ? formData.customerId : null, // Use customerId as leadId for lead type
@@ -432,7 +428,7 @@ const OrderFormPage = () => {
         shippingAmount: formData.shippingAmount,
         paymentMethod: formData.paymentMethod,
         paymentStatus: formData.paymentStatus,
-        status: formData.status,
+        paymentNotes: formData.paymentNotes,
         expectedDeliveryDate: formData.expectedDeliveryDate
       };
       
@@ -558,15 +554,6 @@ const OrderFormPage = () => {
     { value: 'cheque', label: 'Cheque' }
   ];
 
-  const orderStatusOptions = [
-    { value: 'pending', label: 'Pending' },
-    { value: 'confirmed', label: 'Confirmed' },
-    { value: 'processing', label: 'Processing' },
-    { value: 'shipped', label: 'Shipped' },
-    { value: 'delivered', label: 'Delivered' },
-    { value: 'cancelled', label: 'Cancelled' },
-    { value: 'returned', label: 'Returned' }
-  ];
 
   const paymentStatusOptions = [
     { value: 'pending', label: 'Pending' },
@@ -591,9 +578,6 @@ const OrderFormPage = () => {
             <h1 className="text-2xl font-bold text-gray-900">
               {isEdit ? 'Edit Order' : 'Create New Order'}
             </h1>
-            <p className="text-gray-600">
-              {isEdit ? `Edit order #${order?.orderNumber}` : 'Fill in the details to create a new order'}
-            </p>
           </div>
         </div>
       </div>
@@ -606,18 +590,19 @@ const OrderFormPage = () => {
             <div className="bg-white p-6">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Order Details</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <Input
-                    label="Order ID *"
-                    name="orderId"
-                    value={formData.orderId}
-                    onChange={(e) => handleInputChange('orderId', e.target.value)}
-                    placeholder="Enter order ID (e.g., ORD-001)"
-                    error={errors.orderId}
-                    required
-                  />
-                </div>
-                <div>
+                  <div>
+                    <Input
+                      label="Order ID *"
+                      name="orderId"
+                      value={formData.orderId}
+                      onChange={(e) => handleInputChange('orderId', e.target.value)}
+                      placeholder="Enter order ID (e.g., ORD00001)"
+                      error={errors.orderId}
+                      helperText="Enter a unique Order ID for this order"
+                      required
+                    />
+                  </div>
+                <div className="md:col-span-2">
                   <CustomerSelect
                     options={allCustomerOptions.length > 0 ? allCustomerOptions : testCustomerOptions}
                     value={formData.customerId}
@@ -631,7 +616,7 @@ const OrderFormPage = () => {
                     name="customerId"
                   />
                 </div>
-                <div>
+                <div className="md:col-span-3">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Branch *
                   </label>
@@ -664,8 +649,8 @@ const OrderFormPage = () => {
               
               <div className="space-y-4">
                 {formData.items.map((item, index) => (
-                  <div key={index} className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4">
-                    <div>
+                  <div key={index} className="grid grid-cols-1 md:grid-cols-12 gap-4 p-4">
+                    <div className="md:col-span-6">
                       <label className="block text-sm font-medium mb-2">
                         Product *
                       </label>
@@ -678,7 +663,7 @@ const OrderFormPage = () => {
                         loading={productsLoading}
                       />
                     </div>
-                    <div>
+                    <div className="md:col-span-2">
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Quantity *
                       </label>
@@ -686,12 +671,12 @@ const OrderFormPage = () => {
                         type="number"
                         value={item.quantity}
                         onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
-                        placeholder="Quantity"
+                        placeholder="Qty"
                         error={errors[`items.${index}.quantity`]}
                         min="1"
                       />
                     </div>
-                    <div>
+                    <div className="md:col-span-3">
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Price *
                       </label>
@@ -705,13 +690,8 @@ const OrderFormPage = () => {
                         step="0.01"
                         readOnly={!!item.productId} // Make read-only when product is selected
                       />
-                      {item.productId && (
-                        <p className="text-xs text-gray-500 mt-1">
-                          Price auto-filled from selected product
-                        </p>
-                      )}
                     </div>
-                    <div className="flex items-end">
+                    <div className="md:col-span-1 flex items-end">
                       <Button
                         type="button"
                         onClick={() => removeItem(index)}
@@ -719,6 +699,7 @@ const OrderFormPage = () => {
                         icon={HiTrash}
                         size="sm"
                         disabled={formData.items.length === 1}
+                        className="w-full"
                       >
                         Remove
                       </Button>
@@ -858,49 +839,55 @@ const OrderFormPage = () => {
             {/* Order Summary */}
             <div className="bg-white p-6 rounded-lg shadow">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Order Summary</h3>
-              <div className="space-y-3">
-                <div className="flex justify-between">
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">Subtotal</span>
                   <span className="text-sm font-medium">₹{subtotal.toLocaleString()}</span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between items-center gap-3">
                   <span className="text-sm text-gray-600">Tax</span>
-                  <Input
-                    type="number"
-                    value={formData.taxAmount}
-                    onChange={(e) => handleInputChange('taxAmount', e.target.value)}
-                    placeholder="0"
-                    min="0"
-                    step="0.01"
-                    size="sm"
-                  />
+                  <div className="w-24">
+                    <Input
+                      type="number"
+                      value={formData.taxAmount}
+                      onChange={(e) => handleInputChange('taxAmount', e.target.value)}
+                      placeholder="0"
+                      min="0"
+                      step="0.01"
+                      size="sm"
+                    />
+                  </div>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between items-center gap-3">
                   <span className="text-sm text-gray-600">Shipping</span>
-                  <Input
-                    type="number"
-                    value={formData.shippingAmount}
-                    onChange={(e) => handleInputChange('shippingAmount', e.target.value)}
-                    placeholder="0"
-                    min="0"
-                    step="0.01"
-                    size="sm"
-                  />
+                  <div className="w-24">
+                    <Input
+                      type="number"
+                      value={formData.shippingAmount}
+                      onChange={(e) => handleInputChange('shippingAmount', e.target.value)}
+                      placeholder="0"
+                      min="0"
+                      step="0.01"
+                      size="sm"
+                    />
+                  </div>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between items-center gap-3">
                   <span className="text-sm text-gray-600">Discount</span>
-                  <Input
-                    type="number"
-                    value={formData.discountAmount}
-                    onChange={(e) => handleInputChange('discountAmount', e.target.value)}
-                    placeholder="0"
-                    min="0"
-                    step="0.01"
-                    size="sm"
-                  />
+                  <div className="w-24">
+                    <Input
+                      type="number"
+                      value={formData.discountAmount}
+                      onChange={(e) => handleInputChange('discountAmount', e.target.value)}
+                      placeholder="0"
+                      min="0"
+                      step="0.01"
+                      size="sm"
+                    />
+                  </div>
                 </div>
                 <div className="border-t pt-3">
-                  <div className="flex justify-between">
+                  <div className="flex justify-between items-center">
                     <span className="text-base font-medium text-gray-900">Total</span>
                     <span className="text-base font-bold text-gray-900">₹{totalAmount.toLocaleString()}</span>
                   </div>
@@ -919,22 +906,10 @@ const OrderFormPage = () => {
               />
             </div>
 
-            {/* Order Status and Payment Status */}
+            {/* Payment Status and Notes */}
             <div className="bg-white p-6 rounded-lg shadow">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Order Status & Payment</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Order Status
-                  </label>
-                  <Select
-                    options={orderStatusOptions}
-                    value={formData.status}
-                    onChange={handleSelectChange('status')}
-                    placeholder="Select order status"
-                    error={errors.status}
-                  />
-                </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Payment Information</h3>
+              <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Payment Status
@@ -945,6 +920,17 @@ const OrderFormPage = () => {
                     onChange={handleSelectChange('paymentStatus')}
                     placeholder="Select payment status"
                     error={errors.paymentStatus}
+                  />
+                </div>
+                <div>
+                  <TextArea
+                    label="Payment Notes"
+                    value={formData.paymentNotes}
+                    onChange={(e) => handleInputChange('paymentNotes', e.target.value)}
+                    placeholder="Add any payment-related notes or instructions..."
+                    rows={3}
+                    error={errors.paymentNotes}
+                    helperText="Optional: Add any payment-related notes, transaction IDs, or special instructions"
                   />
                 </div>
               </div>

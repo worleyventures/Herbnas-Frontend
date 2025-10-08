@@ -98,11 +98,12 @@ export const updateOrderStatus = createAsyncThunk(
 // Update payment information (part of order update)
 export const updateOrderPayment = createAsyncThunk(
   'orders/updateOrderPayment',
-  async ({ id, paymentStatus, paymentMethod, transactionId, paymentDate }, { rejectWithValue }) => {
+  async ({ id, paymentStatus, paymentMethod, paymentNotes, transactionId, paymentDate }, { rejectWithValue }) => {
     try {
       const response = await api.put(`/orders/${id}`, {
         paymentStatus,
         paymentMethod,
+        paymentNotes,
         transactionId,
         paymentDate
       });
