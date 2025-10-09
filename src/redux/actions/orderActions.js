@@ -16,7 +16,7 @@ export const getAllOrders = createAsyncThunk(
         customerId = '',
         startDate = '',
         endDate = '',
-        sortBy = 'orderDate',
+        sortBy = 'createdAt',
         sortOrder = 'desc'
       } = params;
 
@@ -95,7 +95,33 @@ export const updateOrderStatus = createAsyncThunk(
   }
 );
 
-// Update payment information (part of order update)
+// Delete order
+export const deleteOrder = createAsyncThunk(
+  'orders/deleteOrder',
+  async (id, { rejectWithValue }) => {
+    try {
+      const response = await api.delete(`/orders/${id}`);
+      return { id, ...response.data };
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to delete order');
+    }
+  }
+);
+
+// Check if Order ID exists
+export const checkOrderIdExists = createAsyncThunk(
+  'orders/checkOrderIdExists',
+  async (orderId, { rejectWithValue }) => {
+    try {
+      const response = await api.get(`/orders/check-order-id/${orderId}`);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to check Order ID');
+    }
+  }
+);
+
+// Update order payment information
 export const updateOrderPayment = createAsyncThunk(
   'orders/updateOrderPayment',
   async ({ id, paymentStatus, paymentMethod, paymentNotes, transactionId, paymentDate }, { rejectWithValue }) => {
@@ -110,19 +136,6 @@ export const updateOrderPayment = createAsyncThunk(
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to update payment information');
-    }
-  }
-);
-
-// Delete order
-export const deleteOrder = createAsyncThunk(
-  'orders/deleteOrder',
-  async (id, { rejectWithValue }) => {
-    try {
-      const response = await api.delete(`/orders/${id}`);
-      return { id, ...response.data };
-    } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to delete order');
     }
   }
 );
@@ -146,4 +159,3 @@ export const getOrderStats = createAsyncThunk(
     }
   }
 );
-

@@ -8,7 +8,6 @@ import {
   HiUserGroup,
   HiBuildingOffice2,
   HiHeart,
-  HiChartBar,
   HiCog6Tooth,
   HiXMark,
   HiDocumentText,
@@ -18,6 +17,7 @@ import {
   HiBars3,
   HiChevronLeft,
   HiShoppingBag,
+  HiBanknotes,
 } from 'react-icons/hi2';
 
 const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
@@ -143,7 +143,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
         bgColor: 'bg-gray-100',
         hoverColor: 'group-hover:text-gray-600',
         hoverBgColor: 'group-hover:bg-gray-50'
-      }
+      },
     ];
 
     // Add admin-only navigation items using stable role
@@ -162,12 +162,12 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
         },
         {
           name: 'Payroll',
-          href: '/payroll',
-          icon: HiChartBar,
-          current: isActiveRoute('/payroll'),
-          color: 'text-pink-600',
+          href: '/payrolls',
+          icon: HiBanknotes,
+          current: isActiveRoute('/payrolls'),
+          color: 'text-purple-600',
           bgColor: 'bg-gray-100',
-          hoverColor: 'group-hover:text-pink-600',
+          hoverColor: 'group-hover:text-purple-600',
           hoverBgColor: 'group-hover:bg-gray-50'
         }
       );
