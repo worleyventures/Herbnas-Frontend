@@ -10,6 +10,8 @@ import healthReducer from './slices/healthSlice';
 import inventoryReducer from './slices/inventorySlice';
 import sentGoodsReducer from './slices/sentGoodsSlice';
 import orderReducer from './slices/orderSlice';
+import accountReducer from './slices/accountSlice';
+import payrollReducer from './slices/payrollSlice';
 
 export const store = configureStore({
   reducer: {
@@ -24,6 +26,8 @@ export const store = configureStore({
     inventory: inventoryReducer,
     sentGoods: sentGoodsReducer,
     orders: orderReducer,
+    accounts: accountReducer,
+    payrolls: payrollReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

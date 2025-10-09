@@ -1,7 +1,11 @@
-import React from 'react';
-import { HiUsers, HiDocumentText, HiBuildingOffice2, HiHeart, HiTrendingUp, HiClock, HiCheckCircle, HiExclamationTriangle } from 'react-icons/hi2';
+import React, { useState } from 'react';
+import { HiUsers, HiDocumentText, HiBuildingOffice2, HiHeart, HiTrendingUp, HiClock, HiCheckCircle, HiExclamationTriangle, HiCurrencyDollar } from 'react-icons/hi2';
+import { AccountsModal } from '../../components/common';
 
 const Dashboard = () => {
+  // Modal state
+  const [showAccountsModal, setShowAccountsModal] = useState(false);
+
   // Mock data - replace with actual data from your API
   const stats = [
     { name: 'Total Leads', value: '1,234', change: '+12%', changeType: 'positive', icon: HiUsers, color: 'bg-blue-500' },
@@ -188,8 +192,21 @@ const Dashboard = () => {
             <HiHeart className="h-8 w-8 text-[#558b2f] mb-2 group-hover:scale-110 transition-transform duration-200" />
             <span className="text-sm font-medium text-[#558b2f]">Health Issue</span>
           </button>
+          <button 
+            onClick={() => setShowAccountsModal(true)}
+            className="flex flex-col items-center p-4 bg-gradient-to-br from-[#8bc34a]/10 to-[#558b2f]/10 hover:from-[#8bc34a]/20 hover:to-[#558b2f]/20 rounded-lg transition-all duration-200 group border border-[#558b2f]/20 hover:border-[#558b2f]/40"
+          >
+            <HiCurrencyDollar className="h-8 w-8 text-[#558b2f] mb-2 group-hover:scale-110 transition-transform duration-200" />
+            <span className="text-sm font-medium text-[#558b2f]">Accounts</span>
+          </button>
         </div>
       </div>
+
+      {/* Accounts Modal */}
+      <AccountsModal
+        isOpen={showAccountsModal}
+        onClose={() => setShowAccountsModal(false)}
+      />
     </div>
   );
 };

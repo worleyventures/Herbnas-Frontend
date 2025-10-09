@@ -33,6 +33,9 @@ import ProductionDetailsPage from './pages/production/ProductionDetailsPage';
 import OrdersPage from './pages/orders/OrdersPage';
 import OrderFormPage from './pages/orders/OrderFormPage';
 import OrderDetailsPage from './pages/orders/OrderDetailsPage';
+import AccountsPage from './pages/accounts/AccountsPage';
+import AccountFormPage from './pages/accounts/AccountFormPage';
+import PayrollPage from './pages/payroll/PayrollPage';
 
 function App() {
   return (
@@ -94,6 +97,10 @@ function App() {
             <Route path="/orders/new" element={<OrderFormPage />} />
             <Route path="/orders/edit/:id" element={<OrderFormPage />} />
             <Route path="/orders/:id" element={<OrderDetailsPage />} />
+            <Route path="/accounts" element={<AccountsPage />} />
+            <Route path="/accounts/new" element={<AccountFormPage />} />
+            <Route path="/accounts/edit/:id" element={<AccountFormPage />} />
+            <Route path="/payrolls" element={<PayrollPage />} />
             <Route path="/settings" element={<div>Settings Page</div>} />
             <Route path="/profile" element={<div>Profile Page</div>} />
           </Route>
