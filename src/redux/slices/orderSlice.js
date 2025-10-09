@@ -7,7 +7,8 @@ import {
   updateOrderStatus,
   updateOrderPayment,
   deleteOrder,
-  getOrderStats
+  getOrderStats,
+  checkOrderIdExists
 } from '../actions/orderActions';
 
 const initialState = {
@@ -18,6 +19,11 @@ const initialState = {
   stats: null,
   statsLoading: false,
   statsError: null,
+  orderIdCheck: {
+    exists: false,
+    checking: false,
+    error: null
+  },
   pagination: {
     currentPage: 1,
     totalPages: 1,
@@ -91,9 +97,13 @@ const orderSlice = createSlice({
       state.statsError = null;
     },
     
-    // Clear success
-    clearOrderSuccess: (state) => {
-      state.success = false;
+    // Clear Order ID check
+    clearOrderIdCheck: (state) => {
+      state.orderIdCheck = {
+        exists: false,
+        checking: false,
+        error: null
+      };
     }
   },
   extraReducers: (builder) => {
@@ -244,6 +254,22 @@ const orderSlice = createSlice({
         state.statsLoading = false;
         state.statsError = action.payload;
         state.stats = null;
+      })
+      
+      // Check Order ID exists
+      .addCase(checkOrderIdExists.pending, (state) => {
+        state.orderIdCheck.checking = true;
+        state.orderIdCheck.error = null;
+      })
+      .addCase(checkOrderIdExists.fulfilled, (state, action) => {
+        state.orderIdCheck.checking = false;
+        state.orderIdCheck.exists = action.payload.exists;
+        state.orderIdCheck.error = null;
+      })
+      .addCase(checkOrderIdExists.rejected, (state, action) => {
+        state.orderIdCheck.checking = false;
+        state.orderIdCheck.error = action.payload;
+        state.orderIdCheck.exists = false;
       });
   }
 });
@@ -260,7 +286,7 @@ export const {
   setError,
   clearError,
   clearOrderErrors,
-  clearOrderSuccess
+  clearOrderIdCheck
 } = orderSlice.actions;
 
 // Selectors
@@ -272,6 +298,6 @@ export const selectOrderStats = (state) => state.orders.stats;
 export const selectOrderStatsLoading = (state) => state.orders.statsLoading;
 export const selectOrderStatsError = (state) => state.orders.statsError;
 export const selectOrderPagination = (state) => state.orders.pagination;
+export const selectOrderIdCheck = (state) => state.orders.orderIdCheck;
 
 export default orderSlice.reducer;
-

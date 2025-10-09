@@ -12,9 +12,12 @@ import {
   HiCheckCircle,
   HiXCircle,
   HiClock,
-  HiExclamationTriangle
+  HiExclamationTriangle,
+  HiEye,
+  HiPencil,
+  HiTrash
 } from 'react-icons/hi2';
-import { Button, Input, Select, Table, StatusBadge, Loading, StatCard } from '../../components/common';
+import { Button, Input, Select, Table, StatusBadge, Loading, StatCard, CommonModal } from '../../components/common';
 import {
   getAllOrders,
   getOrderStats,
@@ -46,10 +49,11 @@ const OrdersPage = () => {
   
   // Local state
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
   const [paymentStatusFilter, setPaymentStatusFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [orderToDelete, setOrderToDelete] = useState(null);
 
   // Load data on component mount
   useEffect(() => {
@@ -57,21 +61,14 @@ const OrdersPage = () => {
       page: currentPage,
       limit: 10,
       search: searchTerm,
-      status: statusFilter,
       paymentStatus: paymentStatusFilter
     }));
     dispatch(getOrderStats());
-  }, [dispatch, currentPage, searchTerm, statusFilter, paymentStatusFilter]);
+  }, [dispatch, currentPage, searchTerm, paymentStatusFilter]);
 
   // Handle search
   const handleSearch = (e) => {
     setSearchTerm(e.target.value);
-    setCurrentPage(1);
-  };
-
-  // Handle status filter
-  const handleStatusFilter = (value) => {
-    setStatusFilter(value);
     setCurrentPage(1);
   };
 
@@ -87,7 +84,6 @@ const OrdersPage = () => {
       page: currentPage,
       limit: 10,
       search: searchTerm,
-      status: statusFilter,
       paymentStatus: paymentStatusFilter
     }));
     dispatch(getOrderStats());
@@ -108,23 +104,38 @@ const OrdersPage = () => {
     navigate(`/orders/edit/${orderId}`);
   };
 
-  // Handle delete order
-  const handleDeleteOrder = async (orderId) => {
-    if (window.confirm('Are you sure you want to delete this order?')) {
-      try {
-        await dispatch(deleteOrder(orderId)).unwrap();
-        dispatch(addNotification({
-          type: 'success',
-          message: 'Order deleted successfully!'
-        }));
-        handleRefresh();
-      } catch (error) {
-        dispatch(addNotification({
-          type: 'error',
-          message: error || 'Failed to delete order'
-        }));
-      }
+  // Handle delete order click
+  const handleDeleteOrder = (orderId) => {
+    const order = orders.find(o => o._id === orderId);
+    setOrderToDelete(order);
+    setShowDeleteModal(true);
+  };
+
+  // Confirm delete order
+  const confirmDeleteOrder = async () => {
+    if (!orderToDelete) return;
+    
+    try {
+      await dispatch(deleteOrder(orderToDelete._id)).unwrap();
+      dispatch(addNotification({
+        type: 'success',
+        message: 'Order deleted successfully!'
+      }));
+      handleRefresh();
+      setShowDeleteModal(false);
+      setOrderToDelete(null);
+    } catch (error) {
+      dispatch(addNotification({
+        type: 'error',
+        message: error || 'Failed to delete order'
+      }));
     }
+  };
+
+  // Cancel delete
+  const cancelDelete = () => {
+    setShowDeleteModal(false);
+    setOrderToDelete(null);
   };
 
   // Handle status update
@@ -158,26 +169,6 @@ const OrdersPage = () => {
         type: 'error',
         message: error || 'Failed to update payment status'
       }));
-    }
-  };
-
-  // Get status color
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'delivered':
-        return 'green';
-      case 'shipped':
-        return 'blue';
-      case 'processing':
-        return 'yellow';
-      case 'confirmed':
-        return 'purple';
-      case 'cancelled':
-        return 'red';
-      case 'returned':
-        return 'orange';
-      default:
-        return 'gray';
     }
   };
 
@@ -264,18 +255,8 @@ const OrdersPage = () => {
       )
     },
     {
-      key: 'status',
-      label: 'Status',
-      render: (order) => (
-        <StatusBadge
-          status={order.status}
-          color={getStatusColor(order.status)}
-        />
-      )
-    },
-    {
       key: 'paymentStatus',
-      label: 'Payment',
+      label: 'Payment Status',
       render: (order) => (
         <StatusBadge
           status={order.paymentStatus}
@@ -308,43 +289,31 @@ const OrdersPage = () => {
       key: 'actions',
       label: 'Actions',
       render: (order) => (
-        <div className="flex space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
+        <div className="flex space-x-3">
+          <button
             onClick={() => handleViewOrder(order._id)}
+            className="text-gray-500 hover:text-gray-700 transition-colors"
+            title="View Order"
           >
-            View
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
+            <HiEye className="w-4 h-4" />
+          </button>
+          <button
             onClick={() => handleEditOrder(order._id)}
+            className="text-gray-500 hover:text-gray-700 transition-colors"
+            title="Edit Order"
           >
-            Edit
-          </Button>
-          <Button
-            variant="danger"
-            size="sm"
+            <HiPencil className="w-4 h-4" />
+          </button>
+          <button
             onClick={() => handleDeleteOrder(order._id)}
+            className="text-gray-500 hover:text-gray-700 transition-colors"
+            title="Delete Order"
           >
-            Delete
-          </Button>
+            <HiTrash className="w-4 h-4" />
+          </button>
         </div>
       )
     }
-  ];
-
-  // Status options
-  const statusOptions = [
-    { value: 'all', label: 'All Statuses' },
-    { value: 'pending', label: 'Pending' },
-    { value: 'confirmed', label: 'Confirmed' },
-    { value: 'processing', label: 'Processing' },
-    { value: 'shipped', label: 'Shipped' },
-    { value: 'delivered', label: 'Delivered' },
-    { value: 'cancelled', label: 'Cancelled' },
-    { value: 'returned', label: 'Returned' }
   ];
 
   // Payment status options
@@ -423,16 +392,10 @@ const OrdersPage = () => {
           </div>
           <div className="flex gap-2">
             <Select
-              options={statusOptions}
-              value={statusFilter}
-              onChange={handleStatusFilter}
-              placeholder="Status"
-            />
-            <Select
               options={paymentStatusOptions}
               value={paymentStatusFilter}
               onChange={handlePaymentStatusFilter}
-              placeholder="Payment"
+              placeholder="Payment Status"
             />
           </div>
         </div>
@@ -451,6 +414,59 @@ const OrdersPage = () => {
           emptyIcon={HiClipboardDocumentList}
         />
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <CommonModal
+        isOpen={showDeleteModal}
+        onClose={cancelDelete}
+        title="Delete Order"
+        subtitle="This action cannot be undone"
+        icon={HiTrash}
+        iconColor="from-red-500 to-red-600"
+        size="sm"
+        showFooter={true}
+        footerContent={
+          <div className="flex space-x-2">
+            <Button
+              variant="outline"
+              onClick={cancelDelete}
+              size="sm"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              onClick={confirmDeleteOrder}
+              size="sm"
+            >
+              Delete Order
+            </Button>
+          </div>
+        }
+      >
+        <div className="text-center py-4">
+          <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+            <HiTrash className="h-6 w-6 text-red-600" />
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">
+            Are you sure you want to delete this order?
+          </h3>
+          {orderToDelete && (
+            <div className="text-sm text-gray-500 mb-4">
+              <p><strong>Order ID:</strong> {orderToDelete.orderId}</p>
+              <p><strong>Customer:</strong> {
+                orderToDelete.customerType === 'user' 
+                  ? `${orderToDelete.customerId?.firstName || ''} ${orderToDelete.customerId?.lastName || ''}`.trim()
+                  : orderToDelete.leadId?.customerName || 'Unknown Customer'
+              }</p>
+              <p><strong>Total Amount:</strong> ₹{orderToDelete.totalAmount?.toLocaleString()}</p>
+            </div>
+          )}
+          <p className="text-sm text-gray-500">
+            This action cannot be undone. The order will be permanently removed from the system.
+          </p>
+        </div>
+      </CommonModal>
     </div>
   );
 };
