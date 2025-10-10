@@ -95,88 +95,77 @@ const PayrollPage = () => {
     
     const sampleData = [];
     const employees = [
-      { id: 'EMP001', branch: 'BR001', name: 'John Doe' },
-      { id: 'EMP002', branch: 'BR001', name: 'Jane Smith' },
-      { id: 'EMP003', branch: 'BR002', name: 'Mike Johnson' },
-      { id: 'EMP004', branch: 'BR001', name: 'Sarah Wilson' },
-      { id: 'EMP005', branch: 'BR002', name: 'David Brown' }
+      { id: 'PAY000001', name: 'John Doe', designation: 'Manager', grossPay: 50000 },
+      { id: 'PAY000002', name: 'Jane Smith', designation: 'Developer', grossPay: 40000 },
+      { id: 'PAY000003', name: 'Mike Johnson', designation: 'Analyst', grossPay: 35000 },
+      { id: 'PAY000004', name: 'Sarah Wilson', designation: 'Designer', grossPay: 38000 },
+      { id: 'PAY000005', name: 'David Brown', designation: 'Tester', grossPay: 32000 }
     ];
 
     const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
     
-    for (let day = 1; day <= daysInMonth; day++) {
-      const date = new Date(currentYear, currentMonth - 1, day);
-      const dayOfWeek = date.getDay();
-      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+    employees.forEach((employee, empIndex) => {
+      // Generate different attendance patterns for each employee
+      let presentDays, absentDays, lop;
       
-      employees.forEach((employee, empIndex) => {
-        if (isWeekend && empIndex !== 4) return;
-        
-        let status, checkIn, checkOut, leaveType, remarks;
-        
-        if (isWeekend && empIndex === 4) {
-          status = 'present';
-          checkIn = '10:00';
-          checkOut = '16:00';
-          leaveType = '';
-          remarks = 'Weekend work';
-        } else if (day % 7 === 0) {
-          status = 'leave';
-          checkIn = '';
-          checkOut = '';
-          leaveType = 'sick';
-          remarks = 'Sick leave';
-        } else if (day % 10 === 0) {
-          status = 'half_day';
-          checkIn = '09:00';
-          checkOut = '13:00';
-          leaveType = '';
-          remarks = 'Half day leave';
-        } else if (day % 15 === 0) {
-          status = 'absent';
-          checkIn = '';
-          checkOut = '';
-          leaveType = '';
-          remarks = 'No show';
-        } else if (day % 5 === 0) {
-          status = 'present';
-          checkIn = '09:30';
-          checkOut = '17:30';
-          leaveType = '';
-          remarks = 'Late arrival';
-        } else {
-          status = 'present';
-          checkIn = '09:00';
-          checkOut = '17:00';
-          leaveType = '';
-          remarks = 'Regular working day';
-        }
-        
-        sampleData.push({
-          'Employee ID': employee.id,
-          'Branch Code': employee.branch,
-          'Date': `${currentYear}-${currentMonth.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`,
-          'Check In': checkIn,
-          'Check Out': checkOut,
-          'Status': status,
-          'Leave Type': leaveType,
-          'Remarks': remarks
-        });
+      if (empIndex === 0) {
+        // Manager - good attendance
+        presentDays = daysInMonth - 2;
+        absentDays = 1;
+        lop = 1;
+      } else if (empIndex === 1) {
+        // Developer - perfect attendance
+        presentDays = daysInMonth;
+        absentDays = 0;
+        lop = 0;
+      } else if (empIndex === 2) {
+        // Analyst - some absences
+        presentDays = daysInMonth - 5;
+        absentDays = 3;
+        lop = 2;
+      } else if (empIndex === 3) {
+        // Designer - moderate attendance
+        presentDays = daysInMonth - 3;
+        absentDays = 2;
+        lop = 1;
+      } else {
+        // Tester - poor attendance
+        presentDays = daysInMonth - 8;
+        absentDays = 5;
+        lop = 3;
+      }
+      
+      sampleData.push({
+        'Emp Id': employee.id,
+        'Emp Name': employee.name,
+        'Designation': employee.designation,
+        'Gross Pay': employee.grossPay,
+        'Total Working Days': daysInMonth,
+        'Present Days': presentDays,
+        'Absent days': absentDays,
+        'LOP': lop
       });
-    }
+    });
 
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.json_to_sheet(sampleData);
 
     const colWidths = [
-      { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 20 }
+      { wch: 12 }, // Emp Id
+      { wch: 20 }, // Emp Name
+      { wch: 15 }, // Designation
+      { wch: 12 }, // Gross Pay
+      { wch: 18 }, // Total Working Days
+      { wch: 15 }, // Present Days
+      { wch: 15 }, // Absent days
+      { wch: 10 }  // LOP
     ];
     ws['!cols'] = colWidths;
 
-    XLSX.utils.book_append_sheet(wb, ws, 'Attendance Sample');
+    XLSX.utils.book_append_sheet(wb, ws, 'Attendance Summary Sample');
 
     const monthName = currentDate.toLocaleString('default', { month: 'long' });
-    const fileName = `attendance_sample_${monthName}_${currentYear}.xlsx`;
+    const fileName = `attendance_summary_sample_${monthName}_${currentYear}.xlsx`;
     XLSX.writeFile(wb, fileName);
 
     dispatch(addNotification({
@@ -320,9 +309,8 @@ const PayrollPage = () => {
               Download the sample Excel file to see the correct format and structure for uploading attendance records.
             </p>
             <div className="text-xs text-gray-500 space-y-1">
-              <p><strong>Required columns:</strong> Employee ID, Branch Code, Date</p>
-              <p><strong>Optional columns:</strong> Check In, Check Out, Status, Leave Type, Remarks</p>
-              <p><strong>Note:</strong> Uploaded attendance data will be used for payroll calculations.</p>
+              <p><strong>Required columns:</strong> Emp Id, Emp Name, Designation, Gross Pay, Total Working Days, Present Days, Absent days, LOP</p>
+              <p><strong>Note:</strong> This format is for monthly attendance summary data that will be used for payroll calculations.</p>
             </div>
           </div>
         </div>
