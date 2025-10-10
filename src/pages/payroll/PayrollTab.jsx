@@ -15,7 +15,7 @@ import {
   HiBuildingOffice,
   HiCalendar
 } from 'react-icons/hi2';
-import { Button, Input, Select, Table, StatusBadge, Loading, StatCard, CommonModal } from '../../components/common';
+import { Button, Input, Select, Table, StatusBadge, Loading, StatCard, CommonModal, PayrollDetailsModal } from '../../components/common';
 import {
   getAllPayrolls,
   deletePayroll,
@@ -50,12 +50,13 @@ const PayrollTab = () => {
   const [branchFilter, setBranchFilter] = useState('all');
   const [yearFilter, setYearFilter] = useState(new Date().getFullYear().toString());
   const [monthFilter, setMonthFilter] = useState('all');
-  const [statusFilter, setStatusFilter] = useState('all');
   const [paymentStatusFilter, setPaymentStatusFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [payrollToDelete, setPayrollToDelete] = useState(null);
   const [branches, setBranches] = useState([]);
+  const [showPayrollModal, setShowPayrollModal] = useState(false);
+  const [selectedPayrollId, setSelectedPayrollId] = useState(null);
 
   // Load branches data
   const loadBranches = async () => {
@@ -78,7 +79,6 @@ const PayrollTab = () => {
       branchId: branchFilter !== 'all' ? branchFilter : undefined,
       year: yearFilter,
       month: monthFilter !== 'all' ? monthFilter : undefined,
-      status: statusFilter !== 'all' ? statusFilter : undefined,
       paymentStatus: paymentStatusFilter !== 'all' ? paymentStatusFilter : undefined
     }));
     dispatch(getPayrollStats({
@@ -87,7 +87,7 @@ const PayrollTab = () => {
       month: monthFilter !== 'all' ? monthFilter : undefined
     }));
     loadBranches();
-  }, [currentPage, searchTerm, branchFilter, yearFilter, monthFilter, statusFilter, paymentStatusFilter, dispatch]);
+  }, [currentPage, searchTerm, branchFilter, yearFilter, monthFilter, paymentStatusFilter, dispatch]);
 
   // Handle search
   const handleSearch = (e) => {
@@ -129,6 +129,20 @@ const PayrollTab = () => {
     const payroll = payrolls.find(p => p._id === payrollId);
     setPayrollToDelete(payroll);
     setShowDeleteModal(true);
+  };
+
+  const handleViewPayroll = (payrollId) => {
+    setSelectedPayrollId(payrollId);
+    setShowPayrollModal(true);
+  };
+
+  const handleEditPayroll = (payrollId) => {
+    navigate(`/payrolls/edit/${payrollId}`);
+  };
+
+  const handleClosePayrollModal = () => {
+    setShowPayrollModal(false);
+    setSelectedPayrollId(null);
   };
 
   const confirmDeletePayroll = async () => {
@@ -190,18 +204,6 @@ const PayrollTab = () => {
     }
   };
 
-  // Get status color
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'draft': return 'gray';
-      case 'pending_approval': return 'yellow';
-      case 'approved': return 'green';
-      case 'rejected': return 'red';
-      case 'processed': return 'blue';
-      default: return 'gray';
-    }
-  };
-
   // Get payment status color
   const getPaymentStatusColor = (status) => {
     switch (status) {
@@ -230,10 +232,10 @@ const PayrollTab = () => {
       render: (payroll) => (
         <div>
           <div className="font-medium text-gray-900">
-            {payroll.employeeId?.firstName} {payroll.employeeId?.lastName}
+            {payroll.employeeName}
           </div>
           <div className="text-sm text-gray-500">
-            {payroll.employeeId?.employeeId}
+            {payroll.employeeId}
           </div>
         </div>
       )
@@ -253,16 +255,11 @@ const PayrollTab = () => {
       )
     },
     {
-      key: 'period',
-      label: 'Pay Period',
+      key: 'designation',
+      label: 'Designation',
       render: (payroll) => (
-        <div>
-          <div className="font-medium text-gray-900">
-            {new Date(payroll.payPeriod.startDate).toLocaleDateString()} - {new Date(payroll.payPeriod.endDate).toLocaleDateString()}
-          </div>
-          <div className="text-sm text-gray-500">
-            {payroll.payPeriod.month}/{payroll.payPeriod.year}
-          </div>
+        <div className="font-medium text-gray-900">
+          {payroll.designation}
         </div>
       )
     },
@@ -273,16 +270,6 @@ const PayrollTab = () => {
         <div className="font-medium text-gray-900">
           ₹{payroll.calculations?.netSalary?.toLocaleString()}
         </div>
-      )
-    },
-    {
-      key: 'status',
-      label: 'Status',
-      render: (payroll) => (
-        <StatusBadge
-          status={payroll.status}
-          color={getStatusColor(payroll.status)}
-        />
       )
     },
     {
@@ -301,7 +288,7 @@ const PayrollTab = () => {
       render: (payroll) => (
         <div className="flex space-x-3">
           <button
-            onClick={() => navigate(`/payrolls/${payroll._id}`)}
+            onClick={() => handleViewPayroll(payroll._id)}
             className="text-gray-500 hover:text-gray-700 transition-colors"
             title="View Payroll"
           >
@@ -374,17 +361,9 @@ const PayrollTab = () => {
     { value: '12', label: 'December' }
   ];
 
-  const statusOptions = [
-    { value: 'all', label: 'All Status' },
-    { value: 'draft', label: 'Draft' },
-    { value: 'pending_approval', label: 'Pending Approval' },
-    { value: 'approved', label: 'Approved' },
-    { value: 'rejected', label: 'Rejected' },
-    { value: 'processed', label: 'Processed' }
-  ];
 
   const paymentStatusOptions = [
-    { value: 'all', label: 'All Payment Status' },
+    { value: 'all', label: 'All Payments' },
     { value: 'pending', label: 'Pending' },
     { value: 'processed', label: 'Processed' },
     { value: 'paid', label: 'Paid' },
@@ -397,90 +376,108 @@ const PayrollTab = () => {
 
   return (
     <div className="space-y-6">
-      {/* Statistics Cards */}
-      {stats && stats.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <StatCard
-            title="Total Employees"
-            value={stats[0]?.totalEmployees || 0}
-            icon={HiUser}
-            color="blue"
-            loading={loading}
-          />
-          <StatCard
-            title="Total Gross Salary"
-            value={`₹${stats[0]?.totalGrossSalary?.toLocaleString() || 0}`}
-            icon={HiCurrencyDollar}
-            color="green"
-            loading={loading}
-          />
-          <StatCard
-            title="Total Net Salary"
-            value={`₹${stats[0]?.totalNetSalary?.toLocaleString() || 0}`}
-            icon={HiCurrencyDollar}
-            color="green"
-            loading={loading}
-          />
-          <StatCard
-            title="Average Attendance"
-            value={`${stats[0]?.averageAttendance || 0}%`}
-            icon={HiClock}
-            color="yellow"
-            loading={loading}
-          />
-        </div>
-      )}
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
+        <StatCard
+          title="Total Payrolls"
+          value={pagination?.total || 0}
+          icon={HiCurrencyDollar}
+          gradient="blue"
+          animation="bounce"
+          change="+5%"
+          changeType="increase"
+          loading={loading}
+        />
+        <StatCard
+          title="Pending Payments"
+          value={payrolls.filter(p => p.payment?.status === 'pending').length}
+          icon={HiClock}
+          gradient="yellow"
+          animation="pulse"
+          change="+2%"
+          changeType="increase"
+          loading={loading}
+        />
+        <StatCard
+          title="Paid This Month"
+          value={payrolls.filter(p => p.payment?.status === 'paid').length}
+          icon={HiCheckCircle}
+          gradient="green"
+          animation="float"
+          change="+8%"
+          changeType="increase"
+          loading={loading}
+        />
+        <StatCard
+          title="Total Amount"
+          value={`₹${payrolls.reduce((sum, p) => sum + (p.calculations?.netSalary || 0), 0).toLocaleString()}`}
+          icon={HiCurrencyDollar}
+          gradient="emerald"
+          animation="bounce"
+          change="+12%"
+          changeType="increase"
+          loading={loading}
+        />
+      </div>
 
-      {/* Filters */}
-      <div className="bg-white p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Filters</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-          <Input
-            // label="Search"
-            value={searchTerm}
-            onChange={handleSearch}
-            placeholder="Search payrolls..."
-            icon={HiMagnifyingGlass}
-          />
-          <Select
-            // label="Branch"
-            value={branchFilter}
-            onChange={(value) => handleFilterChange('branch', value)}
-            options={branchOptions}
-          />
-          <Select
-            // label="Year"
-            value={yearFilter}
-            onChange={(value) => handleFilterChange('year', value)}
-            options={yearOptions}
-          />
-          <Select
-            // label="Month"
-            value={monthFilter}
-            onChange={(value) => handleFilterChange('month', value)}
-            options={monthOptions}
-          />
-          <Select
-            // label="Status"
-            value={statusFilter}
-            onChange={(value) => handleFilterChange('status', value)}
-            options={statusOptions}
-          />
+      {/* Results Info */}
+      <div className="flex items-center justify-between">
+        <div className="text-sm text-gray-500">
+          Showing {((currentPage - 1) * 10) + 1}-{Math.min(currentPage * 10, pagination?.total || 0)} of {pagination?.total || 0} payrolls
         </div>
       </div>
 
       {/* Payroll Table */}
-      <div className="bg-white p-6">
-        <Table
-          data={payrolls}
-          columns={columns}
-          loading={loading}
-          pagination={{
-            currentPage: pagination.currentPage,
-            totalPages: pagination.totalPages,
-            onPageChange: handlePageChange
-          }}
-        />
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Input
+                value={searchTerm}
+                onChange={handleSearch}
+                placeholder="Search payrolls..."
+                icon={HiMagnifyingGlass}
+                className="w-full sm:w-64"
+              />
+              <Select
+                value={branchFilter}
+                onChange={(value) => handleFilterChange('branch', value)}
+                options={branchOptions}
+                className="w-full sm:w-40"
+              />
+              <Select
+                value={yearFilter}
+                onChange={(value) => handleFilterChange('year', value)}
+                options={yearOptions}
+                className="w-full sm:w-32"
+              />
+              <Select
+                value={monthFilter}
+                onChange={(value) => handleFilterChange('month', value)}
+                options={monthOptions}
+                className="w-full sm:w-32"
+              />
+              <Select
+                value={paymentStatusFilter}
+                onChange={(value) => handleFilterChange('paymentStatus', value)}
+                options={paymentStatusOptions}
+                className="w-full sm:w-40"
+              />
+            </div>
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <Table
+            data={payrolls}
+            columns={columns}
+            loading={loading}
+            pagination={{
+              currentPage: pagination.currentPage,
+              totalPages: pagination.totalPages,
+              onPageChange: handlePageChange
+            }}
+          />
+        </div>
       </div>
 
       {/* Delete Confirmation Modal */}
@@ -531,6 +528,27 @@ const PayrollTab = () => {
           </p>
         </div>
       </CommonModal>
+
+      {/* Payroll Details Modal */}
+      <PayrollDetailsModal
+        isOpen={showPayrollModal}
+        onClose={handleClosePayrollModal}
+        payrollId={selectedPayrollId}
+        onEdit={handleEditPayroll}
+        onDelete={() => {
+          handleClosePayrollModal();
+          // Refresh the payroll list after deletion
+          dispatch(getAllPayrolls({
+            page: currentPage,
+            limit: 10,
+            search: searchTerm,
+            branchId: branchFilter !== 'all' ? branchFilter : undefined,
+            year: yearFilter,
+            month: monthFilter !== 'all' ? monthFilter : undefined,
+            paymentStatus: paymentStatusFilter !== 'all' ? paymentStatusFilter : undefined
+          }));
+        }}
+      />
     </div>
   );
 };

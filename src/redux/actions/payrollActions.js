@@ -47,7 +47,7 @@ export const createPayroll = createAsyncThunk(
       const response = await api.post('/payrolls', payrollData);
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to create payroll');
+      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to create payroll');
     }
   }
 );
@@ -136,3 +136,4 @@ export const processPayrollPayments = createAsyncThunk(
     }
   }
 );
+

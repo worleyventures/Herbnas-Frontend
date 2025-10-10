@@ -12,7 +12,7 @@ const Stepper = ({
     <div className={`stepper-container ${className}`}>
       {/* Desktop Stepper */}
       <div className="hidden md:block">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-center">
           {steps.map((step, index) => {
             const stepNumber = index + 1;
             const isCompleted = stepNumber < currentStep;
@@ -21,7 +21,7 @@ const Stepper = ({
             const IconComponent = step.icon;
             
             return (
-              <div key={step.id} className="flex items-center flex-1">
+              <div key={step.id} className="flex items-center">
                 {/* Step Circle */}
                 <div className="flex flex-col items-center">
                   <button
@@ -31,9 +31,9 @@ const Stepper = ({
                     className={`
                       relative flex items-center justify-center w-12 h-12 rounded-full border-2 transition-all duration-500 ease-in-out
                       ${isCompleted 
-                        ? 'bg-gradient-to-br from-green-500 to-green-600 border-green-500 text-white shadow-lg scale-105' 
+                        ? 'bg-gradient-to-br from-[#8bc34a] to-[#558b2f] border-[#8bc34a] text-white shadow-lg scale-105' 
                         : isCurrent 
-                          ? 'bg-white border-green-500 text-green-500 shadow-xl scale-110 ring-4 ring-green-100' 
+                          ? 'bg-white border-[#8bc34a] text-[#8bc34a] shadow-xl scale-110 ring-4 ring-[#8bc34a]/20' 
                           : 'bg-white border-gray-300 text-gray-400 hover:border-gray-400 hover:text-gray-500'
                       }
                       ${isClickable ? 'cursor-pointer hover:shadow-lg hover:scale-105 active:scale-95' : 'cursor-not-allowed'}
@@ -52,7 +52,7 @@ const Stepper = ({
                   {/* Step Label */}
                   <div className="mt-3 text-center transition-all duration-300">
                     <p className={`text-sm font-semibold transition-all duration-300 ${
-                      isCurrent ? 'text-green-600 scale-105' : isCompleted ? 'text-gray-900' : 'text-gray-500'
+                      isCurrent ? 'text-[#8bc34a] scale-105' : isCompleted ? 'text-gray-900' : 'text-gray-500'
                     }`}>
                       {step.title}
                     </p>
@@ -64,8 +64,8 @@ const Stepper = ({
                 
                 {/* Connector Line */}
                 {index < steps.length - 1 && (
-                  <div className={`flex-1 h-1 mx-6 rounded-full transition-all duration-500 ${
-                    isCompleted ? 'bg-gradient-to-r from-green-500 to-green-400' : 'bg-gray-300'
+                  <div className={`w-16 h-1 mx-4 rounded-full transition-all duration-500 ${
+                    isCompleted ? 'bg-gradient-to-r from-[#8bc34a] to-[#558b2f]' : 'bg-gray-300'
                   }`} />
                 )}
               </div>
@@ -81,8 +81,8 @@ const Stepper = ({
             <div className={`
               flex items-center justify-center w-10 h-10 rounded-full border-2 mr-4 transition-all duration-500 ease-in-out
               ${currentStep > 1 
-                ? 'bg-gradient-to-br from-green-500 to-green-600 border-green-500 text-white shadow-lg scale-105' 
-                : 'bg-white border-green-500 text-green-500 shadow-xl scale-110 ring-4 ring-green-100'
+                ? 'bg-gradient-to-br from-[#8bc34a] to-[#558b2f] border-[#8bc34a] text-white shadow-lg scale-105' 
+                : 'bg-white border-[#8bc34a] text-[#8bc34a] shadow-xl scale-110 ring-4 ring-[#8bc34a]/20'
               }
             `}>
               {currentStep > 1 ? (
@@ -116,7 +116,7 @@ const Stepper = ({
         {/* Progress Bar */}
         <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
           <div 
-            className="bg-gradient-to-r from-green-500 to-green-400 h-3 rounded-full transition-all duration-700 ease-out relative"
+            className="bg-gradient-to-r from-[#8bc34a] to-[#558b2f] h-3 rounded-full transition-all duration-700 ease-out relative"
             style={{ width: `${(currentStep / steps.length) * 100}%` }}
           >
             <div className="absolute inset-0 stepper-progress-shimmer"></div>
@@ -135,9 +135,9 @@ const Stepper = ({
                 key={index}
                 className={`w-2 h-2 rounded-full transition-all duration-300 ${
                   isCompleted 
-                    ? 'bg-green-500 scale-125' 
+                    ? 'bg-[#8bc34a] scale-125' 
                     : isCurrent 
-                      ? 'bg-green-500 scale-150 animate-pulse' 
+                      ? 'bg-[#8bc34a] scale-150 animate-pulse' 
                       : 'bg-gray-300'
                 }`}
               />

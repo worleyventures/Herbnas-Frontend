@@ -362,15 +362,6 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
               Add Raw Material
             </Button>
           )}
-          {activeTab === 'finishedGoods' && (
-            <Button
-              onClick={() => navigate('/inventory/finished-goods')}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
-              icon={HiCube}
-            >
-              Add Finished Goods
-            </Button>
-          )}
           {activeTab === 'sentGoods' && (
             <Button
               onClick={() => navigate('/inventory/sent-goods')}
