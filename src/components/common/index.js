@@ -49,3 +49,4 @@ export { default as ProductionDetailsModal } from './ProductionDetailsModal';
 export { default as SendInventoryModal } from './SendInventoryModal';
 export { default as AccountsModal } from './AccountsModal';
 export { default as AccountFormModal } from './AccountFormModal';
+export { default as PayrollDetailsModal } from './PayrollDetailsModal';

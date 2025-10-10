@@ -36,6 +36,7 @@ import OrderDetailsPage from './pages/orders/OrderDetailsPage';
 import AccountsPage from './pages/accounts/AccountsPage';
 import AccountFormPage from './pages/accounts/AccountFormPage';
 import PayrollPage from './pages/payroll/PayrollPage';
+import PayrollFormPage from './pages/payroll/PayrollFormPage';
 
 function App() {
   return (
@@ -101,6 +102,8 @@ function App() {
             <Route path="/accounts/new" element={<AccountFormPage />} />
             <Route path="/accounts/edit/:id" element={<AccountFormPage />} />
             <Route path="/payrolls" element={<PayrollPage />} />
+            <Route path="/payrolls/new" element={<PayrollFormPage />} />
+            <Route path="/payrolls/edit/:id" element={<PayrollFormPage />} />
             <Route path="/settings" element={<div>Settings Page</div>} />
             <Route path="/profile" element={<div>Profile Page</div>} />
           </Route>

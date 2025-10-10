@@ -217,3 +217,4 @@ export const selectPayrollStats = (state) => state.payrolls.stats;
 export const selectPayrollPagination = (state) => state.payrolls.pagination;
 
 export default payrollSlice.reducer;
+
