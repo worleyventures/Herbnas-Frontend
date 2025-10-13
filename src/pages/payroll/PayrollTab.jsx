@@ -380,7 +380,7 @@ const PayrollTab = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
         <StatCard
           title="Total Payrolls"
-          value={pagination?.total || 0}
+          value={stats?.overview?.totalPayrolls || 0}
           icon={HiCurrencyDollar}
           gradient="blue"
           animation="bounce"
@@ -390,7 +390,7 @@ const PayrollTab = () => {
         />
         <StatCard
           title="Pending Payments"
-          value={payrolls.filter(p => p.payment?.status === 'pending').length}
+          value={stats?.overview?.pendingPayrolls || 0}
           icon={HiClock}
           gradient="yellow"
           animation="pulse"
@@ -400,7 +400,7 @@ const PayrollTab = () => {
         />
         <StatCard
           title="Paid This Month"
-          value={payrolls.filter(p => p.payment?.status === 'paid').length}
+          value={stats?.overview?.paidPayrolls || 0}
           icon={HiCheckCircle}
           gradient="green"
           animation="float"
@@ -410,7 +410,7 @@ const PayrollTab = () => {
         />
         <StatCard
           title="Total Amount"
-          value={`₹${payrolls.reduce((sum, p) => sum + (p.calculations?.netSalary || 0), 0).toLocaleString()}`}
+          value={`₹${(stats?.overview?.totalAmount || 0).toLocaleString()}`}
           icon={HiCurrencyDollar}
           gradient="emerald"
           animation="bounce"
@@ -423,7 +423,7 @@ const PayrollTab = () => {
       {/* Results Info */}
       <div className="flex items-center justify-between">
         <div className="text-sm text-gray-500">
-          Showing {((currentPage - 1) * 10) + 1}-{Math.min(currentPage * 10, pagination?.total || 0)} of {pagination?.total || 0} payrolls
+          Showing {((currentPage - 1) * 10) + 1}-{Math.min(currentPage * 10, pagination?.totalItems || 0)} of {pagination?.totalItems || 0} payrolls
         </div>
       </div>
 

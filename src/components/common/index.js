@@ -28,6 +28,9 @@ export { default as EmptyState, TableEmptyState, CardEmptyState, PageEmptyState 
 // Pagination Components
 export { default as Pagination } from './Pagination';
 
+// Details View Component
+export { default as DetailsView } from './DetailsView';
+
 // Stepper Components
 export { default as Stepper } from './Stepper';
 export { default as MaterialStepper } from './MaterialStepper';

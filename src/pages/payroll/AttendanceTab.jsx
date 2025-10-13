@@ -9,39 +9,50 @@ import {
   HiBuildingOffice,
   HiCalendar,
   HiCheckCircle,
-  HiXMark
+  HiXMark,
+  HiEye
 } from 'react-icons/hi2';
-import { Button, Input, Select, Table, StatusBadge, Loading, StatCard, CommonModal } from '../../components/common';
+import { Button, Input, Select, Table, StatusBadge, Loading, StatCard, CommonModal, DetailsView } from '../../components/common';
 import { addNotification } from '../../redux/slices/uiSlice';
+import { 
+  selectAttendance,
+  selectAttendanceLoading,
+  selectAttendanceStats,
+  selectAttendancePagination
+} from '../../redux/slices/attendanceSlice';
+import { 
+  getAllAttendance, 
+  deleteAttendance, 
+  getAttendanceStats 
+} from '../../redux/actions/attendanceActions';
 import api from '../../lib/axiosInstance';
 
-const AttendanceTab = ({ onUploadClick }) => {
+const AttendanceTab = ({ onUploadClick, refreshTrigger }) => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   
+  // Redux state
+  const attendance = useSelector(selectAttendance);
+  const loading = useSelector(selectAttendanceLoading);
+  const stats = useSelector(selectAttendanceStats);
+  const pagination = useSelector(selectAttendancePagination);
+  
   // Local state
-  const [attendance, setAttendance] = useState([]);
-  const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [branchFilter, setBranchFilter] = useState('all');
   const [employeeFilter, setEmployeeFilter] = useState('all');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [monthFilter, setMonthFilter] = useState('all');
+  const [yearFilter, setYearFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
   const [attendanceToDelete, setAttendanceToDelete] = useState(null);
+  const [attendanceToView, setAttendanceToView] = useState(null);
   const [branches, setBranches] = useState([]);
   const [employees, setEmployees] = useState([]);
-  const [stats, setStats] = useState(null);
-  const [pagination, setPagination] = useState({
-    currentPage: 1,
-    totalPages: 1,
-    totalItems: 0,
-    itemsPerPage: 10,
-    hasNextPage: false,
-    hasPrevPage: false
-  });
 
   // Load branches and employees data
   const loadBranches = async () => {
@@ -68,53 +79,31 @@ const AttendanceTab = ({ onUploadClick }) => {
 
   // Load attendance data
   const loadAttendance = async () => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams({
-        page: currentPage.toString(),
-        limit: '10',
-        ...(searchTerm && { search: searchTerm }),
-        ...(branchFilter !== 'all' && { branchId: branchFilter }),
-        ...(employeeFilter !== 'all' && { employeeId: employeeFilter }),
-        ...(startDate && { startDate }),
-        ...(endDate && { endDate }),
-        ...(statusFilter !== 'all' && { status: statusFilter })
-      });
+    const params = {
+      page: currentPage.toString(),
+      limit: '10',
+      ...(searchTerm && { search: searchTerm }),
+      ...(branchFilter !== 'all' && { branchId: branchFilter }),
+      ...(employeeFilter !== 'all' && { employeeId: employeeFilter }),
+      ...(startDate && { startDate }),
+      ...(endDate && { endDate }),
+      ...(statusFilter !== 'all' && { status: statusFilter }),
+      ...(monthFilter !== 'all' && { month: monthFilter }),
+      ...(yearFilter && yearFilter !== 'all' && { year: yearFilter })
+    };
 
-      const response = await api.get(`/attendance?${params}`);
-      
-      if (response.data.success) {
-        setAttendance(response.data.data.attendance || []);
-        setPagination(response.data.data.pagination || pagination);
-      }
-    } catch (error) {
-      console.error('Failed to load attendance:', error);
-      dispatch(addNotification({
-        type: 'error',
-        message: 'Failed to load attendance records'
-      }));
-    } finally {
-      setLoading(false);
-    }
+    dispatch(getAllAttendance(params));
   };
 
   // Load attendance stats
   const loadStats = async () => {
-    try {
-      const params = new URLSearchParams({
-        ...(branchFilter !== 'all' && { branchId: branchFilter }),
-        ...(startDate && { startDate }),
-        ...(endDate && { endDate })
-      });
+    const params = {
+      ...(branchFilter !== 'all' && { branchId: branchFilter }),
+      ...(startDate && { startDate }),
+      ...(endDate && { endDate })
+    };
 
-      const response = await api.get(`/attendance/stats?${params}`);
-      
-      if (response.data.success) {
-        setStats(response.data.data.summary || []);
-      }
-    } catch (error) {
-      console.error('Failed to load attendance stats:', error);
-    }
+    dispatch(getAttendanceStats(params));
   };
 
   // Load data on component mount
@@ -123,7 +112,15 @@ const AttendanceTab = ({ onUploadClick }) => {
     loadStats();
     loadBranches();
     loadEmployees();
-  }, [currentPage, searchTerm, branchFilter, employeeFilter, startDate, endDate, statusFilter]);
+  }, [currentPage, searchTerm, branchFilter, employeeFilter, startDate, endDate, statusFilter, monthFilter, yearFilter]);
+
+  // Refresh data when upload is completed
+  useEffect(() => {
+    if (refreshTrigger > 0) {
+      loadAttendance();
+      loadStats();
+    }
+  }, [refreshTrigger]);
 
   // Handle search
   const handleSearch = (e) => {
@@ -149,6 +146,12 @@ const AttendanceTab = ({ onUploadClick }) => {
       case 'status':
         setStatusFilter(value);
         break;
+      case 'month':
+        setMonthFilter(value);
+        break;
+      case 'year':
+        setYearFilter(value);
+        break;
       default:
         break;
     }
@@ -158,6 +161,15 @@ const AttendanceTab = ({ onUploadClick }) => {
   // Handle pagination
   const handlePageChange = (page) => {
     setCurrentPage(page);
+  };
+
+  // Handle view attendance
+  const handleViewAttendance = (attendanceId) => {
+    const attendanceRecord = attendance.find(a => a._id === attendanceId);
+    if (attendanceRecord) {
+      setAttendanceToView(attendanceRecord);
+      setShowViewModal(true);
+    }
   };
 
   // Handle delete
@@ -170,15 +182,18 @@ const AttendanceTab = ({ onUploadClick }) => {
   const confirmDeleteAttendance = async () => {
     if (attendanceToDelete) {
       try {
-        await api.delete(`/attendance/${attendanceToDelete._id}`);
+        const result = await dispatch(deleteAttendance(attendanceToDelete._id));
         
-        dispatch(addNotification({
-          type: 'success',
-          message: 'Attendance record deleted successfully'
-        }));
-        setShowDeleteModal(false);
-        setAttendanceToDelete(null);
-        loadAttendance(); // Refresh the list
+        if (result.type.endsWith('/fulfilled')) {
+          dispatch(addNotification({
+            type: 'success',
+            message: 'Attendance record deleted successfully'
+          }));
+          setShowDeleteModal(false);
+          setAttendanceToDelete(null);
+        } else {
+          throw new Error(result.payload || 'Delete failed');
+        }
       } catch (error) {
         dispatch(addNotification({
           type: 'error',
@@ -191,6 +206,11 @@ const AttendanceTab = ({ onUploadClick }) => {
   const cancelDelete = () => {
     setShowDeleteModal(false);
     setAttendanceToDelete(null);
+  };
+
+  const closeViewModal = () => {
+    setShowViewModal(false);
+    setAttendanceToView(null);
   };
 
 
@@ -234,66 +254,38 @@ const AttendanceTab = ({ onUploadClick }) => {
       )
     },
     {
-      key: 'date',
-      label: 'Date',
-      render: (attendance) => (
-        <div className="font-medium text-gray-900">
-          {new Date(attendance.date).toLocaleDateString()}
-        </div>
-      )
-    },
-    {
-      key: 'checkIn',
-      label: 'Check In',
-      render: (attendance) => (
-        <div>
-          {attendance.checkIn?.time ? (
-            <div className="text-sm text-gray-900">
-              {new Date(attendance.checkIn.time).toLocaleTimeString()}
-            </div>
-          ) : (
-            <div className="text-sm text-gray-500">Not checked in</div>
-          )}
-        </div>
-      )
-    },
-    {
-      key: 'checkOut',
-      label: 'Check Out',
-      render: (attendance) => (
-        <div>
-          {attendance.checkOut?.time ? (
-            <div className="text-sm text-gray-900">
-              {new Date(attendance.checkOut.time).toLocaleTimeString()}
-            </div>
-          ) : (
-            <div className="text-sm text-gray-500">Not checked out</div>
-          )}
-        </div>
-      )
-    },
-    {
-      key: 'workingHours',
-      label: 'Working Hours',
+      key: 'monthYear',
+      label: 'Month/Year',
       render: (attendance) => (
         <div>
           <div className="font-medium text-gray-900">
-            {attendance.workingHours?.actual?.toFixed(1) || 0}h
+            {attendance.summaryData?.month ? 
+              new Date(0, attendance.summaryData.month - 1).toLocaleDateString('en-US', { month: 'short' }) : 
+              new Date(attendance.date).toLocaleDateString('en-US', { month: 'short' })
+            }
           </div>
           <div className="text-sm text-gray-500">
-            Scheduled: {attendance.workingHours?.scheduled || 0}h
+            {attendance.summaryData?.year || new Date(attendance.date).getFullYear()}
           </div>
         </div>
       )
     },
     {
-      key: 'status',
-      label: 'Status',
+      key: 'presentDays',
+      label: 'Present Days',
       render: (attendance) => (
-        <StatusBadge
-          status={attendance.status}
-          color={getStatusColor(attendance.status)}
-        />
+        <div className="font-medium text-gray-900">
+          {attendance.summaryData?.presentDays || 0}
+        </div>
+      )
+    },
+    {
+      key: 'lop',
+      label: 'LOP',
+      render: (attendance) => (
+        <div className="font-medium text-gray-900">
+          {attendance.summaryData?.lop || 0}
+        </div>
       )
     },
     {
@@ -301,6 +293,13 @@ const AttendanceTab = ({ onUploadClick }) => {
       label: 'Actions',
       render: (attendance) => (
         <div className="flex space-x-3">
+          <button
+            onClick={() => handleViewAttendance(attendance._id)}
+            className="text-gray-500 hover:text-gray-700 transition-colors"
+            title="View Attendance Details"
+          >
+            <HiEye className="w-4 h-4" />
+          </button>
           <button
             onClick={() => handleDeleteAttendance(attendance._id)}
             className="text-gray-500 hover:text-gray-700 transition-colors"
@@ -339,6 +338,30 @@ const AttendanceTab = ({ onUploadClick }) => {
     { value: 'leave', label: 'Leave' },
     { value: 'holiday', label: 'Holiday' },
     { value: 'weekend', label: 'Weekend' }
+  ];
+
+  const monthOptions = [
+    { value: 'all', label: 'All Months' },
+    { value: '1', label: 'January' },
+    { value: '2', label: 'February' },
+    { value: '3', label: 'March' },
+    { value: '4', label: 'April' },
+    { value: '5', label: 'May' },
+    { value: '6', label: 'June' },
+    { value: '7', label: 'July' },
+    { value: '8', label: 'August' },
+    { value: '9', label: 'September' },
+    { value: '10', label: 'October' },
+    { value: '11', label: 'November' },
+    { value: '12', label: 'December' }
+  ];
+
+  const yearOptions = [
+    { value: '2024', label: '2024' },
+    { value: '2025', label: '2025' },
+    { value: '2026', label: '2026' },
+    { value: '2027', label: '2027' },
+    { value: '2028', label: '2028' }
   ];
 
   if (loading && attendance.length === 0) {
@@ -422,6 +445,18 @@ const AttendanceTab = ({ onUploadClick }) => {
                 options={employeeOptions}
                 className="w-full sm:w-48"
               />
+              <Select
+                value={monthFilter}
+                onChange={(value) => handleFilterChange('month', value)}
+                options={monthOptions}
+                className="w-full sm:w-32"
+              />
+              <Select
+                value={yearFilter}
+                onChange={(value) => handleFilterChange('year', value)}
+                options={yearOptions}
+                className="w-full sm:w-24"
+              />
               <Input
                 type="date"
                 value={startDate}
@@ -501,6 +536,251 @@ const AttendanceTab = ({ onUploadClick }) => {
             This action cannot be undone. The attendance record will be permanently removed from the system.
           </p>
         </div>
+      </CommonModal>
+
+      {/* View Attendance Modal */}
+      <CommonModal
+        isOpen={showViewModal}
+        onClose={closeViewModal}
+        title="Attendance Details"
+        subtitle={attendanceToView ? `${attendanceToView.employeeId?.firstName} ${attendanceToView.employeeId?.lastName} - ${new Date(attendanceToView.date).toLocaleDateString()}` : 'Attendance Details'}
+        icon={HiEye}
+        iconColor="from-blue-500 to-blue-600"
+        size="xl"
+        showFooter={true}
+        footerContent={
+          <div className="flex space-x-2">
+            <Button
+              variant="outline"
+              onClick={closeViewModal}
+              className="px-4 py-2"
+            >
+              Close
+            </Button>
+          </div>
+        }
+      >
+        {attendanceToView && (() => {
+          // Basic Information Section
+          const basicInfo = {
+            title: 'Basic Information',
+            fields: [
+              {
+                label: 'Attendance ID',
+                value: attendanceToView.attendanceId
+              },
+              {
+                label: 'Date',
+                value: new Date(attendanceToView.date).toLocaleDateString()
+              },
+              {
+                label: 'Employee',
+                value: `${attendanceToView.employeeId?.firstName} ${attendanceToView.employeeId?.lastName}`
+              },
+              {
+                label: 'Employee ID',
+                value: attendanceToView.employeeId?.employeeId || 'N/A'
+              },
+              {
+                label: 'Designation',
+                value: attendanceToView.summaryData?.designation || 'N/A'
+              },
+              {
+                label: 'Branch',
+                value: `${attendanceToView.branchId?.branchName} (${attendanceToView.branchId?.branchCode})`
+              }
+            ]
+          };
+
+          // Time Information Section
+          const timeInfo = {
+            title: 'Time Information',
+            fields: [
+              {
+                label: 'Check In Time',
+                value: attendanceToView.checkIn?.time 
+                  ? new Date(attendanceToView.checkIn.time).toLocaleTimeString()
+                  : 'Not checked in'
+              },
+              {
+                label: 'Check In Location',
+                value: attendanceToView.checkIn?.location || 'N/A'
+              },
+              {
+                label: 'Check In Method',
+                value: attendanceToView.checkIn?.method || 'N/A'
+              },
+              {
+                label: 'Check Out Time',
+                value: attendanceToView.checkOut?.time 
+                  ? new Date(attendanceToView.checkOut.time).toLocaleTimeString()
+                  : 'Not checked out'
+              },
+              {
+                label: 'Check Out Location',
+                value: attendanceToView.checkOut?.location || 'N/A'
+              },
+              {
+                label: 'Check Out Method',
+                value: attendanceToView.checkOut?.method || 'N/A'
+              }
+            ]
+          };
+
+          // Working Hours Section
+          const workingHoursInfo = {
+            title: 'Working Hours',
+            fields: [
+              {
+                label: 'Scheduled Hours',
+                value: `${attendanceToView.workingHours?.scheduled || 0}h`,
+                type: 'price'
+              },
+              {
+                label: 'Actual Hours',
+                value: `${attendanceToView.workingHours?.actual?.toFixed(1) || 0}h`,
+                type: 'price'
+              },
+              {
+                label: 'Overtime Hours',
+                value: `${attendanceToView.workingHours?.overtime?.toFixed(1) || 0}h`,
+                type: 'price'
+              },
+              {
+                label: 'Break Time',
+                value: `${attendanceToView.workingHours?.break || 0}h`
+              }
+            ]
+          };
+
+          // Status and Additional Information Section
+          const statusInfo = {
+            title: 'Status & Additional Information',
+            fields: [
+              {
+                label: 'Status',
+                value: attendanceToView.status?.charAt(0).toUpperCase() + attendanceToView.status?.slice(1).replace('_', ' '),
+                type: 'status'
+              },
+              {
+                label: 'Remarks',
+                value: attendanceToView.remarks || 'No remarks'
+              }
+            ]
+          };
+
+          // Leave Information Section (if applicable)
+          const leaveInfo = attendanceToView.leave?.type ? {
+            title: 'Leave Information',
+            fields: [
+              {
+                label: 'Leave Type',
+                value: attendanceToView.leave.type
+              },
+              {
+                label: 'Leave Reason',
+                value: attendanceToView.leave.reason || 'N/A'
+              },
+              {
+                label: 'Approved By',
+                value: attendanceToView.leave.approvedBy ? 
+                  `${attendanceToView.leave.approvedBy.firstName} ${attendanceToView.leave.approvedBy.lastName}` : 
+                  'N/A'
+              },
+              {
+                label: 'Approved At',
+                value: attendanceToView.leave.approvedAt ? 
+                  new Date(attendanceToView.leave.approvedAt).toLocaleDateString() : 
+                  'N/A'
+              }
+            ]
+          } : null;
+
+          // Overtime Information Section (if applicable)
+          const overtimeInfo = attendanceToView.overtime?.rate ? {
+            title: 'Overtime Information',
+            fields: [
+              {
+                label: 'Overtime Rate',
+                value: `₹${attendanceToView.overtime.rate}/hour`,
+                type: 'price'
+              },
+              {
+                label: 'Overtime Amount',
+                value: `₹${attendanceToView.overtime.amount?.toFixed(2) || 0}`,
+                type: 'price'
+              },
+              {
+                label: 'Approved By',
+                value: attendanceToView.overtime.approvedBy ? 
+                  `${attendanceToView.overtime.approvedBy.firstName} ${attendanceToView.overtime.approvedBy.lastName}` : 
+                  'N/A'
+              },
+              {
+                label: 'Approved At',
+                value: attendanceToView.overtime.approvedAt ? 
+                  new Date(attendanceToView.overtime.approvedAt).toLocaleDateString() : 
+                  'N/A'
+              }
+            ]
+          } : null;
+
+          // Summary Data Section (from payroll record)
+          const summaryDataInfo = attendanceToView.summaryData ? {
+            title: 'Payroll Summary Data',
+            fields: [
+              {
+                label: 'Employee Name',
+                value: attendanceToView.summaryData.empName || 'N/A'
+              },
+              {
+                label: 'Designation',
+                value: attendanceToView.summaryData.designation || 'N/A'
+              },
+              {
+                label: 'Gross Pay',
+                value: `₹${(attendanceToView.summaryData.grossPay || 0).toLocaleString()}`,
+                type: 'price'
+              },
+              {
+                label: 'Total Working Days',
+                value: attendanceToView.summaryData.totalWorkingDays || 0
+              },
+              {
+                label: 'Present Days',
+                value: attendanceToView.summaryData.presentDays || 0
+              },
+              {
+                label: 'Absent Days',
+                value: attendanceToView.summaryData.absentDays || 0
+              },
+              {
+                label: 'LOP Days',
+                value: attendanceToView.summaryData.lop || 0
+              },
+              {
+                label: 'Attendance Percentage',
+                value: `${(attendanceToView.summaryData.attendancePercentage || 0).toFixed(1)}%`
+              }
+            ]
+          } : null;
+
+          const sections = [basicInfo, timeInfo, workingHoursInfo, statusInfo];
+          if (summaryDataInfo) sections.push(summaryDataInfo);
+          if (leaveInfo) sections.push(leaveInfo);
+          if (overtimeInfo) sections.push(overtimeInfo);
+
+          return (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <DetailsView sections={sections.slice(0, Math.ceil(sections.length / 2))} />
+              </div>
+              <div>
+                <DetailsView sections={sections.slice(Math.ceil(sections.length / 2))} />
+              </div>
+            </div>
+          );
+        })()}
       </CommonModal>
     </div>
   );
