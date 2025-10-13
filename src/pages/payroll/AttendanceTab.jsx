@@ -41,11 +41,8 @@ const AttendanceTab = ({ onUploadClick, refreshTrigger }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [branchFilter, setBranchFilter] = useState('all');
   const [employeeFilter, setEmployeeFilter] = useState('all');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [monthFilter, setMonthFilter] = useState('all');
-  const [yearFilter, setYearFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
@@ -85,11 +82,8 @@ const AttendanceTab = ({ onUploadClick, refreshTrigger }) => {
       ...(searchTerm && { search: searchTerm }),
       ...(branchFilter !== 'all' && { branchId: branchFilter }),
       ...(employeeFilter !== 'all' && { employeeId: employeeFilter }),
-      ...(startDate && { startDate }),
-      ...(endDate && { endDate }),
       ...(statusFilter !== 'all' && { status: statusFilter }),
-      ...(monthFilter !== 'all' && { month: monthFilter }),
-      ...(yearFilter && yearFilter !== 'all' && { year: yearFilter })
+      ...(monthFilter !== 'all' && { month: monthFilter })
     };
 
     dispatch(getAllAttendance(params));
@@ -98,9 +92,7 @@ const AttendanceTab = ({ onUploadClick, refreshTrigger }) => {
   // Load attendance stats
   const loadStats = async () => {
     const params = {
-      ...(branchFilter !== 'all' && { branchId: branchFilter }),
-      ...(startDate && { startDate }),
-      ...(endDate && { endDate })
+      ...(branchFilter !== 'all' && { branchId: branchFilter })
     };
 
     dispatch(getAttendanceStats(params));
@@ -112,7 +104,7 @@ const AttendanceTab = ({ onUploadClick, refreshTrigger }) => {
     loadStats();
     loadBranches();
     loadEmployees();
-  }, [currentPage, searchTerm, branchFilter, employeeFilter, startDate, endDate, statusFilter, monthFilter, yearFilter]);
+  }, [currentPage, searchTerm, branchFilter, employeeFilter, statusFilter, monthFilter]);
 
   // Refresh data when upload is completed
   useEffect(() => {
@@ -137,20 +129,11 @@ const AttendanceTab = ({ onUploadClick, refreshTrigger }) => {
       case 'employee':
         setEmployeeFilter(value);
         break;
-      case 'startDate':
-        setStartDate(value);
-        break;
-      case 'endDate':
-        setEndDate(value);
-        break;
       case 'status':
         setStatusFilter(value);
         break;
       case 'month':
         setMonthFilter(value);
-        break;
-      case 'year':
-        setYearFilter(value);
         break;
       default:
         break;
@@ -358,13 +341,6 @@ const AttendanceTab = ({ onUploadClick, refreshTrigger }) => {
     { value: '12', label: 'December' }
   ];
 
-  const yearOptions = [
-    { value: '2024', label: '2024' },
-    { value: '2025', label: '2025' },
-    { value: '2026', label: '2026' },
-    { value: '2027', label: '2027' },
-    { value: '2028', label: '2028' }
-  ];
 
   if (loading && attendance.length === 0) {
     return <Loading />;
@@ -452,26 +428,6 @@ const AttendanceTab = ({ onUploadClick, refreshTrigger }) => {
                 onChange={(value) => handleFilterChange('month', value)}
                 options={monthOptions}
                 className="w-full sm:w-32"
-              />
-              <Select
-                value={yearFilter}
-                onChange={(value) => handleFilterChange('year', value)}
-                options={yearOptions}
-                className="w-full sm:w-24"
-              />
-              <Input
-                type="date"
-                value={startDate}
-                onChange={(e) => handleFilterChange('startDate', e.target.value)}
-                className="w-full sm:w-32"
-                placeholder="Start Date"
-              />
-              <Input
-                type="date"
-                value={endDate}
-                onChange={(e) => handleFilterChange('endDate', e.target.value)}
-                className="w-full sm:w-32"
-                placeholder="End Date"
               />
             </div>
           </div>
@@ -763,6 +719,15 @@ const AttendanceTab = ({ onUploadClick, refreshTrigger }) => {
               {
                 label: 'Attendance Percentage',
                 value: `${(attendanceToView.summaryData.attendancePercentage || 0).toFixed(1)}%`
+              },
+              {
+                label: 'Branch Incentive %',
+                value: `${(attendanceToView.summaryData.branchIncentivePercentage || 0).toFixed(1)}%`
+              },
+              {
+                label: 'Incentive Amount',
+                value: `₹${(attendanceToView.summaryData.incentiveAmount || 0).toLocaleString()}`,
+                type: 'price'
               },
               {
                 label: 'Daily Rate',

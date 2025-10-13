@@ -13,7 +13,7 @@ import * as XLSX from 'xlsx';
 const PayrollPage = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const [activeTab, setActiveTab] = useState('payroll');
+  const [activeTab, setActiveTab] = useState('payroll'); // 'payroll' tab now shows as 'Employees'
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploadFile, setUploadFile] = useState(null);
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
@@ -22,13 +22,13 @@ const PayrollPage = () => {
   const tabs = [
     {
       id: 'payroll',
-      name: 'Payroll',
+      name: 'Employees',
       icon: HiBanknotes,
       component: <PayrollTab />
     },
     {
       id: 'attendance',
-      name: 'Attendance',
+      name: 'PayRoll',
       icon: HiClock,
       component: <AttendanceTab 
         onUploadClick={() => setShowUploadModal(true)} 
@@ -157,15 +157,10 @@ const PayrollPage = () => {
       
       sampleData.push({
         'Emp Id': employee.id,
-        'Emp Name': employee.name,
-        'Designation': employee.designation,
-        'Gross Pay': employee.grossPay,
         'Total Working Days': daysInMonth,
         'Present Days': presentDays,
         'Absent Days': absentDays,
-        'LOP': lop,
-        'Month': currentMonth,
-        'Year': currentYear
+        'LOP': lop
       });
     });
 
@@ -174,12 +169,9 @@ const PayrollPage = () => {
 
     const colWidths = [
       { wch: 12 }, // Emp Id
-      { wch: 20 }, // Emp Name
-      { wch: 15 }, // Designation
-      { wch: 12 }, // Gross Pay
       { wch: 18 }, // Total Working Days
       { wch: 15 }, // Present Days
-      { wch: 15 }, // Absent days
+      { wch: 15 }, // Absent Days
       { wch: 10 }  // LOP
     ];
     ws['!cols'] = colWidths;
@@ -210,7 +202,7 @@ const PayrollPage = () => {
           {activeTab === 'payroll' ? (
             <Button
               onClick={() => navigate('/payrolls/new')}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
+              className=" hover:bg-blue-700 text-white"
               icon={HiPlus}
             >
               Add New Payroll
@@ -259,7 +251,7 @@ const PayrollPage = () => {
       <CommonModal
         isOpen={showUploadModal}
         onClose={() => setShowUploadModal(false)}
-        title="Upload Attendance Excel"
+        title="Upload PayRoll Excel"
         subtitle="Upload attendance records for payroll processing"
         icon={HiDocumentArrowUp}
         iconColor="from-green-500 to-green-600"
