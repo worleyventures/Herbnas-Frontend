@@ -4,6 +4,7 @@ import { useDispatch } from 'react-redux';
 import { HiBanknotes, HiClock, HiPlus, HiDocumentArrowUp, HiArrowDownTray } from 'react-icons/hi2';
 import { Button, CommonModal } from '../../components/common';
 import { addNotification } from '../../redux/slices/uiSlice';
+import { uploadAttendanceExcel } from '../../redux/actions/attendanceActions';
 import PayrollTab from './PayrollTab';
 import AttendanceTab from './AttendanceTab';
 import api from '../../lib/axiosInstance';
@@ -12,23 +13,27 @@ import * as XLSX from 'xlsx';
 const PayrollPage = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const [activeTab, setActiveTab] = useState('payroll');
+  const [activeTab, setActiveTab] = useState('payroll'); // 'payroll' tab now shows as 'Employees'
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploadFile, setUploadFile] = useState(null);
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [attendanceRefreshTrigger, setAttendanceRefreshTrigger] = useState(0);
 
   const tabs = [
     {
       id: 'payroll',
-      name: 'Payroll',
+      name: 'Employees',
       icon: HiBanknotes,
       component: <PayrollTab />
     },
     {
       id: 'attendance',
-      name: 'Attendance',
+      name: 'PayRoll',
       icon: HiClock,
-      component: <AttendanceTab onUploadClick={() => setShowUploadModal(true)} />
+      component: <AttendanceTab 
+        onUploadClick={() => setShowUploadModal(true)} 
+        refreshTrigger={attendanceRefreshTrigger}
+      />
     }
   ];
 
@@ -58,26 +63,21 @@ const PayrollPage = () => {
     }
 
     try {
-      const formData = new FormData();
-      formData.append('file', uploadFile);
-      formData.append('month', selectedMonth);
+      const result = await dispatch(uploadAttendanceExcel({ file: uploadFile, month: selectedMonth }));
       
-      const response = await api.post('/attendance/upload', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
-      });
-      
-      if (response.data.success) {
+      if (result.type.endsWith('/fulfilled')) {
         dispatch(addNotification({
           type: 'success',
-          message: `Successfully uploaded ${response.data.data.createdCount} attendance records for ${new Date(selectedMonth + '-01').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`
+          message: `Successfully uploaded ${result.payload.data.createdCount} attendance records for ${new Date(selectedMonth + '-01').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`
         }));
         setShowUploadModal(false);
         setUploadFile(null);
         setSelectedMonth(new Date().toISOString().slice(0, 7));
+        
+        // Trigger attendance data refresh
+        setAttendanceRefreshTrigger(prev => prev + 1);
       } else {
-        throw new Error(response.data.message || 'Upload failed');
+        throw new Error(result.payload || 'Upload failed');
       }
     } catch (error) {
       dispatch(addNotification({
@@ -88,19 +88,39 @@ const PayrollPage = () => {
   };
 
   // Generate and download sample Excel file
-  const downloadSampleExcel = () => {
+  const downloadSampleExcel = async () => {
     const currentDate = new Date();
     const currentMonth = currentDate.getMonth() + 1;
     const currentYear = currentDate.getFullYear();
     
     const sampleData = [];
-    const employees = [
-      { id: 'PAY000001', name: 'John Doe', designation: 'Manager', grossPay: 50000 },
-      { id: 'PAY000002', name: 'Jane Smith', designation: 'Developer', grossPay: 40000 },
-      { id: 'PAY000003', name: 'Mike Johnson', designation: 'Analyst', grossPay: 35000 },
-      { id: 'PAY000004', name: 'Sarah Wilson', designation: 'Designer', grossPay: 38000 },
-      { id: 'PAY000005', name: 'David Brown', designation: 'Tester', grossPay: 32000 }
-    ];
+    
+    // Try to get actual payroll data first
+    let employees = [];
+    try {
+      const response = await api.get('/payrolls?limit=5');
+      if (response.data.success && response.data.data.payrolls.length > 0) {
+        employees = response.data.data.payrolls.map(payroll => ({
+          id: payroll.payrollId || payroll.employeeId,
+          name: payroll.employeeName,
+          designation: payroll.designation,
+          grossPay: payroll.calculations?.grossSalary || payroll.basicSalary || 40000
+        }));
+      }
+    } catch (error) {
+      console.log('Could not fetch payroll data, using sample data');
+    }
+    
+    // Fallback to sample data if no payroll records exist
+    if (employees.length === 0) {
+      employees = [
+        { id: 'PAY000001', name: 'John Doe', designation: 'Manager', grossPay: 50000 },
+        { id: 'PAY000002', name: 'Jane Smith', designation: 'Developer', grossPay: 40000 },
+        { id: 'PAY000003', name: 'Mike Johnson', designation: 'Analyst', grossPay: 35000 },
+        { id: 'PAY000004', name: 'Sarah Wilson', designation: 'Designer', grossPay: 38000 },
+        { id: 'PAY000005', name: 'David Brown', designation: 'Tester', grossPay: 32000 }
+      ];
+    }
 
     const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
     
@@ -137,12 +157,9 @@ const PayrollPage = () => {
       
       sampleData.push({
         'Emp Id': employee.id,
-        'Emp Name': employee.name,
-        'Designation': employee.designation,
-        'Gross Pay': employee.grossPay,
         'Total Working Days': daysInMonth,
         'Present Days': presentDays,
-        'Absent days': absentDays,
+        'Absent Days': absentDays,
         'LOP': lop
       });
     });
@@ -152,12 +169,9 @@ const PayrollPage = () => {
 
     const colWidths = [
       { wch: 12 }, // Emp Id
-      { wch: 20 }, // Emp Name
-      { wch: 15 }, // Designation
-      { wch: 12 }, // Gross Pay
       { wch: 18 }, // Total Working Days
       { wch: 15 }, // Present Days
-      { wch: 15 }, // Absent days
+      { wch: 15 }, // Absent Days
       { wch: 10 }  // LOP
     ];
     ws['!cols'] = colWidths;
@@ -188,7 +202,7 @@ const PayrollPage = () => {
           {activeTab === 'payroll' ? (
             <Button
               onClick={() => navigate('/payrolls/new')}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
+              className=" hover:bg-blue-700 text-white"
               icon={HiPlus}
             >
               Add New Payroll
@@ -237,7 +251,7 @@ const PayrollPage = () => {
       <CommonModal
         isOpen={showUploadModal}
         onClose={() => setShowUploadModal(false)}
-        title="Upload Attendance Excel"
+        title="Upload PayRoll Excel"
         subtitle="Upload attendance records for payroll processing"
         icon={HiDocumentArrowUp}
         iconColor="from-green-500 to-green-600"

@@ -167,7 +167,7 @@ const payrollSlice = createSlice({
       })
       .addCase(getPayrollStats.fulfilled, (state, action) => {
         state.loading = false;
-        state.stats = action.payload.data.summary;
+        state.stats = action.payload.data;
         state.error = null;
       })
       .addCase(getPayrollStats.rejected, (state, action) => {
@@ -217,4 +217,5 @@ export const selectPayrollStats = (state) => state.payrolls.stats;
 export const selectPayrollPagination = (state) => state.payrolls.pagination;
 
 export default payrollSlice.reducer;
+
 

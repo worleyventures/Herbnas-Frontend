@@ -55,10 +55,6 @@ const PayrollFormPage = () => {
     employeeId: '',
     designation: '',
     branchId: '',
-    payPeriod: {
-      month: new Date().getMonth() + 1,
-      year: new Date().getFullYear()
-    },
     basicSalary: '',
     allowances: {
       transportAllowance: 0,
@@ -70,13 +66,6 @@ const PayrollFormPage = () => {
       professionalTax: 0,
       incomeTax: 0,
       otherDeductions: 0
-    },
-    attendance: {
-      totalDays: 30,
-      presentDays: 30,
-      absentDays: 0,
-      overtimeHours: 0,
-      overtimeRate: 0
     },
     payment: {
       status: 'pending',
@@ -147,10 +136,6 @@ const PayrollFormPage = () => {
         employeeId: currentPayroll.employeeId || '',
         designation: currentPayroll.designation || '',
         branchId: currentPayroll.branchId?._id || '',
-        payPeriod: {
-          month: currentPayroll.payPeriod?.month || new Date().getMonth() + 1,
-          year: currentPayroll.payPeriod?.year || new Date().getFullYear()
-        },
         basicSalary: currentPayroll.basicSalary || '',
         allowances: {
           transportAllowance: currentPayroll.allowances?.transportAllowance || 0,
@@ -162,13 +147,6 @@ const PayrollFormPage = () => {
           professionalTax: currentPayroll.deductions?.professionalTax || 0,
           incomeTax: currentPayroll.deductions?.incomeTax || 0,
           otherDeductions: currentPayroll.deductions?.otherDeductions || 0
-        },
-        attendance: {
-          totalDays: currentPayroll.attendance?.totalDays || 30,
-          presentDays: currentPayroll.attendance?.presentDays || 30,
-          absentDays: currentPayroll.attendance?.absentDays || 0,
-          overtimeHours: currentPayroll.attendance?.overtimeHours || 0,
-          overtimeRate: currentPayroll.attendance?.overtimeRate || 0
         },
         payment: {
           status: currentPayroll.payment?.status || 'pending',
@@ -255,9 +233,6 @@ const PayrollFormPage = () => {
     }
     
     // Optional validations - only validate if fields have values
-    if (formData.attendance.presentDays > formData.attendance.totalDays) {
-      newErrors['attendance.presentDays'] = 'Present days cannot exceed total days';
-    }
     if (formData.bankDetails.accountNumber && !formData.bankDetails.bankName) {
       newErrors['bankDetails.bankName'] = 'Bank name is required when account number is provided';
     }
@@ -298,7 +273,7 @@ const PayrollFormPage = () => {
     console.trace('Form submission stack trace');
     
     // Only allow submission on the last step AND when user actually clicks submit
-    if (currentStep !== 6) {
+    if (currentStep !== 5) {
       console.log('❌ Form submission blocked - not on last step:', currentStep);
       return;
     }
@@ -365,13 +340,6 @@ const PayrollFormPage = () => {
           incomeTax: parseFloat(formData.deductions.incomeTax) || 0,
           otherDeductions: parseFloat(formData.deductions.otherDeductions) || 0
         },
-        attendance: {
-          totalDays: parseInt(formData.attendance.totalDays) || 30,
-          presentDays: parseInt(formData.attendance.presentDays) || 30,
-          absentDays: parseInt(formData.attendance.absentDays) || 0,
-          overtimeHours: parseFloat(formData.attendance.overtimeHours) || 0,
-          overtimeRate: parseFloat(formData.attendance.overtimeRate) || 0
-        },
         bankDetails: {
           bankName: formData.bankDetails.bankName || '',
           accountNumber: formData.bankDetails.accountNumber || '',
@@ -422,20 +390,14 @@ const PayrollFormPage = () => {
   const calculateTotals = () => {
     const totalAllowances = Object.values(formData.allowances).reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
     const totalDeductions = Object.values(formData.deductions).reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
-    const overtimeAmount = (parseFloat(formData.attendance.overtimeHours) || 0) * (parseFloat(formData.attendance.overtimeRate) || 0);
     const grossSalary = (parseFloat(formData.basicSalary) || 0) + totalAllowances;
-    const netSalary = grossSalary + overtimeAmount - totalDeductions;
-    const attendancePercentage = formData.attendance.totalDays > 0 
-      ? ((parseFloat(formData.attendance.presentDays) || 0) / (parseFloat(formData.attendance.totalDays) || 1)) * 100 
-      : 0;
+    const netSalary = grossSalary - totalDeductions;
 
     return {
       totalAllowances,
       totalDeductions,
-      overtimeAmount,
       grossSalary,
-      netSalary,
-      attendancePercentage
+      netSalary
     };
   };
 
@@ -450,25 +412,6 @@ const PayrollFormPage = () => {
   ];
 
 
-  const monthOptions = [
-    { value: 1, label: 'January' },
-    { value: 2, label: 'February' },
-    { value: 3, label: 'March' },
-    { value: 4, label: 'April' },
-    { value: 5, label: 'May' },
-    { value: 6, label: 'June' },
-    { value: 7, label: 'July' },
-    { value: 8, label: 'August' },
-    { value: 9, label: 'September' },
-    { value: 10, label: 'October' },
-    { value: 11, label: 'November' },
-    { value: 12, label: 'December' }
-  ];
-
-  const yearOptions = Array.from({ length: 5 }, (_, i) => {
-    const year = new Date().getFullYear() - i;
-    return { value: year, label: year.toString() };
-  });
 
   const paymentMethodOptions = [
     { value: 'bank_transfer', label: 'Bank Transfer' },
@@ -488,7 +431,6 @@ const PayrollFormPage = () => {
     { id: 'basic-info', title: 'Basic Information', description: 'Employee and branch details', icon: HiUser },
     { id: 'salary-allowances', title: 'Salary & Allowances', description: 'Basic salary and allowances', icon: HiCurrencyDollar },
     { id: 'deductions', title: 'Deductions', description: 'Taxes and other deductions', icon: HiMinus },
-    { id: 'attendance-overtime', title: 'Attendance & Overtime', description: 'Work days and overtime', icon: HiClock },
     { id: 'bank-pf-details', title: 'Bank & PF Details', description: 'Bank and provident fund info', icon: HiBuildingOffice },
     { id: 'payment-details', title: 'Payment Details', description: 'Payment status and method', icon: HiCheckCircle }
   ];
@@ -505,7 +447,7 @@ const PayrollFormPage = () => {
           <div className="flex items-center space-x-4">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">
-                {isEdit ? 'Edit Payroll' : 'Add New Payroll'}
+                {isEdit ? 'Edit Employee' : 'Add New Employee'}
               </h1>
             </div>
           </div>
@@ -575,18 +517,6 @@ const PayrollFormPage = () => {
                 loading={branchesLoading}
                 placeholder={branchesLoading ? "Loading branches..." : "Select a branch"}
                 disabled={branchesLoading || branchOptions.length === 0}
-              />
-              <Select
-                label="Month"
-                value={formData.payPeriod.month}
-                onChange={(e) => handleInputChange('payPeriod.month', e.target.value)}
-                options={monthOptions}
-              />
-              <Select
-                label="Year"
-                value={formData.payPeriod.year}
-                onChange={(e) => handleInputChange('payPeriod.year', e.target.value)}
-                options={yearOptions}
               />
             </div>
           </Card>
@@ -706,76 +636,8 @@ const PayrollFormPage = () => {
           </Card>
         )}
 
-        {/* Step 4: Attendance & Overtime */}
+        {/* Step 4: Bank & PF Details */}
         {currentStep === 4 && (
-          <Card padding="p-4">
-            <h2 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
-              <HiClock className="w-5 h-5 mr-2" />
-              Attendance & Overtime
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <Input
-                label="Total Days"
-                type="number"
-                value={formData.attendance.totalDays}
-                onChange={(e) => handleInputChange('attendance.totalDays', e.target.value)}
-                placeholder="30"
-                min="1"
-                max="31"
-              />
-              <Input
-                label="Present Days"
-                type="number"
-                value={formData.attendance.presentDays}
-                onChange={(e) => handleInputChange('attendance.presentDays', e.target.value)}
-                error={errors['attendance.presentDays']}
-                placeholder="30"
-                min="0"
-                max="31"
-              />
-              <Input
-                label="Absent Days"
-                type="number"
-                value={formData.attendance.absentDays}
-                onChange={(e) => handleInputChange('attendance.absentDays', e.target.value)}
-                placeholder="0"
-                min="0"
-                max="31"
-              />
-              <Input
-                label="Overtime Hours"
-                type="number"
-                value={formData.attendance.overtimeHours}
-                onChange={(e) => handleInputChange('attendance.overtimeHours', e.target.value)}
-                placeholder="0"
-                min="0"
-                step="0.5"
-              />
-              <Input
-                label="Overtime Rate (per hour)"
-                type="number"
-                value={formData.attendance.overtimeRate}
-                onChange={(e) => handleInputChange('attendance.overtimeRate', e.target.value)}
-                placeholder="0"
-                min="0"
-                step="0.01"
-              />
-              <div className="md:col-span-2 mt-2 p-3 bg-gray-50 rounded-lg">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm text-gray-600">
-                  <div>
-                    <strong>Attendance:</strong> {totals.attendancePercentage.toFixed(1)}%
-                  </div>
-                  <div>
-                    <strong>Overtime Amount:</strong> ₹{totals.overtimeAmount.toLocaleString()}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </Card>
-        )}
-
-        {/* Step 5: Bank & PF Details */}
-        {currentStep === 5 && (
           <Card padding="p-4">
             <h2 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
               <HiBuildingOffice className="w-5 h-5 mr-2" />
@@ -894,8 +756,8 @@ const PayrollFormPage = () => {
           </Card>
         )}
 
-        {/* Step 6: Payment Details */}
-        {currentStep === 6 && (
+        {/* Step 5: Payment Details */}
+        {currentStep === 5 && (
           <Card padding="p-4">
             {console.log('🎯 Rendering Payment Details step')}
             <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
@@ -939,11 +801,7 @@ const PayrollFormPage = () => {
             <div className="flex space-x-3">
               <button
                 type="button"
-                onClick={() => {
-                  if (window.confirm('Are you sure you want to cancel? Any unsaved changes will be lost.')) {
-                    trackedNavigate('/payrolls');
-                  }
-                }}
+                onClick={() => trackedNavigate('/payrolls')}
                 className="flex items-center space-x-2 px-3 py-1.5 border border-red-300 text-red-700 rounded-lg hover:bg-red-50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-xs font-medium"
               >
                 <HiXMark className="h-3 w-3" />
@@ -961,7 +819,7 @@ const PayrollFormPage = () => {
               )}
             </div>
             <div className="flex space-x-3">
-              {currentStep < 6 ? (
+              {currentStep < 5 ? (
                 <button
                   type="button"
                   onClick={() => {
