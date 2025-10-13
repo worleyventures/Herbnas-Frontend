@@ -167,6 +167,8 @@ const AttendanceTab = ({ onUploadClick, refreshTrigger }) => {
   const handleViewAttendance = (attendanceId) => {
     const attendanceRecord = attendance.find(a => a._id === attendanceId);
     if (attendanceRecord) {
+      console.log('Attendance record for view:', attendanceRecord);
+      console.log('Summary data:', attendanceRecord.summaryData);
       setAttendanceToView(attendanceRecord);
       setShowViewModal(true);
     }
@@ -761,6 +763,22 @@ const AttendanceTab = ({ onUploadClick, refreshTrigger }) => {
               {
                 label: 'Attendance Percentage',
                 value: `${(attendanceToView.summaryData.attendancePercentage || 0).toFixed(1)}%`
+              },
+              {
+                label: 'Daily Rate',
+                value: `₹${(attendanceToView.summaryData.dailyRate || 0).toLocaleString()}`,
+                type: 'price'
+              },
+              {
+                label: 'LOP Deduction',
+                value: `₹${(attendanceToView.summaryData.lopDeduction || 0).toLocaleString()}`,
+                type: 'price'
+              },
+              {
+                label: 'To Pay',
+                value: `₹${(attendanceToView.summaryData.toPay || 0).toLocaleString()}`,
+                type: 'price',
+                highlight: true
               }
             ]
           } : null;
