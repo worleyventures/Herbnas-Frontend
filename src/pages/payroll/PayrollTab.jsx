@@ -45,12 +45,10 @@ const PayrollTab = () => {
   const stats = useSelector(selectPayrollStats);
   const pagination = useSelector(selectPayrollPagination);
 
+
   // Local state
   const [searchTerm, setSearchTerm] = useState('');
   const [branchFilter, setBranchFilter] = useState('all');
-  const [yearFilter, setYearFilter] = useState(new Date().getFullYear().toString());
-  const [monthFilter, setMonthFilter] = useState('all');
-  const [paymentStatusFilter, setPaymentStatusFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [payrollToDelete, setPayrollToDelete] = useState(null);
@@ -76,18 +74,13 @@ const PayrollTab = () => {
       page: currentPage,
       limit: 10,
       search: searchTerm,
-      branchId: branchFilter !== 'all' ? branchFilter : undefined,
-      year: yearFilter,
-      month: monthFilter !== 'all' ? monthFilter : undefined,
-      paymentStatus: paymentStatusFilter !== 'all' ? paymentStatusFilter : undefined
+      branchId: branchFilter !== 'all' ? branchFilter : undefined
     }));
     dispatch(getPayrollStats({
-      branchId: branchFilter !== 'all' ? branchFilter : undefined,
-      year: yearFilter,
-      month: monthFilter !== 'all' ? monthFilter : undefined
+      branchId: branchFilter !== 'all' ? branchFilter : undefined
     }));
     loadBranches();
-  }, [currentPage, searchTerm, branchFilter, yearFilter, monthFilter, paymentStatusFilter, dispatch]);
+  }, [currentPage, searchTerm, branchFilter, dispatch]);
 
   // Handle search
   const handleSearch = (e) => {
@@ -100,18 +93,6 @@ const PayrollTab = () => {
     switch (filterType) {
       case 'branch':
         setBranchFilter(value);
-        break;
-      case 'year':
-        setYearFilter(value);
-        break;
-      case 'month':
-        setMonthFilter(value);
-        break;
-      case 'status':
-        setStatusFilter(value);
-        break;
-      case 'paymentStatus':
-        setPaymentStatusFilter(value);
         break;
       default:
         break;
@@ -204,16 +185,6 @@ const PayrollTab = () => {
     }
   };
 
-  // Get payment status color
-  const getPaymentStatusColor = (status) => {
-    switch (status) {
-      case 'pending': return 'yellow';
-      case 'processed': return 'blue';
-      case 'paid': return 'green';
-      case 'failed': return 'red';
-      default: return 'gray';
-    }
-  };
 
   // Table columns
   const columns = [
@@ -273,13 +244,12 @@ const PayrollTab = () => {
       )
     },
     {
-      key: 'paymentStatus',
-      label: 'Payment Status',
+      key: 'grossSalary',
+      label: 'Gross Salary',
       render: (payroll) => (
-        <StatusBadge
-          status={payroll.payment?.status}
-          color={getPaymentStatusColor(payroll.payment?.status)}
-        />
+        <div className="font-medium text-gray-900">
+          ₹{payroll.calculations?.grossSalary?.toLocaleString()}
+        </div>
       )
     },
     {
@@ -340,38 +310,41 @@ const PayrollTab = () => {
     }))
   ];
 
-  const yearOptions = Array.from({ length: 5 }, (_, i) => {
-    const year = new Date().getFullYear() - i;
-    return { value: year.toString(), label: year.toString() };
-  });
-
-  const monthOptions = [
-    { value: 'all', label: 'All Months' },
-    { value: '1', label: 'January' },
-    { value: '2', label: 'February' },
-    { value: '3', label: 'March' },
-    { value: '4', label: 'April' },
-    { value: '5', label: 'May' },
-    { value: '6', label: 'June' },
-    { value: '7', label: 'July' },
-    { value: '8', label: 'August' },
-    { value: '9', label: 'September' },
-    { value: '10', label: 'October' },
-    { value: '11', label: 'November' },
-    { value: '12', label: 'December' }
-  ];
 
 
-  const paymentStatusOptions = [
-    { value: 'all', label: 'All Payments' },
-    { value: 'pending', label: 'Pending' },
-    { value: 'processed', label: 'Processed' },
-    { value: 'paid', label: 'Paid' },
-    { value: 'failed', label: 'Failed' }
-  ];
 
   if (loading && payrolls.length === 0) {
     return <Loading />;
+  }
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <HiXMark className="h-5 w-5 text-red-400" />
+            </div>
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-red-800">
+                Error loading payrolls
+              </h3>
+              <div className="mt-2 text-sm text-red-700">
+                <p>{error}</p>
+              </div>
+              <div className="mt-4">
+                <button
+                  onClick={() => window.location.reload()}
+                  className="bg-red-100 px-3 py-2 rounded-md text-sm font-medium text-red-800 hover:bg-red-200"
+                >
+                  Retry
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -443,24 +416,6 @@ const PayrollTab = () => {
                 value={branchFilter}
                 onChange={(value) => handleFilterChange('branch', value)}
                 options={branchOptions}
-                className="w-full sm:w-40"
-              />
-              <Select
-                value={yearFilter}
-                onChange={(value) => handleFilterChange('year', value)}
-                options={yearOptions}
-                className="w-full sm:w-32"
-              />
-              <Select
-                value={monthFilter}
-                onChange={(value) => handleFilterChange('month', value)}
-                options={monthOptions}
-                className="w-full sm:w-32"
-              />
-              <Select
-                value={paymentStatusFilter}
-                onChange={(value) => handleFilterChange('paymentStatus', value)}
-                options={paymentStatusOptions}
                 className="w-full sm:w-40"
               />
             </div>
@@ -545,7 +500,6 @@ const PayrollTab = () => {
             branchId: branchFilter !== 'all' ? branchFilter : undefined,
             year: yearFilter,
             month: monthFilter !== 'all' ? monthFilter : undefined,
-            paymentStatus: paymentStatusFilter !== 'all' ? paymentStatusFilter : undefined
           }));
         }}
       />

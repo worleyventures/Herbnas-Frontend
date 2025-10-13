@@ -54,18 +54,9 @@ const Dropdown = ({
     : options;
 
   const handleSelectChange = (optionValue) => {
-    // handleSelectChange called
-    // onChange function called
-    
     if (onChange) {
-      // Create an event-like object to maintain compatibility with existing onChange handlers
-      const syntheticEvent = {
-        target: {
-          value: optionValue,
-          name: name || ''
-        }
-      };
-      onChange(syntheticEvent);
+      // Pass the value directly to onChange
+      onChange(optionValue);
     } else {
       console.error('Dropdown: onChange function is not provided');
     }
