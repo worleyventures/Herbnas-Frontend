@@ -3,6 +3,18 @@ import { useSelector, useDispatch } from 'react-redux';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { logout } from '../../redux/slices/authSlice';
 import { getProfile } from '../../redux/actions/authActions';
+import { 
+  getTodayAttendance
+} from '../../redux/actions/attendanceActions';
+import { 
+  selectTodayAttendance, 
+  selectAttendanceLoading, 
+  selectAttendanceError, 
+  selectAttendanceSuccess,
+  clearError,
+  clearSuccess
+} from '../../redux/slices/attendanceSlice';
+import AttendanceModal from '../common/AttendanceModal';
 import {
   HiBars3,
   HiBell,
@@ -12,7 +24,8 @@ import {
   HiHome,
   HiCog6Tooth,
   HiUser,
-  HiArrowRightOnRectangle
+  HiArrowRightOnRectangle,
+  HiClock,
 } from 'react-icons/hi2';
 
 const Header = ({ sidebarOpen, setSidebarOpen }) => {
@@ -23,6 +36,13 @@ const Header = ({ sidebarOpen, setSidebarOpen }) => {
   const leads = useSelector((state) => state.leads?.leads || []);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [notificationDropdownOpen, setNotificationDropdownOpen] = useState(false);
+  
+  // Attendance state
+  const todayAttendance = useSelector(selectTodayAttendance);
+  const attendanceLoading = useSelector(selectAttendanceLoading);
+  const attendanceError = useSelector(selectAttendanceError);
+  const attendanceSuccess = useSelector(selectAttendanceSuccess);
+  const [showAttendanceModal, setShowAttendanceModal] = useState(false);
 
   // Refresh user profile if needed
   React.useEffect(() => {
@@ -31,6 +51,70 @@ const Header = ({ sidebarOpen, setSidebarOpen }) => {
       dispatch(getProfile());
     }
   }, [user, dispatch]);
+
+  // Load today's attendance
+  useEffect(() => {
+    if (user) {
+      dispatch(getTodayAttendance());
+    }
+  }, [user, dispatch]);
+
+  // Clear attendance messages
+  useEffect(() => {
+    if (attendanceError) {
+      const timer = setTimeout(() => {
+        dispatch(clearError());
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [attendanceError, dispatch]);
+
+  useEffect(() => {
+    if (attendanceSuccess) {
+      const timer = setTimeout(() => {
+        dispatch(clearSuccess());
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [attendanceSuccess, dispatch]);
+
+  // Get attendance status
+  const getAttendanceStatus = () => {
+    if (!todayAttendance) return 'not_checked_in';
+    if (todayAttendance.checkOut?.time) return 'checked_out';
+    if (todayAttendance.breakTime?.end?.time) return 'checked_in';
+    if (todayAttendance.breakTime?.start?.time) return 'on_break';
+    if (todayAttendance.checkIn?.time) return 'checked_in';
+    return 'not_checked_in';
+  };
+
+  const getAttendanceStatusColor = (status) => {
+    switch (status) {
+      case 'checked_in':
+        return 'text-green-600 bg-green-100';
+      case 'on_break':
+        return 'text-yellow-600 bg-yellow-100';
+      case 'checked_out':
+        return 'text-gray-600 bg-gray-100';
+      default:
+        return 'text-red-600 bg-red-100';
+    }
+  };
+
+  const getAttendanceStatusText = (status) => {
+    switch (status) {
+      case 'checked_in':
+        return 'Checked In';
+      case 'on_break':
+        return 'On Break';
+      case 'checked_out':
+        return 'Checked Out';
+      default:
+        return 'Not Checked In';
+    }
+  };
+
+  const attendanceStatus = getAttendanceStatus();
 
   // Generate breadcrumbs from current path
   const generateBreadcrumbs = () => {
@@ -125,6 +209,7 @@ const Header = ({ sidebarOpen, setSidebarOpen }) => {
     navigate('/login');
   };
 
+
   // Get leads from Redux state for reminders (already declared above)
   
   // Generate notifications from leads data
@@ -185,7 +270,7 @@ const Header = ({ sidebarOpen, setSidebarOpen }) => {
   const unreadCount = notifications.filter(n => n.unread).length;
 
   return (
-    <header className="bg-gradient-to-r from-white via-gray-50/30 to-gray-100/50 backdrop-blur-xl shadow-lg sticky top-0 z-30 h-16">
+    <header className="bg-gradient-to-r from-white via-gray-50/30 to-gray-100/50 backdrop-blur-xl shadow-lg sticky top-0 z-40 h-16">
       <div className="flex items-center justify-between px-4 py-4 sm:px-6 lg:px-8 h-full">
         {/* Left side - Menu button and Breadcrumbs */}
         <div className="flex items-center flex-1">
@@ -386,8 +471,48 @@ const Header = ({ sidebarOpen, setSidebarOpen }) => {
 
             {/* Profile dropdown menu */}
             {profileDropdownOpen && (
-              <div className="absolute right-0 mt-3 w-48 bg-white rounded-xl shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-50 animate-fade-in">
+              <div className="absolute right-0 mt-3 w-64 bg-white rounded-xl shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-50 animate-fade-in">
                 <div className="py-2">
+
+                  <div className="border-t border-gray-100 my-1"></div>
+
+                  {/* Attendance Status */}
+                  <div className="px-4 py-2.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <HiClock className="h-4 w-4 mr-3 text-gray-400" />
+                        <span className="text-sm text-gray-700">Attendance</span>
+                      </div>
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getAttendanceStatusColor(attendanceStatus)}`}>
+                        {getAttendanceStatusText(attendanceStatus)}
+                      </span>
+                    </div>
+                    {todayAttendance?.checkIn?.time && (
+                      <div className="mt-1 text-xs text-gray-500">
+                        In: {new Date(todayAttendance.checkIn.time).toLocaleTimeString('en-IN', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          hour12: true
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Mark Attendance Button */}
+                  <button
+                    onClick={() => {
+                      setShowAttendanceModal(true);
+                      setProfileDropdownOpen(false);
+                    }}
+                    className="flex items-center w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-200"
+                  >
+                    <HiClock className="h-4 w-4 mr-3 text-gray-400" />
+                    Mark Attendance
+                  </button>
+
+                  <div className="border-t border-gray-100 my-1"></div>
+
+                  {/* Profile Links */}
                   <Link
                     to="/profile"
                     className="flex items-center px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-200"
@@ -429,6 +554,13 @@ const Header = ({ sidebarOpen, setSidebarOpen }) => {
           }}
         />
       )}
+
+      {/* Attendance Modal */}
+      <AttendanceModal 
+        isOpen={showAttendanceModal} 
+        onClose={() => setShowAttendanceModal(false)} 
+      />
+
     </header>
   );
 };

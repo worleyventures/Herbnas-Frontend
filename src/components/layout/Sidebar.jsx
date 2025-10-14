@@ -18,6 +18,7 @@ import {
   HiChevronLeft,
   HiShoppingBag,
   HiBanknotes,
+  HiClock,
 } from 'react-icons/hi2';
 
 const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {

@@ -1,19 +1,21 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
-import { HiBanknotes, HiClock, HiPlus, HiDocumentArrowUp, HiArrowDownTray } from 'react-icons/hi2';
+import { HiBanknotes, HiClock, HiPlus, HiDocumentArrowUp, HiArrowDownTray, HiCurrencyDollar } from 'react-icons/hi2';
 import { Button, CommonModal } from '../../components/common';
 import { addNotification } from '../../redux/slices/uiSlice';
 import { uploadAttendanceExcel } from '../../redux/actions/attendanceActions';
 import PayrollTab from './PayrollTab';
 import AttendanceTab from './AttendanceTab';
+import UsersPage from '../users/UsersPage';
 import api from '../../lib/axiosInstance';
 import * as XLSX from 'xlsx';
 
 const PayrollPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useDispatch();
-  const [activeTab, setActiveTab] = useState('payroll'); // 'payroll' tab now shows as 'Employees'
+  const [activeTab, setActiveTab] = useState(location.state?.activeTab || 'employees'); // Default to employees tab
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploadFile, setUploadFile] = useState(null);
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
@@ -21,14 +23,20 @@ const PayrollPage = () => {
 
   const tabs = [
     {
-      id: 'payroll',
+      id: 'employees',
       name: 'Employees',
       icon: HiBanknotes,
+      component: <PayrollTab showUsers={true} />
+    },
+    {
+      id: 'payroll',
+      name: 'Payroll',
+      icon: HiCurrencyDollar,
       component: <PayrollTab />
     },
     {
       id: 'attendance',
-      name: 'PayRoll',
+      name: 'Attendance',
       icon: HiClock,
       component: <AttendanceTab 
         onUploadClick={() => setShowUploadModal(true)} 
@@ -199,15 +207,15 @@ const PayrollPage = () => {
           </p>
         </div>
         <div className="mt-4 sm:mt-0">
-          {activeTab === 'payroll' ? (
+          {activeTab === 'employees' ? (
             <Button
               onClick={() => navigate('/payrolls/new')}
-              className=" hover:bg-blue-700 text-white"
+              className="bg-blue-600 hover:bg-blue-700 text-white"
               icon={HiPlus}
             >
-              Add New Payroll
+              Add Employee
             </Button>
-          ) : (
+          ) : activeTab === 'attendance' ? (
             <Button
               onClick={() => setShowUploadModal(true)}
               className="bg-green-600 hover:bg-green-700 text-white"
@@ -215,7 +223,7 @@ const PayrollPage = () => {
             >
               Upload Excel
             </Button>
-          )}
+          ) : null}
         </div>
       </div>
 

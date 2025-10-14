@@ -94,7 +94,7 @@ const ProductSelectWithCreate = ({
 
       {/* Add New Product Form Modal */}
       {showAddForm && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black bg-opacity-50">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
           <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md mx-4">
             <div className="space-y-4">
               <div className="flex items-center justify-between">

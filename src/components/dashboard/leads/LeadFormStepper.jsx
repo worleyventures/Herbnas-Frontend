@@ -52,7 +52,6 @@ const LeadFormStepper = ({
       try {
         const storedUser = localStorage.getItem('user');
         if (storedUser && storedUser !== 'undefined' && storedUser !== 'null') {
-          console.log('🔐 Using fallback user from localStorage:', storedUser);
           return JSON.parse(storedUser);
         }
       } catch (error) {
@@ -189,7 +188,6 @@ const LeadFormStepper = ({
 
   // Function to clear authentication and redirect to login
   const clearAuthAndRedirect = () => {
-    console.log('Clearing authentication due to invalid user');
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     // Clear cookies
@@ -203,11 +201,9 @@ const LeadFormStepper = ({
   const validateUserAndLoadData = async () => {
     // If we have a token but no user, try to fetch the profile
     if (isAuthenticated && !user && localStorage.getItem('token')) {
-      console.log('🔐 Token exists but no user in Redux, fetching profile...');
       try {
         const profileResult = await dispatch(getProfile());
         if (profileResult.type === 'auth/getProfile/fulfilled') {
-          console.log('✅ Profile fetched successfully, user should now be available');
           // User profile fetched, now load other data
           dispatch(getAllBranches());
           dispatch(getActiveBranches());
@@ -232,12 +228,10 @@ const LeadFormStepper = ({
     }
 
     try {
-      console.log('LeadFormStepper - Validating user and loading data...');
       // First verify the user still exists by fetching profile
       const profileResult = await dispatch(getProfile());
       
       if (profileResult.type === 'auth/getProfile/fulfilled') {
-        console.log('User validated, loading data...');
         // User exists, load other data
         dispatch(getAllBranches());
         dispatch(getActiveBranches());

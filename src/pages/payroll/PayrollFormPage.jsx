@@ -63,14 +63,14 @@ const PayrollFormPage = () => {
   useEffect(() => {
     if (createSuccess) {
       dispatch(clearCurrentPayroll());
-      navigate('/payrolls');
+      navigate('/payrolls', { state: { activeTab: 'employees' } });
     }
   }, [createSuccess, navigate, dispatch]);
 
   useEffect(() => {
     if (updateSuccess) {
       dispatch(clearCurrentPayroll());
-      navigate('/payrolls');
+      navigate('/payrolls', { state: { activeTab: 'employees' } });
     }
   }, [updateSuccess, navigate, dispatch]);
 
