@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { 
@@ -14,8 +14,14 @@ import {
 } from 'react-icons/hi2';
 import { MaterialStepper, Select } from '../../components/common';
 import { createPayroll, updatePayroll, getPayrollById } from '../../redux/actions/payrollActions';
-import { clearPayrollError, clearCurrentPayroll } from '../../redux/slices/payrollSlice';
+import { 
+  clearPayrollError, 
+  clearCurrentPayroll, 
+  clearCreateSuccess, 
+  clearUpdateSuccess 
+} from '../../redux/slices/payrollSlice';
 import { getAllBranches } from '../../redux/actions/branchActions';
+import { addNotification } from '../../redux/slices/uiSlice';
 import { Loading } from '../../components/common';
 
 const PayrollFormPage = () => {
@@ -59,30 +65,64 @@ const PayrollFormPage = () => {
     dispatch(getAllBranches());
   }, [dispatch]);
 
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      isSubmittingRef.current = false;
+      // Clear success states on unmount
+      dispatch(clearCreateSuccess());
+      dispatch(clearUpdateSuccess());
+    };
+  }, [dispatch]);
+
   // Handle success states - navigate away from form
   useEffect(() => {
     if (createSuccess) {
+      setSubmitButtonClicked(false); // Reset submit button state
+      isSubmittingRef.current = false; // Reset ref
+      dispatch(addNotification({
+        type: 'success',
+        message: 'Employee created successfully!'
+      }));
       dispatch(clearCurrentPayroll());
+      dispatch(clearCreateSuccess()); // Clear success state
+      // Small delay to show notification before navigation
+      setTimeout(() => {
       navigate('/payrolls', { state: { activeTab: 'employees' } });
+      }, 1000);
     }
   }, [createSuccess, navigate, dispatch]);
 
   useEffect(() => {
     if (updateSuccess) {
+      setSubmitButtonClicked(false); // Reset submit button state
+      isSubmittingRef.current = false; // Reset ref
+      dispatch(addNotification({
+        type: 'success',
+        message: 'Employee updated successfully!'
+      }));
       dispatch(clearCurrentPayroll());
+      dispatch(clearUpdateSuccess()); // Clear success state
+      // Small delay to show notification before navigation
+      setTimeout(() => {
       navigate('/payrolls', { state: { activeTab: 'employees' } });
+      }, 1000);
     }
   }, [updateSuccess, navigate, dispatch]);
 
   // Handle error states - show error messages
   useEffect(() => {
     if (createError) {
+      setSubmitButtonClicked(false); // Reset submit button state on error
+      isSubmittingRef.current = false; // Reset ref on error
       dispatch(clearPayrollError());
     }
   }, [createError, dispatch]);
 
   useEffect(() => {
     if (updateError) {
+      setSubmitButtonClicked(false); // Reset submit button state on error
+      isSubmittingRef.current = false; // Reset ref on error
       dispatch(clearPayrollError());
     }
   }, [updateError, dispatch]);
@@ -134,6 +174,7 @@ const PayrollFormPage = () => {
   const [submitButtonClicked, setSubmitButtonClicked] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const isSubmittingRef = useRef(false);
 
   // Initialize form data when editing
   useEffect(() => {
@@ -276,11 +317,23 @@ const PayrollFormPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!validateForm()) {
+    console.log('🚀 Form submission started', { submitting, submitButtonClicked, isSubmittingRef: isSubmittingRef.current });
+    
+    // Prevent duplicate submissions using ref for immediate check
+    if (submitting || submitButtonClicked || isSubmittingRef.current) {
+      console.log('❌ Form submission blocked - already submitting or clicked');
       return;
     }
     
+    if (!validateForm()) {
+      console.log('❌ Form validation failed');
+      return;
+    }
+    
+    console.log('✅ Form validation passed, starting submission');
+    isSubmittingRef.current = true;
     setSubmitting(true);
+    setSubmitButtonClicked(true);
     
     try {
       const payrollData = {
@@ -323,12 +376,18 @@ const PayrollFormPage = () => {
       };
 
       if (isEdit && currentPayroll) {
-        dispatch(updatePayroll({ payrollId: currentPayroll._id, payrollData }));
+        console.log('📝 Updating payroll:', currentPayroll._id);
+        await dispatch(updatePayroll({ payrollId: currentPayroll._id, payrollData })).unwrap();
+        console.log('✅ Payroll updated successfully');
       } else {
-        dispatch(createPayroll(payrollData));
+        console.log('➕ Creating new payroll:', payrollData.employeeName);
+        const result = await dispatch(createPayroll(payrollData)).unwrap();
+        console.log('✅ Payroll created successfully:', result);
       }
     } catch (error) {
-      console.error('Error submitting form:', error);
+      console.error('❌ Error submitting form:', error);
+      setSubmitButtonClicked(false); // Reset on error to allow retry
+      isSubmittingRef.current = false; // Reset ref on error
     } finally {
       setSubmitting(false);
     }

@@ -14,7 +14,6 @@ import {
   clearError,
   clearSuccess
 } from '../../redux/slices/attendanceSlice';
-import AttendanceModal from '../common/AttendanceModal';
 import {
   HiBars3,
   HiBell,
@@ -28,7 +27,7 @@ import {
   HiClock,
 } from 'react-icons/hi2';
 
-const Header = ({ sidebarOpen, setSidebarOpen }) => {
+const Header = ({ sidebarOpen, setSidebarOpen, showAttendanceModal, setShowAttendanceModal }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
@@ -42,7 +41,6 @@ const Header = ({ sidebarOpen, setSidebarOpen }) => {
   const attendanceLoading = useSelector(selectAttendanceLoading);
   const attendanceError = useSelector(selectAttendanceError);
   const attendanceSuccess = useSelector(selectAttendanceSuccess);
-  const [showAttendanceModal, setShowAttendanceModal] = useState(false);
 
   // Refresh user profile if needed
   React.useEffect(() => {
@@ -554,12 +552,6 @@ const Header = ({ sidebarOpen, setSidebarOpen }) => {
           }}
         />
       )}
-
-      {/* Attendance Modal */}
-      <AttendanceModal 
-        isOpen={showAttendanceModal} 
-        onClose={() => setShowAttendanceModal(false)} 
-      />
 
     </header>
   );

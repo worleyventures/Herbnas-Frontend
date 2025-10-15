@@ -4,9 +4,11 @@ import React, { useState, useEffect, useRef } from "react";
 import { useLocation, Outlet } from "react-router-dom";
 import Header from "./Header";
 import Sidebar from "./Sidebar";
+import AttendanceModal from "../common/AttendanceModal";
 
 const Layout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showAttendanceModal, setShowAttendanceModal] = useState(false);
   const location = useLocation();
   const previousPathRef = useRef(location.pathname);
 
@@ -38,7 +40,12 @@ const Layout = () => {
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0 h-screen">
         {/* Header */}
-        <Header sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+        <Header 
+          sidebarOpen={sidebarOpen} 
+          setSidebarOpen={setSidebarOpen}
+          showAttendanceModal={showAttendanceModal}
+          setShowAttendanceModal={setShowAttendanceModal}
+        />
 
         {/* Content */}
         <main className="flex-1 overflow-y-auto bg-white">
@@ -57,6 +64,12 @@ const Layout = () => {
           onClick={() => setSidebarOpen(false)}
         />
       )}
+
+      {/* Attendance Modal - Rendered at top level for proper positioning */}
+      <AttendanceModal
+        isOpen={showAttendanceModal}
+        onClose={() => setShowAttendanceModal(false)}
+      />
     </div>
   );
 };

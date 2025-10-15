@@ -72,10 +72,12 @@ const attendanceSlice = createSlice({
     builder
       // Check-in
       .addCase(checkIn.pending, (state) => {
+        console.log('🔍 checkIn.pending - setting loading to true');
         state.loading = true;
         state.error = null;
       })
       .addCase(checkIn.fulfilled, (state, action) => {
+        console.log('🔍 checkIn.fulfilled - success!', action.payload);
         state.loading = false;
         state.success = true;
         state.message = action.payload.message;
@@ -83,6 +85,7 @@ const attendanceSlice = createSlice({
         state.attendanceModalOpen = false;
       })
       .addCase(checkIn.rejected, (state, action) => {
+        console.log('🔍 checkIn.rejected - error:', action.payload);
         state.loading = false;
         state.error = action.payload;
       })

@@ -85,7 +85,8 @@ const AttendanceTab = ({ onUploadClick, refreshTrigger }) => {
       ...(branchFilter !== 'all' && { branchId: branchFilter }),
       ...(employeeFilter !== 'all' && { employeeId: employeeFilter }),
       ...(statusFilter !== 'all' && { status: statusFilter }),
-      ...(monthFilter !== 'all' && { month: monthFilter })
+      ...(monthFilter !== 'all' && { month: monthFilter }),
+      approvalStatus: 'approved' // Only show approved attendance for superadmin
     };
 
     dispatch(getAllAttendance(params));

@@ -16,7 +16,13 @@ const initialState = {
   currentPayroll: null,
   stats: null,
   loading: false,
+  createLoading: false,
+  updateLoading: false,
+  deleteLoading: false,
   error: null,
+  createSuccess: false,
+  updateSuccess: false,
+  deleteSuccess: false,
   pagination: {
     currentPage: 1,
     totalPages: 1,
@@ -36,6 +42,15 @@ const payrollSlice = createSlice({
     },
     clearCurrentPayroll: (state) => {
       state.currentPayroll = null;
+    },
+    clearCreateSuccess: (state) => {
+      state.createSuccess = false;
+    },
+    clearUpdateSuccess: (state) => {
+      state.updateSuccess = false;
+    },
+    clearDeleteSuccess: (state) => {
+      state.deleteSuccess = false;
     }
   },
   extraReducers: (builder) => {
@@ -71,25 +86,30 @@ const payrollSlice = createSlice({
       })
       // Create Payroll
       .addCase(createPayroll.pending, (state) => {
-        state.loading = true;
+        state.createLoading = true;
+        state.createSuccess = false;
         state.error = null;
       })
       .addCase(createPayroll.fulfilled, (state, action) => {
-        state.loading = false;
+        state.createLoading = false;
+        state.createSuccess = true;
         state.payrolls.unshift(action.payload.data.payroll);
         state.error = null;
       })
       .addCase(createPayroll.rejected, (state, action) => {
-        state.loading = false;
+        state.createLoading = false;
+        state.createSuccess = false;
         state.error = action.payload;
       })
       // Update Payroll
       .addCase(updatePayroll.pending, (state) => {
-        state.loading = true;
+        state.updateLoading = true;
+        state.updateSuccess = false;
         state.error = null;
       })
       .addCase(updatePayroll.fulfilled, (state, action) => {
-        state.loading = false;
+        state.updateLoading = false;
+        state.updateSuccess = true;
         const updatedPayroll = action.payload.data.payroll;
         const index = state.payrolls.findIndex(p => p._id === updatedPayroll._id);
         if (index !== -1) {
@@ -101,7 +121,8 @@ const payrollSlice = createSlice({
         state.error = null;
       })
       .addCase(updatePayroll.rejected, (state, action) => {
-        state.loading = false;
+        state.updateLoading = false;
+        state.updateSuccess = false;
         state.error = action.payload;
       })
       // Delete Payroll
@@ -206,13 +227,25 @@ const payrollSlice = createSlice({
   }
 });
 
-export const { clearPayrollError, clearCurrentPayroll } = payrollSlice.actions;
+export const { 
+  clearPayrollError, 
+  clearCurrentPayroll, 
+  clearCreateSuccess, 
+  clearUpdateSuccess, 
+  clearDeleteSuccess 
+} = payrollSlice.actions;
 
 // Selectors
 export const selectPayrolls = (state) => state.payrolls.payrolls;
 export const selectCurrentPayroll = (state) => state.payrolls.currentPayroll;
 export const selectPayrollLoading = (state) => state.payrolls.loading;
+export const selectCreateLoading = (state) => state.payrolls.createLoading;
+export const selectUpdateLoading = (state) => state.payrolls.updateLoading;
+export const selectDeleteLoading = (state) => state.payrolls.deleteLoading;
 export const selectPayrollError = (state) => state.payrolls.error;
+export const selectCreateSuccess = (state) => state.payrolls.createSuccess;
+export const selectUpdateSuccess = (state) => state.payrolls.updateSuccess;
+export const selectDeleteSuccess = (state) => state.payrolls.deleteSuccess;
 export const selectPayrollStats = (state) => state.payrolls.stats;
 export const selectPayrollPagination = (state) => state.payrolls.pagination;
 
