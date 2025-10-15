@@ -44,15 +44,9 @@ api.interceptors.response.use(
   (error) => {
     // Handle authentication errors
     if (error.response?.status === 401) {
-      console.log('🔐 401 Unauthorized error:', {
-        message: error.response?.data?.message,
-        status: error.response?.status,
-        url: error.config?.url
-      });
       
       // Check if it's a "user no longer exists" error
       if (error.response?.data?.message === 'The user belonging to this token no longer exists.') {
-        console.log('🔐 User no longer exists, clearing auth and redirecting');
         // Clear all authentication data
         localStorage.removeItem('token');
         localStorage.removeItem('user');
@@ -77,7 +71,6 @@ api.interceptors.response.use(
             const currentTime = Date.now() / 1000;
             // Only redirect if token is actually expired
             if (payload.exp && payload.exp < currentTime) {
-              console.log('🔐 Token expired, clearing auth and redirecting');
               localStorage.removeItem('token');
               localStorage.removeItem('user');
               setTimeout(() => {
@@ -87,7 +80,6 @@ api.interceptors.response.use(
           }
         } catch (e) {
           // If token is malformed, remove it and redirect
-          console.log('🔐 Token malformed, clearing auth and redirecting');
           localStorage.removeItem('token');
           localStorage.removeItem('user');
           setTimeout(() => {

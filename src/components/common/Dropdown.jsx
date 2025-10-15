@@ -54,18 +54,9 @@ const Dropdown = ({
     : options;
 
   const handleSelectChange = (optionValue) => {
-    // handleSelectChange called
-    // onChange function called
-    
     if (onChange) {
-      // Create an event-like object to maintain compatibility with existing onChange handlers
-      const syntheticEvent = {
-        target: {
-          value: optionValue,
-          name: name || ''
-        }
-      };
-      onChange(syntheticEvent);
+      // Pass the value directly to onChange
+      onChange(optionValue);
     } else {
       console.error('Dropdown: onChange function is not provided');
     }
@@ -125,7 +116,7 @@ const Dropdown = ({
 
         {/* Dropdown Menu */}
         {isOpen && (
-          <div className="absolute z-[110] w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-80 overflow-y-auto">
+          <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-80 overflow-y-auto">
             {/* Search Input */}
             {searchable && (
               <div className="p-2 border-b border-gray-200">

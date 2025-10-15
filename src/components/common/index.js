@@ -18,6 +18,7 @@ export { default as Badge, StatusBadge, PriorityBadge, CustomBadge } from './Bad
 export { default as Modal } from './Modal';
 export { ConfirmationModal } from './Modal';
 export { default as CommonModal } from './CommonModal';
+export { default as AttendanceModal } from './AttendanceModal';
 
 // Loading Components
 export { default as Loading, Spinner, PageLoading, InlineLoading, ButtonLoading } from './Loading';

@@ -24,6 +24,10 @@ import {
   getPayrollStats
 } from '../../redux/actions/payrollActions';
 import {
+  getAllUsers,
+  deleteUser
+} from '../../redux/actions/userActions';
+import {
   selectPayrolls,
   selectPayrollLoading,
   selectPayrollError,
@@ -31,10 +35,16 @@ import {
   selectPayrollPagination,
   clearPayrollError
 } from '../../redux/slices/payrollSlice';
+import {
+  selectUsers,
+  selectUserLoading,
+  selectUserError,
+  clearError as clearUserError
+} from '../../redux/slices/userSlice';
 import { addNotification } from '../../redux/slices/uiSlice';
 import api from '../../lib/axiosInstance';
 
-const PayrollTab = () => {
+const PayrollTab = ({ showUsers = false }) => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   
@@ -44,13 +54,17 @@ const PayrollTab = () => {
   const error = useSelector(selectPayrollError);
   const stats = useSelector(selectPayrollStats);
   const pagination = useSelector(selectPayrollPagination);
+  
+  // User state (when showing users)
+  const users = useSelector(selectUsers);
+  const userLoading = useSelector(selectUserLoading);
+  const userError = useSelector(selectUserError);
+  const userPagination = useSelector((state) => state.user.pagination);
+
 
   // Local state
   const [searchTerm, setSearchTerm] = useState('');
   const [branchFilter, setBranchFilter] = useState('all');
-  const [yearFilter, setYearFilter] = useState(new Date().getFullYear().toString());
-  const [monthFilter, setMonthFilter] = useState('all');
-  const [paymentStatusFilter, setPaymentStatusFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [payrollToDelete, setPayrollToDelete] = useState(null);
@@ -72,22 +86,27 @@ const PayrollTab = () => {
 
   // Load data on component mount
   useEffect(() => {
-    dispatch(getAllPayrolls({
-      page: currentPage,
-      limit: 10,
-      search: searchTerm,
-      branchId: branchFilter !== 'all' ? branchFilter : undefined,
-      year: yearFilter,
-      month: monthFilter !== 'all' ? monthFilter : undefined,
-      paymentStatus: paymentStatusFilter !== 'all' ? paymentStatusFilter : undefined
-    }));
-    dispatch(getPayrollStats({
-      branchId: branchFilter !== 'all' ? branchFilter : undefined,
-      year: yearFilter,
-      month: monthFilter !== 'all' ? monthFilter : undefined
-    }));
+    if (showUsers) {
+      dispatch(getAllUsers({
+        page: currentPage,
+        limit: 10,
+        search: searchTerm,
+        branch: branchFilter !== 'all' ? branchFilter : undefined
+      }));
+    } else {
+      // Always use getAllPayrolls which now returns user format
+      dispatch(getAllPayrolls({
+        page: currentPage,
+        limit: 10,
+        search: searchTerm,
+        branchId: branchFilter !== 'all' ? branchFilter : undefined
+      }));
+      dispatch(getPayrollStats({
+        branchId: branchFilter !== 'all' ? branchFilter : undefined
+      }));
+    }
     loadBranches();
-  }, [currentPage, searchTerm, branchFilter, yearFilter, monthFilter, paymentStatusFilter, dispatch]);
+  }, [currentPage, searchTerm, branchFilter, dispatch, showUsers]);
 
   // Handle search
   const handleSearch = (e) => {
@@ -101,18 +120,6 @@ const PayrollTab = () => {
       case 'branch':
         setBranchFilter(value);
         break;
-      case 'year':
-        setYearFilter(value);
-        break;
-      case 'month':
-        setMonthFilter(value);
-        break;
-      case 'status':
-        setStatusFilter(value);
-        break;
-      case 'paymentStatus':
-        setPaymentStatusFilter(value);
-        break;
       default:
         break;
     }
@@ -125,9 +132,14 @@ const PayrollTab = () => {
   };
 
   // Handle delete
-  const handleDeletePayroll = (payrollId) => {
-    const payroll = payrolls.find(p => p._id === payrollId);
-    setPayrollToDelete(payroll);
+  const handleDeletePayroll = (id) => {
+    if (showUsers) {
+      const user = users.find(u => u._id === id);
+      setPayrollToDelete(user);
+    } else {
+      const payroll = payrolls.find(p => p._id === id);
+      setPayrollToDelete(payroll);
+    }
     setShowDeleteModal(true);
   };
 
@@ -148,17 +160,25 @@ const PayrollTab = () => {
   const confirmDeletePayroll = async () => {
     if (payrollToDelete) {
       try {
-        await dispatch(deletePayroll(payrollToDelete._id)).unwrap();
-        dispatch(addNotification({
-          type: 'success',
-          message: 'Payroll deleted successfully'
-        }));
+        if (showUsers) {
+          await dispatch(deleteUser(payrollToDelete._id)).unwrap();
+          dispatch(addNotification({
+            type: 'success',
+            message: 'Employee deleted successfully'
+          }));
+        } else {
+          await dispatch(deletePayroll(payrollToDelete._id)).unwrap();
+          dispatch(addNotification({
+            type: 'success',
+            message: 'Payroll deleted successfully'
+          }));
+        }
         setShowDeleteModal(false);
         setPayrollToDelete(null);
       } catch (error) {
         dispatch(addNotification({
           type: 'error',
-          message: error || 'Failed to delete payroll'
+          message: error || `Failed to delete ${showUsers ? 'employee' : 'payroll'}`
         }));
       }
     }
@@ -204,128 +224,69 @@ const PayrollTab = () => {
     }
   };
 
-  // Get payment status color
-  const getPaymentStatusColor = (status) => {
-    switch (status) {
-      case 'pending': return 'yellow';
-      case 'processed': return 'blue';
-      case 'paid': return 'green';
-      case 'failed': return 'red';
-      default: return 'gray';
-    }
-  };
 
-  // Table columns
+  // Table columns - now both data sources use user format
   const columns = [
     {
-      key: 'payrollId',
-      label: 'Payroll ID',
-      render: (payroll) => (
+      key: 'employeeId',
+      label: 'Employee ID',
+      render: (user) => (
         <div className="font-medium text-gray-900">
-          {payroll.payrollId}
+          {user.employeeId || 'N/A'}
         </div>
       )
     },
     {
       key: 'employee',
       label: 'Employee',
-      render: (payroll) => (
+      render: (user) => (
         <div>
           <div className="font-medium text-gray-900">
-            {payroll.employeeName}
+            {user.firstName} {user.lastName}
           </div>
           <div className="text-sm text-gray-500">
-            {payroll.employeeId}
+            {user.email}
           </div>
+        </div>
+      )
+    },
+    {
+      key: 'role',
+      label: 'Designation',
+      render: (user) => (
+        <div className="text-sm text-gray-900">
+          {user.role?.replace('_', ' ').toUpperCase() || 'N/A'}
         </div>
       )
     },
     {
       key: 'branch',
       label: 'Branch',
-      render: (payroll) => (
-        <div>
-          <div className="font-medium text-gray-900">
-            {payroll.branchId?.branchName}
-          </div>
-          <div className="text-sm text-gray-500">
-            {payroll.branchId?.branchCode}
-          </div>
+      render: (user) => (
+        <div className="text-sm text-gray-900">
+          {user.branch?.branchName || 'N/A'}
         </div>
       )
     },
     {
-      key: 'designation',
-      label: 'Designation',
-      render: (payroll) => (
-        <div className="font-medium text-gray-900">
-          {payroll.designation}
-        </div>
-      )
-    },
-    {
-      key: 'netSalary',
-      label: 'Net Salary',
-      render: (payroll) => (
-        <div className="font-medium text-gray-900">
-          ₹{payroll.calculations?.netSalary?.toLocaleString()}
-        </div>
-      )
-    },
-    {
-      key: 'paymentStatus',
-      label: 'Payment Status',
-      render: (payroll) => (
+      key: 'status',
+      label: 'Status',
+      render: (user) => (
         <StatusBadge
-          status={payroll.payment?.status}
-          color={getPaymentStatusColor(payroll.payment?.status)}
+          status={user.isActive ? 'active' : 'inactive'}
+          variant={user.isActive ? 'success' : 'danger'}
         />
       )
     },
     {
-      key: 'actions',
-      label: 'Actions',
-      render: (payroll) => (
-        <div className="flex space-x-3">
-          <button
-            onClick={() => handleViewPayroll(payroll._id)}
-            className="text-gray-500 hover:text-gray-700 transition-colors"
-            title="View Payroll"
-          >
-            <HiEye className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => navigate(`/payrolls/edit/${payroll._id}`)}
-            className="text-gray-500 hover:text-gray-700 transition-colors"
-            title="Edit Payroll"
-          >
-            <HiPencil className="w-4 h-4" />
-          </button>
-          {payroll.status === 'pending_approval' && (
-            <>
-              <button
-                onClick={() => handleApprovePayroll(payroll._id)}
-                className="text-green-500 hover:text-green-700 transition-colors"
-                title="Approve Payroll"
-              >
-                <HiCheckCircle className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => handleRejectPayroll(payroll._id)}
-                className="text-red-500 hover:text-red-700 transition-colors"
-                title="Reject Payroll"
-              >
-                <HiXMark className="w-4 h-4" />
-              </button>
-            </>
-          )}
-          <button
-            onClick={() => handleDeletePayroll(payroll._id)}
-            className="text-gray-500 hover:text-gray-700 transition-colors"
-            title="Delete Payroll"
-          >
-            <HiTrash className="w-4 h-4" />
-          </button>
+      key: 'salary',
+      label: 'Salary',
+      render: (user) => (
+        <div className="text-sm text-gray-900">
+          {user.payrollData?.calculations?.netSalary ? 
+            `₹${user.payrollData.calculations.netSalary.toLocaleString()}` : 
+            'N/A'
+          }
         </div>
       )
     }
@@ -340,38 +301,47 @@ const PayrollTab = () => {
     }))
   ];
 
-  const yearOptions = Array.from({ length: 5 }, (_, i) => {
-    const year = new Date().getFullYear() - i;
-    return { value: year.toString(), label: year.toString() };
-  });
-
-  const monthOptions = [
-    { value: 'all', label: 'All Months' },
-    { value: '1', label: 'January' },
-    { value: '2', label: 'February' },
-    { value: '3', label: 'March' },
-    { value: '4', label: 'April' },
-    { value: '5', label: 'May' },
-    { value: '6', label: 'June' },
-    { value: '7', label: 'July' },
-    { value: '8', label: 'August' },
-    { value: '9', label: 'September' },
-    { value: '10', label: 'October' },
-    { value: '11', label: 'November' },
-    { value: '12', label: 'December' }
-  ];
 
 
-  const paymentStatusOptions = [
-    { value: 'all', label: 'All Payments' },
-    { value: 'pending', label: 'Pending' },
-    { value: 'processed', label: 'Processed' },
-    { value: 'paid', label: 'Paid' },
-    { value: 'failed', label: 'Failed' }
-  ];
 
-  if (loading && payrolls.length === 0) {
+  // Since getAllPayrolls now returns user format, we can use the same data structure
+  const currentLoading = showUsers ? userLoading : loading;
+  const currentError = showUsers ? userError : error;
+  const currentData = showUsers ? users : payrolls; // payrolls now contains user format data
+  const currentPagination = showUsers ? userPagination : pagination;
+
+  if (currentLoading && (!currentData || currentData.length === 0)) {
     return <Loading />;
+  }
+
+  if (currentError) {
+    return (
+      <div className="p-6">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <HiXMark className="h-5 w-5 text-red-400" />
+            </div>
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-red-800">
+                Error loading {showUsers ? 'employees' : 'payrolls'}
+              </h3>
+              <div className="mt-2 text-sm text-red-700">
+                <p>{currentError}</p>
+              </div>
+              <div className="mt-4">
+                <button
+                  onClick={() => window.location.reload()}
+                  className="bg-red-100 px-3 py-2 rounded-md text-sm font-medium text-red-800 hover:bg-red-200"
+                >
+                  Retry
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -379,51 +349,51 @@ const PayrollTab = () => {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
         <StatCard
-          title="Total Payrolls"
-          value={stats?.overview?.totalPayrolls || 0}
-          icon={HiCurrencyDollar}
+          title="Total Employees"
+          value={currentPagination?.total || (currentData?.length || 0)}
+          icon={HiUser}
           gradient="blue"
           animation="bounce"
           change="+5%"
           changeType="increase"
-          loading={loading}
+          loading={currentLoading}
         />
         <StatCard
-          title="Pending Payments"
-          value={stats?.overview?.pendingPayrolls || 0}
-          icon={HiClock}
-          gradient="yellow"
+          title="Active Employees"
+          value={currentData?.filter(user => user.isActive).length || 0}
+          icon={HiCheckCircle}
+          gradient="green"
           animation="pulse"
           change="+2%"
           changeType="increase"
-          loading={loading}
+          loading={currentLoading}
         />
         <StatCard
-          title="Paid This Month"
-          value={stats?.overview?.paidPayrolls || 0}
-          icon={HiCheckCircle}
-          gradient="green"
+          title="Inactive Employees"
+          value={currentData?.filter(user => !user.isActive).length || 0}
+          icon={HiXMark}
+          gradient="red"
           animation="float"
           change="+8%"
           changeType="increase"
-          loading={loading}
+          loading={currentLoading}
         />
         <StatCard
-          title="Total Amount"
-          value={`₹${(stats?.overview?.totalAmount || 0).toLocaleString()}`}
+          title="Total Salary"
+          value={`₹${(currentData?.reduce((sum, user) => sum + (user.payrollData?.calculations?.netSalary || 0), 0) || 0).toLocaleString()}`}
           icon={HiCurrencyDollar}
           gradient="emerald"
           animation="bounce"
           change="+12%"
           changeType="increase"
-          loading={loading}
+          loading={currentLoading}
         />
       </div>
 
       {/* Results Info */}
       <div className="flex items-center justify-between">
         <div className="text-sm text-gray-500">
-          Showing {((currentPage - 1) * 10) + 1}-{Math.min(currentPage * 10, pagination?.totalItems || 0)} of {pagination?.totalItems || 0} payrolls
+          Showing {((currentPage - 1) * 10) + 1}-{Math.min(currentPage * 10, currentPagination?.totalItems || 0)} of {currentPagination?.totalItems || 0} employees
         </div>
       </div>
 
@@ -435,7 +405,7 @@ const PayrollTab = () => {
               <Input
                 value={searchTerm}
                 onChange={handleSearch}
-                placeholder="Search payrolls..."
+                placeholder="Search employees..."
                 icon={HiMagnifyingGlass}
                 className="w-full sm:w-64"
               />
@@ -445,35 +415,17 @@ const PayrollTab = () => {
                 options={branchOptions}
                 className="w-full sm:w-40"
               />
-              <Select
-                value={yearFilter}
-                onChange={(value) => handleFilterChange('year', value)}
-                options={yearOptions}
-                className="w-full sm:w-32"
-              />
-              <Select
-                value={monthFilter}
-                onChange={(value) => handleFilterChange('month', value)}
-                options={monthOptions}
-                className="w-full sm:w-32"
-              />
-              <Select
-                value={paymentStatusFilter}
-                onChange={(value) => handleFilterChange('paymentStatus', value)}
-                options={paymentStatusOptions}
-                className="w-full sm:w-40"
-              />
             </div>
           </div>
         </div>
         <div className="overflow-x-auto">
           <Table
-            data={payrolls}
+            data={currentData || []}
             columns={columns}
-            loading={loading}
+            loading={currentLoading}
             pagination={{
-              currentPage: pagination.currentPage,
-              totalPages: pagination.totalPages,
+              currentPage: currentPagination?.currentPage || 1,
+              totalPages: currentPagination?.totalPages || 1,
               onPageChange: handlePageChange
             }}
           />
@@ -484,7 +436,7 @@ const PayrollTab = () => {
       <CommonModal
         isOpen={showDeleteModal}
         onClose={cancelDelete}
-        title="Delete Payroll"
+        title="Delete Employee"
         subtitle="This action cannot be undone"
         icon={HiTrash}
         iconColor="from-red-500 to-red-600"
@@ -504,7 +456,7 @@ const PayrollTab = () => {
               onClick={confirmDeletePayroll}
               size="sm"
             >
-              Delete Payroll
+              Delete Employee
             </Button>
           </div>
         }
@@ -514,17 +466,21 @@ const PayrollTab = () => {
             <HiTrash className="h-6 w-6 text-red-600" />
           </div>
           <h3 className="text-lg font-medium text-gray-900 mb-2">
-            Are you sure you want to delete this payroll?
+            Are you sure you want to delete this employee?
           </h3>
           {payrollToDelete && (
             <div className="text-sm text-gray-500 mb-4">
-              <p><strong>Payroll ID:</strong> {payrollToDelete.payrollId}</p>
-              <p><strong>Employee:</strong> {payrollToDelete.employeeId?.firstName} {payrollToDelete.employeeId?.lastName}</p>
-              <p><strong>Net Salary:</strong> ₹{payrollToDelete.calculations?.netSalary?.toLocaleString()}</p>
+              <p><strong>Employee ID:</strong> {payrollToDelete.employeeId || 'N/A'}</p>
+              <p><strong>Name:</strong> {payrollToDelete.firstName} {payrollToDelete.lastName}</p>
+              <p><strong>Email:</strong> {payrollToDelete.email}</p>
+              <p><strong>Role:</strong> {payrollToDelete.role?.replace('_', ' ').toUpperCase()}</p>
+              {payrollToDelete.payrollData && (
+                <p><strong>Net Salary:</strong> ₹{payrollToDelete.payrollData.calculations?.netSalary?.toLocaleString()}</p>
+              )}
             </div>
           )}
           <p className="text-sm text-gray-500">
-            This action cannot be undone. The payroll will be permanently removed from the system.
+            This action cannot be undone. The employee will be permanently removed from the system.
           </p>
         </div>
       </CommonModal>
@@ -545,7 +501,6 @@ const PayrollTab = () => {
             branchId: branchFilter !== 'all' ? branchFilter : undefined,
             year: yearFilter,
             month: monthFilter !== 'all' ? monthFilter : undefined,
-            paymentStatus: paymentStatusFilter !== 'all' ? paymentStatusFilter : undefined
           }));
         }}
       />

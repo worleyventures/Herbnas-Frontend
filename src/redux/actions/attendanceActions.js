@@ -1,166 +1,189 @@
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../lib/axiosInstance';
 
-// Get all attendance records
-export const getAllAttendance = createAsyncThunk(
-  'attendance/getAllAttendance',
-  async (params, { rejectWithValue }) => {
+// Employee self-service actions
+export const checkIn = createAsyncThunk(
+  'attendance/checkIn',
+  async (data, { rejectWithValue }) => {
     try {
-      const queryParams = new URLSearchParams(params).toString();
-      const response = await api.get(`/attendance?${queryParams}`);
-      
-      if (response.data.success) {
-        return response.data;
-      } else {
-        return rejectWithValue(response.data.message || 'Failed to fetch attendance records');
-      }
-    } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || 
-        error.message || 
-        'Failed to fetch attendance records'
-      );
+      const response = await api.post('/attendance/checkin', data);
+      return response.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || err.message);
     }
   }
 );
 
-// Get attendance by ID
+export const checkOut = createAsyncThunk(
+  'attendance/checkOut',
+  async (data, { rejectWithValue }) => {
+    try {
+      const response = await api.post('/attendance/checkout', data);
+      return response.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || err.message);
+    }
+  }
+);
+
+export const startBreak = createAsyncThunk(
+  'attendance/startBreak',
+  async (data, { rejectWithValue }) => {
+    try {
+      const response = await api.post('/attendance/break/start', data);
+      return response.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || err.message);
+    }
+  }
+);
+
+export const endBreak = createAsyncThunk(
+  'attendance/endBreak',
+  async (data, { rejectWithValue }) => {
+    try {
+      const response = await api.post('/attendance/break/end', data);
+      return response.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || err.message);
+    }
+  }
+);
+
+export const getTodayAttendance = createAsyncThunk(
+  'attendance/getTodayAttendance',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await api.get('/attendance/today');
+      return response.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || err.message);
+    }
+  }
+);
+
+export const getMyAttendance = createAsyncThunk(
+  'attendance/getMyAttendance',
+  async (params, { rejectWithValue }) => {
+    try {
+      const response = await api.get('/attendance/my-attendance', { params });
+      return response.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || err.message);
+    }
+  }
+);
+
+// Supervisor approval actions
+export const getPendingApprovals = createAsyncThunk(
+  'attendance/getPendingApprovals',
+  async (params, { rejectWithValue }) => {
+    try {
+      const response = await api.get('/attendance/pending-approvals', { params });
+      return response.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || err.message);
+    }
+  }
+);
+
+export const approveAttendance = createAsyncThunk(
+  'attendance/approveAttendance',
+  async ({ id, data }, { rejectWithValue }) => {
+    try {
+      const response = await api.put(`/attendance/${id}/approve`, data);
+      return response.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || err.message);
+    }
+  }
+);
+
+// Admin actions (existing)
+export const getAllAttendance = createAsyncThunk(
+  'attendance/getAllAttendance',
+  async (params, { rejectWithValue }) => {
+    try {
+      const response = await api.get('/attendance', { params });
+      return response.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || err.message);
+    }
+  }
+);
+
 export const getAttendanceById = createAsyncThunk(
   'attendance/getAttendanceById',
   async (id, { rejectWithValue }) => {
     try {
       const response = await api.get(`/attendance/${id}`);
-      
-      if (response.data.success) {
-        return response.data;
-      } else {
-        return rejectWithValue(response.data.message || 'Failed to fetch attendance record');
-      }
-    } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || 
-        error.message || 
-        'Failed to fetch attendance record'
-      );
+      return response.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || err.message);
     }
   }
 );
 
-// Create attendance record
 export const createAttendance = createAsyncThunk(
   'attendance/createAttendance',
-  async (attendanceData, { rejectWithValue }) => {
+  async (data, { rejectWithValue }) => {
     try {
-      const response = await api.post('/attendance', attendanceData);
-      
-      if (response.data.success) {
-        return response.data;
-      } else {
-        return rejectWithValue(response.data.message || 'Failed to create attendance record');
-      }
-    } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || 
-        error.message || 
-        'Failed to create attendance record'
-      );
+      const response = await api.post('/attendance', data);
+      return response.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || err.message);
     }
   }
 );
 
-// Update attendance record
 export const updateAttendance = createAsyncThunk(
   'attendance/updateAttendance',
-  async ({ id, attendanceData }, { rejectWithValue }) => {
+  async ({ id, data }, { rejectWithValue }) => {
     try {
-      const response = await api.put(`/attendance/${id}`, attendanceData);
-      
-      if (response.data.success) {
-        return response.data;
-      } else {
-        return rejectWithValue(response.data.message || 'Failed to update attendance record');
-      }
-    } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || 
-        error.message || 
-        'Failed to update attendance record'
-      );
+      const response = await api.put(`/attendance/${id}`, data);
+      return response.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || err.message);
     }
   }
 );
 
-// Delete attendance record
 export const deleteAttendance = createAsyncThunk(
   'attendance/deleteAttendance',
   async (id, { rejectWithValue }) => {
     try {
       const response = await api.delete(`/attendance/${id}`);
-      
-      if (response.data.success) {
-        return id;
-      } else {
-        return rejectWithValue(response.data.message || 'Failed to delete attendance record');
-      }
-    } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || 
-        error.message || 
-        'Failed to delete attendance record'
-      );
+      return response.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || err.message);
     }
   }
 );
 
-// Get attendance stats
 export const getAttendanceStats = createAsyncThunk(
   'attendance/getAttendanceStats',
   async (params, { rejectWithValue }) => {
     try {
-      const queryParams = new URLSearchParams(params).toString();
-      const response = await api.get(`/attendance/stats?${queryParams}`);
-      
-      if (response.data.success) {
-        return response.data;
-      } else {
-        return rejectWithValue(response.data.message || 'Failed to fetch attendance stats');
-      }
-    } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || 
-        error.message || 
-        'Failed to fetch attendance stats'
-      );
+      const response = await api.get('/attendance/stats', { params });
+      return response.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || err.message);
     }
   }
 );
 
-// Upload attendance from Excel
 export const uploadAttendanceExcel = createAsyncThunk(
   'attendance/uploadAttendanceExcel',
-  async ({ file, month }, { rejectWithValue }) => {
+  async (formData, { rejectWithValue }) => {
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('month', month);
-      
       const response = await api.post('/attendance/upload', formData, {
         headers: {
-          'Content-Type': 'multipart/form-data'
-        }
+          'Content-Type': 'multipart/form-data',
+        },
       });
-      
-      if (response.data.success) {
-        return response.data;
-      } else {
-        return rejectWithValue(response.data.message || 'Failed to upload attendance file');
-      }
-    } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || 
-        error.message || 
-        'Failed to upload attendance file'
-      );
+      return response.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || err.message);
     }
   }
 );

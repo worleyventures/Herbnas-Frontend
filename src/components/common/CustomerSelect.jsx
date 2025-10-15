@@ -148,7 +148,7 @@ const CustomerSelect = ({
 
         {/* Dropdown Menu */}
         {isOpen && (
-          <div className="absolute z-[110] w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-80 overflow-y-auto">
+          <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-80 overflow-y-auto">
             {/* Options List */}
             {filteredOptions.length > 0 ? (
               <div className="py-1">

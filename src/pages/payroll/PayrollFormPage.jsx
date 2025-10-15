@@ -1,76 +1,116 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import { useNavigate, useParams } from 'react-router-dom';
-import {
-  HiArrowLeft,
-  HiCurrencyDollar,
-  HiBuildingOffice,
-  HiCalendar,
-  HiUser,
-  HiClock,
-  HiCheckCircle,
-  HiXMark,
-  HiPlus,
-  HiMinus,
-  HiChevronLeft,
-  HiChevronRight
+import { 
+  HiUser, 
+  HiCurrencyDollar, 
+  HiMinus, 
+  HiBuildingOffice, 
+  HiXMark, 
+  HiChevronLeft, 
+  HiChevronRight,
+  HiEye,
+  HiEyeSlash
 } from 'react-icons/hi2';
-import { Button, Input, Select, TextArea, Loading, Stepper, MaterialStepper, Card } from '../../components/common';
-import { createPayroll, updatePayroll, getPayrollById, getAllPayrolls } from '../../redux/actions/payrollActions';
-import { getAllBranches, getActiveBranches } from '../../redux/actions/branchActions';
-import {
-  selectCurrentPayroll,
-  selectPayrollLoading,
-  selectPayrollError
-} from '../../redux/slices/payrollSlice';
-import {
-  selectBranches,
-  selectBranchLoading
-} from '../../redux/slices/branchSlice';
-import { addNotification } from '../../redux/slices/uiSlice';
+import { MaterialStepper, Select } from '../../components/common';
+import { createPayroll, updatePayroll, getPayrollById } from '../../redux/actions/payrollActions';
+import { clearPayrollError, clearCurrentPayroll } from '../../redux/slices/payrollSlice';
+import { getAllBranches } from '../../redux/actions/branchActions';
+import { Loading } from '../../components/common';
 
 const PayrollFormPage = () => {
   const navigate = useNavigate();
-  
-  // Wrap navigate to track navigation calls
-  const trackedNavigate = (path, ...args) => {
-    console.log('🔀 Navigation triggered to:', path, 'from step:', currentStep);
-    console.trace('Navigation stack trace');
-    navigate(path, ...args);
-  };
+  const location = useLocation();
+  const params = useParams();
   const dispatch = useDispatch();
-  const { id } = useParams();
-  const isEdit = Boolean(id);
+  
+  // Get payroll data from location state or params
+  const selectedPayroll = location.state?.payroll || null;
+  const mode = location.state?.mode || (params.id ? 'edit' : 'create');
+  const payrollId = params.id;
+  
+  // Get loading states, success states, and payroll data from Redux
+  const { 
+    createLoading: payrollLoading, 
+    updateLoading, 
+    selectedPayroll: reduxPayroll, 
+    loading: payrollDataLoading,
+    createSuccess,
+    updateSuccess,
+    createError,
+    updateError
+  } = useSelector(state => state.payrolls || {});
+  
+  const { branches = [], loading: branchesLoading = false } = useSelector(state => state.branches || {});
+  
+  // Use the payroll from Redux if we don't have one from location state
+  const currentPayroll = selectedPayroll || reduxPayroll;
+  const isEdit = mode === 'edit';
+  
+  // Load payroll data if editing and we have an ID
+  useEffect(() => {
+    if (isEdit && payrollId && !selectedPayroll) {
+      dispatch(getPayrollById(payrollId));
+    }
+  }, [dispatch, isEdit, payrollId, selectedPayroll]);
 
-  // Redux state
-  const currentPayroll = useSelector(selectCurrentPayroll);
-  const payrollLoading = useSelector(selectPayrollLoading);
-  const payrollError = useSelector(selectPayrollError);
-  const branches = useSelector(selectBranches);
-  const branchesLoading = useSelector(selectBranchLoading);
+  // Load branches
+  useEffect(() => {
+    dispatch(getAllBranches());
+  }, [dispatch]);
+
+  // Handle success states - navigate away from form
+  useEffect(() => {
+    if (createSuccess) {
+      dispatch(clearCurrentPayroll());
+      navigate('/payrolls', { state: { activeTab: 'employees' } });
+    }
+  }, [createSuccess, navigate, dispatch]);
+
+  useEffect(() => {
+    if (updateSuccess) {
+      dispatch(clearCurrentPayroll());
+      navigate('/payrolls', { state: { activeTab: 'employees' } });
+    }
+  }, [updateSuccess, navigate, dispatch]);
+
+  // Handle error states - show error messages
+  useEffect(() => {
+    if (createError) {
+      dispatch(clearPayrollError());
+    }
+  }, [createError, dispatch]);
+
+  useEffect(() => {
+    if (updateError) {
+      dispatch(clearPayrollError());
+    }
+  }, [updateError, dispatch]);
 
   // Form state
+  const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState({
     employeeName: '',
     employeeId: '',
     designation: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
     branchId: '',
-    basicSalary: '',
-    allowances: {
-      transportAllowance: 0,
-      specialAllowance: 0,
-      otherAllowances: 0
+    dateOfBirth: '',
+    address: {
+      street: '',
+      city: '',
+      state: '',
+      pinCode: '',
+      country: 'India'
     },
+    basicSalary: '',
     deductions: {
       providentFund: 0,
       professionalTax: 0,
       incomeTax: 0,
       otherDeductions: 0
-    },
-    payment: {
-      status: 'pending',
-      paymentMethod: 'bank_transfer',
-      remarks: ''
     },
     bankDetails: {
       bankName: '',
@@ -88,70 +128,38 @@ const PayrollFormPage = () => {
       aadharNumber: ''
     }
   });
-
+  
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
-  const [currentStep, setCurrentStep] = useState(1);
   const [submitButtonClicked, setSubmitButtonClicked] = useState(false);
-  
-  // Debug step changes
-  useEffect(() => {
-    console.log('📍 Current step changed to:', currentStep);
-    // Reset submit button state when step changes
-    setSubmitButtonClicked(false);
-  }, [currentStep]);
-  
-  // Debug currentPayroll changes
-  useEffect(() => {
-    console.log('📦 currentPayroll changed:', { hasPayroll: !!currentPayroll, payrollId: currentPayroll?._id });
-  }, [currentPayroll]);
-  
-  // Debug component lifecycle
-  useEffect(() => {
-    console.log('🚀 Component mounted/updated:', { isEdit, id, currentPath: window.location.pathname, currentStep });
-    return () => {
-      console.log('💀 Component unmounting - current step was:', currentStep);
-    };
-  });
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // Load data on component mount
+  // Initialize form data when editing
   useEffect(() => {
-    // Try both actions to ensure branches are loaded
-    dispatch(getActiveBranches());
-    dispatch(getAllBranches({ page: 1, limit: 1000, status: 'active' }));
-    
-    if (isEdit && id) {
-      dispatch(getPayrollById(id));
-    }
-  }, [dispatch, isEdit, id]);
-
-
-  // Update form data when payroll is loaded for editing
-  useEffect(() => {
-    console.log('📋 Edit effect triggered:', { isEdit, hasCurrentPayroll: !!currentPayroll, payrollId: currentPayroll?._id });
-    if (isEdit && currentPayroll && currentPayroll._id) {
-      console.log('🔄 Setting form data for editing:', currentPayroll);
+    if (isEdit && currentPayroll) {
       setFormData({
         employeeName: currentPayroll.employeeName || '',
         employeeId: currentPayroll.employeeId || '',
         designation: currentPayroll.designation || '',
-        branchId: currentPayroll.branchId?._id || '',
-        basicSalary: currentPayroll.basicSalary || '',
-        allowances: {
-          transportAllowance: currentPayroll.allowances?.transportAllowance || 0,
-          specialAllowance: currentPayroll.allowances?.specialAllowance || 0,
-          otherAllowances: currentPayroll.allowances?.otherAllowances || 0
+        email: currentPayroll.email || '',
+        password: '',
+        confirmPassword: '',
+        branchId: currentPayroll.branchId?._id || currentPayroll.branchId || '',
+        dateOfBirth: currentPayroll.dateOfBirth || '',
+        address: {
+          street: currentPayroll.address?.street || '',
+          city: currentPayroll.address?.city || '',
+          state: currentPayroll.address?.state || '',
+          pinCode: currentPayroll.address?.pinCode || '',
+          country: currentPayroll.address?.country || 'India'
         },
+        basicSalary: currentPayroll.basicSalary || '',
         deductions: {
           providentFund: currentPayroll.deductions?.providentFund || 0,
           professionalTax: currentPayroll.deductions?.professionalTax || 0,
           incomeTax: currentPayroll.deductions?.incomeTax || 0,
           otherDeductions: currentPayroll.deductions?.otherDeductions || 0
-        },
-        payment: {
-          status: currentPayroll.payment?.status || 'pending',
-          paymentMethod: currentPayroll.payment?.paymentMethod || 'bank_transfer',
-          remarks: currentPayroll.payment?.remarks || ''
         },
         bankDetails: {
           bankName: currentPayroll.bankDetails?.bankName || '',
@@ -170,66 +178,81 @@ const PayrollFormPage = () => {
         }
       });
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isEdit, id]); // Only run when id changes, not when currentPayroll changes
+  }, [isEdit, currentPayroll]);
 
-  // Handle input changes
   const handleInputChange = (field, value) => {
-    console.log('🔧 Input change:', { field, value, currentStep, isEdit });
-    
     if (field.includes('.')) {
       const [parent, child] = field.split('.');
-      setFormData(prev => {
-        const newData = {
-          ...prev,
-          [parent]: {
-            ...prev[parent],
-            [child]: value
-          }
-        };
-        console.log('📝 Updated form data (nested):', newData);
-        return newData;
-      });
+      setFormData(prev => ({
+        ...prev,
+        [parent]: {
+          ...prev[parent],
+          [child]: value
+        }
+      }));
     } else {
-      setFormData(prev => {
-        const newData = {
-          ...prev,
-          [field]: value
-        };
-        console.log('📝 Updated form data (direct):', newData);
-        return newData;
-      });
+      setFormData(prev => ({
+        ...prev,
+        [field]: value
+      }));
     }
     
-    // Clear error when user starts typing
+    // Clear error for this field when user starts typing
     if (errors[field]) {
       setErrors(prev => ({
         ...prev,
-        [field]: ''
+        [field]: null
       }));
     }
   };
 
-  // Validate form
   const validateForm = () => {
-    console.log('🔍 Validating form with data:', formData);
     const newErrors = {};
-
-    // Only validate required fields for now
-    if (!formData.employeeName) {
+    
+    if (!formData.employeeName?.trim()) {
       newErrors.employeeName = 'Employee name is required';
     }
-    if (!formData.employeeId) {
+    if (!formData.employeeId?.trim()) {
       newErrors.employeeId = 'Employee ID is required';
     }
-    if (!formData.designation) {
+    if (!formData.designation?.trim()) {
       newErrors.designation = 'Designation is required';
     }
-    if (!formData.branchId || formData.branchId === 'default') {
+    if (!formData.email?.trim()) {
+      newErrors.email = 'Email is required';
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      newErrors.email = 'Email is invalid';
+    }
+    if (!formData.password?.trim()) {
+      newErrors.password = 'Password is required';
+    } else if (formData.password.length < 6) {
+      newErrors.password = 'Password must be at least 6 characters';
+    }
+    if (!formData.confirmPassword?.trim()) {
+      newErrors.confirmPassword = 'Confirm password is required';
+    } else if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = 'Passwords do not match';
+    }
+    if (!formData.branchId) {
       newErrors.branchId = 'Branch is required';
     }
     if (!formData.basicSalary || formData.basicSalary <= 0) {
       newErrors.basicSalary = 'Basic salary is required and must be greater than 0';
+    }
+    if (!formData.dateOfBirth?.trim()) {
+      newErrors.dateOfBirth = 'Date of birth is required';
+    }
+    if (!formData.address.street?.trim()) {
+      newErrors['address.street'] = 'Street address is required';
+    }
+    if (!formData.address.city?.trim()) {
+      newErrors['address.city'] = 'City is required';
+    }
+    if (!formData.address.state?.trim()) {
+      newErrors['address.state'] = 'State is required';
+    }
+    if (!formData.address.pinCode?.trim()) {
+      newErrors['address.pinCode'] = 'PIN code is required';
     }
     
     // Optional validations - only validate if fields have values
@@ -239,101 +262,43 @@ const PayrollFormPage = () => {
     if (formData.bankDetails.accountNumber && !formData.bankDetails.ifscCode) {
       newErrors['bankDetails.ifscCode'] = 'IFSC code is required when account number is provided';
     }
-    // Only validate PAN format if PAN number is provided and not empty
-    if (formData.panDetails.panNumber && formData.panDetails.panNumber.trim() !== '') {
-      if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(formData.panDetails.panNumber.trim())) {
-        newErrors['panDetails.panNumber'] = 'Invalid PAN number format (e.g., ABCDE1234F)';
-      }
+    if (formData.panDetails.panNumber && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(formData.panDetails.panNumber)) {
+      newErrors['panDetails.panNumber'] = 'PAN number must be in format ABCDE1234F';
     }
-    // Only validate Aadhar format if Aadhar number is provided and not empty
-    if (formData.panDetails.aadharNumber && formData.panDetails.aadharNumber.trim() !== '') {
-      if (!/^[0-9]{12}$/.test(formData.panDetails.aadharNumber.trim())) {
-        newErrors['panDetails.aadharNumber'] = 'Aadhar number must be exactly 12 digits';
-      }
+    if (formData.panDetails.aadharNumber && !/^[0-9]{12}$/.test(formData.panDetails.aadharNumber)) {
+      newErrors['panDetails.aadharNumber'] = 'Aadhar number must be 12 digits';
     }
     
-    // Payment validation - make these optional for now to prevent form closing
-    // if (!formData.payment?.status) {
-    //   newErrors['payment.status'] = 'Payment status is required';
-    // }
-    // if (!formData.payment?.paymentMethod) {
-    //   newErrors['payment.paymentMethod'] = 'Payment method is required';
-    // }
-
-    console.log('✅ Validation result:', { errors: newErrors, isValid: Object.keys(newErrors).length === 0 });
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('📤 Form submission triggered:', { currentStep, isEdit, formData });
-    console.log('📤 Form submission event:', e);
-    console.trace('Form submission stack trace');
-    
-    // Only allow submission on the last step AND when user actually clicks submit
-    if (currentStep !== 5) {
-      console.log('❌ Form submission blocked - not on last step:', currentStep);
-      return;
-    }
-    
-    // Check if this is a manual submission (user clicked submit button)
-    const isManualSubmission = e.nativeEvent && e.nativeEvent.submitter && e.nativeEvent.submitter.type === 'submit';
-    console.log('🔍 Submission details:', { 
-      hasNativeEvent: !!e.nativeEvent, 
-      hasSubmitter: !!(e.nativeEvent && e.nativeEvent.submitter),
-      submitterType: e.nativeEvent?.submitter?.type,
-      isManualSubmission,
-      submitButtonClicked
-    });
-    
-    if (!isManualSubmission || !submitButtonClicked) {
-      console.log('❌ Form submission blocked - not manual submission or button not clicked');
-      return;
-    }
     
     if (!validateForm()) {
-      console.log('❌ Form validation failed');
-      // Get the first error message to show in notification
-      const firstErrorKey = Object.keys(errors)[0];
-      const firstErrorMessage = errors[firstErrorKey];
-      
-      dispatch(addNotification({
-        type: 'error',
-        message: `Please fix the errors before submitting. ${firstErrorMessage}`
-      }));
-      
-      // Scroll to first error
-      if (firstErrorKey) {
-        const element = document.querySelector(`[name="${firstErrorKey}"]`);
-        if (element) {
-          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          element.focus();
-        } else {
-          // If element not found by name, try to find by error key
-          const errorElement = document.querySelector(`[data-error="${firstErrorKey}"]`);
-          if (errorElement) {
-            errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            errorElement.focus();
-          }
-        }
-      }
       return;
     }
-
+    
     setSubmitting(true);
     
     try {
       const payrollData = {
-        ...formData,
-        basicSalary: parseFloat(formData.basicSalary),
-        designation: formData.designation,
-        allowances: {
-          transportAllowance: parseFloat(formData.allowances.transportAllowance) || 0,
-          specialAllowance: parseFloat(formData.allowances.specialAllowance) || 0,
-          otherAllowances: parseFloat(formData.allowances.otherAllowances) || 0
+        employeeName: formData.employeeName.trim(),
+        employeeId: formData.employeeId.trim(),
+        designation: formData.designation.trim(),
+        email: formData.email.trim(),
+        password: formData.password,
+        branchId: formData.branchId,
+        dateOfBirth: formData.dateOfBirth,
+        address: {
+          street: formData.address.street.trim(),
+          city: formData.address.city.trim(),
+          state: formData.address.state.trim(),
+          pinCode: formData.address.pinCode.trim(),
+          country: formData.address.country.trim()
         },
+        basicSalary: parseFloat(formData.basicSalary),
         deductions: {
           providentFund: parseFloat(formData.deductions.providentFund) || 0,
           professionalTax: parseFloat(formData.deductions.professionalTax) || 0,
@@ -357,30 +322,13 @@ const PayrollFormPage = () => {
         }
       };
 
-      if (isEdit) {
-        await dispatch(updatePayroll({ id, payrollData })).unwrap();
-        dispatch(addNotification({
-          type: 'success',
-          message: 'Payroll updated successfully'
-        }));
+      if (isEdit && currentPayroll) {
+        dispatch(updatePayroll({ payrollId: currentPayroll._id, payrollData }));
       } else {
-        await dispatch(createPayroll(payrollData)).unwrap();
-        dispatch(addNotification({
-          type: 'success',
-          message: 'Payroll created successfully'
-        }));
-        
-        // Refresh the payroll list to show the new payroll
-        dispatch(getAllPayrolls({ page: 1, limit: 10 }));
+        dispatch(createPayroll(payrollData));
       }
-      
-      trackedNavigate('/payrolls');
     } catch (error) {
-      console.error('Payroll operation failed:', error);
-      dispatch(addNotification({
-        type: 'error',
-        message: error || `Failed to ${isEdit ? 'update' : 'create'} payroll`
-      }));
+      console.error('Error submitting form:', error);
     } finally {
       setSubmitting(false);
     }
@@ -388,13 +336,13 @@ const PayrollFormPage = () => {
 
   // Calculate totals
   const calculateTotals = () => {
-    const totalAllowances = Object.values(formData.allowances).reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
+    const basicSalary = parseFloat(formData.basicSalary) || 0;
     const totalDeductions = Object.values(formData.deductions).reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
-    const grossSalary = (parseFloat(formData.basicSalary) || 0) + totalAllowances;
+    const grossSalary = basicSalary; // No allowances, so gross = basic
     const netSalary = grossSalary - totalDeductions;
 
     return {
-      totalAllowances,
+      basicSalary,
       totalDeductions,
       grossSalary,
       netSalary
@@ -403,36 +351,27 @@ const PayrollFormPage = () => {
 
   const totals = calculateTotals();
 
+  // Designation options - based on available user roles (excluding super_admin)
+  const designationOptions = [
+    { value: 'sales_executive', label: 'Sales Executive' },
+    { value: 'admin', label: 'Admin' },
+    { value: 'supervisor', label: 'Supervisor' },
+    { value: 'production_manager', label: 'Production Manager' },
+    { value: 'accounts_manager', label: 'Accounts Manager' }
+  ];
+
   // Prepare options
-  const branchOptions = branches && branches.length > 0 ? branches.map(branch => ({
+  const branchOptions = branches.length > 0 ? branches.map(branch => ({
     value: branch._id,
     label: `${branch.branchName} (${branch.branchCode})`
   })) : [
     { value: 'default', label: 'No branches available - Please add branches first' }
   ];
 
-
-
-  const paymentMethodOptions = [
-    { value: 'bank_transfer', label: 'Bank Transfer' },
-    { value: 'cash', label: 'Cash' },
-    { value: 'cheque', label: 'Cheque' },
-    { value: 'upi', label: 'UPI' }
-  ];
-
-  const paymentStatusOptions = [
-    { value: 'pending', label: 'Pending' },
-    { value: 'processed', label: 'Processed' },
-    { value: 'paid', label: 'Paid' },
-    { value: 'failed', label: 'Failed' }
-  ];
-
   const steps = [
     { id: 'basic-info', title: 'Basic Information', description: 'Employee and branch details', icon: HiUser },
-    { id: 'salary-allowances', title: 'Salary & Allowances', description: 'Basic salary and allowances', icon: HiCurrencyDollar },
-    { id: 'deductions', title: 'Deductions', description: 'Taxes and other deductions', icon: HiMinus },
-    { id: 'bank-pf-details', title: 'Bank & PF Details', description: 'Bank and provident fund info', icon: HiBuildingOffice },
-    { id: 'payment-details', title: 'Payment Details', description: 'Payment status and method', icon: HiCheckCircle }
+    { id: 'salary-deductions', title: 'Salary & Deductions', description: 'Basic salary and deductions', icon: HiCurrencyDollar },
+    { id: 'bank-pf-details', title: 'Bank & PF Details', description: 'Bank and provident fund info', icon: HiBuildingOffice }
   ];
 
   if (payrollLoading && isEdit) {
@@ -440,423 +379,637 @@ const PayrollFormPage = () => {
   }
 
   return (
-    <div className="space-y-3">
+    <div className="w-full h-full flex flex-col">
       {/* Header */}
-      <Card padding="p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                {isEdit ? 'Edit Employee' : 'Add New Employee'}
-              </h1>
-            </div>
-          </div>
-        </div>
-      </Card>
+      <div className="px-6 py-4">
+        <h1 className="text-2xl font-bold text-gray-900">
+          {isEdit ? 'Edit Employee' : 'Add New Employee'}
+        </h1>
+      </div>
 
       {/* Stepper */}
-      <Card padding="p-4">
+      <div className="px-6 py-4">
         <MaterialStepper 
           steps={steps} 
           currentStep={currentStep} 
           onStepChange={setCurrentStep}
           allowNavigation={true}
         />
-      </Card>
+      </div>
 
-      {/* Form */}
-      <form 
-        onSubmit={(e) => {
-          console.log('📝 Form onSubmit event triggered:', { currentStep, isEdit });
-          handleSubmit(e);
-        }} 
-        className="space-y-3"
-      >
-        {/* Step 1: Basic Information */}
-        {currentStep === 1 && (
-          <Card padding="p-4">
-            <h2 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
-              <HiUser className="w-5 h-5 mr-2" />
-              Basic Information
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <Input
-                name="employeeName"
-                label="Employee Name *"
-                value={formData.employeeName}
-                onChange={(e) => handleInputChange('employeeName', e.target.value)}
-                error={errors.employeeName}
-                placeholder="Enter employee name"
-                icon={HiUser}
-              />
-              <Input
-                name="employeeId"
-                label="Employee ID *"
-                value={formData.employeeId}
-                onChange={(e) => handleInputChange('employeeId', e.target.value)}
-                error={errors.employeeId}
-                placeholder="Enter employee ID"
-                icon={HiUser}
-              />
-              <Input
-                name="designation"
-                label="Designation *"
-                value={formData.designation}
-                onChange={(e) => handleInputChange('designation', e.target.value)}
-                error={errors.designation}
-                placeholder="Enter designation"
-                icon={HiUser}
-              />
-              <Select
-                name="branchId"
-                label="Branch *"
-                value={formData.branchId}
-                onChange={(e) => handleInputChange('branchId', e.target.value)}
-                options={branchOptions}
-                error={errors.branchId}
-                loading={branchesLoading}
-                placeholder={branchesLoading ? "Loading branches..." : "Select a branch"}
-                disabled={branchesLoading || branchOptions.length === 0}
-              />
-            </div>
-          </Card>
-        )}
-
-        {/* Step 2: Salary & Allowances */}
-        {currentStep === 2 && (
-          <Card padding="p-4">
-            <h2 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
-              <HiCurrencyDollar className="w-5 h-5 mr-2" />
-              Salary & Allowances
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <Input
-                name="basicSalary"
-                label="Basic Salary *"
-                type="number"
-                value={formData.basicSalary}
-                onChange={(e) => handleInputChange('basicSalary', e.target.value)}
-                error={errors.basicSalary}
-                icon={HiCurrencyDollar}
-                placeholder="Enter basic salary"
-                min="0"
-                step="0.01"
-              />
-              <div className="md:col-span-2">
-                <h3 className="text-md font-medium text-gray-700 mb-3">Allowances</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <Input
-                    label="Transport Allowance"
-                    type="number"
-                    value={formData.allowances.transportAllowance}
-                    onChange={(e) => handleInputChange('allowances.transportAllowance', e.target.value)}
-                    placeholder="0"
-                    min="0"
-                    step="0.01"
-                  />
-                  <Input
-                    label="Special Allowance"
-                    type="number"
-                    value={formData.allowances.specialAllowance}
-                    onChange={(e) => handleInputChange('allowances.specialAllowance', e.target.value)}
-                    placeholder="0"
-                    min="0"
-                    step="0.01"
-                  />
-                  <Input
-                    label="Other Allowances"
-                    type="number"
-                    value={formData.allowances.otherAllowances}
-                    onChange={(e) => handleInputChange('allowances.otherAllowances', e.target.value)}
-                    placeholder="0"
-                    min="0"
-                    step="0.01"
-                  />
-                </div>
-                <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                  <div className="text-sm text-gray-600">
-                    <strong>Total Allowances:</strong> ₹{totals.totalAllowances.toLocaleString()}
+      {/* Form Content */}
+      <div className="flex-1 px-6 py-4 bg-white overflow-y-auto">
+        <form 
+          onSubmit={handleSubmit}
+          className="h-full flex flex-col"
+        >
+          <div className="flex-1 min-h-0">
+            {/* Step 1: Basic Information */}
+            {currentStep === 1 && (
+              <div className="space-y-6">
+                <div className="flex items-center space-x-3 mb-6">
+                  <div className="h-10 w-10 bg-blue-100 rounded-xl flex items-center justify-center">
+                    <HiUser className="h-5 w-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <h4 className="text-lg font-semibold text-gray-900">Basic Information</h4>
+                    <p className="text-sm text-gray-600">Employee details and branch assignment</p>
                   </div>
                 </div>
-              </div>
-            </div>
-          </Card>
-        )}
-
-        {/* Step 3: Deductions */}
-        {currentStep === 3 && (
-          <Card padding="p-4">
-            <h2 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
-              <HiMinus className="w-5 h-5 mr-2" />
-              Deductions
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <Input
-                label="Provident Fund"
-                type="number"
-                value={formData.deductions.providentFund}
-                onChange={(e) => handleInputChange('deductions.providentFund', e.target.value)}
-                placeholder="0"
-                min="0"
-                step="0.01"
-              />
-              <Input
-                label="Professional Tax"
-                type="number"
-                value={formData.deductions.professionalTax}
-                onChange={(e) => handleInputChange('deductions.professionalTax', e.target.value)}
-                placeholder="0"
-                min="0"
-                step="0.01"
-              />
-              <Input
-                label="Income Tax"
-                type="number"
-                value={formData.deductions.incomeTax}
-                onChange={(e) => handleInputChange('deductions.incomeTax', e.target.value)}
-                placeholder="0"
-                min="0"
-                step="0.01"
-              />
-              <Input
-                label="Other Deductions"
-                type="number"
-                value={formData.deductions.otherDeductions}
-                onChange={(e) => handleInputChange('deductions.otherDeductions', e.target.value)}
-                placeholder="0"
-                min="0"
-                step="0.01"
-              />
-              <div className="md:col-span-2 mt-2 p-3 bg-gray-50 rounded-lg">
-                <div className="text-sm text-gray-600">
-                  <strong>Total Deductions:</strong> ₹{totals.totalDeductions.toLocaleString()}
-                </div>
-              </div>
-            </div>
-          </Card>
-        )}
-
-        {/* Step 4: Bank & PF Details */}
-        {currentStep === 4 && (
-          <Card padding="p-4">
-            <h2 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
-              <HiBuildingOffice className="w-5 h-5 mr-2" />
-              Bank & PF Details
-            </h2>
-            <div className="space-y-3">
-              {/* Bank Details */}
-              <div>
-                <h3 className="text-md font-medium text-gray-700 mb-3">Bank Details</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <Input
-                    label="Bank Name"
-                    value={formData.bankDetails.bankName}
-                    onChange={(e) => handleInputChange('bankDetails.bankName', e.target.value)}
-                    error={errors['bankDetails.bankName']}
-                    placeholder="Enter bank name"
-                  />
-                  <Input
-                    label="Account Number"
-                    value={formData.bankDetails.accountNumber}
-                    onChange={(e) => handleInputChange('bankDetails.accountNumber', e.target.value)}
-                    placeholder="Enter account number"
-                  />
-                  <Input
-                    label="IFSC Code"
-                    value={formData.bankDetails.ifscCode}
-                    onChange={(e) => handleInputChange('bankDetails.ifscCode', e.target.value)}
-                    error={errors['bankDetails.ifscCode']}
-                    placeholder="Enter IFSC code"
-                    className="uppercase"
-                  />
-                  <Input
-                    label="Account Holder Name"
-                    value={formData.bankDetails.accountHolderName}
-                    onChange={(e) => handleInputChange('bankDetails.accountHolderName', e.target.value)}
-                    placeholder="Enter account holder name"
-                  />
-                </div>
-              </div>
-
-              {/* PF Details */}
-              <div>
-                <h3 className="text-md font-medium text-gray-700 mb-3">Provident Fund Details</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <Input
-                    label="PF Number"
-                    value={formData.pfDetails.pfNumber}
-                    onChange={(e) => handleInputChange('pfDetails.pfNumber', e.target.value)}
-                    placeholder="Enter PF number"
-                  />
-                  <Input
-                    label="UAN Number"
-                    value={formData.pfDetails.uanNumber}
-                    onChange={(e) => handleInputChange('pfDetails.uanNumber', e.target.value)}
-                    placeholder="Enter UAN number"
-                  />
-                  <Input
-                    label="PF Account Number"
-                    value={formData.pfDetails.pfAccountNumber}
-                    onChange={(e) => handleInputChange('pfDetails.pfAccountNumber', e.target.value)}
-                    placeholder="Enter PF account number"
-                  />
-                </div>
-              </div>
-
-              {/* PAN & Aadhar Details */}
-              <div>
-                <h3 className="text-md font-medium text-gray-700 mb-3">PAN & Aadhar Details</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div className="relative">
-                    <Input
-                      name="panDetails.panNumber"
-                      label="PAN Number (Optional)"
-                      value={formData.panDetails.panNumber}
-                      onChange={(e) => handleInputChange('panDetails.panNumber', e.target.value.toUpperCase())}
-                      error={errors['panDetails.panNumber']}
-                      placeholder="Enter PAN number (e.g., ABCDE1234F)"
-                      className="uppercase"
-                      maxLength="10"
-                      data-error="panDetails.panNumber"
+                
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Employee Name *
+                    </label>
+                    <input
+                      type="text"
+                      name="employeeName"
+                      value={formData.employeeName}
+                      onChange={(e) => handleInputChange('employeeName', e.target.value)}
+                      placeholder="Enter employee name"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white shadow-sm hover:shadow-md"
                     />
-                    {formData.panDetails.panNumber && errors['panDetails.panNumber'] && (
-                      <button
-                        type="button"
-                        onClick={() => handleInputChange('panDetails.panNumber', '')}
-                        className="absolute right-2 top-8 text-red-500 hover:text-red-700 text-xs font-medium"
-                      >
-                        Clear
-                      </button>
+                    {errors.employeeName && (
+                      <p className="mt-1 text-sm text-red-600">{errors.employeeName}</p>
                     )}
                   </div>
-                  <div className="relative">
-                    <Input
-                      name="panDetails.aadharNumber"
-                      label="Aadhar Number (Optional)"
-                      value={formData.panDetails.aadharNumber}
-                      onChange={(e) => handleInputChange('panDetails.aadharNumber', e.target.value.replace(/\D/g, ''))}
-                      error={errors['panDetails.aadharNumber']}
-                      placeholder="Enter Aadhar number (12 digits)"
-                      maxLength="12"
-                      data-error="panDetails.aadharNumber"
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Employee ID *
+                    </label>
+                    <input
+                      type="text"
+                      name="employeeId"
+                      value={formData.employeeId}
+                      onChange={(e) => handleInputChange('employeeId', e.target.value)}
+                      placeholder="Enter employee ID"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white shadow-sm hover:shadow-md"
                     />
-                    {formData.panDetails.aadharNumber && errors['panDetails.aadharNumber'] && (
+                    {errors.employeeId && (
+                      <p className="mt-1 text-sm text-red-600">{errors.employeeId}</p>
+                    )}
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Designation *
+                    </label>
+                    <Select
+                      options={designationOptions}
+                      value={formData.designation}
+                      onChange={(value) => handleInputChange('designation', value)}
+                      placeholder="Select designation"
+                      error={errors.designation}
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Email *
+                    </label>
+                    <input
+                      type="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={(e) => handleInputChange('email', e.target.value)}
+                      placeholder="Enter email address"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+                    />
+                    {errors.email && (
+                      <p className="mt-1 text-sm text-red-600">{errors.email}</p>
+                    )}
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Password *
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        name="password"
+                        value={formData.password}
+                        onChange={(e) => handleInputChange('password', e.target.value)}
+                        placeholder="Enter password"
+                        className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+                      />
                       <button
                         type="button"
-                        onClick={() => handleInputChange('panDetails.aadharNumber', '')}
-                        className="absolute right-2 top-8 text-red-500 hover:text-red-700 text-xs font-medium"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 transition-colors duration-200"
                       >
-                        Clear
+                        {showPassword ? (
+                          <HiEyeSlash className="h-5 w-5" />
+                        ) : (
+                          <HiEye className="h-5 w-5" />
+                        )}
                       </button>
+                    </div>
+                    {errors.password && (
+                      <p className="mt-1 text-sm text-red-600">{errors.password}</p>
+                    )}
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Confirm Password *
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showConfirmPassword ? "text" : "password"}
+                        name="confirmPassword"
+                        value={formData.confirmPassword}
+                        onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
+                        placeholder="Confirm password"
+                        className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 transition-colors duration-200"
+                      >
+                        {showConfirmPassword ? (
+                          <HiEyeSlash className="h-5 w-5" />
+                        ) : (
+                          <HiEye className="h-5 w-5" />
+                        )}
+                      </button>
+                    </div>
+                    {errors.confirmPassword && (
+                      <p className="mt-1 text-sm text-red-600">{errors.confirmPassword}</p>
+                    )}
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Branch *
+                    </label>
+                    <Select
+                      options={branchOptions}
+                      value={formData.branchId}
+                      onChange={(value) => handleInputChange('branchId', value)}
+                      placeholder={branchesLoading ? "Loading branches..." : "Select a branch"}
+                      disabled={branchesLoading || branchOptions.length === 0}
+                      error={errors.branchId}
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Date of Birth *
+                    </label>
+                    <input
+                      type="date"
+                      name="dateOfBirth"
+                      value={formData.dateOfBirth}
+                      onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+                    />
+                    {errors.dateOfBirth && (
+                      <p className="mt-1 text-sm text-red-600">{errors.dateOfBirth}</p>
                     )}
                   </div>
                 </div>
+                
+                {/* Address Section */}
+                <div className="mt-8">
+                  <h3 className="text-md font-semibold text-gray-800 border-b border-gray-200 pb-2 mb-4">Address Information</h3>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className="lg:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Street Address *
+                      </label>
+                      <input
+                        type="text"
+                        name="address.street"
+                        value={formData.address.street}
+                        onChange={(e) => handleInputChange('address.street', e.target.value)}
+                        placeholder="Enter street address"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+                      />
+                      {errors['address.street'] && (
+                        <p className="mt-1 text-sm text-red-600">{errors['address.street']}</p>
+                      )}
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        City *
+                      </label>
+                      <input
+                        type="text"
+                        name="address.city"
+                        value={formData.address.city}
+                        onChange={(e) => handleInputChange('address.city', e.target.value)}
+                        placeholder="Enter city"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+                      />
+                      {errors['address.city'] && (
+                        <p className="mt-1 text-sm text-red-600">{errors['address.city']}</p>
+                      )}
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        State *
+                      </label>
+                      <input
+                        type="text"
+                        name="address.state"
+                        value={formData.address.state}
+                        onChange={(e) => handleInputChange('address.state', e.target.value)}
+                        placeholder="Enter state"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+                      />
+                      {errors['address.state'] && (
+                        <p className="mt-1 text-sm text-red-600">{errors['address.state']}</p>
+                      )}
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        PIN Code *
+                      </label>
+                      <input
+                        type="text"
+                        name="address.pinCode"
+                        value={formData.address.pinCode}
+                        onChange={(e) => handleInputChange('address.pinCode', e.target.value.replace(/\D/g, ''))}
+                        placeholder="Enter PIN code"
+                        maxLength="6"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+                      />
+                      {errors['address.pinCode'] && (
+                        <p className="mt-1 text-sm text-red-600">{errors['address.pinCode']}</p>
+                      )}
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Country
+                      </label>
+                      <input
+                        type="text"
+                        name="address.country"
+                        value={formData.address.country}
+                        onChange={(e) => handleInputChange('address.country', e.target.value)}
+                        placeholder="Enter country"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
-          </Card>
-        )}
+            )}
 
-        {/* Step 5: Payment Details */}
-        {currentStep === 5 && (
-          <Card padding="p-4">
-            {console.log('🎯 Rendering Payment Details step')}
-            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-              <HiCheckCircle className="w-5 h-5 mr-2" />
-              Payment Details
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <Select
-                name="payment.status"
-                label="Payment Status"
-                value={formData.payment.status}
-                onChange={(e) => handleInputChange('payment.status', e.target.value)}
-                options={paymentStatusOptions}
-                error={errors['payment.status']}
-              />
-              <Select
-                name="payment.paymentMethod"
-                label="Payment Method"
-                value={formData.payment.paymentMethod}
-                onChange={(e) => handleInputChange('payment.paymentMethod', e.target.value)}
-                options={paymentMethodOptions}
-                error={errors['payment.paymentMethod']}
-              />
-              <div className="md:col-span-2">
-                <TextArea
-                  label="Payment Remarks"
-                  value={formData.payment.remarks}
-                  onChange={(e) => handleInputChange('payment.remarks', e.target.value)}
-                  placeholder="Enter any payment-related remarks..."
-                  rows={3}
-                />
+            {/* Step 2: Salary & Deductions */}
+            {currentStep === 2 && (
+              <div className="space-y-6">
+                <div className="flex items-center space-x-3 mb-6">
+                  <div className="h-10 w-10 bg-green-100 rounded-xl flex items-center justify-center">
+                    <HiCurrencyDollar className="h-5 w-5 text-green-600" />
+                  </div>
+                  <div>
+                    <h4 className="text-lg font-semibold text-gray-900">Salary & Deductions</h4>
+                    <p className="text-sm text-gray-600">Basic salary and deduction information</p>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Basic Salary *
+                    </label>
+                    <input
+                      type="number"
+                      name="basicSalary"
+                      value={formData.basicSalary}
+                      onChange={(e) => handleInputChange('basicSalary', e.target.value)}
+                      placeholder="Enter basic salary"
+                      min="0"
+                      step="0.01"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+                    />
+                    {errors.basicSalary && (
+                      <p className="mt-1 text-sm text-red-600">{errors.basicSalary}</p>
+                    )}
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Provident Fund
+                    </label>
+                    <input
+                      type="number"
+                      name="deductions.providentFund"
+                      value={formData.deductions.providentFund}
+                      onChange={(e) => handleInputChange('deductions.providentFund', e.target.value)}
+                      placeholder="0"
+                      min="0"
+                      step="0.01"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Professional Tax
+                    </label>
+                    <input
+                      type="number"
+                      name="deductions.professionalTax"
+                      value={formData.deductions.professionalTax}
+                      onChange={(e) => handleInputChange('deductions.professionalTax', e.target.value)}
+                      placeholder="0"
+                      min="0"
+                      step="0.01"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Income Tax
+                    </label>
+                    <input
+                      type="number"
+                      name="deductions.incomeTax"
+                      value={formData.deductions.incomeTax}
+                      onChange={(e) => handleInputChange('deductions.incomeTax', e.target.value)}
+                      placeholder="0"
+                      min="0"
+                      step="0.01"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Other Deductions
+                    </label>
+                    <input
+                      type="number"
+                      name="deductions.otherDeductions"
+                      value={formData.deductions.otherDeductions}
+                      onChange={(e) => handleInputChange('deductions.otherDeductions', e.target.value)}
+                      placeholder="0"
+                      min="0"
+                      step="0.01"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+                    />
+                  </div>
+                </div>
+                
+                <div className="mt-6 p-4 bg-gray-50 rounded-xl">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Basic Salary:</span>
+                      <span className="font-medium text-gray-900">₹{totals.basicSalary?.toLocaleString() || 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Total Deductions:</span>
+                      <span className="font-medium text-gray-900">₹{totals.totalDeductions?.toLocaleString() || 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Gross Salary:</span>
+                      <span className="font-medium text-gray-900">₹{totals.grossSalary?.toLocaleString() || 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Net Salary:</span>
+                      <span className="font-medium text-green-600">₹{totals.netSalary?.toLocaleString() || 0}</span>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
-          </Card>
-        )}
+            )}
 
 
-        {/* Form Actions */}
-        <Card padding="p-4">
-          <div className="flex justify-between">
-            <div className="flex space-x-3">
-              <button
-                type="button"
-                onClick={() => trackedNavigate('/payrolls')}
-                className="flex items-center space-x-2 px-3 py-1.5 border border-red-300 text-red-700 rounded-lg hover:bg-red-50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-xs font-medium"
-              >
-                <HiXMark className="h-3 w-3" />
-                <span>Cancel</span>
-              </button>
-              {currentStep > 1 && (
+            {/* Step 3: Bank & PF Details */}
+            {currentStep === 3 && (
+              <div className="space-y-8">
+                <div className="flex items-center space-x-3 mb-6">
+                  <div className="h-10 w-10 bg-purple-100 rounded-xl flex items-center justify-center">
+                    <HiBuildingOffice className="h-5 w-5 text-purple-600" />
+                  </div>
+                  <div>
+                    <h4 className="text-lg font-semibold text-gray-900">Bank & PF Details</h4>
+                    <p className="text-sm text-gray-600">Banking and provident fund information</p>
+                  </div>
+                </div>
+                
+                {/* Bank Details */}
+                <div className="space-y-4">
+                  <h3 className="text-md font-semibold text-gray-800 border-b border-gray-200 pb-2">Bank Details</h3>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Bank Name
+                      </label>
+                      <input
+                        type="text"
+                        name="bankDetails.bankName"
+                        value={formData.bankDetails.bankName}
+                        onChange={(e) => handleInputChange('bankDetails.bankName', e.target.value)}
+                        placeholder="Enter bank name"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+                      />
+                      {errors['bankDetails.bankName'] && (
+                        <p className="mt-1 text-sm text-red-600">{errors['bankDetails.bankName']}</p>
+                      )}
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Account Number
+                      </label>
+                      <input
+                        type="text"
+                        name="bankDetails.accountNumber"
+                        value={formData.bankDetails.accountNumber}
+                        onChange={(e) => handleInputChange('bankDetails.accountNumber', e.target.value)}
+                        placeholder="Enter account number"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        IFSC Code
+                      </label>
+                      <input
+                        type="text"
+                        name="bankDetails.ifscCode"
+                        value={formData.bankDetails.ifscCode}
+                        onChange={(e) => handleInputChange('bankDetails.ifscCode', e.target.value.toUpperCase())}
+                        placeholder="Enter IFSC code"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white shadow-sm hover:shadow-md uppercase"
+                      />
+                      {errors['bankDetails.ifscCode'] && (
+                        <p className="mt-1 text-sm text-red-600">{errors['bankDetails.ifscCode']}</p>
+                      )}
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Account Holder Name
+                      </label>
+                      <input
+                        type="text"
+                        name="bankDetails.accountHolderName"
+                        value={formData.bankDetails.accountHolderName}
+                        onChange={(e) => handleInputChange('bankDetails.accountHolderName', e.target.value)}
+                        placeholder="Enter account holder name"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* PF Details */}
+                <div className="space-y-4">
+                  <h3 className="text-md font-semibold text-gray-800 border-b border-gray-200 pb-2">Provident Fund Details</h3>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        PF Number
+                      </label>
+                      <input
+                        type="text"
+                        name="pfDetails.pfNumber"
+                        value={formData.pfDetails.pfNumber}
+                        onChange={(e) => handleInputChange('pfDetails.pfNumber', e.target.value)}
+                        placeholder="Enter PF number"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        UAN Number
+                      </label>
+                      <input
+                        type="text"
+                        name="pfDetails.uanNumber"
+                        value={formData.pfDetails.uanNumber}
+                        onChange={(e) => handleInputChange('pfDetails.uanNumber', e.target.value)}
+                        placeholder="Enter UAN number"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        PF Account Number
+                      </label>
+                      <input
+                        type="text"
+                        name="pfDetails.pfAccountNumber"
+                        value={formData.pfDetails.pfAccountNumber}
+                        onChange={(e) => handleInputChange('pfDetails.pfAccountNumber', e.target.value)}
+                        placeholder="Enter PF account number"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* PAN & Aadhar Details */}
+                <div className="space-y-4">
+                  <h3 className="text-md font-semibold text-gray-800 border-b border-gray-200 pb-2">PAN & Aadhar Details</h3>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        PAN Number (Optional)
+                      </label>
+                      <input
+                        type="text"
+                        name="panDetails.panNumber"
+                        value={formData.panDetails.panNumber}
+                        onChange={(e) => handleInputChange('panDetails.panNumber', e.target.value.toUpperCase())}
+                        placeholder="Enter PAN number (e.g., ABCDE1234F)"
+                        maxLength="10"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white shadow-sm hover:shadow-md uppercase"
+                      />
+                      {errors['panDetails.panNumber'] && (
+                        <p className="mt-1 text-sm text-red-600">{errors['panDetails.panNumber']}</p>
+                      )}
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Aadhar Number (Optional)
+                      </label>
+                      <input
+                        type="text"
+                        name="panDetails.aadharNumber"
+                        value={formData.panDetails.aadharNumber}
+                        onChange={(e) => handleInputChange('panDetails.aadharNumber', e.target.value.replace(/\D/g, ''))}
+                        placeholder="Enter Aadhar number (12 digits)"
+                        maxLength="12"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+                      />
+                      {errors['panDetails.aadharNumber'] && (
+                        <p className="mt-1 text-sm text-red-600">{errors['panDetails.aadharNumber']}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Form Actions */}
+          <div className="mt-8 pt-6 border-t border-gray-200">
+            <div className="flex justify-between">
+              <div className="flex space-x-3">
                 <button
                   type="button"
-                  onClick={() => setCurrentStep(currentStep - 1)}
-                  className="flex items-center space-x-2 px-3 py-1.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-xs font-medium"
+                  onClick={() => navigate('/payrolls')}
+                  className="flex items-center space-x-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
                 >
-                  <HiChevronLeft className="h-3 w-3" />
-                  <span>Previous</span>
+                  <HiXMark className="h-4 w-4" />
+                  <span>Cancel</span>
                 </button>
-              )}
-            </div>
-            <div className="flex space-x-3">
-              {currentStep < 5 ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    console.log('🔄 Next button clicked, current step:', currentStep, 'going to:', currentStep + 1);
-                    setCurrentStep(currentStep + 1);
-                  }}
-                  className="px-3 py-1.5 text-white rounded-lg transition-all duration-200 flex items-center space-x-2 bg-gradient-to-r from-[#8bc34a] to-[#558b2f] hover:from-[#558b2f] hover:to-[#4a7c2a] shadow-md hover:shadow-lg text-xs font-medium"
-                >
-                  <span>Next</span>
-                  <HiChevronRight className="h-3 w-3" />
-                </button>
-              ) : (
-                <>
+                {currentStep > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => setCurrentStep(currentStep - 1)}
+                    className="flex items-center space-x-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+                  >
+                    <HiChevronLeft className="h-4 w-4" />
+                    <span>Previous</span>
+                  </button>
+                )}
+              </div>
+              <div className="flex space-x-3">
+                {currentStep < 3 ? (
+                  <button
+                    type="button"
+                    onClick={() => setCurrentStep(currentStep + 1)}
+                    className="px-4 py-2 text-white rounded-lg transition-all duration-200 flex items-center space-x-2 bg-gradient-to-r from-[#8bc34a] to-[#558b2f] hover:from-[#558b2f] hover:to-[#4a7c2a] shadow-md hover:shadow-lg text-sm font-medium"
+                  >
+                    <span>Next</span>
+                    <HiChevronRight className="h-4 w-4" />
+                  </button>
+                ) : (
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="px-3 py-1.5 text-white rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 bg-gradient-to-r from-[#8bc34a] to-[#558b2f] hover:from-[#558b2f] hover:to-[#4a7c2a] shadow-md hover:shadow-lg text-xs font-medium"
-                    onClick={(e) => {
-                      console.log('🔘 Submit button clicked manually:', { submitting, currentStep });
-                      setSubmitButtonClicked(true);
-                      if (submitting) {
-                        e.preventDefault();
-                        return;
-                      }
-                    }}
+                    className="px-4 py-2 text-white rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 bg-gradient-to-r from-[#8bc34a] to-[#558b2f] hover:from-[#558b2f] hover:to-[#4a7c2a] shadow-md hover:shadow-lg text-sm font-medium"
                   >
                     {submitting && (
-                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                     )}
-                    <span>{isEdit ? 'Update Payroll' : 'Create Payroll'}</span>
+                    <span>{isEdit ? 'Update Employee' : 'Create Employee'}</span>
                   </button>
-                </>
-              )}
+                )}
+              </div>
             </div>
           </div>
-        </Card>
-      </form>
+        </form>
+      </div>
     </div>
   );
 };

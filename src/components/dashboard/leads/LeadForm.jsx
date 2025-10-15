@@ -999,7 +999,7 @@ const LeadForm = ({
           </div>
 
           {/* Health Information */}
-          <div className="bg-white/70 backdrop-blur-sm rounded-xl p-4 border border-gray-200/60 shadow-sm hover:shadow-md transition-shadow duration-200 relative z-60" style={{overflow: 'visible'}}>
+          <div className="bg-white/70 backdrop-blur-sm rounded-xl p-4 border border-gray-200/60 shadow-sm hover:shadow-md transition-shadow duration-200 relative z-40" style={{overflow: 'visible'}}>
             <div className="flex items-center space-x-3 mb-4 pb-3 border-b border-gray-200/50">
               <div className="h-10 w-10 bg-red-100 rounded-xl flex items-center justify-center">
                 <HiExclamationTriangle className="h-5 w-5 text-red-600" />
@@ -1014,7 +1014,7 @@ const LeadForm = ({
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Health Issues
               </label>
-              <div className="relative health-issue-dropdown-container z-[110]" style={{ zIndex: 99999 }}>
+              <div className="relative health-issue-dropdown-container z-50">
                 <input
                   type="text"
                   value={healthIssueSearch}
@@ -1028,7 +1028,7 @@ const LeadForm = ({
                 />
                 <HiDocumentText className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 {showHealthIssueDropdown && (
-                  <div className="absolute z-[99999] w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 overflow-y-auto">
+                  <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 overflow-y-auto">
                     <div className="flex justify-between items-center px-4 py-2 bg-gray-50 border-b border-gray-200 rounded-t-lg">
                       <span className="text-xs font-medium text-gray-600">
                         Select Health Issues ({filteredHealthIssues.length} available)
@@ -1147,7 +1147,7 @@ const LeadForm = ({
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Select Product
               </label>
-              <div className="relative product-dropdown-container z-50" style={{ zIndex: 99998 }}>
+              <div className="relative product-dropdown-container z-40">
                 <input
                   type="text"
                   value={productSearch}
@@ -1165,7 +1165,7 @@ const LeadForm = ({
                 />
                 <HiDocumentText className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 {showProductDropdown && (
-                  <div className="absolute z-[99998] w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-48 overflow-y-auto">
+                  <div className="absolute z-40 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-48 overflow-y-auto">
                     <div className="flex justify-between items-center px-4 py-2 bg-gray-50 border-b border-gray-200 rounded-t-lg">
                       <span className="text-xs font-medium text-gray-600">Select Products</span>
                       <button

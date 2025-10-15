@@ -13,6 +13,7 @@ import {
   HiEye
 } from 'react-icons/hi2';
 import { Button, Input, Select, Table, StatusBadge, Loading, StatCard, CommonModal, DetailsView } from '../../components/common';
+import AttendanceCalendar from '../../components/attendance/AttendanceCalendar';
 import { addNotification } from '../../redux/slices/uiSlice';
 import { 
   selectAttendance,
@@ -38,6 +39,7 @@ const AttendanceTab = ({ onUploadClick, refreshTrigger }) => {
   const pagination = useSelector(selectAttendancePagination);
   
   // Local state
+  const [selectedDate, setSelectedDate] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [branchFilter, setBranchFilter] = useState('all');
   const [employeeFilter, setEmployeeFilter] = useState('all');
@@ -146,6 +148,19 @@ const AttendanceTab = ({ onUploadClick, refreshTrigger }) => {
     setCurrentPage(page);
   };
 
+  // Handle date click from calendar
+  const handleDateClick = (dayData) => {
+    setSelectedDate(dayData);
+    setViewMode('table');
+    // Filter attendance for the selected date
+    const selectedDateAttendance = attendance.filter(record => {
+      const recordDate = new Date(record.date).toISOString().split('T')[0];
+      return recordDate === dayData.dateKey;
+    });
+    // You could dispatch an action to filter the attendance data here
+  };
+
+
   // Handle view attendance
   const handleViewAttendance = (attendanceId) => {
     const attendanceRecord = attendance.find(a => a._id === attendanceId);
@@ -215,15 +230,6 @@ const AttendanceTab = ({ onUploadClick, refreshTrigger }) => {
 
   // Table columns
   const columns = [
-    {
-      key: 'attendanceId',
-      label: 'Attendance ID',
-      render: (attendance) => (
-        <div className="font-medium text-gray-900">
-          {attendance.attendanceId}
-        </div>
-      )
-    },
     {
       key: 'employee',
       label: 'Employee',
@@ -392,59 +398,66 @@ const AttendanceTab = ({ onUploadClick, refreshTrigger }) => {
         />
       </div>
 
-      {/* Results Info */}
-      <div className="flex items-center justify-between">
-        <div className="text-sm text-gray-500">
-          Showing {((currentPage - 1) * 10) + 1}-{Math.min(currentPage * 10, pagination?.totalItems || 0)} of {pagination?.totalItems || 0} records
-        </div>
-      </div>
-
-      {/* Attendance Table */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="flex flex-col sm:flex-row gap-3">
-              <Input
-                value={searchTerm}
-                onChange={handleSearch}
-                placeholder="Search attendance..."
-                icon={HiMagnifyingGlass}
-                className="w-full sm:w-64"
-              />
-              <Select
-                value={branchFilter}
-                onChange={(value) => handleFilterChange('branch', value)}
-                options={branchOptions}
-                className="w-full sm:w-40"
-              />
-              <Select
-                value={employeeFilter}
-                onChange={(value) => handleFilterChange('employee', value)}
-                options={employeeOptions}
-                className="w-full sm:w-48"
-              />
-              <Select
-                value={monthFilter}
-                onChange={(value) => handleFilterChange('month', value)}
-                options={monthOptions}
-                className="w-full sm:w-32"
-              />
+      {/* Calendar or Table View */}
+      {!selectedDate ? (
+        <AttendanceCalendar
+          attendance={attendance}
+          onDateClick={handleDateClick}
+          loading={loading}
+        />
+      ) : (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Input
+                  value={searchTerm}
+                  onChange={handleSearch}
+                  placeholder="Search attendance..."
+                  icon={HiMagnifyingGlass}
+                  className="w-full sm:w-64"
+                />
+                <Select
+                  value={branchFilter}
+                  onChange={(value) => handleFilterChange('branch', value)}
+                  options={branchOptions}
+                  className="w-full sm:w-40"
+                />
+                <Select
+                  value={employeeFilter}
+                  onChange={(value) => handleFilterChange('employee', value)}
+                  options={employeeOptions}
+                  className="w-full sm:w-48"
+                />
+                <Select
+                  value={monthFilter}
+                  onChange={(value) => handleFilterChange('month', value)}
+                  options={monthOptions}
+                  className="w-full sm:w-32"
+                />
+              </div>
             </div>
           </div>
+          <div className="overflow-x-auto">
+            {pagination ? (
+              <Table
+                data={attendance}
+                columns={columns}
+                loading={loading}
+                pagination={{
+                  currentPage: pagination.currentPage,
+                  totalPages: pagination.totalPages,
+                  onPageChange: handlePageChange
+                }}
+              />
+            ) : (
+              <div className="flex items-center justify-center h-32">
+                <div className="text-gray-500">Loading attendance data...</div>
+              </div>
+            )}
+          </div>
         </div>
-        <div className="overflow-x-auto">
-          <Table
-            data={attendance}
-            columns={columns}
-            loading={loading}
-            pagination={{
-              currentPage: pagination.currentPage,
-              totalPages: pagination.totalPages,
-              onPageChange: handlePageChange
-            }}
-          />
-        </div>
-      </div>
+      )}
 
 
       {/* Delete Confirmation Modal */}
@@ -485,7 +498,6 @@ const AttendanceTab = ({ onUploadClick, refreshTrigger }) => {
           </h3>
           {attendanceToDelete && (
             <div className="text-sm text-gray-500 mb-4">
-              <p><strong>Attendance ID:</strong> {attendanceToDelete.attendanceId}</p>
               <p><strong>Employee:</strong> {attendanceToDelete.employeeId?.firstName} {attendanceToDelete.employeeId?.lastName}</p>
               <p><strong>Date:</strong> {new Date(attendanceToDelete.date).toLocaleDateString()}</p>
             </div>
@@ -524,10 +536,6 @@ const AttendanceTab = ({ onUploadClick, refreshTrigger }) => {
             title: 'Basic Information',
             fields: [
               {
-                label: 'Attendance ID',
-                value: attendanceToView.attendanceId
-              },
-              {
                 label: 'Date',
                 value: new Date(attendanceToView.date).toLocaleDateString()
               },
@@ -557,7 +565,11 @@ const AttendanceTab = ({ onUploadClick, refreshTrigger }) => {
               {
                 label: 'Check In Time',
                 value: attendanceToView.checkIn?.time 
-                  ? new Date(attendanceToView.checkIn.time).toLocaleTimeString()
+                  ? new Date(attendanceToView.checkIn.time).toLocaleTimeString('en-US', { 
+                      hour: '2-digit', 
+                      minute: '2-digit', 
+                      hour12: true 
+                    })
                   : 'Not checked in'
               },
               {
@@ -571,7 +583,11 @@ const AttendanceTab = ({ onUploadClick, refreshTrigger }) => {
               {
                 label: 'Check Out Time',
                 value: attendanceToView.checkOut?.time 
-                  ? new Date(attendanceToView.checkOut.time).toLocaleTimeString()
+                  ? new Date(attendanceToView.checkOut.time).toLocaleTimeString('en-US', { 
+                      hour: '2-digit', 
+                      minute: '2-digit', 
+                      hour12: true 
+                    })
                   : 'Not checked out'
               },
               {
@@ -585,31 +601,6 @@ const AttendanceTab = ({ onUploadClick, refreshTrigger }) => {
             ]
           };
 
-          // Working Hours Section
-          const workingHoursInfo = {
-            title: 'Working Hours',
-            fields: [
-              {
-                label: 'Scheduled Hours',
-                value: `${attendanceToView.workingHours?.scheduled || 0}h`,
-                type: 'price'
-              },
-              {
-                label: 'Actual Hours',
-                value: `${attendanceToView.workingHours?.actual?.toFixed(1) || 0}h`,
-                type: 'price'
-              },
-              {
-                label: 'Overtime Hours',
-                value: `${attendanceToView.workingHours?.overtime?.toFixed(1) || 0}h`,
-                type: 'price'
-              },
-              {
-                label: 'Break Time',
-                value: `${attendanceToView.workingHours?.break || 0}h`
-              }
-            ]
-          };
 
           // Status and Additional Information Section
           const statusInfo = {
@@ -683,73 +674,8 @@ const AttendanceTab = ({ onUploadClick, refreshTrigger }) => {
             ]
           } : null;
 
-          // Summary Data Section (from payroll record)
-          const summaryDataInfo = attendanceToView.summaryData ? {
-            title: 'Payroll Summary Data',
-            fields: [
-              {
-                label: 'Employee Name',
-                value: attendanceToView.summaryData.empName || 'N/A'
-              },
-              {
-                label: 'Designation',
-                value: attendanceToView.summaryData.designation || 'N/A'
-              },
-              {
-                label: 'Gross Pay',
-                value: `₹${(attendanceToView.summaryData.grossPay || 0).toLocaleString()}`,
-                type: 'price'
-              },
-              {
-                label: 'Total Working Days',
-                value: attendanceToView.summaryData.totalWorkingDays || 0
-              },
-              {
-                label: 'Present Days',
-                value: attendanceToView.summaryData.presentDays || 0
-              },
-              {
-                label: 'Absent Days',
-                value: attendanceToView.summaryData.absentDays || 0
-              },
-              {
-                label: 'LOP Days',
-                value: attendanceToView.summaryData.lop || 0
-              },
-              {
-                label: 'Attendance Percentage',
-                value: `${(attendanceToView.summaryData.attendancePercentage || 0).toFixed(1)}%`
-              },
-              {
-                label: 'Branch Incentive %',
-                value: `${(attendanceToView.summaryData.branchIncentivePercentage || 0).toFixed(1)}%`
-              },
-              {
-                label: 'Incentive Amount',
-                value: `₹${(attendanceToView.summaryData.incentiveAmount || 0).toLocaleString()}`,
-                type: 'price'
-              },
-              {
-                label: 'Daily Rate',
-                value: `₹${(attendanceToView.summaryData.dailyRate || 0).toLocaleString()}`,
-                type: 'price'
-              },
-              {
-                label: 'LOP Deduction',
-                value: `₹${(attendanceToView.summaryData.lopDeduction || 0).toLocaleString()}`,
-                type: 'price'
-              },
-              {
-                label: 'To Pay',
-                value: `₹${(attendanceToView.summaryData.toPay || 0).toLocaleString()}`,
-                type: 'price',
-                highlight: true
-              }
-            ]
-          } : null;
 
-          const sections = [basicInfo, timeInfo, workingHoursInfo, statusInfo];
-          if (summaryDataInfo) sections.push(summaryDataInfo);
+          const sections = [basicInfo, timeInfo, statusInfo];
           if (leaveInfo) sections.push(leaveInfo);
           if (overtimeInfo) sections.push(overtimeInfo);
 
