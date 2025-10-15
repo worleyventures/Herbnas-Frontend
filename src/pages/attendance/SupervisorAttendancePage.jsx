@@ -14,11 +14,13 @@ import { Input, Select, Button, Loading, Modal, TextArea } from '../../component
 import SupervisorAttendanceCalendar from '../../components/attendance/SupervisorAttendanceCalendar';
 import { getPendingApprovals, approveAttendance } from '../../redux/actions/attendanceActions';
 import { addNotification } from '../../redux/slices/uiSlice';
+import { getProfile } from '../../redux/actions/authActions';
+import api from '../../lib/axiosInstance';
 
 const SupervisorAttendancePage = () => {
   const dispatch = useDispatch();
   const { user } = useSelector(state => state.auth);
-  const { attendance, loading, error } = useSelector(state => state.attendance);
+  const { attendance, loading, error, pendingApprovals } = useSelector(state => state.attendance);
   
   const [selectedDate, setSelectedDate] = useState(null);
   const [viewMode, setViewMode] = useState('calendar'); // 'calendar' or 'table'
@@ -29,11 +31,37 @@ const SupervisorAttendancePage = () => {
   const [approvalAction, setApprovalAction] = useState(''); // 'approve' or 'reject'
   const [rejectionReason, setRejectionReason] = useState('');
   const [approving, setApproving] = useState(false);
+  const [branchDetails, setBranchDetails] = useState(null);
+  const [loadingBranch, setLoadingBranch] = useState(false);
 
-  // Load pending approvals on component mount
+  // Fetch branch details by ID
+  const fetchBranchDetails = async (branchId) => {
+    if (!branchId || typeof branchId !== 'string') return;
+    
+    setLoadingBranch(true);
+    try {
+      const response = await api.get(`/attendance/branch/${branchId}`);
+      setBranchDetails(response.data.data.branch);
+    } catch (error) {
+      console.error('Failed to fetch branch details:', error);
+    } finally {
+      setLoadingBranch(false);
+    }
+  };
+
+  // Load all attendance records and refresh user profile on component mount
   useEffect(() => {
-    dispatch(getPendingApprovals());
-  }, [dispatch]);
+    dispatch(getPendingApprovals({ status: statusFilter }));
+    // Refresh user profile to ensure we have latest branch data
+    dispatch(getProfile());
+  }, [dispatch, statusFilter]);
+
+  // Fetch branch details when user data is available
+  useEffect(() => {
+    if (user?.branch && typeof user.branch === 'string') {
+      fetchBranchDetails(user.branch);
+    }
+  }, [user?.branch]);
 
   // Handle date click from calendar
   const handleDateClick = (dayData) => {
@@ -50,6 +78,8 @@ const SupervisorAttendancePage = () => {
   const handleFilterChange = (type, value) => {
     if (type === 'status') {
       setStatusFilter(value);
+      // Reload data with new status filter
+      dispatch(getPendingApprovals({ status: value }));
     }
   };
 
@@ -98,7 +128,7 @@ const SupervisorAttendancePage = () => {
   };
 
   // Filter attendance data
-  const filteredAttendance = attendance?.filter(record => {
+  const filteredAttendance = pendingApprovals?.filter(record => {
     const matchesSearch = !searchTerm || 
       record.employeeId?.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       record.employeeId?.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -112,10 +142,24 @@ const SupervisorAttendancePage = () => {
   // Filter by selected date if in table view
   const displayAttendance = viewMode === 'table' && selectedDate 
     ? filteredAttendance.filter(record => {
-        const recordDate = new Date(record.date).toISOString().split('T')[0];
-        return recordDate === selectedDate.dateKey;
+        // Use local date for consistent filtering
+        const recordDate = new Date(record.date);
+        const year = recordDate.getFullYear();
+        const month = String(recordDate.getMonth() + 1).padStart(2, '0');
+        const day = String(recordDate.getDate()).padStart(2, '0');
+        const recordDateKey = `${year}-${month}-${day}`;
+        return recordDateKey === selectedDate.dateKey;
       })
     : filteredAttendance;
+
+  // Debug logging
+  console.log('🔍 Table display debug:', {
+    viewMode,
+    selectedDate,
+    filteredAttendanceCount: filteredAttendance.length,
+    displayAttendanceCount: displayAttendance.length,
+    pendingApprovalsCount: pendingApprovals?.length || 0
+  });
 
   // Status options
   const statusOptions = [
@@ -164,8 +208,17 @@ const SupervisorAttendancePage = () => {
               <div className="text-right">
                 <div className="text-sm text-gray-500">Branch</div>
                 <div className="font-medium text-gray-900">
-                  {user?.branch?.branchName || 'Not Assigned'}
+                  {loadingBranch ? (
+                    <span className="text-gray-400">Loading...</span>
+                  ) : (
+                    branchDetails?.name || user?.branch?.branchName || user?.branch || 'Not Assigned'
+                  )}
                 </div>
+                {!branchDetails?.name && !user?.branch?.branchName && user?.branch && (
+                  <div className="text-xs text-yellow-600 mt-1">
+                    Branch ID: {user.branch}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -180,7 +233,7 @@ const SupervisorAttendancePage = () => {
               </div>
               <div className="ml-4">
                 <div className="text-2xl font-bold text-gray-900">
-                  {attendance?.filter(a => a.approvalStatus === 'pending').length || 0}
+                  {pendingApprovals?.filter(a => a.approvalStatus === 'pending').length || 0}
                 </div>
                 <div className="text-sm text-gray-600">Pending Approval</div>
               </div>
@@ -194,7 +247,7 @@ const SupervisorAttendancePage = () => {
               </div>
               <div className="ml-4">
                 <div className="text-2xl font-bold text-gray-900">
-                  {attendance?.filter(a => a.approvalStatus === 'approved').length || 0}
+                  {pendingApprovals?.filter(a => a.approvalStatus === 'approved').length || 0}
                 </div>
                 <div className="text-sm text-gray-600">Approved</div>
               </div>
@@ -208,7 +261,7 @@ const SupervisorAttendancePage = () => {
               </div>
               <div className="ml-4">
                 <div className="text-2xl font-bold text-gray-900">
-                  {attendance?.filter(a => a.approvalStatus === 'rejected').length || 0}
+                  {pendingApprovals?.filter(a => a.approvalStatus === 'rejected').length || 0}
                 </div>
                 <div className="text-sm text-gray-600">Rejected</div>
               </div>
@@ -222,7 +275,7 @@ const SupervisorAttendancePage = () => {
               </div>
               <div className="ml-4">
                 <div className="text-2xl font-bold text-gray-900">
-                  {attendance?.length || 0}
+                  {pendingApprovals?.length || 0}
                 </div>
                 <div className="text-sm text-gray-600">Total Records</div>
               </div>
@@ -230,43 +283,36 @@ const SupervisorAttendancePage = () => {
           </div>
         </div>
 
-        {/* View Toggle */}
-        <div className="mb-6">
-          <div className="flex items-center space-x-4">
-            <button
-              onClick={() => setViewMode('calendar')}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                viewMode === 'calendar'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-              }`}
-            >
-              <HiCalendar className="h-4 w-4 inline mr-2" />
-              Calendar View
-            </button>
-            <button
-              onClick={() => setViewMode('table')}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                viewMode === 'table'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-              }`}
-            >
-              <HiUsers className="h-4 w-4 inline mr-2" />
-              Table View
-            </button>
-          </div>
-        </div>
 
         {/* Calendar or Table View */}
         {viewMode === 'calendar' ? (
           <SupervisorAttendanceCalendar
-            attendance={attendance}
+            attendance={pendingApprovals || []}
             onDateClick={handleDateClick}
             loading={loading}
           />
         ) : (
           <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+            {/* Back to Calendar Button and Date Header */}
+            <div className="px-6 py-4 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <button
+                    onClick={() => setViewMode('calendar')}
+                    className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  >
+                    <HiCalendar className="h-4 w-4 mr-2" />
+                    Back to Calendar
+                  </button>
+                </div>
+                {selectedDate && (
+                  <div className="text-sm text-gray-600">
+                    Showing attendance for {selectedDate.dateKey}
+                  </div>
+                )}
+              </div>
+            </div>
+            
             {/* Filters */}
             <div className="px-6 py-4 border-b border-gray-200">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -285,11 +331,6 @@ const SupervisorAttendancePage = () => {
                     className="w-full sm:w-40"
                   />
                 </div>
-                {selectedDate && (
-                  <div className="text-sm text-gray-600">
-                    Showing attendance for {selectedDate.dateKey}
-                  </div>
-                )}
               </div>
             </div>
 
@@ -314,12 +355,34 @@ const SupervisorAttendancePage = () => {
                       Status
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Approved By
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Approved At
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {displayAttendance.map((record) => (
+                  {displayAttendance.length === 0 ? (
+                    <tr>
+                      <td colSpan="8" className="px-6 py-12 text-center text-gray-500">
+                        <div className="flex flex-col items-center">
+                          <HiExclamationTriangle className="h-12 w-12 text-gray-400 mb-4" />
+                          <p className="text-lg font-medium">No attendance records found</p>
+                          <p className="text-sm">
+                            {selectedDate 
+                              ? `No records for ${selectedDate.dateKey}` 
+                              : 'No pending approvals available'
+                            }
+                          </p>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    displayAttendance.map((record) => (
                     <tr key={record._id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div>
@@ -345,26 +408,57 @@ const SupervisorAttendancePage = () => {
                           {record.approvalStatus}
                         </span>
                       </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {record.approvedBy ? (
+                          <div>
+                            <div className="font-medium">{record.approvedBy.firstName} {record.approvedBy.lastName}</div>
+                            <div className="text-gray-500">{record.approvedBy.email}</div>
+                          </div>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {record.approvedAt ? (
+                          <div>
+                            <div>{new Date(record.approvedAt).toLocaleDateString()}</div>
+                            <div className="text-gray-500">{formatTime(record.approvedAt)}</div>
+                          </div>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        {record.approvalStatus === 'pending' && (
+                        {record.approvalStatus === 'pending' ? (
                           <div className="flex space-x-2">
                             <button
                               onClick={() => handleApprovalAction(record, 'approve')}
-                              className="text-green-600 hover:text-green-900"
+                              className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
                             >
-                              <HiCheckCircle className="h-5 w-5" />
+                              <HiCheckCircle className="h-4 w-4 mr-1" />
+                              Approve
                             </button>
                             <button
                               onClick={() => handleApprovalAction(record, 'reject')}
-                              className="text-red-600 hover:text-red-900"
+                              className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
                             >
-                              <HiXMark className="h-5 w-5" />
+                              <HiXMark className="h-4 w-4 mr-1" />
+                              Reject
                             </button>
                           </div>
+                        ) : (
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                            record.approvalStatus === 'approved' 
+                              ? 'bg-green-100 text-green-800' 
+                              : 'bg-red-100 text-red-800'
+                          }`}>
+                            {record.approvalStatus}
+                          </span>
                         )}
                       </td>
                     </tr>
-                  ))}
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>

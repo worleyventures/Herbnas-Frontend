@@ -91,6 +91,7 @@ const payrollSlice = createSlice({
         state.error = null;
       })
       .addCase(createPayroll.fulfilled, (state, action) => {
+        console.log('🔍 createPayroll.fulfilled - setting createSuccess to true');
         state.createLoading = false;
         state.createSuccess = true;
         state.payrolls.unshift(action.payload.data.payroll);

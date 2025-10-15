@@ -8,10 +8,22 @@ const SupervisorAttendanceCalendar = ({ attendance, onDateClick, loading, onAppr
   // Generate calendar data for the current month
   useEffect(() => {
     if (attendance && attendance.length > 0) {
+      console.log('🔍 Processing attendance data:', attendance);
       const data = {};
       attendance.forEach(record => {
         const date = new Date(record.date);
-        const dateKey = date.toISOString().split('T')[0];
+        // Use local date instead of UTC to handle timezone correctly
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const dateKey = `${year}-${month}-${day}`;
+        
+        console.log('🔍 Processing record:', {
+          originalDate: record.date,
+          parsedDate: date,
+          dateKey: dateKey,
+          approvalStatus: record.approvalStatus
+        });
         
         if (!data[dateKey]) {
           data[dateKey] = {
@@ -35,7 +47,10 @@ const SupervisorAttendanceCalendar = ({ attendance, onDateClick, loading, onAppr
         }
       });
       
+      console.log('🔍 Final calendar data:', data);
       setCalendarData(data);
+    } else {
+      console.log('🔍 No attendance data to process');
     }
   }, [attendance]);
 

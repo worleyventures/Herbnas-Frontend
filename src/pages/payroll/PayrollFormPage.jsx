@@ -75,9 +75,16 @@ const PayrollFormPage = () => {
     };
   }, [dispatch]);
 
+  // Monitor createSuccess state changes
+  useEffect(() => {
+    console.log('🔍 createSuccess state changed:', createSuccess);
+  }, [createSuccess]);
+
   // Handle success states - navigate away from form
   useEffect(() => {
-    if (createSuccess) {
+    console.log('🔍 createSuccess useEffect triggered:', { createSuccess, isEdit });
+    if (createSuccess && !isEdit) {
+      console.log('✅ Creating employee success - navigating to payrolls');
       setSubmitButtonClicked(false); // Reset submit button state
       isSubmittingRef.current = false; // Reset ref
       dispatch(addNotification({
@@ -88,10 +95,11 @@ const PayrollFormPage = () => {
       dispatch(clearCreateSuccess()); // Clear success state
       // Small delay to show notification before navigation
       setTimeout(() => {
+        console.log('🚀 Navigating to /payrolls');
       navigate('/payrolls', { state: { activeTab: 'employees' } });
       }, 1000);
     }
-  }, [createSuccess, navigate, dispatch]);
+  }, [createSuccess, navigate, dispatch, isEdit]);
 
   useEffect(() => {
     if (updateSuccess) {
@@ -335,6 +343,9 @@ const PayrollFormPage = () => {
     setSubmitting(true);
     setSubmitButtonClicked(true);
     
+    // Add small delay to prevent rapid double-clicks
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
     try {
       const payrollData = {
         employeeName: formData.employeeName.trim(),
@@ -383,6 +394,7 @@ const PayrollFormPage = () => {
         console.log('➕ Creating new payroll:', payrollData.employeeName);
         const result = await dispatch(createPayroll(payrollData)).unwrap();
         console.log('✅ Payroll created successfully:', result);
+        console.log('🔍 Checking createSuccess state after creation');
       }
     } catch (error) {
       console.error('❌ Error submitting form:', error);
