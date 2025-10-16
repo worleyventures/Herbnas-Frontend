@@ -6,9 +6,13 @@ export const checkIn = createAsyncThunk(
   'attendance/checkIn',
   async (data, { rejectWithValue }) => {
     try {
+      console.log('🔍 checkIn action called with data:', data);
+      console.log('🔍 Making API call to /attendance/checkin');
       const response = await api.post('/attendance/checkin', data);
+      console.log('🔍 API response:', response.data);
       return response.data;
     } catch (err) {
+      console.error('🔍 checkIn API error:', err);
       return rejectWithValue(err.response?.data?.message || err.message);
     }
   }
@@ -89,9 +93,12 @@ export const getPendingApprovals = createAsyncThunk(
 
 export const approveAttendance = createAsyncThunk(
   'attendance/approveAttendance',
-  async ({ id, data }, { rejectWithValue }) => {
+  async ({ attendanceId, action, rejectionReason }, { rejectWithValue }) => {
     try {
-      const response = await api.put(`/attendance/${id}/approve`, data);
+      const response = await api.put(`/attendance/${attendanceId}/approve`, {
+        action,
+        rejectionReason
+      });
       return response.data;
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || err.message);
