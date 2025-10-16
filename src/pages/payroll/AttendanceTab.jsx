@@ -40,6 +40,7 @@ const AttendanceTab = ({ onUploadClick, refreshTrigger }) => {
   
   // Local state
   const [selectedDate, setSelectedDate] = useState(null);
+  const [viewMode, setViewMode] = useState('calendar'); // 'calendar' or 'table'
   const [searchTerm, setSearchTerm] = useState('');
   const [branchFilter, setBranchFilter] = useState('all');
   const [employeeFilter, setEmployeeFilter] = useState('all');
@@ -95,7 +96,8 @@ const AttendanceTab = ({ onUploadClick, refreshTrigger }) => {
   // Load attendance stats
   const loadStats = async () => {
     const params = {
-      ...(branchFilter !== 'all' && { branchId: branchFilter })
+      ...(branchFilter !== 'all' && { branchId: branchFilter }),
+      approvalStatus: 'approved' // Only show approved attendance stats for superadmin
     };
 
     dispatch(getAttendanceStats(params));
@@ -153,10 +155,14 @@ const AttendanceTab = ({ onUploadClick, refreshTrigger }) => {
   const handleDateClick = (dayData) => {
     setSelectedDate(dayData);
     setViewMode('table');
-    // Filter attendance for the selected date
+    // Filter attendance for the selected date using consistent date format
     const selectedDateAttendance = attendance.filter(record => {
-      const recordDate = new Date(record.date).toISOString().split('T')[0];
-      return recordDate === dayData.dateKey;
+      const date = new Date(record.date);
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const recordDateKey = `${year}-${month}-${day}`;
+      return recordDateKey === dayData.dateKey;
     });
     // You could dispatch an action to filter the attendance data here
   };
@@ -400,7 +406,7 @@ const AttendanceTab = ({ onUploadClick, refreshTrigger }) => {
       </div>
 
       {/* Calendar or Table View */}
-      {!selectedDate ? (
+      {viewMode === 'calendar' ? (
         <AttendanceCalendar
           attendance={attendance}
           onDateClick={handleDateClick}
@@ -410,6 +416,23 @@ const AttendanceTab = ({ onUploadClick, refreshTrigger }) => {
         <div className="bg-white rounded-lg shadow-sm border border-gray-200">
           <div className="px-6 py-4 border-b border-gray-200">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={() => {
+                    setViewMode('calendar');
+                    setSelectedDate(null);
+                  }}
+                  className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <HiCalendar className="h-4 w-4" />
+                  Back to Calendar
+                </button>
+                {selectedDate && (
+                  <div className="text-sm text-gray-600">
+                    Showing attendance for: <span className="font-medium">{selectedDate.dateKey}</span>
+                  </div>
+                )}
+              </div>
               <div className="flex flex-col sm:flex-row gap-3">
                 <Input
                   value={searchTerm}
@@ -442,10 +465,20 @@ const AttendanceTab = ({ onUploadClick, refreshTrigger }) => {
           <div className="overflow-x-auto">
             {pagination ? (
               <Table
-                data={attendance}
+                data={selectedDate ? 
+                  attendance.filter(record => {
+                    const date = new Date(record.date);
+                    const year = date.getFullYear();
+                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                    const day = String(date.getDate()).padStart(2, '0');
+                    const recordDateKey = `${year}-${month}-${day}`;
+                    return recordDateKey === selectedDate.dateKey;
+                  }) : 
+                  attendance
+                }
                 columns={columns}
                 loading={loading}
-                pagination={{
+                pagination={selectedDate ? null : {
                   currentPage: pagination.currentPage,
                   totalPages: pagination.totalPages,
                   onPageChange: handlePageChange

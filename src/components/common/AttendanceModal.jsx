@@ -66,15 +66,11 @@ const AttendanceModal = ({ isOpen, onClose }) => {
   }, [success, dispatch, onClose]);
 
   const handleCheckIn = () => {
-    console.log('🔍 Check-in button clicked');
-    console.log('🔍 Form data:', { workType, location, remarks, manualTime });
-    
     if (!workType.trim() || !location.trim()) {
       alert('Please fill in work type and location');
       return;
     }
     
-    console.log('🔍 Dispatching checkIn action...');
     dispatch(checkIn({ workType, location, remarks, manualTime }));
   };
 
@@ -91,31 +87,24 @@ const AttendanceModal = ({ isOpen, onClose }) => {
   };
 
   const getAttendanceStatus = () => {
-    console.log('🔍 Getting attendance status, todayAttendance:', todayAttendance);
-    
     if (!todayAttendance) {
-      console.log('🔍 No todayAttendance data, returning not_checked_in');
       return 'not_checked_in';
     }
     
     if (todayAttendance.checkOut?.time) {
-      console.log('🔍 User has checked out, returning checked_out');
       return 'checked_out';
     }
     
     // Check if currently on break (break started but not ended)
     if (todayAttendance.breakTime?.start?.time && !todayAttendance.breakTime?.end?.time) {
-      console.log('🔍 User is on break, returning on_break');
       return 'on_break';
     }
     
     // If checked in but not on break
     if (todayAttendance.checkIn?.time) {
-      console.log('🔍 User has checked in, returning checked_in');
       return 'checked_in';
     }
     
-    console.log('🔍 Default case, returning not_checked_in');
     return 'not_checked_in';
   };
 
