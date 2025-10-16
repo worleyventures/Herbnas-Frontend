@@ -384,43 +384,34 @@ const AccountsPage = () => {
       )}
 
       {/* Filters and Search */}
-      <div className="bg-white p-6 rounded-lg shadow">
-        <div className="flex flex-col space-y-4">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1">
-              <Input
-                placeholder="Search accounts..."
-                value={searchTerm}
-                onChange={handleSearch}
-                icon={HiMagnifyingGlass}
-              />
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setShowFilters(!showFilters)}
-                icon={HiFunnel}
-                size="sm"
-              >
-                Filters
-              </Button>
-            </div>
+      <div className="bg-white rounded-lg p-2">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+          <div className="w-full sm:w-80">
+            <Input
+              placeholder="Search accounts..."
+              value={searchTerm}
+              onChange={handleSearch}
+              icon={HiMagnifyingGlass}
+            />
           </div>
-
-          {showFilters && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0">
+            <div className="w-full sm:w-48">
               <Select
                 options={transactionTypeOptions}
                 value={transactionTypeFilter}
                 onChange={handleTransactionTypeFilter}
                 placeholder="Transaction Type"
               />
+            </div>
+            <div className="w-full sm:w-48">
               <Select
                 options={categoryOptions}
                 value={categoryFilter}
                 onChange={handleCategoryFilter}
                 placeholder="Category"
               />
+            </div>
+            <div className="w-full sm:w-48">
               <Select
                 options={paymentStatusOptions}
                 value={paymentStatusFilter}
@@ -428,7 +419,18 @@ const AccountsPage = () => {
                 placeholder="Payment Status"
               />
             </div>
-          )}
+            <div className="w-full sm:w-auto">
+              <Button
+                variant="outline"
+                onClick={() => setShowFilters(!showFilters)}
+                icon={HiFunnel}
+                size="sm"
+                className="w-full sm:w-auto"
+              >
+                {showFilters ? 'Hide Filters' : 'More Filters'}
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
 

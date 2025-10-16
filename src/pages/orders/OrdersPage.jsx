@@ -380,9 +380,9 @@ const OrdersPage = () => {
           </div>
 
       {/* Filters and Search */}
-      <div className="bg-white p-6 rounded-lg shadow">
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1">
+      <div className="bg-white rounded-lg p-2">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+          <div className="w-full sm:w-80">
             <Input
               placeholder="Search orders..."
               value={searchTerm}
@@ -390,13 +390,15 @@ const OrdersPage = () => {
               icon={HiMagnifyingGlass}
             />
           </div>
-          <div className="flex gap-2">
-            <Select
-              options={paymentStatusOptions}
-              value={paymentStatusFilter}
-              onChange={handlePaymentStatusFilter}
-              placeholder="Payment Status"
-            />
+          <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0">
+            <div className="w-full sm:w-48">
+              <Select
+                options={paymentStatusOptions}
+                value={paymentStatusFilter}
+                onChange={handlePaymentStatusFilter}
+                placeholder="Payment Status"
+              />
+            </div>
           </div>
         </div>
       </div>

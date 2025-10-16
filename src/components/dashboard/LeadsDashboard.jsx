@@ -531,7 +531,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
             <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0">
               <Select
                 value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
+                onChange={(value) => setFilterStatus(value)}
                 options={[
                   { value: 'all', label: 'All Status' },
                   { value: 'qualified', label: 'Qualified' },
@@ -542,7 +542,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
               />
               <Select
                 value={filterBranch}
-                onChange={(e) => setFilterBranch(e.target.value)}
+                onChange={(value) => setFilterBranch(value)}
                 options={[
                   { value: 'all', label: 'All Branches' },
                   ...(branches?.map(branch => ({
@@ -785,7 +785,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
             <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0">
               <Select
                 value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
+                onChange={(value) => setFilterStatus(value)}
                 options={[
                   { value: 'all', label: 'All Status' },
                   { value: 'qualified', label: 'Qualified' },
@@ -799,7 +799,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
               />
               <Select
                   value={filterBranch}
-                  onChange={(e) => setFilterBranch(e.target.value)}
+                  onChange={(value) => setFilterBranch(value)}
                 options={[
                   { value: 'all', label: 'All Branches' },
                   ...(branches?.map(branch => ({
