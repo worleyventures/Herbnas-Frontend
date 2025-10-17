@@ -9,10 +9,9 @@ import {
   HiEye,
   HiPencil,
   HiXCircle,
-  HiPlus,
-  HiCloudArrowUp
+  HiPlus
 } from 'react-icons/hi2';
-import { StatCard, Button, ActionButton, SearchInput, Select, Pagination, ImportModal, HealthIssueDetailsModal } from '../common';
+import { StatCard, Button, ActionButton, SearchInput, Select, Pagination, HealthIssueDetailsModal } from '../common';
 import { addNotification } from '../../redux/slices/uiSlice';
 import {
   getAllHealthIssues,
@@ -38,7 +37,6 @@ const HealthDashboard = () => {
   const [itemsPerPage] = useState(10);
   const [showHealthModal, setShowHealthModal] = useState(false);
   const [selectedHealthIssue, setSelectedHealthIssue] = useState(null);
-  const [showImportModal, setShowImportModal] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Load health issues and stats on component mount
@@ -190,11 +188,6 @@ const HealthDashboard = () => {
     }
   };
 
-  // Handle import success
-  const handleImportSuccess = () => {
-    dispatch(getAllHealthIssues({ page: 1, limit: 1000 }));
-    dispatch(getHealthIssueStats());
-  };
 
   // Gender options
   const genderOptions = [
@@ -223,14 +216,6 @@ const HealthDashboard = () => {
           </p>
         </div>
         <div className="mt-4 sm:mt-0 flex space-x-3">
-          <Button
-            onClick={() => setShowImportModal(true)}
-            icon={HiCloudArrowUp}
-            variant="warning"
-            size="sm"
-          >
-            Import Health Issues
-          </Button>
           <Button
             onClick={() => navigate('/health-issues/create')}
             icon={HiPlus}
@@ -505,12 +490,6 @@ const HealthDashboard = () => {
         onReopen={handleReopenHealthIssue}
       />
 
-      {/* Import Modal */}
-      <ImportModal
-        isOpen={showImportModal}
-        onClose={() => setShowImportModal(false)}
-        onImportSuccess={handleImportSuccess}
-      />
     </div>
   );
 };

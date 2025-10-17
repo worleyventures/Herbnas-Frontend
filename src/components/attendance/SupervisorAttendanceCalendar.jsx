@@ -91,7 +91,11 @@ const SupervisorAttendanceCalendar = ({ attendance, onDateClick, loading, onAppr
     // Add days of the month
     for (let day = 1; day <= daysInMonth; day++) {
       const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
-      const dateKey = date.toISOString().split('T')[0];
+      // Use local date format instead of ISO string to avoid timezone issues
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const dayStr = String(date.getDate()).padStart(2, '0');
+      const dateKey = `${year}-${month}-${dayStr}`;
       const dayData = calendarData[dateKey] || { pending: 0, approved: 0, rejected: 0, total: 0, records: [] };
       
       days.push({
@@ -142,16 +146,14 @@ const SupervisorAttendanceCalendar = ({ attendance, onDateClick, loading, onAppr
       {/* Header */}
       <div className="px-6 py-4 border-b border-gray-200">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="h-10 w-10 bg-blue-500 rounded-lg flex items-center justify-center">
-              <HiCalendar className="h-5 w-5 text-white" />
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900">Attendance Approval Calendar</h3>
-              <p className="text-sm text-gray-600">Review and approve employee attendance</p>
-            </div>
+          {/* Month/Year Display */}
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">
+              {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
+            </h2>
           </div>
           
+          {/* Navigation Controls */}
           <div className="flex items-center space-x-2">
             <button
               onClick={() => navigateMonth('prev')}
@@ -172,13 +174,6 @@ const SupervisorAttendanceCalendar = ({ attendance, onDateClick, loading, onAppr
               <HiChevronRight className="h-5 w-5" />
             </button>
           </div>
-        </div>
-        
-        {/* Month/Year Display */}
-        <div className="mt-4">
-          <h2 className="text-2xl font-bold text-gray-900">
-            {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
-          </h2>
         </div>
 
         {/* Legend */}

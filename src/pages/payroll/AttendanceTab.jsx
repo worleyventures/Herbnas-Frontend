@@ -28,7 +28,7 @@ import {
 } from '../../redux/actions/attendanceActions';
 import api from '../../lib/axiosInstance';
 
-const AttendanceTab = ({ onUploadClick, refreshTrigger }) => {
+const AttendanceTab = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   
@@ -111,13 +111,6 @@ const AttendanceTab = ({ onUploadClick, refreshTrigger }) => {
     loadEmployees();
   }, [currentPage, searchTerm, branchFilter, employeeFilter, statusFilter, monthFilter]);
 
-  // Refresh data when upload is completed
-  useEffect(() => {
-    if (refreshTrigger > 0) {
-      loadAttendance();
-      loadStats();
-    }
-  }, [refreshTrigger]);
 
   // Handle search
   const handleSearch = (e) => {
@@ -362,7 +355,7 @@ const AttendanceTab = ({ onUploadClick, refreshTrigger }) => {
   return (
     <div className="space-y-6">
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
         <StatCard
           title="Total Records"
           value={pagination?.totalItems || 0}
@@ -390,16 +383,6 @@ const AttendanceTab = ({ onUploadClick, refreshTrigger }) => {
           gradient="red"
           animation="float"
           change="+1%"
-          changeType="increase"
-          loading={loading}
-        />
-        <StatCard
-          title="Total Hours"
-          value={`${attendance.reduce((sum, a) => sum + (a.workingHours?.actual || 0), 0).toFixed(1)}h`}
-          icon={HiClock}
-          gradient="emerald"
-          animation="bounce"
-          change="+8%"
           changeType="increase"
           loading={loading}
         />

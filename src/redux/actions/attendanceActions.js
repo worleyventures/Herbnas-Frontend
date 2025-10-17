@@ -178,19 +178,3 @@ export const getAttendanceStats = createAsyncThunk(
     }
   }
 );
-
-export const uploadAttendanceExcel = createAsyncThunk(
-  'attendance/uploadAttendanceExcel',
-  async (formData, { rejectWithValue }) => {
-    try {
-      const response = await api.post('/attendance/upload', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-      return response.data;
-    } catch (err) {
-      return rejectWithValue(err.response?.data?.message || err.message);
-    }
-  }
-);
