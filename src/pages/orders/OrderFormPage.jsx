@@ -19,7 +19,6 @@ import {
   createOrder,
   updateOrder,
   getOrderById,
-  checkOrderIdExists
 } from '../../redux/actions/orderActions';
 import { getAllProducts } from '../../redux/actions/productActions';
 import { getAllBranches } from '../../redux/actions/branchActions';
@@ -30,7 +29,6 @@ import {
   selectCurrentOrder,
   selectOrderLoading,
   selectOrderError,
-  selectOrderIdCheck
 } from '../../redux/slices/orderSlice';
 import {
   selectProducts,
@@ -59,7 +57,6 @@ const OrderFormPage = () => {
   const order = useSelector(selectCurrentOrder);
   const loading = useSelector(selectOrderLoading);
   const error = useSelector(selectOrderError);
-  const orderIdCheck = useSelector(selectOrderIdCheck);
   const products = useSelector(selectProducts);
   const productsLoading = useSelector(selectProductLoading);
   const branches = useSelector(selectBranches);
@@ -71,7 +68,6 @@ const OrderFormPage = () => {
   
   // Form state
   const [formData, setFormData] = useState({
-    orderId: '',
     customerId: '',
     customerType: 'user',
     branchId: '',
@@ -117,7 +113,6 @@ const OrderFormPage = () => {
       const customerId = order.customerType === 'user' ? (order.customerId?._id || '') : (order.leadId?._id || '');
       
       setFormData({
-        orderId: order.orderId || '',
         customerId,
         customerType: order.customerType || 'user',
         branchId: order.branchId?._id || '',
@@ -163,19 +158,10 @@ const OrderFormPage = () => {
       }));
     }
     
-    // Check Order ID uniqueness in real-time (only for new orders and not N/A)
-    if (field === 'orderId' && !isEdit && value.trim() && value.trim().toUpperCase() !== 'N/A') {
-      const trimmedValue = value.trim().toUpperCase();
-      if (trimmedValue.length >= 3) {
-        dispatch(checkOrderIdExists(trimmedValue));
-      }
-    }
   };
 
   // Handle select change
-  const handleSelectChange = (field) => (e) => {
-    const value = e.target.value;
-    
+  const handleSelectChange = (field) => (value) => {
     if (field === 'customerId') {
       // Find the selected customer and set customer type
       const allCustomers = [...leads, ...users.filter(user => user.role === 'customer')];
@@ -188,6 +174,23 @@ const OrderFormPage = () => {
           customerId: value,
           customerType
         }));
+
+        // Auto-fill shipping address if it's a lead
+        if (customerType === 'lead' && selectedCustomer.address) {
+          const address = selectedCustomer.address;
+          setFormData(prev => ({
+            ...prev,
+            shippingAddress: {
+              name: selectedCustomer.customerName || '',
+              phone: selectedCustomer.customerMobile || '',
+              email: selectedCustomer.email || '',
+              address: address.street || '',
+              city: address.city || '',
+              state: address.state || '',
+              pincode: address.pinCode || ''
+            }
+          }));
+        }
       }
     } else {
       setFormData(prev => ({
@@ -290,12 +293,6 @@ const OrderFormPage = () => {
   const validateForm = () => {
     const newErrors = {};
     
-    // Order ID validation - only check if provided and not N/A
-    if (formData.orderId && formData.orderId.trim() && formData.orderId.trim().toUpperCase() !== 'N/A') {
-      if (orderIdCheck.exists && !isEdit) {
-        newErrors.orderId = 'Order ID already exists. Please use a different Order ID.';
-      }
-    }
     
     // Validate customer based on type
     if (formData.customerType === 'user' && !formData.customerId) {
@@ -371,7 +368,6 @@ const OrderFormPage = () => {
     try {
       // Prepare order data based on customer type
       const orderData = {
-        orderId: formData.orderId.trim() || '',
         customerType: formData.customerType,
         customerId: formData.customerType === 'user' ? formData.customerId : null,
         leadId: formData.customerType === 'lead' ? formData.customerId : null,
@@ -495,18 +491,8 @@ const OrderFormPage = () => {
             {/* Order Details */}
             <div className="bg-white p-6 rounded-lg shadow">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Order Details</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Input
-                    label="Order ID"
-                    name="orderId"
-                    value={formData.orderId}
-                    onChange={(e) => handleInputChange('orderId', e.target.value)}
-                    placeholder="Leave empty to use N/A (can be updated later)"
-                    error={errors.orderId}
-                  />
-                </div>
-                <div className="md:col-span-2">
                   <CustomerSelect
                     options={customerOptions}
                     value={formData.customerId}
@@ -518,7 +504,7 @@ const OrderFormPage = () => {
                     name="customerId"
                   />
                 </div>
-                <div className="md:col-span-3">
+                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Branch *
                   </label>
@@ -559,7 +545,7 @@ const OrderFormPage = () => {
                       <Select
                         options={productOptions}
                         value={item.productId}
-                        onChange={(e) => handleItemChange(index, 'productId', e.target.value)}
+                        onChange={(value) => handleItemChange(index, 'productId', value)}
                         placeholder="Select product"
                         error={errors[`items.${index}.productId`]}
                         loading={productsLoading}
@@ -612,7 +598,14 @@ const OrderFormPage = () => {
 
             {/* Shipping Address */}
             <div className="bg-white p-6 rounded-lg shadow">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Shipping Address</h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-medium text-gray-900">Shipping Address</h3>
+                {formData.customerType === 'lead' && formData.shippingAddress.name && (
+                  <span className="text-sm text-green-600 bg-green-50 px-3 py-1 rounded-full">
+                    ✓ Auto-filled from lead
+                  </span>
+                )}
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2">
                   <Input
