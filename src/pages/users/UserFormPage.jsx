@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import { HiArrowLeft, HiUser, HiEnvelope, HiPhone, HiKey, HiBuildingOffice2, HiExclamationTriangle, HiCheckCircle, HiEye, HiEyeSlash } from 'react-icons/hi2';
+import { HiArrowLeft, HiUser, HiEnvelope, HiPhone, HiKey, HiBuildingOffice2, HiExclamationTriangle, HiCheckCircle, HiEye, HiEyeSlash, HiXMark } from 'react-icons/hi2';
 import { Button, Input, Select } from '../../components/common';
-import { createUser, updateUser, getUserById } from '../../redux/actions/userActions';
+import { createUser, updateUser, getUserById, changeUserPassword } from '../../redux/actions/userActions';
 import { getAllBranches } from '../../redux/actions/branchActions';
 import { clearError } from '../../redux/slices/userSlice';
 import { addNotification } from '../../redux/slices/uiSlice';
@@ -41,6 +41,7 @@ const UserFormPage = () => {
     isActive: true,
     branch: ''
   });
+
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -106,11 +107,15 @@ const UserFormPage = () => {
     if (!formData.role) newErrors.role = 'Role is required';
     if (!formData.branch) newErrors.branch = 'Branch is required';
     
+    // Password validation for create mode or edit mode
     if (mode === 'create') {
       if (!formData.password.trim()) newErrors.password = 'Password is required';
       else if (formData.password.length < 6) newErrors.password = 'Password must be at least 6 characters';
       if (!formData.confirmPassword.trim()) newErrors.confirmPassword = 'Confirm Password is required';
       else if (formData.password !== formData.confirmPassword) newErrors.confirmPassword = 'Passwords do not match';
+    } else if (mode === 'edit' && (formData.password || formData.confirmPassword)) {
+      if (formData.password && formData.password.length < 6) newErrors.password = 'Password must be at least 6 characters';
+      if (formData.password && formData.confirmPassword && formData.password !== formData.confirmPassword) newErrors.confirmPassword = 'Passwords do not match';
     }
 
     setErrors(newErrors);
@@ -142,6 +147,13 @@ const UserFormPage = () => {
       if (mode === 'create') {
         await dispatch(createUser(userData)).unwrap();
       } else {
+        // If password is provided, update password separately
+        if (formData.password.trim()) {
+          await dispatch(changeUserPassword({ 
+            userId, 
+            passwordData: { newPassword: formData.password } 
+          })).unwrap();
+        }
         await dispatch(updateUser({ userId, userData })).unwrap();
       }
       navigate('/users');
@@ -173,26 +185,35 @@ const UserFormPage = () => {
   ];
 
   return (
-    <div className="container mx-auto p-6 bg-white rounded-lg shadow-md">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-semibold text-gray-800">{pageTitle}</h2>
-        <Button
-          onClick={handleBack}
-          variant="secondary"
-          size="sm"
-          className="flex items-center"
-        >
-          <HiArrowLeft className="h-4 w-4 mr-2" />
-          Back to Users
-        </Button>
+    <div className="min-h-screen">
+      {/* Header */}
+      <div className="bg-white">
+        <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between py-6">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <HiUser className="h-6 w-6 text-blue-600" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">
+                  {mode === 'create' ? 'Create New User' : `Edit User: ${formData.firstName} ${formData.lastName}`}
+                </h1>
+                <p className="text-sm text-gray-500">
+                  {mode === 'create' ? 'Add new user to the system' : 'Update user information and settings'}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="bg-gray-50 p-6 rounded-lg shadow-inner">
+      {/* Form Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="space-y-6">
+            <div className="p-6">
               <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
-                <HiUser className="h-5 w-5 mr-2 text-indigo-500" /> Personal Information
+                <HiUser className="h-5 w-5 mr-2 text-blue-500" /> Personal Information
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Input
@@ -235,10 +256,83 @@ const UserFormPage = () => {
               </div>
             </div>
 
-            {mode === 'create' && (
-              <div className="bg-gray-50 p-6 rounded-lg shadow-inner">
+            {mode === 'edit' && (
+              <div className="bg-white p-6">
                 <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
-                  <HiKey className="h-5 w-5 mr-2 text-indigo-500" /> Security Information
+                  <HiKey className="h-5 w-5 mr-2 text-blue-500" /> Security Information
+                </h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      New Password
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        name="password"
+                        value={formData.password}
+                        onChange={handleInputChange}
+                        placeholder="Enter new password"
+                        className={`w-full px-3 py-2 pr-10 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+                          errors.password ? 'border-red-500' : 'border-gray-300'
+                        }`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                      >
+                        {showPassword ? (
+                          <HiEyeSlash className="h-5 w-5 text-gray-400" />
+                        ) : (
+                          <HiEye className="h-5 w-5 text-gray-400" />
+                        )}
+                      </button>
+                    </div>
+                    {errors.password && (
+                      <p className="text-red-500 text-sm mt-1">{errors.password}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Confirm New Password
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showConfirmPassword ? 'text' : 'password'}
+                        name="confirmPassword"
+                        value={formData.confirmPassword}
+                        onChange={handleInputChange}
+                        placeholder="Confirm new password"
+                        className={`w-full px-3 py-2 pr-10 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${
+                          errors.confirmPassword ? 'border-red-500' : 'border-gray-300'
+                        }`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                      >
+                        {showConfirmPassword ? (
+                          <HiEyeSlash className="h-5 w-5 text-gray-400" />
+                        ) : (
+                          <HiEye className="h-5 w-5 text-gray-400" />
+                        )}
+                      </button>
+                    </div>
+                    {errors.confirmPassword && (
+                      <p className="text-red-500 text-sm mt-1">{errors.confirmPassword}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {mode === 'create' && (
+              <div className="bg-white p-6">
+                <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+                  <HiKey className="h-5 w-5 mr-2 text-blue-500" /> Security Information
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
@@ -309,9 +403,9 @@ const UserFormPage = () => {
               </div>
             )}
 
-            <div className="bg-gray-50 p-6 rounded-lg shadow-inner">
+            <div className="bg-white p-6">
               <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
-                <HiBuildingOffice2 className="h-5 w-5 mr-2 text-indigo-500" /> Work Information
+                <HiBuildingOffice2 className="h-5 w-5 mr-2 text-blue-500" /> Work Information
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Select
@@ -349,7 +443,7 @@ const UserFormPage = () => {
             </div>
 
             {userError && (
-              <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded-r-lg">
+              <div className="bg-red-50 border-l-4 border-red-400 p-4">
                 <div className="flex items-center">
                   <HiExclamationTriangle className="h-5 w-5 text-red-500 mr-3" />
                   <div>
@@ -361,28 +455,33 @@ const UserFormPage = () => {
               </div>
             )}
 
-            <div className="flex items-center justify-end space-x-3 pt-6 border-t border-gray-200">
-              <Button
-                type="button"
-                onClick={handleBack}
-                variant="secondary"
-                size="xs"
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                variant="primary"
-                size="xs"
-                loading={userLoading}
-                className="flex items-center"
-              >
-                <HiCheckCircle className="h-4 w-4 mr-2" />
-                {mode === 'create' ? 'Create User' : 'Update User'}
-              </Button>
+            {/* Form Actions */}
+            <div className="bg-white p-6">
+              <div className="flex items-center justify-end gap-4">
+                <Button
+                  type="button"
+                  onClick={handleBack}
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-2"
+                >
+                  <HiXMark className="h-4 w-4" />
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="sm"
+                  loading={userLoading}
+                  className="flex items-center gap-2"
+                >
+                  <HiCheckCircle className="h-4 w-4" />
+                  {mode === 'create' ? 'Create User' : 'Update User'}
+                </Button>
+              </div>
             </div>
-          </form>
-        </div>
+          </div>
+        </form>
       </div>
     </div>
   );

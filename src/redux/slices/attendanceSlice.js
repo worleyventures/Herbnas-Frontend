@@ -1,4 +1,5 @@
 import { createSlice } from '@reduxjs/toolkit';
+// Import attendance actions
 import {
   checkIn,
   checkOut,
@@ -13,8 +14,7 @@ import {
   createAttendance,
   updateAttendance,
   deleteAttendance,
-  getAttendanceStats,
-  uploadAttendanceExcel
+  getAttendanceStats
 } from '../actions/attendanceActions';
 
 const initialState = {
@@ -313,20 +313,6 @@ const attendanceSlice = createSlice({
         state.error = action.payload;
       })
       
-      // Upload attendance Excel
-      .addCase(uploadAttendanceExcel.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(uploadAttendanceExcel.fulfilled, (state, action) => {
-        state.loading = false;
-        state.success = true;
-        state.message = action.payload.message;
-      })
-      .addCase(uploadAttendanceExcel.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
-      });
   }
 });
 

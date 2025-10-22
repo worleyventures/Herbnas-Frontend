@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { HiUserGroup, HiPlus, HiEye, HiPencil, HiTrash } from 'react-icons/hi2';
+import { HiUserGroup, HiEye, HiPencil, HiTrash } from 'react-icons/hi2';
 import { StatCard, Table, Button, ActionButton, Input, Select, Loading, EmptyState, UserDetailsModal, SearchInput } from '../../components/common';
 import { getAllUsers, deleteUser } from '../../redux/actions/userActions';
 import { getAllBranches } from '../../redux/actions/branchActions';
@@ -380,10 +380,6 @@ const UsersPage = () => {
     }
   };
 
-  // Handle add user
-  const handleAddUser = () => {
-    navigate('/users/create');
-  };
 
   return (
     <div className="space-y-6">
@@ -394,15 +390,6 @@ const UsersPage = () => {
           <p className="mt-1 text-sm text-gray-500">
             Manage all users and their branch assignments
           </p>
-        </div>
-        <div className="mt-4 sm:mt-0">
-          <Button
-            onClick={handleAddUser}
-            variant="gradient"
-            icon={HiPlus}
-          >
-            Add User
-          </Button>
         </div>
       </div>
 
@@ -525,19 +512,7 @@ const UsersPage = () => {
               title="No users found"
               description={searchTerm || filterRole !== 'all' || filterBranch !== 'all' || filterStatus !== 'all' 
                 ? "No users match your current filters. Try adjusting your search criteria."
-                : "No users have been created yet. Get started by adding your first user."
-              }
-              action={
-                !searchTerm && filterRole === 'all' && filterBranch === 'all' && filterStatus === 'all' && (
-                  <Button
-                    variant="gradient"
-                    onClick={handleAddUser}
-                    icon={HiPlus}
-                    size="sm"
-                  >
-                    Add First User
-                  </Button>
-                )
+                : "No employees have been registered yet. Users are created when employees are added to the system."
               }
             />
           ) : (

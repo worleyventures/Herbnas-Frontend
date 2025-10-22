@@ -447,7 +447,7 @@ const BranchesDashboard = ({ propActiveView = 'table' }) => {
             <div className="w-full sm:w-48">
               <Select
                 value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
+                onChange={(value) => setFilterStatus(value)}
                 options={[
                   { value: 'all', label: 'All Status' },
                   { value: 'active', label: 'Active' },

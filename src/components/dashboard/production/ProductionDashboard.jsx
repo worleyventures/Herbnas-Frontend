@@ -308,21 +308,21 @@ const ProductionDashboard = () => {
           <div className="w-full sm:w-48">
             <Select
               value={productionStatusFilter}
-              onChange={(e) => setProductionStatusFilter(e.target.value)}
+              onChange={(value) => setProductionStatusFilter(value)}
               options={productionStatusOptions}
             />
           </div>
           <div className="w-full sm:w-48">
             <Select
               value={QCstatusFilter}
-              onChange={(e) => setQCstatusFilter(e.target.value)}
+              onChange={(value) => setQCstatusFilter(value)}
               options={QCstatusOptions}
             />
           </div>
           <div className="w-full sm:w-48">
             <Select
               value={productFilter}
-              onChange={(e) => setProductFilter(e.target.value)}
+              onChange={(value) => setProductFilter(value)}
               options={productOptions}
             />
           </div>

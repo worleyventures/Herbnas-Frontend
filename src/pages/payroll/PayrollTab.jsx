@@ -13,7 +13,8 @@ import {
   HiClock,
   HiUser,
   HiBuildingOffice,
-  HiCalendar
+  HiCalendar,
+  HiDocument
 } from 'react-icons/hi2';
 import { Button, Input, Select, Table, StatusBadge, Loading, StatCard, CommonModal, PayrollDetailsModal } from '../../components/common';
 import {
@@ -27,6 +28,9 @@ import {
   getAllUsers,
   deleteUser
 } from '../../redux/actions/userActions';
+import {
+  getAllAttendance
+} from '../../redux/actions/attendanceActions';
 import {
   selectPayrolls,
   selectPayrollLoading,
@@ -44,7 +48,7 @@ import {
 import { addNotification } from '../../redux/slices/uiSlice';
 import api from '../../lib/axiosInstance';
 
-const PayrollTab = ({ showUsers = false }) => {
+const PayrollTab = ({ showUsers = true }) => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   
@@ -60,6 +64,10 @@ const PayrollTab = ({ showUsers = false }) => {
   const userLoading = useSelector(selectUserLoading);
   const userError = useSelector(selectUserError);
   const userPagination = useSelector((state) => state.user.pagination);
+  
+  // Attendance state
+  const attendance = useSelector((state) => state.attendance.allAttendance);
+  const attendanceLoading = useSelector((state) => state.attendance.loading);
 
 
   // Local state
@@ -86,27 +94,28 @@ const PayrollTab = ({ showUsers = false }) => {
 
   // Load data on component mount
   useEffect(() => {
-    if (showUsers) {
-      dispatch(getAllUsers({
-        page: currentPage,
-        limit: 10,
-        search: searchTerm,
-        branch: branchFilter !== 'all' ? branchFilter : undefined
-      }));
-    } else {
-      // Always use getAllPayrolls which now returns user format
-      dispatch(getAllPayrolls({
-        page: currentPage,
-        limit: 10,
-        search: searchTerm,
-        branchId: branchFilter !== 'all' ? branchFilter : undefined
-      }));
-      dispatch(getPayrollStats({
-        branchId: branchFilter !== 'all' ? branchFilter : undefined
-      }));
-    }
+    // Always load users for the payroll table with attendance data
+    dispatch(getAllUsers({
+      page: currentPage,
+      limit: 10,
+      search: searchTerm,
+      branch: branchFilter !== 'all' ? branchFilter : undefined
+    }));
+    
+    // Also load payroll stats for the summary cards
+    dispatch(getPayrollStats({
+      branchId: branchFilter !== 'all' ? branchFilter : undefined
+    }));
+    
+    // Fetch attendance data for all employees
+    dispatch(getAllAttendance({
+      page: 1,
+      limit: 1000, // Get all attendance records
+      branchId: branchFilter !== 'all' ? branchFilter : undefined
+    }));
+    
     loadBranches();
-  }, [currentPage, searchTerm, branchFilter, dispatch, showUsers]);
+  }, [currentPage, searchTerm, branchFilter, dispatch]);
 
   // Handle search
   const handleSearch = (e) => {
@@ -133,13 +142,8 @@ const PayrollTab = ({ showUsers = false }) => {
 
   // Handle delete
   const handleDeletePayroll = (id) => {
-    if (showUsers) {
-      const user = users.find(u => u._id === id);
-      setPayrollToDelete(user);
-    } else {
-      const payroll = payrolls.find(p => p._id === id);
-      setPayrollToDelete(payroll);
-    }
+    const user = users.find(u => u._id === id);
+    setPayrollToDelete(user);
     setShowDeleteModal(true);
   };
 
@@ -152,6 +156,15 @@ const PayrollTab = ({ showUsers = false }) => {
     navigate(`/payrolls/edit/${payrollId}`);
   };
 
+  const handleViewPayslip = (user) => {
+    // Navigate to payroll details page to view employee payslip information
+    navigate(`/payrolls/view/${user._id}`, {
+      state: {
+        attendanceData: getEmployeeAttendanceData(user._id)
+      }
+    });
+  };
+
   const handleClosePayrollModal = () => {
     setShowPayrollModal(false);
     setSelectedPayrollId(null);
@@ -160,25 +173,17 @@ const PayrollTab = ({ showUsers = false }) => {
   const confirmDeletePayroll = async () => {
     if (payrollToDelete) {
       try {
-        if (showUsers) {
-          await dispatch(deleteUser(payrollToDelete._id)).unwrap();
-          dispatch(addNotification({
-            type: 'success',
-            message: 'Employee deleted successfully'
-          }));
-        } else {
-          await dispatch(deletePayroll(payrollToDelete._id)).unwrap();
-          dispatch(addNotification({
-            type: 'success',
-            message: 'Payroll deleted successfully'
-          }));
-        }
+        await dispatch(deleteUser(payrollToDelete._id)).unwrap();
+        dispatch(addNotification({
+          type: 'success',
+          message: 'Employee deleted successfully'
+        }));
         setShowDeleteModal(false);
         setPayrollToDelete(null);
       } catch (error) {
         dispatch(addNotification({
           type: 'error',
-          message: error || `Failed to delete ${showUsers ? 'employee' : 'payroll'}`
+          message: error || 'Failed to delete employee'
         }));
       }
     }
@@ -187,6 +192,63 @@ const PayrollTab = ({ showUsers = false }) => {
   const cancelDelete = () => {
     setShowDeleteModal(false);
     setPayrollToDelete(null);
+  };
+
+  // Helper function to get attendance data for an employee
+  const getEmployeeAttendanceData = (employeeId) => {
+    if (!attendance || !Array.isArray(attendance)) {
+      // Return zero data when attendance is not loaded
+      return {
+        totalDays: 0,
+        presentDays: 0,
+        absentDays: 0,
+        lateDays: 0,
+        halfDays: 0,
+        currentMonthAttendance: 0,
+        currentMonthPresent: 0,
+        attendancePercentage: 0
+      };
+    }
+    
+    const employeeAttendance = attendance.filter(record => 
+      record.employeeId?._id === employeeId || record.employeeId === employeeId
+    );
+    
+    // Calculate summary data
+    const totalDays = employeeAttendance.length;
+    const presentDays = employeeAttendance.filter(record => 
+      record.status === 'present' || record.status === 'approved'
+    ).length;
+    const absentDays = employeeAttendance.filter(record => 
+      record.status === 'absent' || record.status === 'rejected'
+    ).length;
+    const lateDays = employeeAttendance.filter(record => 
+      record.status === 'late'
+    ).length;
+    const halfDays = employeeAttendance.filter(record => 
+      record.status === 'half_day'
+    ).length;
+    
+    // Get latest attendance record for current month
+    const currentMonth = new Date().getMonth() + 1;
+    const currentYear = new Date().getFullYear();
+    const currentMonthAttendance = employeeAttendance.filter(record => {
+      const recordDate = new Date(record.date);
+      return recordDate.getMonth() + 1 === currentMonth && recordDate.getFullYear() === currentYear;
+    });
+    
+    return {
+      totalDays,
+      presentDays,
+      absentDays,
+      lateDays,
+      halfDays,
+      currentMonthAttendance: currentMonthAttendance.length,
+      currentMonthPresent: currentMonthAttendance.filter(record => 
+        record.status === 'present' || record.status === 'approved'
+      ).length,
+      attendancePercentage: totalDays > 0 ? Math.round((presentDays / totalDays) * 100) : 0
+    };
   };
 
   // Handle approve
@@ -289,6 +351,128 @@ const PayrollTab = ({ showUsers = false }) => {
           }
         </div>
       )
+    },
+    {
+      key: 'attendance',
+      label: 'Attendance',
+      render: (user) => {
+        if (isAttendanceLoading) {
+          return (
+            <div className="text-sm text-gray-400">
+              Loading...
+            </div>
+          );
+        }
+        
+        const attendanceData = getEmployeeAttendanceData(user._id);
+        return (
+          <div className="text-sm">
+            <div className="flex items-center space-x-2">
+              <span className={`font-medium ${attendanceData.presentDays > 0 ? 'text-green-600' : 'text-gray-500'}`}>
+                {attendanceData.presentDays}
+              </span>
+              <span className="text-gray-400">/</span>
+              <span className="text-gray-600">
+                {attendanceData.totalDays}
+              </span>
+            </div>
+            <div className="text-xs text-gray-500">
+              {attendanceData.attendancePercentage}% present
+            </div>
+          </div>
+        );
+      }
+    },
+    {
+      key: 'currentMonth',
+      label: 'This Month',
+      render: (user) => {
+        if (isAttendanceLoading) {
+          return (
+            <div className="text-sm text-gray-400">
+              Loading...
+            </div>
+          );
+        }
+        
+        const attendanceData = getEmployeeAttendanceData(user._id);
+        return (
+          <div className="text-sm">
+            <div className="flex items-center space-x-2">
+              <span className={`font-medium ${attendanceData.currentMonthPresent > 0 ? 'text-blue-600' : 'text-gray-500'}`}>
+                {attendanceData.currentMonthPresent}
+              </span>
+              <span className="text-gray-400">/</span>
+              <span className="text-gray-600">
+                {attendanceData.currentMonthAttendance}
+              </span>
+            </div>
+            <div className="text-xs text-gray-500">
+              present this month
+            </div>
+          </div>
+        );
+      }
+    },
+    {
+      key: 'status',
+      label: 'Attendance Status',
+      render: (user) => {
+        if (isAttendanceLoading) {
+          return (
+            <div className="text-sm text-gray-400">
+              Loading...
+            </div>
+          );
+        }
+        
+        const attendanceData = getEmployeeAttendanceData(user._id);
+        
+        // If no attendance records at all, show "no-data" status
+        if (attendanceData.totalDays === 0) {
+          return (
+            <StatusBadge
+              status="no-data"
+              variant="warning"
+            />
+          );
+        }
+        
+        let status = 'good';
+        let variant = 'success';
+        
+        if (attendanceData.attendancePercentage < 70) {
+          status = 'poor';
+          variant = 'danger';
+        } else if (attendanceData.attendancePercentage < 85) {
+          status = 'average';
+          variant = 'warning';
+        }
+        
+        return (
+          <StatusBadge
+            status={status}
+            variant={variant}
+          />
+        );
+      }
+    },
+    {
+      key: 'actions',
+      label: 'Actions',
+      render: (user) => (
+        <div className="flex items-center space-x-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleViewPayslip(user)}
+            className="flex items-center space-x-1"
+          >
+            <HiDocument className="h-4 w-4" />
+            <span>View Payslip</span>
+          </Button>
+        </div>
+      )
     }
   ];
 
@@ -304,11 +488,14 @@ const PayrollTab = ({ showUsers = false }) => {
 
 
 
-  // Since getAllPayrolls now returns user format, we can use the same data structure
-  const currentLoading = showUsers ? userLoading : loading;
-  const currentError = showUsers ? userError : error;
-  const currentData = showUsers ? users : payrolls; // payrolls now contains user format data
-  const currentPagination = showUsers ? userPagination : pagination;
+  // Always use users data for the payroll table with attendance
+  const currentLoading = userLoading;
+  const currentError = userError;
+  const currentData = users;
+  const currentPagination = userPagination;
+  
+  // Combined loading state for attendance data
+  const isAttendanceLoading = attendanceLoading;
 
   if (currentLoading && (!currentData || currentData.length === 0)) {
     return <Loading />;
@@ -324,7 +511,7 @@ const PayrollTab = ({ showUsers = false }) => {
             </div>
             <div className="ml-3">
               <h3 className="text-sm font-medium text-red-800">
-                Error loading {showUsers ? 'employees' : 'payrolls'}
+                Error loading employees
               </h3>
               <div className="mt-2 text-sm text-red-700">
                 <p>{currentError}</p>

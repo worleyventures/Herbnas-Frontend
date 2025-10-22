@@ -275,7 +275,7 @@ const Header = ({ sidebarOpen, setSidebarOpen, showAttendanceModal, setShowAtten
           {/* Mobile menu button */}
           <button
             type="button"
-            className="md:hidden -ml-1 -mt-1 h-12 w-12 inline-flex items-center justify-center rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100/50 focus:outline-none focus:ring-2 focus:ring-[#558b2f] focus:ring-offset-2 transition-all duration-200"
+            className="md:hidden -ml-1 -mt-1 h-12 w-12 inline-flex items-center justify-center rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100/50 focus:outline-none focus:ring-2 focus:ring-[#558b2f] focus:ring-offset-2 transition-all duration-200 print:hidden"
             onClick={() => setSidebarOpen(!sidebarOpen)}
           >
             <span className="sr-only">Open sidebar</span>
@@ -283,7 +283,7 @@ const Header = ({ sidebarOpen, setSidebarOpen, showAttendanceModal, setShowAtten
           </button>
 
           {/* Breadcrumbs */}
-          <nav className="flex ml-4" aria-label="Breadcrumb">
+          <nav className="flex ml-4 print:hidden" aria-label="Breadcrumb">
             <ol className="flex items-center space-x-3">
               {breadcrumbs.map((breadcrumb, index) => (
                 <li key={breadcrumb.name} className="flex items-center">
@@ -314,7 +314,7 @@ const Header = ({ sidebarOpen, setSidebarOpen, showAttendanceModal, setShowAtten
         </div>
 
         {/* Right side - Notifications and Profile */}
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-4 print:hidden">
           {/* Notifications */}
           <div className="relative">
             <button

@@ -10,7 +10,7 @@ import {
   HiCalendar,
   HiExclamationTriangle
 } from 'react-icons/hi2';
-import { Input, Select, Button, Loading, Modal, TextArea } from '../../components/common';
+import { Input, Select, Button, Loading, Modal, TextArea, StatCard } from '../../components/common';
 import SupervisorAttendanceCalendar from '../../components/attendance/SupervisorAttendanceCalendar';
 import { getPendingApprovals, approveAttendance } from '../../redux/actions/attendanceActions';
 import { addNotification } from '../../redux/slices/uiSlice';
@@ -193,95 +193,77 @@ const SupervisorAttendancePage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Attendance Approval</h1>
-              <p className="mt-2 text-gray-600">
-                Review and approve employee attendance for your branch
-              </p>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Attendance Approval</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Review and approve employee attendance for your branch
+          </p>
+        </div>
+        <div className="mt-4 sm:mt-0 flex items-center space-x-4">
+          <div className="text-right">
+            <div className="text-sm text-gray-500">Branch</div>
+            <div className="font-medium text-gray-900">
+              {loadingBranch ? (
+                <span className="text-gray-400">Loading...</span>
+              ) : (
+                branchDetails?.name || user?.branch?.branchName || user?.branch || 'Not Assigned'
+              )}
             </div>
-            <div className="flex items-center space-x-4">
-              <div className="text-right">
-                <div className="text-sm text-gray-500">Branch</div>
-                <div className="font-medium text-gray-900">
-                  {loadingBranch ? (
-                    <span className="text-gray-400">Loading...</span>
-                  ) : (
-                    branchDetails?.name || user?.branch?.branchName || user?.branch || 'Not Assigned'
-                  )}
-                </div>
-                {!branchDetails?.name && !user?.branch?.branchName && user?.branch && (
-                  <div className="text-xs text-yellow-600 mt-1">
-                    Branch ID: {user.branch}
-                  </div>
-                )}
+            {!branchDetails?.name && !user?.branch?.branchName && user?.branch && (
+              <div className="text-xs text-yellow-600 mt-1">
+                Branch ID: {user.branch}
               </div>
-            </div>
+            )}
           </div>
         </div>
+      </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center">
-              <div className="h-12 w-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-                <HiClock className="h-6 w-6 text-yellow-600" />
-              </div>
-              <div className="ml-4">
-                <div className="text-2xl font-bold text-gray-900">
-                  {pendingApprovals?.filter(a => a.approvalStatus === 'pending').length || 0}
-                </div>
-                <div className="text-sm text-gray-600">Pending Approval</div>
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center">
-              <div className="h-12 w-12 bg-green-100 rounded-lg flex items-center justify-center">
-                <HiCheckCircle className="h-6 w-6 text-green-600" />
-              </div>
-              <div className="ml-4">
-                <div className="text-2xl font-bold text-gray-900">
-                  {pendingApprovals?.filter(a => a.approvalStatus === 'approved').length || 0}
-                </div>
-                <div className="text-sm text-gray-600">Approved</div>
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center">
-              <div className="h-12 w-12 bg-red-100 rounded-lg flex items-center justify-center">
-                <HiXMark className="h-6 w-6 text-red-600" />
-              </div>
-              <div className="ml-4">
-                <div className="text-2xl font-bold text-gray-900">
-                  {pendingApprovals?.filter(a => a.approvalStatus === 'rejected').length || 0}
-                </div>
-                <div className="text-sm text-gray-600">Rejected</div>
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center">
-              <div className="h-12 w-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <HiUsers className="h-6 w-6 text-blue-600" />
-              </div>
-              <div className="ml-4">
-                <div className="text-2xl font-bold text-gray-900">
-                  {pendingApprovals?.length || 0}
-                </div>
-                <div className="text-sm text-gray-600">Total Records</div>
-              </div>
-            </div>
-          </div>
-        </div>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
+        <StatCard
+          title="Pending Approval"
+          value={pendingApprovals?.filter(a => a.approvalStatus === 'pending').length || 0}
+          icon={HiClock}
+          gradient="yellow"
+          animation="bounce"
+          change="+5%"
+          changeType="increase"
+          loading={loading}
+        />
+        <StatCard
+          title="Approved"
+          value={pendingApprovals?.filter(a => a.approvalStatus === 'approved').length || 0}
+          icon={HiCheckCircle}
+          gradient="green"
+          animation="pulse"
+          change="+2%"
+          changeType="increase"
+          loading={loading}
+        />
+        <StatCard
+          title="Rejected"
+          value={pendingApprovals?.filter(a => a.approvalStatus === 'rejected').length || 0}
+          icon={HiXMark}
+          gradient="red"
+          animation="float"
+          change="+1%"
+          changeType="increase"
+          loading={loading}
+        />
+        <StatCard
+          title="Total Records"
+          value={pendingApprovals?.length || 0}
+          icon={HiUsers}
+          gradient="blue"
+          animation="bounce"
+          change="+8%"
+          changeType="increase"
+          loading={loading}
+        />
+      </div>
 
 
         {/* Calendar or Table View */}
@@ -543,7 +525,6 @@ const SupervisorAttendancePage = () => {
             )}
           </div>
         </Modal>
-      </div>
     </div>
   );
 };

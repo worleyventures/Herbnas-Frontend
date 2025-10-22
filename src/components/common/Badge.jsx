@@ -79,6 +79,11 @@ export const StatusBadge = ({
     high: { variant: 'error', label: 'High' },
     medium: { variant: 'warning', label: 'Medium' },
     low: { variant: 'info', label: 'Low' },
+    // Attendance status types
+    good: { variant: 'success', label: 'Good' },
+    average: { variant: 'warning', label: 'Average' },
+    poor: { variant: 'error', label: 'Poor' },
+    'no-data': { variant: 'warning', label: 'No Data' },
     ...statusMap
   };
 

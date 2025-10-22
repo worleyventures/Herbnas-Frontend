@@ -277,7 +277,7 @@ const ProductsPage = () => {
             <div className="w-full sm:w-48">
               <Select
                 value={filterCategory}
-                onChange={(e) => handleFilterChange('category', e.target.value)}
+                onChange={(value) => handleFilterChange('category', value)}
                 options={[
                   { value: 'all', label: 'All Categories' },
                   ...categories.map(category => ({

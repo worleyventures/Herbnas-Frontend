@@ -53,13 +53,8 @@ const CustomerSelect = ({
 
   const handleSelectChange = (optionValue) => {
     if (onChange) {
-      const syntheticEvent = {
-        target: {
-          value: optionValue,
-          name: name || ''
-        }
-      };
-      onChange(syntheticEvent);
+      // Pass the value directly instead of creating a synthetic event
+      onChange(optionValue);
     }
     
     setIsOpen(false);
@@ -69,13 +64,8 @@ const CustomerSelect = ({
   const handleClear = () => {
     setSearchTerm('');
     if (onChange) {
-      const syntheticEvent = {
-        target: {
-          value: '',
-          name: name || ''
-        }
-      };
-      onChange(syntheticEvent);
+      // Pass empty string directly instead of creating a synthetic event
+      onChange('');
     }
   };
 
