@@ -603,14 +603,7 @@ const OrderFormPage = () => {
 
             {/* Shipping Address */}
             <div className="bg-white p-6 rounded-lg shadow">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-medium text-gray-900">Shipping Address</h3>
-                {formData.customerType === 'lead' && formData.shippingAddress.name && (
-                  <span className="text-sm text-green-600 bg-green-50 px-3 py-1 rounded-full">
-                    ✓ Auto-filled from lead
-                  </span>
-                )}
-              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Shipping Address</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2">
                   <Input
