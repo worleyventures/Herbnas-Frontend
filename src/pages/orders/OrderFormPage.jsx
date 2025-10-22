@@ -359,6 +359,11 @@ const OrderFormPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    // Prevent duplicate submissions
+    if (submitting) {
+      return;
+    }
+    
     if (!validateForm()) {
       return;
     }
