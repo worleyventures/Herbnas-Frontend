@@ -143,12 +143,6 @@ const LeadFormStepper = ({
   // Define stepper steps based on lead status
   const allSteps = [
     {
-      id: 'reminders',
-      title: 'Reminders',
-      description: 'Follow-up reminders and notes',
-      icon: HiBell
-    },
-    {
       id: 'basic-info',
       title: 'Basic Information',
       description: 'Lead details and status',
@@ -159,6 +153,12 @@ const LeadFormStepper = ({
       title: 'Customer Details',
       description: 'Contact and personal information',
       icon: HiUser
+    },
+    {
+      id: 'reminders',
+      title: 'Reminders',
+      description: 'Follow-up reminders and notes',
+      icon: HiBell
     },
     {
       id: 'health-products',
