@@ -53,17 +53,6 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
     loading: sentGoodsLoading = false
   } = useSelector((state) => state.sentGoods);
 
-  // Debug Redux state
-  const fullSentGoodsState = useSelector((state) => state.sentGoods);
-  console.log('🔍 Full Redux sentGoods state:', fullSentGoodsState);
-  console.log('🔍 Redux state keys:', Object.keys(fullSentGoodsState));
-  console.log('🔍 Redux sentGoods array:', fullSentGoodsState.sentGoods);
-  console.log('🔍 Redux loading state:', fullSentGoodsState.loading);
-
-  // Track Redux state changes
-  useEffect(() => {
-    console.log('🔄 Redux sentGoods state changed:', fullSentGoodsState);
-  }, [fullSentGoodsState]);
 
   // Local state
   const [selectedInventory, setSelectedInventory] = useState(null);
@@ -78,20 +67,10 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
   // Role-based access
   const isProductionManager = user?.role === 'production_manager';
 
-  // Debug logging
-  console.log('🔍 InventoryDashboard Debug:');
-  console.log('- User role:', user?.role);
-  console.log('- Is production manager:', isProductionManager);
-  console.log('- Active tab:', activeTab);
-  console.log('- Sent goods count:', sentGoods.length);
-  console.log('- Sent goods loading:', sentGoodsLoading);
-  console.log('- Sent goods data:', sentGoods);
-  console.log('- Redux sentGoods state:', useSelector((state) => state.sentGoods));
 
 
   // Load data on component mount
   useEffect(() => {
-    console.log('🔄 useEffect triggered - isAuthenticated:', isAuthenticated, 'isProductionManager:', isProductionManager);
     if (isAuthenticated) {
       dispatch(getAllRawMaterials({
         page: currentPage,
@@ -107,17 +86,12 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
         stockStatus: filterStockStatus === 'all' ? '' : filterStockStatus
       }));
       // Load sent goods for all users (production managers will see filtered results)
-      console.log('🚀 Dispatching sent goods action...');
       if (isProductionManager) {
         console.log('🚀 Dispatching getReceivedGoods for production manager...');
-        const receivedGoodsAction = getReceivedGoods({ page: 1, limit: 1000 });
-        console.log('🚀 Received goods action:', receivedGoodsAction);
-        dispatch(receivedGoodsAction);
+        dispatch(getReceivedGoods({ page: 1, limit: 1000 }));
       } else {
         console.log('🚀 Dispatching getAllSentGoods for other roles...');
-        const sentGoodsAction = getAllSentGoods({ page: 1, limit: 1000 });
-        console.log('🚀 Sent goods action:', sentGoodsAction);
-        dispatch(sentGoodsAction);
+        dispatch(getAllSentGoods({ page: 1, limit: 1000 }));
       }
       dispatch(getInventoryStats());
       dispatch(getAllProducts({ page: 1, limit: 1000, isActive: true }));
@@ -538,7 +512,6 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
       {/* Inventory Table */}
       {activeTab === 'sentGoods' && isProductionManager ? (
         <>
-          {console.log('🎯 Rendering ReceivedGoodsCRUD with props:', { sentGoods, loading: sentGoodsLoading })}
           <ReceivedGoodsCRUD
             sentGoods={sentGoods}
             loading={sentGoodsLoading}

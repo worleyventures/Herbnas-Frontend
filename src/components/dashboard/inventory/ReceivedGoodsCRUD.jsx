@@ -24,19 +24,7 @@ const ReceivedGoodsCRUD = ({
   const [selectedGoods, setSelectedGoods] = useState(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
 
-  // Debug logging
-  console.log('🔍 ReceivedGoodsCRUD Debug:');
-  console.log('- sentGoods prop:', sentGoods);
-  console.log('- sentGoods length:', sentGoods?.length || 0);
-  console.log('- loading:', loading);
-  console.log('- onRefresh:', typeof onRefresh);
 
-  // Track when sentGoods prop changes
-  useEffect(() => {
-    console.log('🔄 ReceivedGoodsCRUD - sentGoods prop changed:', sentGoods);
-    console.log('🔄 ReceivedGoodsCRUD - sentGoods length:', sentGoods?.length || 0);
-    console.log('🔄 ReceivedGoodsCRUD - sentGoods first item:', sentGoods?.[0]);
-  }, [sentGoods]);
 
   // Get status color
   const getStatusColor = (status) => {
@@ -262,13 +250,6 @@ const ReceivedGoodsCRUD = ({
 
   return (
     <>
-      {/* Debug section - remove this after fixing */}
-      <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-        <h3 className="text-sm font-medium text-yellow-800 mb-2">Debug Info:</h3>
-        <p className="text-xs text-yellow-700">Sent Goods Count: {sentGoods?.length || 0}</p>
-        <p className="text-xs text-yellow-700">Loading: {loading ? 'Yes' : 'No'}</p>
-        <p className="text-xs text-yellow-700">Data: {JSON.stringify(sentGoods?.slice(0, 1), null, 2)}</p>
-      </div>
 
       <Table
         data={sentGoods}
@@ -314,7 +295,7 @@ const ReceivedGoodsCRUD = ({
                     {selectedGoods.items?.map((item, index) => (
                       <div key={index} className="flex justify-between items-center p-2 bg-gray-50 rounded">
                         <span className="text-sm text-gray-900">
-                          {item.inventoryId?.productName || 'Unknown Product'}
+                          {item.inventoryId?.productId?.productName || 'Unknown Product'}
                         </span>
                         <span className="text-sm text-gray-600">
                           Qty: {item.quantity} | Price: ₹{item.unitPrice}

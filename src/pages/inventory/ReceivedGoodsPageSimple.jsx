@@ -3,7 +3,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { HiArrowLeft, HiTruck, HiBuildingOffice2, HiCalendar, HiCheckCircle, HiClock, HiXCircle, HiExclamationTriangle, HiEye } from 'react-icons/hi2';
 import { Button, Loading, EmptyState, Select } from '../../components/common';
-import { getAllSentGoods, updateSentGoodsStatus } from '../../redux/actions/sentGoodsActions';
+import { getReceivedGoods, updateSentGoodsStatus } from '../../redux/actions/sentGoodsActions';
 import { addNotification } from '../../redux/slices/uiSlice';
 
 const ReceivedGoodsPageSimple = () => {
@@ -33,7 +33,7 @@ const ReceivedGoodsPageSimple = () => {
       sortBy: 'sentAt',
       sortOrder: 'desc'
     };
-    dispatch(getAllSentGoods(params));
+    dispatch(getReceivedGoods(params));
   }, []); // Only run on mount
 
   // Load data when filters change - with a simple timeout
@@ -48,7 +48,7 @@ const ReceivedGoodsPageSimple = () => {
         sortBy: 'sentAt',
         sortOrder: 'desc'
       };
-      dispatch(getAllSentGoods(params));
+      dispatch(getReceivedGoods(params));
     }, 500); // 500ms debounce
 
     return () => clearTimeout(timeoutId);
@@ -74,7 +74,7 @@ const ReceivedGoodsPageSimple = () => {
           sortBy: 'sentAt',
           sortOrder: 'desc'
         };
-        dispatch(getAllSentGoods(params));
+        dispatch(getReceivedGoods(params));
       } else {
         dispatch(addNotification({
           type: 'error',
@@ -383,7 +383,7 @@ const ReceivedGoodsPageSimple = () => {
                       {selectedGoods.items?.map((item, index) => (
                         <div key={index} className="flex justify-between items-center p-2 bg-gray-50 rounded">
                           <span className="text-sm text-gray-900">
-                            {item.inventoryId?.productName || 'Unknown Product'}
+                            {item.inventoryId?.productId?.productName || 'Unknown Product'}
                           </span>
                           <span className="text-sm text-gray-600">
                             Qty: {item.quantity} | Price: ₹{item.unitPrice}

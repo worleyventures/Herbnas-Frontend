@@ -281,7 +281,7 @@ const InventoryDetailsModal = ({
     fields: isSentGood ? [
       ...(inventoryItem.items?.map((item, index) => ({
         label: `Item ${index + 1}`,
-        value: `${item.productName || 'Unknown Product'} (${item.quantity} units) - ${formatCurrency(item.unitPrice * item.quantity)}`
+        value: `${item.inventoryId?.productId?.productName || 'Unknown Product'} (${item.quantity} units) - ${formatCurrency(item.unitPrice * item.quantity)}`
       })) || [])
     ] : [
       {

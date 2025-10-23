@@ -53,8 +53,14 @@ const CustomerSelect = ({
 
   const handleSelectChange = (optionValue) => {
     if (onChange) {
-      // Pass the value directly instead of creating a synthetic event
-      onChange(optionValue);
+      // Create a synthetic event object to match expected interface
+      const syntheticEvent = {
+        target: {
+          value: optionValue,
+          name: name
+        }
+      };
+      onChange(syntheticEvent);
     }
     
     setIsOpen(false);
@@ -64,8 +70,14 @@ const CustomerSelect = ({
   const handleClear = () => {
     setSearchTerm('');
     if (onChange) {
-      // Pass empty string directly instead of creating a synthetic event
-      onChange('');
+      // Create a synthetic event object to match expected interface
+      const syntheticEvent = {
+        target: {
+          value: '',
+          name: name
+        }
+      };
+      onChange(syntheticEvent);
     }
   };
 

@@ -5,7 +5,7 @@ import { HiArrowLeft, HiTruck, HiBuildingOffice2, HiCube, HiCalendar, HiCheckCir
 import { Button, Input, Select, TextArea, Loading, EmptyState } from '../../components/common';
 import { getAllBranches } from '../../redux/actions/branchActions';
 import { getAllFinishedGoods } from '../../redux/actions/inventoryActions';
-import { createSentGoods, getAllSentGoods, updateSentGoodsStatus } from '../../redux/actions/sentGoodsActions';
+import { createSentGoods, getAllSentGoods, getReceivedGoods, updateSentGoodsStatus } from '../../redux/actions/sentGoodsActions';
 import { addNotification } from '../../redux/slices/uiSlice';
 
 const SentGoodsPage = () => {
@@ -47,7 +47,12 @@ const SentGoodsPage = () => {
       sortBy: 'sentAt',
       sortOrder: 'desc'
     };
-    dispatch(getAllSentGoods(params));
+    // Use appropriate API based on user role
+    if (isProductionManager) {
+      dispatch(getReceivedGoods(params));
+    } else {
+      dispatch(getAllSentGoods(params));
+    }
   };
 
   // Reload sent goods when filters change
@@ -214,6 +219,9 @@ const SentGoodsPage = () => {
         setNotes('');
         setSelectedInventoryItems([]);
         setFormErrors({});
+        
+        // Navigate to list view after successful creation
+        setActiveTab('list');
         
         // Form submitted successfully
       } else {

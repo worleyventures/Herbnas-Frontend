@@ -145,9 +145,12 @@ export const getReceivedGoods = createAsyncThunk(
       if (endDate) queryParams.append('endDate', endDate);
 
       console.log('🌐 Making API call to:', `/goods/received-goods?${queryParams.toString()}`);
+      console.log('🌐 Full URL:', `${axiosInstance.defaults.baseURL}/goods/received-goods?${queryParams.toString()}`);
       const response = await axiosInstance.get(`/goods/received-goods?${queryParams.toString()}`);
       console.log('📦 Received goods API response:', response.data);
       console.log('📦 Received goods data.sentGoods:', response.data.data?.sentGoods);
+      console.log('📦 Response status:', response.status);
+      console.log('📦 Response headers:', response.headers);
       return response.data;
     } catch (error) {
       console.error('❌ getReceivedGoods error:', error);

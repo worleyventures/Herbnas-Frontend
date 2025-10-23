@@ -396,7 +396,7 @@ const ReceivedGoodsListStable = () => {
                     {selectedGoods.items?.map((item, index) => (
                       <div key={index} className="flex justify-between items-center p-2 bg-gray-50 rounded">
                         <span className="text-sm text-gray-900">
-                          {item.inventoryId?.productName || 'Unknown Product'}
+                          {item.inventoryId?.productId?.productName || 'Unknown Product'}
                         </span>
                         <span className="text-sm text-gray-600">
                           Qty: {item.quantity} | Price: ₹{item.unitPrice}

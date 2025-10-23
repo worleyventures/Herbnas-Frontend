@@ -180,6 +180,12 @@ const sentGoodsSlice = createSlice({
         state.error = null;
         console.log('✅ After update - state.sentGoods:', state.sentGoods);
         console.log('✅ After update - state.sentGoods length:', state.sentGoods.length);
+        console.log('✅ Received goods data structure:', {
+          hasData: !!action.payload.data,
+          hasSentGoods: !!action.payload.data.sentGoods,
+          sentGoodsLength: action.payload.data.sentGoods?.length || 0,
+          firstItem: action.payload.data.sentGoods?.[0]
+        });
       })
       .addCase(getReceivedGoods.rejected, (state, action) => {
         console.log('❌ getReceivedGoods.rejected - error:', action.payload);
