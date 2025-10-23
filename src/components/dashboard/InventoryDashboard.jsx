@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -15,6 +15,7 @@ import {
 import { StatCard, FilterCard, Button, SearchInput, Select, Pagination } from '../common';
 import { addNotification } from '../../redux/slices/uiSlice';
 import InventoryCRUD from './inventory/InventoryCRUD';
+import ReceivedGoodsCRUD from './inventory/ReceivedGoodsCRUD';
 import {
   getAllRawMaterials,
   getAllFinishedGoods,
@@ -22,7 +23,7 @@ import {
   updateInventoryStock,
   deleteRawMaterial
 } from '../../redux/actions/inventoryActions';
-import { getAllSentGoods } from '../../redux/actions/sentGoodsActions';
+import { getAllSentGoods, getReceivedGoods } from '../../redux/actions/sentGoodsActions';
 import { clearError as clearInventoryErrors } from '../../redux/slices/inventorySlice';
 import { getAllProducts } from '../../redux/actions/productActions';
 
@@ -52,6 +53,18 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
     loading: sentGoodsLoading = false
   } = useSelector((state) => state.sentGoods);
 
+  // Debug Redux state
+  const fullSentGoodsState = useSelector((state) => state.sentGoods);
+  console.log('🔍 Full Redux sentGoods state:', fullSentGoodsState);
+  console.log('🔍 Redux state keys:', Object.keys(fullSentGoodsState));
+  console.log('🔍 Redux sentGoods array:', fullSentGoodsState.sentGoods);
+  console.log('🔍 Redux loading state:', fullSentGoodsState.loading);
+
+  // Track Redux state changes
+  useEffect(() => {
+    console.log('🔄 Redux sentGoods state changed:', fullSentGoodsState);
+  }, [fullSentGoodsState]);
+
   // Local state
   const [selectedInventory, setSelectedInventory] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -61,9 +74,24 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [activeTab, setActiveTab] = useState('rawMaterials'); // 'rawMaterials', 'finishedGoods', or 'sentGoods'
+  
+  // Role-based access
+  const isProductionManager = user?.role === 'production_manager';
+
+  // Debug logging
+  console.log('🔍 InventoryDashboard Debug:');
+  console.log('- User role:', user?.role);
+  console.log('- Is production manager:', isProductionManager);
+  console.log('- Active tab:', activeTab);
+  console.log('- Sent goods count:', sentGoods.length);
+  console.log('- Sent goods loading:', sentGoodsLoading);
+  console.log('- Sent goods data:', sentGoods);
+  console.log('- Redux sentGoods state:', useSelector((state) => state.sentGoods));
+
 
   // Load data on component mount
   useEffect(() => {
+    console.log('🔄 useEffect triggered - isAuthenticated:', isAuthenticated, 'isProductionManager:', isProductionManager);
     if (isAuthenticated) {
       dispatch(getAllRawMaterials({
         page: currentPage,
@@ -78,11 +106,23 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
         productId: filterProduct === 'all' ? '' : filterProduct,
         stockStatus: filterStockStatus === 'all' ? '' : filterStockStatus
       }));
-      dispatch(getAllSentGoods({ page: 1, limit: 1000 }));
+      // Load sent goods for all users (production managers will see filtered results)
+      console.log('🚀 Dispatching sent goods action...');
+      if (isProductionManager) {
+        console.log('🚀 Dispatching getReceivedGoods for production manager...');
+        const receivedGoodsAction = getReceivedGoods({ page: 1, limit: 1000 });
+        console.log('🚀 Received goods action:', receivedGoodsAction);
+        dispatch(receivedGoodsAction);
+      } else {
+        console.log('🚀 Dispatching getAllSentGoods for other roles...');
+        const sentGoodsAction = getAllSentGoods({ page: 1, limit: 1000 });
+        console.log('🚀 Sent goods action:', sentGoodsAction);
+        dispatch(sentGoodsAction);
+      }
       dispatch(getInventoryStats());
       dispatch(getAllProducts({ page: 1, limit: 1000, isActive: true }));
     }
-  }, [dispatch, isAuthenticated]);
+  }, [dispatch, isAuthenticated, isProductionManager]);
 
   // Load filtered inventory when filters change
   useEffect(() => {
@@ -362,7 +402,7 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
               Add Raw Material
             </Button>
           )}
-          {activeTab === 'sentGoods' && (
+          {activeTab === 'sentGoods' && !isProductionManager && (
             <Button
               onClick={() => navigate('/inventory/sent-goods')}
               className="bg-green-600 hover:bg-green-700 text-white"
@@ -413,7 +453,7 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
           >
             <div className="flex items-center space-x-2">
               <HiTruck className="h-5 w-5" />
-              <span>Sent Goods</span>
+              <span>{isProductionManager ? 'Received Goods' : 'Sent Goods'}</span>
             </div>
           </button>
         </nav>
@@ -496,23 +536,34 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
       </div>
 
       {/* Inventory Table */}
-      <InventoryCRUD
-        inventory={paginatedInventory}
-        inventoryType={activeTab}
-        onSelectInventory={setSelectedInventory}
-        onEditInventory={handleEditInventory}
-        onDeleteInventory={handleDeleteInventory}
-        onCreateInventory={() => navigate(`/inventory/create?type=${activeTab}`)}
-        onUpdateInventory={activeTab === 'sentGoods' ? handleRefreshSentGoods : handleUpdateInventory}
-        onDeleteInventoryConfirm={handleDeleteInventoryConfirm}
-        showDeleteModal={showDeleteModal}
-        selectedInventory={selectedInventory}
-        setShowDeleteModal={setShowDeleteModal}
-        loading={loading}
-        createLoading={loading}
-        updateLoading={loading}
-        deleteLoading={loading}
-      />
+      {activeTab === 'sentGoods' && isProductionManager ? (
+        <>
+          {console.log('🎯 Rendering ReceivedGoodsCRUD with props:', { sentGoods, loading: sentGoodsLoading })}
+          <ReceivedGoodsCRUD
+            sentGoods={sentGoods}
+            loading={sentGoodsLoading}
+            onRefresh={handleRefreshSentGoods}
+          />
+        </>
+      ) : (
+        <InventoryCRUD
+          inventory={paginatedInventory}
+          inventoryType={activeTab}
+          onSelectInventory={setSelectedInventory}
+          onEditInventory={handleEditInventory}
+          onDeleteInventory={handleDeleteInventory}
+          onCreateInventory={() => navigate(`/inventory/create?type=${activeTab}`)}
+          onUpdateInventory={activeTab === 'sentGoods' ? handleRefreshSentGoods : handleUpdateInventory}
+          onDeleteInventoryConfirm={handleDeleteInventoryConfirm}
+          showDeleteModal={showDeleteModal}
+          selectedInventory={selectedInventory}
+          setShowDeleteModal={setShowDeleteModal}
+          loading={loading}
+          createLoading={loading}
+          updateLoading={loading}
+          deleteLoading={loading}
+        />
+      )}
 
       {/* Pagination */}
       {totalPages > 1 && (
