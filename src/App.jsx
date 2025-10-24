@@ -27,6 +27,7 @@ import InventoryPage from './components/dashboard/InventoryDashboard';
 import InventoryFormPage from './pages/inventory/InventoryFormPage';
 import InventoryDetailsPage from './pages/inventory/InventoryDetailsPage';
 import SentGoodsPage from './pages/inventory/SentGoodsPage';
+import ReceivedGoodsPageSimple from './pages/inventory/ReceivedGoodsPageSimple';
 import ProductionPage from './pages/production/ProductionPage';
 import ProductionFormPage from './pages/production/ProductionFormPage';
 import ProductionDetailsPage from './pages/production/ProductionDetailsPage';
@@ -96,6 +97,7 @@ function App() {
             <Route path="/inventory/edit/:id" element={<InventoryFormPage />} />
             <Route path="/inventory/view/:id" element={<InventoryDetailsPage />} />
             <Route path="/inventory/sent-goods" element={<SentGoodsPage />} />
+            <Route path="/inventory/received-goods" element={<ReceivedGoodsPageSimple />} />
             <Route path="/orders" element={<OrdersPage />} />
             <Route path="/orders/new" element={<OrderFormPage />} />
             <Route path="/orders/edit/:id" element={<OrderFormPage />} />

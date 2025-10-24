@@ -5,7 +5,8 @@ import {
   createSentGoods,
   updateSentGoodsStatus,
   deleteSentGoods,
-  getSentGoodsStats
+  getSentGoodsStats,
+  getReceivedGoods
 } from '../actions/sentGoodsActions';
 
 const initialState = {
@@ -53,16 +54,22 @@ const sentGoodsSlice = createSlice({
     builder
       // Get all sent goods
       .addCase(getAllSentGoods.pending, (state) => {
+        console.log('⏳ getAllSentGoods.pending - setting loading to true');
         state.loading = true;
         state.error = null;
       })
       .addCase(getAllSentGoods.fulfilled, (state, action) => {
+        console.log('✅ getAllSentGoods.fulfilled - payload:', action.payload);
+        console.log('✅ Storing sentGoods:', action.payload.data.sentGoods);
+        console.log('✅ Before update - state.sentGoods:', state.sentGoods);
         state.loading = false;
         state.sentGoods = action.payload.data.sentGoods;
         state.pagination = action.payload.data.pagination;
         state.error = null;
+        console.log('✅ After update - state.sentGoods:', state.sentGoods);
       })
       .addCase(getAllSentGoods.rejected, (state, action) => {
+        console.log('❌ getAllSentGoods.rejected - error:', action.payload);
         state.loading = false;
         state.error = action.payload;
       })
@@ -152,6 +159,36 @@ const sentGoodsSlice = createSlice({
         state.error = null;
       })
       .addCase(getSentGoodsStats.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+
+      // Get received goods (same as sent goods but different perspective)
+      .addCase(getReceivedGoods.pending, (state) => {
+        console.log('⏳ getReceivedGoods.pending - setting loading to true');
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(getReceivedGoods.fulfilled, (state, action) => {
+        console.log('✅ getReceivedGoods.fulfilled - payload:', action.payload);
+        console.log('✅ Storing received goods:', action.payload.data.sentGoods);
+        console.log('✅ Before update - state.sentGoods:', state.sentGoods);
+        console.log('✅ Before update - state.sentGoods length:', state.sentGoods.length);
+        state.loading = false;
+        state.sentGoods = action.payload.data.sentGoods;
+        state.pagination = action.payload.data.pagination;
+        state.error = null;
+        console.log('✅ After update - state.sentGoods:', state.sentGoods);
+        console.log('✅ After update - state.sentGoods length:', state.sentGoods.length);
+        console.log('✅ Received goods data structure:', {
+          hasData: !!action.payload.data,
+          hasSentGoods: !!action.payload.data.sentGoods,
+          sentGoodsLength: action.payload.data.sentGoods?.length || 0,
+          firstItem: action.payload.data.sentGoods?.[0]
+        });
+      })
+      .addCase(getReceivedGoods.rejected, (state, action) => {
+        console.log('❌ getReceivedGoods.rejected - error:', action.payload);
         state.loading = false;
         state.error = action.payload;
       });

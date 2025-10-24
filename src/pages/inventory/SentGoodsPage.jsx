@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { HiArrowLeft, HiTruck, HiBuildingOffice2, HiCube, HiCalendar, HiCheckCircle, HiPlus } from 'react-icons/hi2';
-import { Button, Input, Select, TextArea } from '../../components/common';
+import { HiArrowLeft, HiTruck, HiBuildingOffice2, HiCube, HiCalendar, HiCheckCircle, HiPlus, HiEye, HiPencil, HiXMark } from 'react-icons/hi2';
+import { Button, Input, Select, TextArea, Loading, EmptyState } from '../../components/common';
 import { getAllBranches } from '../../redux/actions/branchActions';
 import { getAllFinishedGoods } from '../../redux/actions/inventoryActions';
-import { createSentGoods } from '../../redux/actions/sentGoodsActions';
+import { createSentGoods, getAllSentGoods, getReceivedGoods, updateSentGoodsStatus } from '../../redux/actions/sentGoodsActions';
 import { addNotification } from '../../redux/slices/uiSlice';
 
 const SentGoodsPage = () => {
@@ -15,6 +15,8 @@ const SentGoodsPage = () => {
   // Redux state
   const { branches = [], loading: branchesLoading = false } = useSelector((state) => state.branches);
   const { finishedGoods = [], loading: inventoryLoading = false } = useSelector((state) => state.inventory);
+  const { sentGoods = [], loading: sentGoodsLoading = false, error: sentGoodsError = null } = useSelector((state) => state.sentGoods);
+  const { user } = useSelector((state) => state.auth);
   
   // Local state
   const [selectedBranch, setSelectedBranch] = useState('');
@@ -22,17 +24,101 @@ const SentGoodsPage = () => {
   const [notes, setNotes] = useState('');
   const [selectedInventoryItems, setSelectedInventoryItems] = useState([]);
   const [formErrors, setFormErrors] = useState({});
+  const [activeTab, setActiveTab] = useState('list'); // 'list' or 'create'
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [updatingStatus, setUpdatingStatus] = useState(null);
 
   // Load data on component mount
   useEffect(() => {
     dispatch(getAllBranches({ page: 1, limit: 1000 }));
     dispatch(getAllFinishedGoods({ page: 1, limit: 1000 }));
+    loadSentGoods();
   }, [dispatch]);
+
+  // Load sent goods with filters
+  const loadSentGoods = () => {
+    const params = {
+      page: currentPage,
+      limit: 10,
+      search: searchTerm,
+      status: statusFilter,
+      sortBy: 'sentAt',
+      sortOrder: 'desc'
+    };
+    // Use appropriate API based on user role
+    if (isProductionManager) {
+      dispatch(getReceivedGoods(params));
+    } else {
+      dispatch(getAllSentGoods(params));
+    }
+  };
+
+  // Reload sent goods when filters change
+  useEffect(() => {
+    loadSentGoods();
+  }, [searchTerm, statusFilter, currentPage]);
+
+  // Role-based access
+  const isProductionManager = user?.role === 'production_manager';
+  const canCreateSentGoods = ['admin', 'inventory_manager', 'super_admin'].includes(user?.role);
+  const canUpdateStatus = ['admin', 'inventory_manager', 'production_manager', 'super_admin'].includes(user?.role);
 
 
 
   const handleBack = () => {
     navigate('/inventory');
+  };
+
+  // Handle status update
+  const handleStatusUpdate = async (sentGoodsId, newStatus) => {
+    setUpdatingStatus(sentGoodsId);
+    try {
+      const result = await dispatch(updateSentGoodsStatus({ id: sentGoodsId, status: newStatus }));
+      
+      if (updateSentGoodsStatus.fulfilled.match(result)) {
+        dispatch(addNotification({
+          type: 'success',
+          message: `Status updated to ${newStatus} successfully!`
+        }));
+        loadSentGoods(); // Reload the list
+      } else {
+        dispatch(addNotification({
+          type: 'error',
+          message: result.payload || 'Failed to update status'
+        }));
+      }
+    } catch (error) {
+      dispatch(addNotification({
+        type: 'error',
+        message: 'Failed to update status'
+      }));
+    } finally {
+      setUpdatingStatus(null);
+    }
+  };
+
+  // Get status color
+  const getStatusColor = (status) => {
+    const colors = {
+      'pending': 'bg-yellow-100 text-yellow-800',
+      'in-transit': 'bg-blue-100 text-blue-800',
+      'delivered': 'bg-green-100 text-green-800',
+      'cancelled': 'bg-red-100 text-red-800'
+    };
+    return colors[status] || 'bg-gray-100 text-gray-800';
+  };
+
+  // Get status display name
+  const getStatusDisplay = (status) => {
+    const displays = {
+      'pending': 'Pending',
+      'in-transit': 'In Transit',
+      'delivered': 'Delivered',
+      'cancelled': 'Cancelled'
+    };
+    return displays[status] || status;
   };
 
   const handleAddInventoryItem = () => {
@@ -133,6 +219,9 @@ const SentGoodsPage = () => {
         setNotes('');
         setSelectedInventoryItems([]);
         setFormErrors({});
+        
+        // Navigate to list view after successful creation
+        setActiveTab('list');
         
         // Form submitted successfully
       } else {
