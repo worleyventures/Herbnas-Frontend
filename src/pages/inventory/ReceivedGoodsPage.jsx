@@ -3,7 +3,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { HiArrowLeft, HiTruck, HiBuildingOffice2, HiCalendar, HiCheckCircle, HiClock, HiXCircle, HiExclamationTriangle, HiEye } from 'react-icons/hi2';
 import { Button, Loading, EmptyState, Select } from '../../components/common';
-import { getAllSentGoods, updateSentGoodsStatus } from '../../redux/actions/sentGoodsActions';
+import { getReceivedGoods, updateSentGoodsStatus } from '../../redux/actions/sentGoodsActions';
 import { addNotification } from '../../redux/slices/uiSlice';
 
 const ReceivedGoodsPage = () => {
@@ -43,8 +43,8 @@ const ReceivedGoodsPage = () => {
         sortOrder: 'desc'
       };
       
-      console.log('ReceivedGoodsPage: Dispatching getAllSentGoods with params:', params);
-      await dispatch(getAllSentGoods(params));
+      console.log('ReceivedGoodsPage: Dispatching getReceivedGoods with params:', params);
+      await dispatch(getReceivedGoods(params));
     } catch (err) {
       console.error('ReceivedGoodsPage: Error loading data:', err);
     }
@@ -107,8 +107,7 @@ const ReceivedGoodsPage = () => {
           type: 'success',
           message: `Status updated to ${getStatusDisplay(newStatus)} successfully!`
         }));
-        // Reload data after successful update
-        loadData();
+        // Redux state is automatically updated by the slice, no need to reload
       } else {
         dispatch(addNotification({
           type: 'error',

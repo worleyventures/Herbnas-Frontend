@@ -3,7 +3,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { HiArrowLeft, HiTruck, HiBuildingOffice2, HiCalendar, HiCheckCircle, HiClock, HiXCircle, HiExclamationTriangle, HiEye } from 'react-icons/hi2';
 import { Button, Loading, EmptyState, Select } from '../../components/common';
-import { getAllSentGoods, updateSentGoodsStatus } from '../../redux/actions/sentGoodsActions';
+import { getReceivedGoods, updateSentGoodsStatus } from '../../redux/actions/sentGoodsActions';
 import { addNotification } from '../../redux/slices/uiSlice';
 
 const ReceivedGoodsPageFixed = () => {
@@ -42,8 +42,8 @@ const ReceivedGoodsPageFixed = () => {
       sortOrder: 'desc'
     };
     
-    console.log('ReceivedGoodsPageFixed: Dispatching getAllSentGoods with params:', params);
-    dispatch(getAllSentGoods(params));
+    console.log('ReceivedGoodsPageFixed: Dispatching getReceivedGoods with params:', params);
+    dispatch(getReceivedGoods(params));
   };
 
   // Load data on mount only
@@ -113,8 +113,7 @@ const ReceivedGoodsPageFixed = () => {
           type: 'success',
           message: `Status updated to ${getStatusDisplay(newStatus)} successfully!`
         }));
-        // Reload data after successful update
-        loadData();
+        // Redux state is automatically updated by the slice, no need to reload
       } else {
         dispatch(addNotification({
           type: 'error',

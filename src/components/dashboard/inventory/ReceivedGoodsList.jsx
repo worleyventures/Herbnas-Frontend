@@ -12,7 +12,7 @@ import {
   HiEye
 } from 'react-icons/hi2';
 import { Button, Loading, EmptyState, Select } from '../../common';
-import { getAllSentGoods, updateSentGoodsStatus } from '../../../redux/actions/sentGoodsActions';
+import { getReceivedGoods, updateSentGoodsStatus } from '../../../redux/actions/sentGoodsActions';
 import { addNotification } from '../../../redux/slices/uiSlice';
 
 const ReceivedGoodsList = () => {
@@ -51,8 +51,8 @@ const ReceivedGoodsList = () => {
   useEffect(() => {
     console.log('ReceivedGoodsList: Component mounted, loading initial data');
     if (isMountedRef.current && !hasLoadedRef.current) {
-      console.log('ReceivedGoodsList: Dispatching getAllSentGoods with params:', params);
-      dispatch(getAllSentGoods(params));
+      console.log('ReceivedGoodsList: Dispatching getReceivedGoods with params:', params);
+      dispatch(getReceivedGoods(params));
       hasLoadedRef.current = true;
     }
   }, []); // Empty dependency array - only run on mount
@@ -70,7 +70,7 @@ const ReceivedGoodsList = () => {
     timeoutRef.current = setTimeout(() => {
       if (isMountedRef.current) {
         console.log('ReceivedGoodsList: Filter changed, loading data with params:', params);
-        dispatch(getAllSentGoods(params));
+        dispatch(getReceivedGoods(params));
       }
     }, 500); // 500ms debounce
 

@@ -11,7 +11,7 @@ import {
   HiEye
 } from 'react-icons/hi2';
 import { Button, Loading, EmptyState, Select } from '../../common';
-import { getAllSentGoods, updateSentGoodsStatus } from '../../../redux/actions/sentGoodsActions';
+import { getReceivedGoods, updateSentGoodsStatus } from '../../../redux/actions/sentGoodsActions';
 import { addNotification } from '../../../redux/slices/uiSlice';
 
 const ReceivedGoodsListStable = () => {
@@ -51,9 +51,9 @@ const ReceivedGoodsListStable = () => {
       };
       
       console.log('Loading data with params:', params);
-      const result = await dispatch(getAllSentGoods(params));
+      const result = await dispatch(getReceivedGoods(params));
       
-      if (getAllSentGoods.fulfilled.match(result)) {
+      if (getReceivedGoods.fulfilled.match(result)) {
         setData(result.payload.data.sentGoods || []);
       } else {
         setError(result.payload || 'Failed to load data');
