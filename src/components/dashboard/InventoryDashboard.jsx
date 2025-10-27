@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   HiCube, 
   HiExclamationTriangle,
@@ -21,7 +21,8 @@ import {
   getAllFinishedGoods,
   getInventoryStats,
   updateInventoryStock,
-  deleteRawMaterial
+  deleteRawMaterial,
+  deleteFinishedGoods
 } from '../../redux/actions/inventoryActions';
 import { getAllSentGoods, getReceivedGoods } from '../../redux/actions/sentGoodsActions';
 import { clearError as clearInventoryErrors } from '../../redux/slices/inventorySlice';
@@ -29,6 +30,7 @@ import { getAllProducts } from '../../redux/actions/productActions';
 
 const InventoryDashboard = ({ propActiveView = 'table' }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useDispatch();
   const [activeView, setActiveView] = useState(propActiveView || 'table');
 
@@ -62,7 +64,7 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
   const [filterStockStatus, setFilterStockStatus] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
-  const [activeTab, setActiveTab] = useState('rawMaterials'); // 'rawMaterials', 'finishedGoods', or 'sentGoods'
+  const [activeTab, setActiveTab] = useState(location.state?.activeTab || 'rawMaterials'); // 'rawMaterials', 'finishedGoods', or 'sentGoods'
   
   // Role-based access
   const isProductionManager = user?.role === 'production_manager';
@@ -299,15 +301,23 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
           search: searchTerm,
           stockStatus: filterStockStatus === 'all' ? '' : filterStockStatus
         }));
-      } else {
-        // For finished goods, we need to implement deleteFinishedGoods action
+      } else if (activeTab === 'finishedGoods') {
+        await dispatch(deleteFinishedGoods(selectedInventory._id)).unwrap();
+        
+        // Show success notification
         dispatch(addNotification({
-          type: 'error',
-          title: 'Error',
-          message: 'Delete finished goods not implemented yet',
-          duration: 5000
+          type: 'success',
+          title: 'Success',
+          message: 'Finished goods deleted successfully',
+          duration: 3000
         }));
-        return;
+        
+        // Refresh finished goods list
+        dispatch(getAllFinishedGoods({
+          page: currentPage,
+          limit: itemsPerPage,
+          search: searchTerm
+        }));
       }
       
       setShowDeleteModal(false);

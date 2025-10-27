@@ -5,7 +5,7 @@ import {
   HiBuildingOffice2, 
   HiCalendar, 
   HiCheckCircle, 
-  HiClock,
+  HiClock, 
   HiXCircle,
   HiExclamationTriangle,
   HiEye
@@ -427,7 +427,7 @@ const ReceivedGoodsList = () => {
             return (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Left Column - Additional Information and Notes */}
-                <div className="space-y-4">
+              <div className="space-y-4">
                   <DetailsView sections={[additionalInfo]} />
                   {notesInfo && <DetailsView sections={[notesInfo]} />}
                 </div>

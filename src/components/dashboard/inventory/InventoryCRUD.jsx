@@ -379,7 +379,7 @@ const InventoryCRUD = ({
                 tooltip="Edit Inventory"
                 className="text-indigo-600 hover:text-indigo-900"
               />
-              {canDeleteRawMaterials() && (
+              {canDeleteRawMaterials() && inventoryType === 'rawMaterials' && (
                 <ActionButton
                   icon={HiTrash}
                   onClick={() => onDeleteInventory(inventoryItem)}
@@ -546,7 +546,7 @@ const InventoryCRUD = ({
             size="sm"
             title={isFinishedProduction ? "View Production Details" : "View Details"}
           />
-          {!isFinishedProduction && (
+          {!isFinishedProduction && inventoryType !== 'sentGoods' && (
             <>
               <ActionButton
                 icon={HiPencil}
@@ -555,7 +555,7 @@ const InventoryCRUD = ({
                 size="sm"
                 title="Edit Inventory"
               />
-              {canDeleteRawMaterials() && (
+              {canDeleteRawMaterials() && inventoryType !== 'sentGoods' && (
                 <ActionButton
                   icon={HiTrash}
                   onClick={() => handleDeleteInventory(inventoryItem)}

@@ -305,8 +305,8 @@ const SentGoodsPage = () => {
       
       // Navigate to list view after successful creation/update
       if (editMode) {
-        // Navigate back to sent goods list
-        navigate('/inventory/sent-goods');
+        // Navigate back to inventory dashboard with sent goods tab
+        navigate('/inventory', { state: { activeTab: 'sentGoods' } });
       } else {
         setActiveTab('list');
       }

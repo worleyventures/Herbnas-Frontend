@@ -9,6 +9,7 @@ import {
   getAllFinishedGoods,
   getFinishedGoodsById,
   updateFinishedGoodsStock,
+  deleteFinishedGoods,
   getInventoryStats,
   createOrUpdateInventory,
   sendInventoryToBranch
@@ -207,6 +208,25 @@ const inventorySlice = createSlice({
         state.error = null;
       })
       .addCase(updateFinishedGoodsStock.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+
+      // Delete finished goods
+      .addCase(deleteFinishedGoods.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(deleteFinishedGoods.fulfilled, (state, action) => {
+        state.loading = false;
+        const finishedGoodsId = action.meta.arg;
+        state.finishedGoods = state.finishedGoods.filter(fg => fg._id !== finishedGoodsId);
+        if (state.currentFinishedGoods && state.currentFinishedGoods._id === finishedGoodsId) {
+          state.currentFinishedGoods = null;
+        }
+        state.error = null;
+      })
+      .addCase(deleteFinishedGoods.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })
