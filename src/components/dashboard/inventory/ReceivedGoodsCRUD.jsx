@@ -1,16 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { 
-  HiEye, 
-  HiTruck, 
+  HiEye,
   HiBuildingOffice2,
   HiCalendar,
   HiCheckCircle,
   HiClock,
   HiXCircle,
-  HiExclamationTriangle
+  HiExclamationTriangle,
+  HiChevronDown
 } from 'react-icons/hi2';
-import { Table, ActionButton, StatusBadge, ConfirmationModal } from '../../common';
+import { Table, StatusBadge, ConfirmationModal, ActionButton } from '../../common';
+import CommonModal from '../../common/CommonModal';
+import DetailsView from '../../common/DetailsView';
+import Button from '../../common/Button';
 import { updateSentGoodsStatus } from '../../../redux/actions/sentGoodsActions';
 import { addNotification } from '../../../redux/slices/uiSlice';
 
@@ -23,6 +26,31 @@ const ReceivedGoodsCRUD = ({
   const [updatingStatus, setUpdatingStatus] = useState(null);
   const [selectedGoods, setSelectedGoods] = useState(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [openStatusDropdown, setOpenStatusDropdown] = useState(null);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
+  const statusDropdownRefs = useRef({});
+  const buttonRefs = useRef({});
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (openStatusDropdown) {
+        const ref = statusDropdownRefs.current[openStatusDropdown];
+        const buttonRef = buttonRefs.current[openStatusDropdown];
+        if (ref && !ref.contains(event.target) && buttonRef && !buttonRef.contains(event.target)) {
+          setOpenStatusDropdown(null);
+        }
+      }
+    };
+
+    if (openStatusDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [openStatusDropdown]);
 
 
 
@@ -126,28 +154,73 @@ const ReceivedGoodsCRUD = ({
       key: 'trackingId',
       label: 'Tracking ID',
       render: (goods) => (
-        <div className="flex items-center space-x-2">
-          <div className="flex-shrink-0">
-            <HiTruck className="h-5 w-5 text-gray-400" />
-          </div>
           <div>
             <div className="text-sm font-medium text-gray-900">{goods.trackingId}</div>
             <div className="text-sm text-gray-500">{goods.branchId?.branchName || 'Unknown Branch'}</div>
-          </div>
         </div>
       )
     },
     {
       key: 'status',
       label: 'Status',
+      cellClassName: 'overflow-visible',
       render: (goods) => {
-        const StatusIcon = getStatusIcon(goods.status);
+        const availableOptions = getAvailableStatusOptions(goods.status);
+        const isOpen = openStatusDropdown === goods._id;
+        const isUpdating = updatingStatus === goods._id;
+        
+        const handleButtonClick = () => {
+          if (availableOptions.length > 0) {
+            const button = buttonRefs.current[goods._id];
+            if (button) {
+              const rect = button.getBoundingClientRect();
+              setDropdownPosition({
+                top: rect.bottom + window.scrollY + 4,
+                left: rect.left + window.scrollX
+              });
+            }
+            setOpenStatusDropdown(isOpen ? null : goods._id);
+          }
+        };
+        
         return (
-          <div className="flex items-center space-x-2">
-            <StatusIcon className="h-4 w-4 text-gray-400" />
-            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(goods.status)}`}>
+          <div className="inline-block" ref={el => statusDropdownRefs.current[goods._id] = el}>
+            <button
+              ref={el => buttonRefs.current[goods._id] = el}
+              onClick={handleButtonClick}
+              disabled={isUpdating || availableOptions.length === 0}
+              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(goods.status)} ${availableOptions.length > 0 ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''} ${isUpdating ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
               {getStatusDisplay(goods.status)}
-            </span>
+              {availableOptions.length > 0 && (
+                <HiChevronDown className={`ml-1 h-3 w-3 transition-transform ${isOpen ? 'transform rotate-180' : ''}`} />
+              )}
+              {isUpdating && (
+                <div className="ml-1 animate-spin rounded-full h-3 w-3 border-b-2 border-current"></div>
+              )}
+            </button>
+            
+            {isOpen && availableOptions.length > 0 && (
+              <div 
+                className="fixed z-[9999] w-40 bg-white rounded-md shadow-xl border border-gray-200 py-1"
+                style={{ top: `${dropdownPosition.top}px`, left: `${dropdownPosition.left}px` }}
+              >
+                {availableOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleStatusUpdate(goods._id, option.value);
+                      setOpenStatusDropdown(null);
+                    }}
+                    className="block w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-blue-600 transition-colors"
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         );
       }
@@ -183,8 +256,6 @@ const ReceivedGoodsCRUD = ({
       key: 'actions',
       label: 'Actions',
       render: (goods) => {
-        const availableOptions = getAvailableStatusOptions(goods.status);
-        
         return (
           <div className="flex items-center space-x-2">
             <ActionButton
@@ -194,36 +265,9 @@ const ReceivedGoodsCRUD = ({
                 setShowDetailsModal(true);
               }}
               tooltip="View Details"
-              variant="outline"
+              variant="view"
               size="sm"
             />
-            
-            {availableOptions.length > 0 && (
-              <select
-                value=""
-                onChange={(e) => {
-                  if (e.target.value) {
-                    handleStatusUpdate(goods._id, e.target.value);
-                  }
-                }}
-                disabled={updatingStatus === goods._id}
-                className="text-sm border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Update Status</option>
-                {availableOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            )}
-            
-            {updatingStatus === goods._id && (
-              <div className="flex items-center text-sm text-gray-500">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
-                Updating...
-              </div>
-            )}
           </div>
         );
       }
@@ -256,79 +300,103 @@ const ReceivedGoodsCRUD = ({
         columns={columns}
         loading={loading}
         emptyMessage="No received goods found"
+        allowOverflow={true}
       />
 
       {/* Details Modal */}
-      {showDetailsModal && selectedGoods && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
-            <div className="mt-3">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-medium text-gray-900">
-                  Goods Details - {selectedGoods.trackingId}
-                </h3>
-                <button
+      <CommonModal
+        isOpen={showDetailsModal}
+        onClose={() => setShowDetailsModal(false)}
+        title="Goods Details"
+        subtitle={selectedGoods?.trackingId || ''}
+        size="xl"
+        showFooter={true}
+        footerContent={
+          <Button
                   onClick={() => setShowDetailsModal(false)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <HiXCircle className="h-6 w-6" />
-                </button>
+            variant="outline"
+            className="px-4 py-2"
+          >
+            Close
+          </Button>
+        }
+      >
+        {selectedGoods && (() => {
+          const additionalInfo = {
+            title: 'Additional Information',
+            fields: [
+              {
+                label: 'Branch',
+                value: selectedGoods.branchId?.branchName || 'Unknown'
+              },
+              {
+                label: 'Status',
+                value: getStatusDisplay(selectedGoods.status)
+              },
+              {
+                label: 'Sent At',
+                value: formatDate(selectedGoods.sentAt)
+              },
+              ...(selectedGoods.deliveredAt ? [{
+                label: 'Delivered At',
+                value: formatDate(selectedGoods.deliveredAt)
+              }] : [])
+            ].filter(Boolean)
+          };
+
+          const basicInfo = {
+            title: 'Basic Information',
+            fields: [
+              {
+                label: 'Tracking ID',
+                value: selectedGoods.trackingId || 'N/A'
+              },
+              {
+                label: 'Total Items',
+                value: selectedGoods.items?.length || 0
+              },
+              {
+                label: 'Sent From',
+                value: 'Head Office'
+              }
+            ]
+          };
+
+          const itemsInfo = selectedGoods.items && selectedGoods.items.length > 0 ? {
+            title: 'Items',
+            fields: selectedGoods.items.map((item, index) => ({
+              label: item.inventoryId?.productId?.productName || 'Unknown Product',
+              value: `${item.quantity} units | ₹${item.unitPrice}`
+            }))
+          } : null;
+
+          const notesInfo = selectedGoods.notes ? {
+            title: 'Notes',
+            fields: [
+              {
+                label: 'Shipping Notes',
+                value: selectedGoods.notes
+              }
+            ]
+          } : null;
+
+          return (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Left Column - Additional Information and Notes */}
+              <div className="space-y-4">
+                <DetailsView sections={[additionalInfo]} />
+                {notesInfo && <DetailsView sections={[notesInfo]} />}
               </div>
               
+              {/* Right Column - Basic Information and Items */}
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Status</label>
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(selectedGoods.status)}`}>
-                      {getStatusDisplay(selectedGoods.status)}
-                    </span>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Branch</label>
-                    <p className="text-sm text-gray-900">{selectedGoods.branchId?.branchName || 'Unknown'}</p>
-                  </div>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Items</label>
-                  <div className="mt-1 space-y-2">
-                    {selectedGoods.items?.map((item, index) => (
-                      <div key={index} className="flex justify-between items-center p-2 bg-gray-50 rounded">
-                        <span className="text-sm text-gray-900">
-                          {item.inventoryId?.productId?.productName || 'Unknown Product'}
-                        </span>
-                        <span className="text-sm text-gray-600">
-                          Qty: {item.quantity} | Price: ₹{item.unitPrice}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Sent At</label>
-                    <p className="text-sm text-gray-900">{formatDate(selectedGoods.sentAt)}</p>
-                  </div>
-                  {selectedGoods.deliveredAt && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Delivered At</label>
-                      <p className="text-sm text-gray-900">{formatDate(selectedGoods.deliveredAt)}</p>
-                    </div>
-                  )}
-                </div>
-                
-                {selectedGoods.notes && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Notes</label>
-                    <p className="text-sm text-gray-900">{selectedGoods.notes}</p>
-                  </div>
-                )}
+                <DetailsView sections={[basicInfo]} />
+                {itemsInfo && <DetailsView sections={[itemsInfo]} />}
               </div>
             </div>
-          </div>
-        </div>
-      )}
+          );
+        })()}
+      </CommonModal>
     </>
   );
 };

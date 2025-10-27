@@ -3,6 +3,7 @@ import {
   getAllSentGoods,
   getSentGoodsById,
   createSentGoods,
+  updateSentGoods,
   updateSentGoodsStatus,
   deleteSentGoods,
   getSentGoodsStats,
@@ -128,6 +129,32 @@ const sentGoodsSlice = createSlice({
         state.error = null;
       })
       .addCase(updateSentGoodsStatus.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // Update sent goods (not just status)
+      .addCase(updateSentGoods.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(updateSentGoods.fulfilled, (state, action) => {
+        state.loading = false;
+        const updatedSentGoods = action.payload.data.sentGoods;
+        
+        // Update in the sent goods list
+        const index = state.sentGoods.findIndex(sg => sg._id === updatedSentGoods._id);
+        if (index !== -1) {
+          state.sentGoods[index] = updatedSentGoods;
+        }
+        
+        // Update current sent goods if it's the same one
+        if (state.currentSentGoods && state.currentSentGoods._id === updatedSentGoods._id) {
+          state.currentSentGoods = updatedSentGoods;
+        }
+        
+        state.error = null;
+      })
+      .addCase(updateSentGoods.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })

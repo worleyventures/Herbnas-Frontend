@@ -70,6 +70,19 @@ export const createSentGoods = createAsyncThunk(
   }
 );
 
+// Update sent goods
+export const updateSentGoods = createAsyncThunk(
+  'sentGoods/updateSentGoods',
+  async ({ id, sentGoodsData }, { rejectWithValue }) => {
+    try {
+      const response = await axiosInstance.put(`/goods/sent-goods/${id}`, sentGoodsData);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to update sent goods');
+    }
+  }
+);
+
 // Update sent goods status
 export const updateSentGoodsStatus = createAsyncThunk(
   'sentGoods/updateSentGoodsStatus',

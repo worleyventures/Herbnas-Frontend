@@ -163,6 +163,19 @@ export const updateFinishedGoodsStock = createAsyncThunk(
   }
 );
 
+// Delete finished goods
+export const deleteFinishedGoods = createAsyncThunk(
+  'inventory/deleteFinishedGoods',
+  async (finishedGoodsId, { rejectWithValue }) => {
+    try {
+      const response = await api.delete(`/inventory/finished-goods/${finishedGoodsId}`);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to delete finished goods');
+    }
+  }
+);
+
 // Get inventory statistics
 export const getInventoryStats = createAsyncThunk(
   'inventory/getInventoryStats',

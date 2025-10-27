@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { HiArrowLeft, HiTruck, HiBuildingOffice2, HiCube, HiCalendar, HiCheckCircle, HiPlus, HiEye, HiPencil, HiXMark } from 'react-icons/hi2';
 import { Button, Input, Select, TextArea, Loading, EmptyState } from '../../components/common';
 import { getAllBranches } from '../../redux/actions/branchActions';
 import { getAllFinishedGoods } from '../../redux/actions/inventoryActions';
-import { createSentGoods, getAllSentGoods, getReceivedGoods, updateSentGoodsStatus } from '../../redux/actions/sentGoodsActions';
+import { createSentGoods, getAllSentGoods, getReceivedGoods, updateSentGoodsStatus, updateSentGoods } from '../../redux/actions/sentGoodsActions';
 import { addNotification } from '../../redux/slices/uiSlice';
 
 const SentGoodsPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useDispatch();
   
   // Redux state
@@ -22,6 +23,7 @@ const SentGoodsPage = () => {
   const [selectedBranch, setSelectedBranch] = useState('');
   const [trackingId, setTrackingId] = useState('');
   const [notes, setNotes] = useState('');
+  const [status, setStatus] = useState('pending');
   const [selectedInventoryItems, setSelectedInventoryItems] = useState([]);
   const [formErrors, setFormErrors] = useState({});
   const [activeTab, setActiveTab] = useState('list'); // 'list' or 'create'
@@ -30,12 +32,59 @@ const SentGoodsPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [updatingStatus, setUpdatingStatus] = useState(null);
 
+  // Get edit data from location state
+  const editData = location.state?.editData;
+  const editMode = location.state?.mode === 'edit' && editData;
+  const editingItemId = editData?._id;
+
   // Load data on component mount
   useEffect(() => {
     dispatch(getAllBranches({ page: 1, limit: 1000 }));
     dispatch(getAllFinishedGoods({ page: 1, limit: 1000 }));
     loadSentGoods();
   }, [dispatch]);
+
+  // Populate form when editing
+  useEffect(() => {
+    if (editMode && editData && finishedGoods.length > 0) {
+      setSelectedBranch(editData.branchId?._id || editData.branchId || '');
+      setTrackingId(editData.trackingId || '');
+      setNotes(editData.notes || '');
+      setStatus(editData.status || 'pending');
+      
+      // Populate items
+      if (editData.items && editData.items.length > 0) {
+        const items = editData.items.map((item, index) => {
+          // Get product name from the correct path
+          // In edit mode, inventoryId is populated with productId reference
+          // The structure is: item.inventoryId.productId.productName (if nested populate)
+          // OR item.inventoryId.productName (if direct populate)
+          const inventoryId = item.inventoryId;
+          const productName = inventoryId?.productId?.productName 
+            || inventoryId?.product?.productName
+            || inventoryId?.productName
+            || item.productName
+            || '';
+          
+          // Get current available quantity from finishedGoods
+          const currentInventoryItem = finishedGoods.find(fg => 
+            fg._id === (inventoryId?._id || inventoryId)
+          );
+          const availableQuantity = currentInventoryItem?.availableQuantity || 0;
+            
+          return {
+            id: Date.now() + index,
+            inventoryId: inventoryId?._id || inventoryId || '',
+            productName: productName,
+            availableQuantity: availableQuantity,
+            quantityToSend: item.quantity || 0,
+            unitPrice: item.unitPrice || 0
+          };
+        });
+        setSelectedInventoryItems(items);
+      }
+    }
+  }, [editMode, editData, finishedGoods]);
 
   // Load sent goods with filters
   const loadSentGoods = () => {
@@ -145,9 +194,20 @@ const SentGoodsPage = () => {
         if (field === 'inventoryId' && value) {
           const selectedInventory = finishedGoods.find(fg => fg._id === value);
           if (selectedInventory) {
-            updatedItem.productName = selectedInventory.product?.productName || '';
-            updatedItem.availableQuantity = selectedInventory.availableQuantity || 0;
-            updatedItem.unitPrice = selectedInventory.product?.price || 0;
+            // The finished goods structure has: fg.product.productName
+            const productName = selectedInventory.product?.productName 
+              || selectedInventory.productName
+              || '';
+              
+            const availableQuantity = selectedInventory.availableQuantity || 0;
+              
+            const unitPrice = selectedInventory.product?.price 
+              || selectedInventory.price
+              || 0;
+              
+            updatedItem.productName = productName;
+            updatedItem.availableQuantity = availableQuantity;
+            updatedItem.unitPrice = unitPrice;
           }
         }
         
@@ -197,6 +257,7 @@ const SentGoodsPage = () => {
       branchId: selectedBranch,
       trackingId: trackingId.trim(),
       notes: notes.trim(),
+      ...(editMode && { status: status }), // Include status when editing
       items: selectedInventoryItems.map(item => ({
         inventoryId: item.inventoryId,
         quantity: parseInt(item.quantityToSend),
@@ -205,35 +266,55 @@ const SentGoodsPage = () => {
     };
 
     try {
-      const result = await dispatch(createSentGoods(sendData));
-      
-      if (createSentGoods.fulfilled.match(result)) {
-        dispatch(addNotification({
-          type: 'success',
-          message: 'Goods sent successfully!'
-        }));
+      let result;
+      if (editMode && editingItemId) {
+        // Update existing sent goods
+        result = await dispatch(updateSentGoods({ id: editingItemId, sentGoodsData: sendData }));
         
-        // Reset form
-        setSelectedBranch('');
-        setTrackingId('');
-        setNotes('');
-        setSelectedInventoryItems([]);
-        setFormErrors({});
-        
-        // Navigate to list view after successful creation
-        setActiveTab('list');
-        
-        // Form submitted successfully
+        if (updateSentGoods.fulfilled.match(result)) {
+          dispatch(addNotification({
+            type: 'success',
+            message: 'Sent goods updated successfully!'
+          }));
+          
+          // Refetch finished goods to update stock values
+          dispatch(getAllFinishedGoods({ page: 1, limit: 1000 }));
+        }
       } else {
-        dispatch(addNotification({
-          type: 'error',
-          message: result.payload || 'Failed to send goods'
-        }));
+        // Create new sent goods
+        result = await dispatch(createSentGoods(sendData));
+        
+        if (createSentGoods.fulfilled.match(result)) {
+          dispatch(addNotification({
+            type: 'success',
+            message: 'Goods sent successfully!'
+          }));
+          
+          // Refetch finished goods to update stock values
+          dispatch(getAllFinishedGoods({ page: 1, limit: 1000 }));
+        }
       }
+
+      // Reset form
+      setSelectedBranch('');
+      setTrackingId('');
+      setNotes('');
+      setStatus('pending');
+      setSelectedInventoryItems([]);
+      setFormErrors({});
+      
+      // Navigate to list view after successful creation/update
+      if (editMode) {
+        // Navigate back to inventory dashboard with sent goods tab
+        navigate('/inventory', { state: { activeTab: 'sentGoods' } });
+      } else {
+        setActiveTab('list');
+      }
+      
     } catch (error) {
       dispatch(addNotification({
         type: 'error',
-        message: 'Failed to send goods'
+        message: editMode ? 'Failed to update sent goods' : 'Failed to send goods'
       }));
     }
   };
@@ -247,34 +328,16 @@ const SentGoodsPage = () => {
 
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between py-6">
-            <div className="flex items-center space-x-3">
-              <div className="h-6 w-px" />
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">Sent Goods</h1>
-                <p className="text-sm text-gray-500">
-                  Track and manage inventory transfers to branches
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
+    <div className="min-h-screen">
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-white">
-        {/* Send New Goods Form */}
-        <div className="bg-white mb-8">
-          <div className="p-6">
-            <h2 className="text-lg font-medium text-gray-900 mb-6">Send New Goods</h2>
-            
-            <div className="space-y-6">
-              {/* Branch Selection and Tracking ID */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <h2 className="text-2xl font-bold text-gray-900 mb-6">
+          {editMode ? 'Edit Sent Goods' : 'Send New Goods'}
+        </h2>
+        
+        <div className="space-y-6">
+              {/* Branch Selection, Tracking ID, and Status (for edit mode) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <Select
                   label="Select a branch"
                   value={selectedBranch}
@@ -293,6 +356,19 @@ const SentGoodsPage = () => {
                   error={!!formErrors.trackingId}
                   errorMessage={formErrors.trackingId}
                 />
+                {editMode && (
+                  <Select
+                    label="Status"
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value)}
+                    options={[
+                      { value: 'pending', label: 'Pending' },
+                      { value: 'in-transit', label: 'In Transit' },
+                      { value: 'delivered', label: 'Delivered' },
+                      { value: 'cancelled', label: 'Cancelled' }
+                    ]}
+                  />
+                )}
               </div>
 
               {/* Inventory Items Selection */}
@@ -314,9 +390,9 @@ const SentGoodsPage = () => {
                   <p className="text-sm text-red-600 mb-4">{formErrors.inventoryItems}</p>
                 )}
 
-                <div className="space-y-4">
+                <div className="space-y-6">
                   {selectedInventoryItems.map((item, index) => (
-                    <div key={item.id} className="border border-gray-200 rounded-lg p-4">
+                    <div key={item.id}>
                       <div className="flex items-center justify-between mb-4">
                         <h4 className="font-medium text-gray-900">Item {index + 1}</h4>
                         <Button
@@ -330,24 +406,27 @@ const SentGoodsPage = () => {
                         </Button>
                       </div>
                       
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         <Select
                           label="Inventory Item"
                           value={item.inventoryId}
                           onChange={(e) => handleInventoryItemChange(item.id, 'inventoryId', e.target.value)}
-                          options={finishedGoods.map(fg => ({
-                            value: fg._id,
-                            label: `${fg.product?.productName || 'Unknown'} (${fg.availableQuantity} units)`
-                          }))}
+                          options={finishedGoods.map(fg => {
+                            // Get product name from multiple possible paths
+                            const productName = fg.product?.productName 
+                              || fg.productName 
+                              || 'Unknown';
+                            const availableQty = fg.availableQuantity 
+                              || fg.stockQuantity 
+                              || 0;
+                            return {
+                              value: fg._id,
+                              label: `${productName} (${availableQty} units)`
+                            };
+                          })}
                           placeholder="Select inventory item"
                           error={!!formErrors[`inventoryId_${index}`]}
                           errorMessage={formErrors[`inventoryId_${index}`]}
-                        />
-                        
-                        <Input
-                          label="Product Name"
-                          value={item.productName}
-                          disabled
                         />
                         
                         <Input
@@ -396,13 +475,15 @@ const SentGoodsPage = () => {
               </div>
 
               {/* Notes */}
-              <TextArea
-                label="Notes (Optional)"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Add any notes about this inventory transfer..."
-                rows={3}
-              />
+              <div>
+                <TextArea
+                  label="Notes (Optional)"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Add any notes about this inventory transfer..."
+                  rows={3}
+                />
+              </div>
 
               {/* Send Button */}
               <div className="flex justify-end">
@@ -412,13 +493,10 @@ const SentGoodsPage = () => {
                   className="bg-green-600 hover:bg-green-700 text-white"
                   icon={HiTruck}
                 >
-                  Send Goods
+                  {editMode ? 'Update Goods' : 'Send Goods'}
                 </Button>
               </div>
             </div>
-          </div>
-        </div>
-
       </div>
     </div>
   );
