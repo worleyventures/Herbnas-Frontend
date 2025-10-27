@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -53,6 +53,7 @@ const InventoryCRUD = ({
   ];
 
   const allUsers = users.length > 0 ? users : fallbackUsers;
+
 
   // Check if user can delete raw materials (admin or super_admin only)
   const canDeleteRawMaterials = () => {
@@ -206,13 +207,34 @@ const InventoryCRUD = ({
           key: 'status',
           label: 'Status',
           sortable: true,
-          render: (inventoryItem) => (
-            <StatusBadge 
-              status={inventoryItem.status || 'pending'}
-              variant={inventoryItem.status === 'delivered' ? 'success' : 
-                      inventoryItem.status === 'in-transit' ? 'info' : 'warning'}
-            />
-          )
+          render: (inventoryItem) => {
+            const getStatusColor = (status) => {
+              const colors = {
+                'pending': 'bg-yellow-100 text-yellow-800 border-yellow-300',
+                'in-transit': 'bg-blue-100 text-blue-800 border-blue-300',
+                'delivered': 'bg-green-100 text-green-800 border-green-300',
+                'cancelled': 'bg-red-100 text-red-800 border-red-300'
+              };
+              return colors[status] || 'bg-gray-100 text-gray-800 border-gray-300';
+            };
+            
+            const getStatusLabel = (status) => {
+              const labels = {
+                'pending': 'Pending',
+                'in-transit': 'In Transit',
+                'delivered': 'Delivered',
+                'cancelled': 'Cancelled'
+              };
+              return labels[status] || status;
+            };
+            
+            // Show colored badge for all users
+            return (
+              <span className={`px-2 py-1 rounded-full text-xs font-semibold border ${getStatusColor(inventoryItem.status)}`}>
+                {getStatusLabel(inventoryItem.status)}
+              </span>
+            );
+          }
         },
         {
           key: 'sentDate',
@@ -228,64 +250,31 @@ const InventoryCRUD = ({
           key: 'actions',
           label: 'Actions',
           sortable: false,
-          render: (inventoryItem) => (
-            <div className="flex items-center space-x-2">
-               <ActionButton
-                 icon={HiEye}
-                 onClick={() => {
-                   onSelectInventory(inventoryItem);
-                   setShowInventoryModal(true);
-                 }}
-                 tooltip="View Details"
-                 className="text-blue-600 hover:text-blue-900"
-               />
-               <div className="flex flex-col space-y-1">
-                 {inventoryItem.status === 'pending' && (
-                   <button
-                     onClick={(e) => {
-                       e.preventDefault();
-                       e.stopPropagation();
-                       console.log('Clicking Ship to Transit for:', inventoryItem._id);
-                       handleStatusUpdate(inventoryItem._id, 'in-transit');
-                     }}
-                     className="transition-all duration-200 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-opacity-50 rounded-full p-1"
-                     type="button"
-                   >
-                     <StatusBadge
-                       status="Ship to Transit"
-                       variant="warning"
-                       className="cursor-pointer"
-                     />
-                   </button>
-                 )}
-                 {inventoryItem.status === 'in-transit' && (
-                   <button
-                     onClick={(e) => {
-                       e.preventDefault();
-                       e.stopPropagation();
-                       console.log('Clicking Mark Delivered for:', inventoryItem._id);
-                       handleStatusUpdate(inventoryItem._id, 'delivered');
-                     }}
-                     className="transition-all duration-200 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 rounded-full p-1"
-                     type="button"
-                   >
-                     <StatusBadge
-                       status="Mark Delivered"
-                       variant="info"
-                       className="cursor-pointer"
-                     />
-                   </button>
-                 )}
-                 {inventoryItem.status === 'delivered' && (
-                   <StatusBadge
-                     status="Delivered"
-                     variant="success"
-                     className="opacity-75"
+          render: (inventoryItem) => {
+            const isSuperAdmin = user?.role === 'super_admin';
+            
+            return (
+              <div className="flex items-center space-x-2">
+                 <ActionButton
+                   icon={HiEye}
+                   onClick={() => {
+                     onSelectInventory(inventoryItem);
+                     setShowInventoryModal(true);
+                   }}
+                   tooltip="View Details"
+                   className="text-blue-600 hover:text-blue-900"
+                 />
+                 {isSuperAdmin && (
+                   <ActionButton
+                     icon={HiPencil}
+                     onClick={() => onEditInventory(inventoryItem)}
+                     tooltip="Edit Goods"
+                     className="text-indigo-600 hover:text-indigo-900"
                    />
                  )}
-               </div>
-            </div>
-          )
+              </div>
+            );
+          }
         }
       ];
     } else if (inventoryType === 'rawMaterials') {
@@ -416,6 +405,19 @@ const InventoryCRUD = ({
             </div>
           )
         },
+        {
+          key: 'productionId',
+          label: 'Production ID',
+          sortable: false,
+          hiddenOnMobile: true,
+          render: (inventoryItem) => (
+            <div className="text-sm">
+              <p className="font-medium text-gray-900 truncate">
+                {inventoryItem.production?.batchId || inventoryItem.batchId || inventoryItem.productionId || 'N/A'}
+              </p>
+            </div>
+          )
+        },
     {
       key: 'productionStatus',
       label: isFinishedProduction ? 'Production Status' : 'Production Status',
@@ -430,7 +432,7 @@ const InventoryCRUD = ({
     },
     {
       key: 'stock',
-      label: isFinishedProduction ? 'Production Quantity' : 'Stock Levels',
+      label: isFinishedProduction ? 'Production Quantity' : 'Available Stock',
       sortable: false,
       render: (inventoryItem) => {
         if (isFinishedProduction) {
@@ -461,15 +463,10 @@ const InventoryCRUD = ({
               <span className="text-sm font-medium text-gray-900">
                 {inventoryItem.availableQuantity || 0} units
               </span>
-              {/* <StatusBadge 
-                status={stockStatus.status}
-                variant={stockStatus.variant}
-                className="text-xs"
-              /> */}
             </div>
-            {/* <div className="text-xs text-gray-500">
-              Available: {inventoryItem.availableQuantity || 0}
-            </div> */}
+            <div className="text-xs text-gray-500">
+              Available: {inventoryItem.availableQuantity || 0} units
+            </div>
           </div>
         );
       }

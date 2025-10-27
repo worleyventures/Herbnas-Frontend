@@ -15,7 +15,8 @@ const Table = ({
   headerClassName = "",
   bodyClassName = "",
   loadingComponent,
-  emptyComponent
+  emptyComponent,
+  allowOverflow = false
 }) => {
   const renderLoading = () => {
     if (loadingComponent) return loadingComponent;
@@ -126,9 +127,9 @@ const Table = ({
   };
 
   return (
-    <div className={`overflow-hidden ${className}`}>
+    <div className={`${allowOverflow ? 'overflow-visible' : 'overflow-hidden'} ${className}`}>
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200/50">
+        <table className="min-w-full divide-y divide-gray-200/50" style={allowOverflow ? { overflow: 'visible' } : {}}>
           <thead className="bg-gradient-to-r from-gray-50 to-gray-100/50">
             <tr className={headerClassName}>
               {columns.map((column, index) => (

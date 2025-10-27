@@ -239,12 +239,22 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
   // Handle form submissions
 
   const handleEditInventory = (inventoryItem) => {
-    navigate(`/inventory/edit/${inventoryItem._id}?type=${activeTab}`, { 
-      state: { 
-        inventory: inventoryItem,
-        returnTo: '/inventory'
-      }
-    });
+    // For sent goods, navigate to sent goods page with edit mode
+    if (activeTab === 'sentGoods') {
+      navigate('/inventory/sent-goods', {
+        state: {
+          editData: inventoryItem,
+          mode: 'edit'
+        }
+      });
+    } else {
+      navigate(`/inventory/edit/${inventoryItem._id}?type=${activeTab}`, { 
+        state: { 
+          inventory: inventoryItem,
+          returnTo: '/inventory'
+        }
+      });
+    }
   };
 
   const handleUpdateInventory = async (formData) => {

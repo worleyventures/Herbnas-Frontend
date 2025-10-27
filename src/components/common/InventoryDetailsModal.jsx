@@ -200,7 +200,7 @@ const InventoryDetailsModal = ({
   const isSentGood = inventoryItem.trackingId;
   
   const stockStatus = getStockStatus(
-    inventoryItem.stockQuantity || inventoryItem.quantity || 0,
+    inventoryItem.availableQuantity || inventoryItem.stockQuantity || inventoryItem.quantity || 0,
     inventoryItem.minStockLevel || 0
   );
 
@@ -266,7 +266,7 @@ const InventoryDetailsModal = ({
       },
       {
         label: 'Current Stock',
-        value: `${inventoryItem.stockQuantity || inventoryItem.quantity || 0} ${inventoryItem.UOM || 'units'}`
+        value: `${inventoryItem.availableQuantity || inventoryItem.stockQuantity || inventoryItem.quantity || 0} ${inventoryItem.UOM || inventoryItem.product?.UOM || 'units'}`
       },
       {
         label: 'Stock Status',
@@ -306,7 +306,7 @@ const InventoryDetailsModal = ({
       },
       {
         label: 'Stock Value',
-        value: formatCurrency(inventoryItem.stockValue || ((inventoryItem.stockQuantity || 0) * (inventoryItem.price || 0)))
+        value: formatCurrency(inventoryItem.stockValue || ((inventoryItem.availableQuantity || inventoryItem.stockQuantity || 0) * (inventoryItem.price || inventoryItem.product?.price || 0)))
       }
     ]
   };
