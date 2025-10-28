@@ -13,13 +13,16 @@ import {
   HiPencil,
   HiTrash,
   HiClipboardDocumentList,
+  HiShoppingCart,
+  HiChartBar,
   HiBuildingOffice,
   HiCalendar
 } from 'react-icons/hi2';
-import { Button, Input, Select, Table, StatusBadge, Loading, StatCard, CommonModal } from '../../components/common';
+import { Button, Input, Select, Table, StatusBadge, Loading, StatCard, CommonModal, SearchInput } from '../../components/common';
 import {
   getAllAccounts,
   getAccountStats,
+  getBranchSummary,
   deleteAccount
 } from '../../redux/actions/accountActions';
 import {
@@ -28,14 +31,21 @@ import {
   selectAccountError,
   selectAccountStats,
   selectAccountStatsLoading,
+  selectBranchSummary,
+  selectBranchSummaryLoading,
   selectAccountPagination,
   clearAccountError
 } from '../../redux/slices/accountSlice';
 import { addNotification } from '../../redux/slices/uiSlice';
+import PurchaseManagement from '../../components/accounts/PurchaseManagement';
+import FinancialReports from '../../components/accounts/FinancialReports';
 
 const AccountsPage = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  
+  // Get current user for role-based functionality
+  const { user } = useSelector((state) => state.auth);
   
   // Redux state
   const accounts = useSelector(selectAccounts);
@@ -43,9 +53,12 @@ const AccountsPage = () => {
   const error = useSelector(selectAccountError);
   const stats = useSelector(selectAccountStats);
   const statsLoading = useSelector(selectAccountStatsLoading);
+  const branchSummary = useSelector(selectBranchSummary);
+  const branchSummaryLoading = useSelector(selectBranchSummaryLoading);
   const pagination = useSelector(selectAccountPagination);
   
   // Local state
+  const [activeTab, setActiveTab] = useState('overview');
   const [searchTerm, setSearchTerm] = useState('');
   const [transactionTypeFilter, setTransactionTypeFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
@@ -56,19 +69,30 @@ const AccountsPage = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [accountToDelete, setAccountToDelete] = useState(null);
 
+  // Role-based access
+  const isSuperAdmin = user?.role === 'super_admin';
+  const isAccountsManager = user?.role === 'accounts_manager';
+
   // Load data on component mount
   useEffect(() => {
-    dispatch(getAllAccounts({
-      page: currentPage,
-      limit: 10,
-      search: searchTerm,
-      transactionType: transactionTypeFilter !== 'all' ? transactionTypeFilter : undefined,
-      category: categoryFilter !== 'all' ? categoryFilter : undefined,
-      branchId: branchFilter !== 'all' ? branchFilter : undefined,
-      paymentStatus: paymentStatusFilter !== 'all' ? paymentStatusFilter : undefined
-    }));
-    dispatch(getAccountStats());
-  }, [currentPage, searchTerm, transactionTypeFilter, categoryFilter, branchFilter, paymentStatusFilter, dispatch]);
+    if (activeTab === 'overview') {
+      dispatch(getAllAccounts({
+        page: currentPage,
+        limit: 10,
+        search: searchTerm,
+        transactionType: transactionTypeFilter !== 'all' ? transactionTypeFilter : undefined,
+        category: categoryFilter !== 'all' ? categoryFilter : undefined,
+        branchId: branchFilter !== 'all' ? branchFilter : undefined,
+        paymentStatus: paymentStatusFilter !== 'all' ? paymentStatusFilter : undefined
+      }));
+      dispatch(getAccountStats());
+      
+      // Load branch summary for super admin
+      if (isSuperAdmin) {
+        dispatch(getBranchSummary());
+      }
+    }
+  }, [activeTab, currentPage, searchTerm, transactionTypeFilter, categoryFilter, branchFilter, paymentStatusFilter, dispatch, isSuperAdmin]);
 
   // Handle search
   const handleSearch = (e) => {
@@ -97,57 +121,9 @@ const AccountsPage = () => {
     setCurrentPage(1);
   };
 
-  // Handle refresh
-  const handleRefresh = () => {
-    dispatch(getAllAccounts({
-      page: currentPage,
-      limit: 10,
-      search: searchTerm,
-      transactionType: transactionTypeFilter !== 'all' ? transactionTypeFilter : undefined,
-      category: categoryFilter !== 'all' ? categoryFilter : undefined,
-      branchId: branchFilter !== 'all' ? branchFilter : undefined,
-      paymentStatus: paymentStatusFilter !== 'all' ? paymentStatusFilter : undefined
-    }));
-    dispatch(getAccountStats());
-  };
-
-  // Handle page change
+  // Handle pagination
   const handlePageChange = (page) => {
     setCurrentPage(page);
-  };
-
-  // Handle delete account
-  const handleDeleteAccount = (accountId) => {
-    const account = accounts.find(a => a._id === accountId);
-    setAccountToDelete(account);
-    setShowDeleteModal(true);
-  };
-
-  // Confirm delete account
-  const confirmDeleteAccount = async () => {
-    if (!accountToDelete) return;
-    
-    try {
-      await dispatch(deleteAccount(accountToDelete._id)).unwrap();
-      dispatch(addNotification({
-        type: 'success',
-        message: 'Account entry deleted successfully!'
-      }));
-      handleRefresh();
-      setShowDeleteModal(false);
-      setAccountToDelete(null);
-    } catch (error) {
-      dispatch(addNotification({
-        type: 'error',
-        message: error || 'Failed to delete account entry'
-      }));
-    }
-  };
-
-  // Cancel delete
-  const cancelDelete = () => {
-    setShowDeleteModal(false);
-    setAccountToDelete(null);
   };
 
   // Handle add account
@@ -155,9 +131,58 @@ const AccountsPage = () => {
     navigate('/accounts/new');
   };
 
+  // Handle view account
+  const handleViewAccount = (id) => {
+    navigate(`/accounts/${id}`);
+  };
+
   // Handle edit account
-  const handleEditAccount = (accountId) => {
-    navigate(`/accounts/edit/${accountId}`);
+  const handleEditAccount = (id) => {
+    navigate(`/accounts/${id}/edit`);
+  };
+
+  // Handle delete account
+  const handleDeleteAccount = (id) => {
+    const account = accounts.find(acc => acc._id === id);
+    setAccountToDelete(account);
+    setShowDeleteModal(true);
+  };
+
+  // Confirm delete
+  const confirmDeleteAccount = async () => {
+    if (accountToDelete) {
+      try {
+        await dispatch(deleteAccount(accountToDelete._id)).unwrap();
+        dispatch(addNotification({
+          type: 'success',
+          message: 'Account entry deleted successfully'
+        }));
+        setShowDeleteModal(false);
+        setAccountToDelete(null);
+        
+        // Refresh the accounts list
+        dispatch(getAllAccounts({
+          page: currentPage,
+          limit: 10,
+          search: searchTerm,
+          transactionType: transactionTypeFilter !== 'all' ? transactionTypeFilter : undefined,
+          category: categoryFilter !== 'all' ? categoryFilter : undefined,
+          branchId: branchFilter !== 'all' ? branchFilter : undefined,
+          paymentStatus: paymentStatusFilter !== 'all' ? paymentStatusFilter : undefined
+        }));
+      } catch (error) {
+        dispatch(addNotification({
+          type: 'error',
+          message: error || 'Failed to delete account entry'
+        }));
+      }
+    }
+  };
+
+  // Cancel delete
+  const cancelDelete = () => {
+    setShowDeleteModal(false);
+    setAccountToDelete(null);
   };
 
   // Get transaction type color
@@ -266,9 +291,9 @@ const AccountsPage = () => {
       key: 'actions',
       label: 'Actions',
       render: (account) => (
-        <div className="flex space-x-2">
+        <div className="flex items-center space-x-2">
           <button
-            onClick={() => {/* Handle view */}}
+            onClick={() => handleViewAccount(account._id)}
             className="text-gray-500 hover:text-gray-700 transition-colors"
             title="View Account"
           >
@@ -297,7 +322,8 @@ const AccountsPage = () => {
   const transactionTypeOptions = [
     { value: 'all', label: 'All Types' },
     { value: 'income', label: 'Income' },
-    { value: 'expense', label: 'Expense' }
+    { value: 'expense', label: 'Expense' },
+    { value: 'purchase', label: 'Purchase' }
   ];
 
   const categoryOptions = [
@@ -327,126 +353,538 @@ const AccountsPage = () => {
     { value: 'refunded', label: 'Refunded' }
   ];
 
+  // Render overview content
+  const renderOverviewContent = () => {
+    if (isSuperAdmin) {
+      // Super admin sees only branch summary
+      return (
+        <div className="space-y-6">
+          {/* Statistics Cards */}
+          {stats && (
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <StatCard
+                title="Total Income"
+                value={`₹${stats.summary?.totalIncome?.toLocaleString() || 0}`}
+                icon={HiArrowUp}
+                color="green"
+                loading={statsLoading}
+              />
+              <StatCard
+                title="Total Expense"
+                value={`₹${stats.summary?.totalExpense?.toLocaleString() || 0}`}
+                icon={HiArrowDown}
+                color="red"
+                loading={statsLoading}
+              />
+              <StatCard
+                title="Net Profit"
+                value={`₹${stats.summary?.netProfit?.toLocaleString() || 0}`}
+                icon={HiCurrencyDollar}
+                color={stats.summary?.netProfit >= 0 ? 'green' : 'red'}
+                loading={statsLoading}
+              />
+              <StatCard
+                title="Total Transactions"
+                value={stats.summary?.totalTransactions || 0}
+                icon={HiClipboardDocumentList}
+                color="blue"
+                loading={statsLoading}
+              />
+            </div>
+          )}
+
+          {/* Branch Summary for Super Admin */}
+          {branchSummary && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900">Branch Summary</h2>
+                  <p className="text-gray-600 mt-1">Current month's income and expense by branch</p>
+                </div>
+                <div className="text-sm text-gray-500">
+                  {branchSummary.period && (
+                    <span>
+                      {new Date(branchSummary.period.startDate).toLocaleDateString()} - {new Date(branchSummary.period.endDate).toLocaleDateString()}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {branchSummaryLoading ? (
+                <div className="flex justify-center py-8">
+                  <Loading />
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {/* Branch Summary Table */}
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Branch
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Income
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Expense
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Purchase
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Net Amount
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Transactions
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {branchSummary.summary?.map((branch) => (
+                          <tr key={branch.branchId} className="hover:bg-gray-50">
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div>
+                                <div className="text-sm font-medium text-gray-900">
+                                  {branch.branchName}
+                                </div>
+                                <div className="text-sm text-gray-500">
+                                  {branch.branchCode}
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm font-medium text-green-600">
+                                ₹{branch.income?.toLocaleString() || 0}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {branch.incomeCount || 0} transactions
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm font-medium text-red-600">
+                                ₹{branch.expense?.toLocaleString() || 0}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {branch.expenseCount || 0} transactions
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm font-medium text-blue-600">
+                                ₹{branch.purchase?.toLocaleString() || 0}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {branch.purchaseCount || 0} transactions
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className={`text-sm font-medium ${branch.netAmount >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                ₹{branch.netAmount?.toLocaleString() || 0}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm text-gray-900">
+                                {(branch.incomeCount || 0) + (branch.expenseCount || 0) + (branch.purchaseCount || 0)}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      {branchSummary.totals && (
+                        <tfoot className="bg-gray-50">
+                          <tr>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
+                              Total
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-green-600">
+                              ₹{branchSummary.totals.totalIncome?.toLocaleString() || 0}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-red-600">
+                              ₹{branchSummary.totals.totalExpense?.toLocaleString() || 0}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-blue-600">
+                              ₹{branchSummary.totals.totalPurchase?.toLocaleString() || 0}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
+                              ₹{branchSummary.totals.totalNetAmount?.toLocaleString() || 0}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
+                              {(branchSummary.totals.totalIncomeCount || 0) + (branchSummary.totals.totalExpenseCount || 0) + (branchSummary.totals.totalPurchaseCount || 0)}
+                            </td>
+                          </tr>
+                        </tfoot>
+                      )}
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      );
+    } else {
+        // Regular users see the full table with filters
+        return (
+          <div className="space-y-6">
+            {/* Statistics Cards */}
+            {stats && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
+                <StatCard
+                  title="Total Income"
+                  value={`₹${stats.summary?.totalIncome?.toLocaleString() || 0}`}
+                  icon={HiArrowUp}
+                  gradient="green"
+                  loading={statsLoading}
+                />
+                <StatCard
+                  title="Total Expense"
+                  value={`₹${stats.summary?.totalExpense?.toLocaleString() || 0}`}
+                  icon={HiArrowDown}
+                  gradient="red"
+                  loading={statsLoading}
+                />
+                <StatCard
+                  title="Net Profit"
+                  value={`₹${stats.summary?.netProfit?.toLocaleString() || 0}`}
+                  icon={HiCurrencyDollar}
+                  gradient={stats.summary?.netProfit >= 0 ? 'green' : 'red'}
+                  loading={statsLoading}
+                />
+                <StatCard
+                  title="Total Transactions"
+                  value={stats.summary?.totalTransactions || 0}
+                  icon={HiClipboardDocumentList}
+                  gradient="blue"
+                  loading={statsLoading}
+                />
+              </div>
+            )}
+
+            {/* Search and Filter Section */}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+              <div className="w-full sm:w-80">
+                <SearchInput
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Search accounts..."
+                  icon={HiMagnifyingGlass}
+                />
+              </div>
+              <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0">
+                <Select
+                  value={transactionTypeFilter}
+                  onChange={handleTransactionTypeFilter}
+                  options={transactionTypeOptions}
+                  className="w-full sm:w-48"
+                />
+                <Select
+                  value={categoryFilter}
+                  onChange={handleCategoryFilter}
+                  options={categoryOptions}
+                  className="w-full sm:w-48"
+                />
+                <Select
+                  value={paymentStatusFilter}
+                  onChange={handlePaymentStatusFilter}
+                  options={paymentStatusOptions}
+                  className="w-full sm:w-48"
+                />
+              </div>
+            </div>
+
+            {/* Accounts Table */}
+            <div className="bg-white">
+              <Table
+                data={accounts}
+                columns={columns}
+                loading={loading}
+                error={error}
+                pagination={pagination}
+                onPageChange={handlePageChange}
+                emptyMessage="No accounts found"
+                emptyIcon={HiClipboardDocumentList}
+              />
+            </div>
+          </div>
+        );
+    }
+  };
+
   return (
     <div className="space-y-6">
-      {/* Page Header */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Accounts Management</h1>
-            <p className="text-gray-600 mt-1">Manage all branch accounts, expenses, and incomes</p>
-          </div>
-          <div className="flex items-center space-x-3">
-              <Button
-                variant="primary"
-                icon={HiPlus}
-                size="sm"
-                onClick={handleAddAccount}
-              >
-                Add Accounts
-              </Button>
-          </div>
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Accounts Management</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            {isSuperAdmin 
+              ? 'Manage all branch accounts, expenses, and incomes across all branches' 
+              : isAccountsManager 
+              ? `Manage accounts, expenses, and incomes for ${user?.branchId?.branchName || 'your branch'}`
+              : 'Manage all branch accounts, expenses, and incomes'
+            }
+          </p>
+        </div>
+        <div className="mt-4 sm:mt-0">
+          <Button
+            onClick={handleAddAccount}
+            icon={HiPlus}
+            variant="primary"
+            size="sm"
+          >
+            Add Accounts
+          </Button>
         </div>
       </div>
 
-      {/* Statistics Cards */}
-      {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <StatCard
-            title="Total Income"
-            value={`₹${stats.summary?.totalIncome?.toLocaleString() || 0}`}
-            icon={HiArrowUp}
-            color="green"
-            loading={statsLoading}
-          />
-          <StatCard
-            title="Total Expense"
-            value={`₹${stats.summary?.totalExpense?.toLocaleString() || 0}`}
-            icon={HiArrowDown}
-            color="red"
-            loading={statsLoading}
-          />
-          <StatCard
-            title="Net Profit"
-            value={`₹${stats.summary?.netProfit?.toLocaleString() || 0}`}
-            icon={HiCurrencyDollar}
-            color={stats.summary?.netProfit >= 0 ? 'green' : 'red'}
-            loading={statsLoading}
-          />
-          <StatCard
-            title="Total Transactions"
-            value={stats.summary?.totalTransactions || 0}
-            icon={HiClipboardDocumentList}
-            color="blue"
-            loading={statsLoading}
-          />
-        </div>
-      )}
+      {/* Content based on role */}
+      {isSuperAdmin ? (
+        // Super Admin: Branch Summary Dashboard
+        <div className="space-y-6">
+          {/* Statistics Cards */}
+          {stats && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
+              <StatCard
+                title="Total Income"
+                value={`₹${stats.summary?.totalIncome?.toLocaleString() || 0}`}
+                icon={HiArrowUp}
+                gradient="green"
+                loading={statsLoading}
+              />
+              <StatCard
+                title="Total Expense"
+                value={`₹${stats.summary?.totalExpense?.toLocaleString() || 0}`}
+                icon={HiArrowDown}
+                gradient="red"
+                loading={statsLoading}
+              />
+              <StatCard
+                title="Net Profit"
+                value={`₹${stats.summary?.netProfit?.toLocaleString() || 0}`}
+                icon={HiCurrencyDollar}
+                gradient={stats.summary?.netProfit >= 0 ? 'green' : 'red'}
+                loading={statsLoading}
+              />
+              <StatCard
+                title="Total Transactions"
+                value={stats.summary?.totalTransactions || 0}
+                icon={HiClipboardDocumentList}
+                gradient="blue"
+                loading={statsLoading}
+              />
+            </div>
+          )}
 
-      {/* Filters and Search */}
-      <div className="bg-white rounded-lg p-2">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-          <div className="w-full sm:w-80">
-            <Input
-              placeholder="Search accounts..."
-              value={searchTerm}
-              onChange={handleSearch}
-              icon={HiMagnifyingGlass}
-            />
-          </div>
-          <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0">
-            <div className="w-full sm:w-48">
+          {/* Search and Filter Section */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            <div className="w-full sm:w-80">
+              <SearchInput
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search branches..."
+                icon={HiMagnifyingGlass}
+              />
+            </div>
+            <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0">
               <Select
-                options={transactionTypeOptions}
                 value={transactionTypeFilter}
                 onChange={handleTransactionTypeFilter}
-                placeholder="Transaction Type"
+                options={transactionTypeOptions}
+                className="w-full sm:w-48"
               />
-            </div>
-            <div className="w-full sm:w-48">
               <Select
-                options={categoryOptions}
                 value={categoryFilter}
                 onChange={handleCategoryFilter}
-                placeholder="Category"
+                options={categoryOptions}
+                className="w-full sm:w-48"
               />
-            </div>
-            <div className="w-full sm:w-48">
-              <Select
-                options={paymentStatusOptions}
-                value={paymentStatusFilter}
-                onChange={handlePaymentStatusFilter}
-                placeholder="Payment Status"
-              />
-            </div>
-            <div className="w-full sm:w-auto">
-              <Button
-                variant="outline"
-                onClick={() => setShowFilters(!showFilters)}
-                icon={HiFunnel}
-                size="sm"
-                className="w-full sm:w-auto"
-              >
-                {showFilters ? 'Hide Filters' : 'More Filters'}
-              </Button>
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* Accounts Table */}
-      <div className="bg-white">
-        <Table
-          data={accounts}
-          columns={columns}
-          loading={loading}
-          error={error}
-          pagination={pagination}
-          onPageChange={handlePageChange}
-          emptyMessage="No accounts found"
-          emptyIcon={HiClipboardDocumentList}
-        />
-      </div>
+          {/* Branch Summary Table */}
+          {branchSummary && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900">Branch Summary</h2>
+                  <p className="text-gray-600 mt-1">Current month's income and expense by branch</p>
+                </div>
+                <div className="text-sm text-gray-500">
+                  {branchSummary.period && (
+                    <span>
+                      {new Date(branchSummary.period.startDate).toLocaleDateString()} - {new Date(branchSummary.period.endDate).toLocaleDateString()}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {branchSummaryLoading ? (
+                <div className="flex justify-center py-8">
+                  <Loading />
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {/* Branch Summary Table */}
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Branch
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Income
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Expense
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Purchase
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Net Amount
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Transactions
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {branchSummary.summary?.map((branch) => (
+                          <tr key={branch.branchId} className="hover:bg-gray-50">
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div>
+                                <div className="text-sm font-medium text-gray-900">
+                                  {branch.branchName}
+                                </div>
+                                <div className="text-sm text-gray-500">
+                                  {branch.branchCode}
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm font-medium text-green-600">
+                                ₹{branch.income?.toLocaleString() || 0}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {branch.incomeCount || 0} transactions
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm font-medium text-red-600">
+                                ₹{branch.expense?.toLocaleString() || 0}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {branch.expenseCount || 0} transactions
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm font-medium text-blue-600">
+                                ₹{branch.purchase?.toLocaleString() || 0}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {branch.purchaseCount || 0} transactions
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className={`text-sm font-medium ${branch.netAmount >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                ₹{branch.netAmount?.toLocaleString() || 0}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm text-gray-900">
+                                {(branch.incomeCount || 0) + (branch.expenseCount || 0) + (branch.purchaseCount || 0)}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      {branchSummary.totals && (
+                        <tfoot className="bg-gray-50">
+                          <tr>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
+                              Total
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-green-600">
+                              ₹{branchSummary.totals.totalIncome?.toLocaleString() || 0}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-red-600">
+                              ₹{branchSummary.totals.totalExpense?.toLocaleString() || 0}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-blue-600">
+                              ₹{branchSummary.totals.totalPurchase?.toLocaleString() || 0}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
+                              ₹{branchSummary.totals.totalNetAmount?.toLocaleString() || 0}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
+                              {(branchSummary.totals.totalIncomeCount || 0) + (branchSummary.totals.totalExpenseCount || 0) + (branchSummary.totals.totalPurchaseCount || 0)}
+                            </td>
+                          </tr>
+                        </tfoot>
+                      )}
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      ) : (
+        // Other roles: Tabbed interface
+        <>
+          {/* Tabs */}
+          <div className="border-b border-gray-200">
+            <nav className="-mb-px flex space-x-8">
+              <button
+                onClick={() => setActiveTab('overview')}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'overview'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <div className="flex items-center space-x-2">
+                  <HiClipboardDocumentList className="h-5 w-5" />
+                  <span>Overview</span>
+                </div>
+              </button>
+              <button
+                onClick={() => setActiveTab('purchases')}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'purchases'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <div className="flex items-center space-x-2">
+                  <HiShoppingCart className="h-5 w-5" />
+                  <span>Purchases</span>
+                </div>
+              </button>
+              <button
+                onClick={() => setActiveTab('reports')}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'reports'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <div className="flex items-center space-x-2">
+                  <HiChartBar className="h-5 w-5" />
+                  <span>Reports</span>
+                </div>
+              </button>
+            </nav>
+          </div>
+
+          {/* Tab Content */}
+          {activeTab === 'overview' && renderOverviewContent()}
+          {activeTab === 'purchases' && <PurchaseManagement />}
+          {activeTab === 'reports' && <FinancialReports />}
+        </>
+      )}
 
       {/* Delete Confirmation Modal */}
       <CommonModal

@@ -92,5 +92,67 @@ export const getAccountSummary = createAsyncThunk(
   }
 );
 
+// Create sales account entry from order
+export const createSalesAccount = createAsyncThunk(
+  'accounts/createSalesAccount',
+  async (salesData, { rejectWithValue }) => {
+    try {
+      const response = await api.post('/accounts/sales', salesData);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to create sales account entry');
+    }
+  }
+);
 
+// Create raw material purchase account entry
+export const createRawMaterialPurchaseAccount = createAsyncThunk(
+  'accounts/createRawMaterialPurchaseAccount',
+  async (purchaseData, { rejectWithValue }) => {
+    try {
+      const response = await api.post('/accounts/purchase/raw-materials', purchaseData);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to create raw material purchase account entry');
+    }
+  }
+);
 
+// Create branch item purchase account entry
+export const createBranchItemPurchaseAccount = createAsyncThunk(
+  'accounts/createBranchItemPurchaseAccount',
+  async (purchaseData, { rejectWithValue }) => {
+    try {
+      const response = await api.post('/accounts/purchase/branch-items', purchaseData);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to create branch item purchase account entry');
+    }
+  }
+);
+
+// Get branch summary for super admin
+export const getBranchSummary = createAsyncThunk(
+  'accounts/getBranchSummary',
+  async (params = {}, { rejectWithValue }) => {
+    try {
+      const response = await api.get('/accounts/branch-summary', { params });
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch branch summary');
+    }
+  }
+);
+
+// Get comprehensive financial reports
+export const getFinancialReports = createAsyncThunk(
+  'accounts/getFinancialReports',
+  async (params = {}, { rejectWithValue }) => {
+    try {
+      const response = await api.get('/accounts/reports/financial', { params });
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch financial reports');
+    }
+  }
+);
