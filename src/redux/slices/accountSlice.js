@@ -6,7 +6,12 @@ import {
   updateAccount,
   deleteAccount,
   getAccountStats,
-  getAccountSummary
+  getAccountSummary,
+  getBranchSummary,
+  createSalesAccount,
+  createRawMaterialPurchaseAccount,
+  createBranchItemPurchaseAccount,
+  getFinancialReports
 } from '../actions/accountActions';
 
 const initialState = {
@@ -14,9 +19,16 @@ const initialState = {
   currentAccount: null,
   stats: null,
   summary: null,
+  branchSummary: null,
+  reports: null,
   loading: false,
   statsLoading: false,
   summaryLoading: false,
+  branchSummaryLoading: false,
+  reportsLoading: false,
+  createLoading: false,
+  updateLoading: false,
+  deleteLoading: false,
   error: null,
   pagination: {
     currentPage: 1,
@@ -162,6 +174,81 @@ const accountSlice = createSlice({
       .addCase(getAccountSummary.rejected, (state, action) => {
         state.summaryLoading = false;
         state.error = action.payload;
+      })
+
+      // Create sales account
+      .addCase(createSalesAccount.pending, (state) => {
+        state.createLoading = true;
+        state.error = null;
+      })
+      .addCase(createSalesAccount.fulfilled, (state, action) => {
+        state.createLoading = false;
+        state.accounts.unshift(action.payload.data.account);
+        state.error = null;
+      })
+      .addCase(createSalesAccount.rejected, (state, action) => {
+        state.createLoading = false;
+        state.error = action.payload;
+      })
+
+      // Create raw material purchase account
+      .addCase(createRawMaterialPurchaseAccount.pending, (state) => {
+        state.createLoading = true;
+        state.error = null;
+      })
+      .addCase(createRawMaterialPurchaseAccount.fulfilled, (state, action) => {
+        state.createLoading = false;
+        state.accounts.unshift(action.payload.data.account);
+        state.error = null;
+      })
+      .addCase(createRawMaterialPurchaseAccount.rejected, (state, action) => {
+        state.createLoading = false;
+        state.error = action.payload;
+      })
+
+      // Create branch item purchase account
+      .addCase(createBranchItemPurchaseAccount.pending, (state) => {
+        state.createLoading = true;
+        state.error = null;
+      })
+      .addCase(createBranchItemPurchaseAccount.fulfilled, (state, action) => {
+        state.createLoading = false;
+        state.accounts.unshift(action.payload.data.account);
+        state.error = null;
+      })
+      .addCase(createBranchItemPurchaseAccount.rejected, (state, action) => {
+        state.createLoading = false;
+        state.error = action.payload;
+      })
+
+      // Get financial reports
+      .addCase(getFinancialReports.pending, (state) => {
+        state.reportsLoading = true;
+        state.error = null;
+      })
+      .addCase(getFinancialReports.fulfilled, (state, action) => {
+        state.reportsLoading = false;
+        state.reports = action.payload.data;
+        state.error = null;
+      })
+      .addCase(getFinancialReports.rejected, (state, action) => {
+        state.reportsLoading = false;
+        state.error = action.payload;
+      })
+
+      // Get branch summary
+      .addCase(getBranchSummary.pending, (state) => {
+        state.branchSummaryLoading = true;
+        state.error = null;
+      })
+      .addCase(getBranchSummary.fulfilled, (state, action) => {
+        state.branchSummaryLoading = false;
+        state.branchSummary = action.payload.data;
+        state.error = null;
+      })
+      .addCase(getBranchSummary.rejected, (state, action) => {
+        state.branchSummaryLoading = false;
+        state.error = action.payload;
       });
   }
 });
@@ -182,7 +269,14 @@ export const selectAccountStats = (state) => state.accounts.stats;
 export const selectAccountStatsLoading = (state) => state.accounts.statsLoading;
 export const selectAccountSummary = (state) => state.accounts.summary;
 export const selectAccountSummaryLoading = (state) => state.accounts.summaryLoading;
+export const selectBranchSummary = (state) => state.accounts.branchSummary;
+export const selectBranchSummaryLoading = (state) => state.accounts.branchSummaryLoading;
 export const selectAccountPagination = (state) => state.accounts.pagination;
+export const selectAccountReports = (state) => state.accounts.reports;
+export const selectAccountReportsLoading = (state) => state.accounts.reportsLoading;
+export const selectAccountCreateLoading = (state) => state.accounts.createLoading;
+export const selectAccountUpdateLoading = (state) => state.accounts.updateLoading;
+export const selectAccountDeleteLoading = (state) => state.accounts.deleteLoading;
 
 export default accountSlice.reducer;
 

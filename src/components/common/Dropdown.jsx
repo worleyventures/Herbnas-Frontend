@@ -54,6 +54,7 @@ const Dropdown = ({
     : options;
 
   const handleSelectChange = (optionValue) => {
+    console.log('handleSelectChange called with:', optionValue);
     if (onChange) {
       // Create a synthetic event object to match expected interface
       const syntheticEvent = {
@@ -62,6 +63,7 @@ const Dropdown = ({
           name: name
         }
       };
+      console.log('Calling onChange with synthetic event:', syntheticEvent);
       onChange(syntheticEvent);
     } else {
       console.error('Dropdown: onChange function is not provided');
@@ -122,7 +124,7 @@ const Dropdown = ({
 
         {/* Dropdown Menu */}
         {isOpen && (
-          <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-80 overflow-y-auto">
+          <div className="absolute z-[60] w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-80 overflow-y-auto">
             {/* Search Input */}
             {searchable && (
               <div className="p-2 border-b border-gray-200">
@@ -160,10 +162,14 @@ const Dropdown = ({
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
+                    console.log('Option clicked:', option.value, option.label);
                     // Option clicked
                     handleSelectChange(option.value);
                   }}
-                  className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-100 focus:outline-none focus:bg-gray-100 ${
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                  }}
+                  className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-100 focus:outline-none focus:bg-gray-100 transition-colors ${
                     value === option.value ? 'bg-[#8bc34a]/10 text-[#8bc34a] font-medium' : 'text-gray-900'
                   }`}
                 >

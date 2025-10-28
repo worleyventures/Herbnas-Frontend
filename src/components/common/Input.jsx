@@ -131,11 +131,26 @@ export const Select = ({
   name,
   ...props
 }) => {
+  // Handle the onChange to extract the value from the synthetic event
+  const handleChange = (syntheticEvent) => {
+    console.log('Select handleChange called with:', syntheticEvent);
+    if (onChange) {
+      // If onChange expects just the value (not an event), extract it
+      if (typeof onChange === 'function' && syntheticEvent.target) {
+        console.log('Extracting value:', syntheticEvent.target.value);
+        onChange(syntheticEvent.target.value);
+      } else {
+        console.log('Passing through synthetic event');
+        onChange(syntheticEvent);
+      }
+    }
+  };
+
   return (
     <Dropdown
       options={options}
       value={value}
-      onChange={onChange}
+      onChange={handleChange}
       placeholder={placeholder}
       disabled={disabled}
       error={error}

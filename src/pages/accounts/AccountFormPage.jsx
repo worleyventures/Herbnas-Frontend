@@ -13,6 +13,7 @@ import {
 } from 'react-icons/hi2';
 import { Button, Input, Select, TextArea, Loading } from '../../components/common';
 import { createAccount, updateAccount, getAccountById } from '../../redux/actions/accountActions';
+import { getAllBranches } from '../../redux/actions/branchActions';
 import { addNotification } from '../../redux/slices/uiSlice';
 
 const AccountFormPage = () => {
@@ -21,8 +22,14 @@ const AccountFormPage = () => {
   const { id } = useParams();
   const isEdit = Boolean(id);
 
+  // Get branches from Redux store
+  const { branches = [], loading: branchesLoading } = useSelector(state => state.branches || {});
+
+  // Debug: Log branches data
+  console.log('AccountFormPage - branches:', branches);
+  console.log('AccountFormPage - branchesLoading:', branchesLoading);
+
   const [loading, setLoading] = useState(false);
-  const [branches, setBranches] = useState([]);
   const [formData, setFormData] = useState({
     transactionType: 'income',
     category: '',
@@ -35,7 +42,6 @@ const AccountFormPage = () => {
     paymentMethod: 'cash',
     paymentStatus: 'completed',
     transactionDate: new Date().toISOString().split('T')[0],
-    dueDate: '',
     referenceNumber: '',
     vendorName: '',
     customerName: '',
@@ -43,22 +49,6 @@ const AccountFormPage = () => {
   });
   const [errors, setErrors] = useState({});
 
-  // Load branches data
-  const loadBranches = async () => {
-    try {
-      const response = await fetch('/api/branches');
-      const data = await response.json();
-      if (data.success) {
-        setBranches(data.data.branches || []);
-      }
-    } catch (error) {
-      console.error('Failed to load branches:', error);
-      dispatch(addNotification({
-        type: 'error',
-        message: 'Failed to load branches'
-      }));
-    }
-  };
 
   // Load account data for editing
   const loadAccountData = async () => {
@@ -81,7 +71,6 @@ const AccountFormPage = () => {
         paymentMethod: account.paymentMethod || 'cash',
         paymentStatus: account.paymentStatus || 'completed',
         transactionDate: account.transactionDate ? new Date(account.transactionDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-        dueDate: account.dueDate ? new Date(account.dueDate).toISOString().split('T')[0] : '',
         referenceNumber: account.referenceNumber || '',
         vendorName: account.vendorName || '',
         customerName: account.customerName || '',
@@ -100,7 +89,10 @@ const AccountFormPage = () => {
 
   // Load data on component mount
   useEffect(() => {
-    loadBranches();
+    // Load branches using Redux
+    console.log('AccountFormPage - Dispatching getAllBranches');
+    dispatch(getAllBranches());
+    
     if (isEdit) {
       loadAccountData();
     }
@@ -121,6 +113,55 @@ const AccountFormPage = () => {
       }));
     }
   };
+
+  // Determine which fields to show based on transaction type and category
+  const showFields = () => {
+    const fields = {
+      // Common fields - always show
+      transactionType: true,
+      category: true,
+      amount: true,
+      branchId: true,
+      description: true,
+      paymentMethod: true,
+      paymentStatus: true,
+      transactionDate: true,
+      referenceNumber: true,
+      notes: true,
+
+      // Conditional fields
+      subCategory: false,
+      orderId: false,
+      customerName: false,
+      vendorName: false,
+    };
+
+    const { transactionType, category } = formData;
+
+    // Show sub-category for most categories
+    if (category) {
+      fields.subCategory = true;
+    }
+
+    // Show order ID for income transactions (sales, service)
+    if (transactionType === 'income' && ['sales', 'service'].includes(category)) {
+      fields.orderId = true;
+    }
+
+    // Show customer name for income transactions
+    if (transactionType === 'income') {
+      fields.customerName = true;
+    }
+
+    // Show vendor name for expense transactions
+    if (transactionType === 'expense') {
+      fields.vendorName = true;
+    }
+
+    return fields;
+  };
+
+  const visibleFields = showFields();
 
   // Validate form
   const validateForm = () => {
@@ -164,7 +205,6 @@ const AccountFormPage = () => {
         ...formData,
         amount: parseFloat(formData.amount),
         orderId: formData.orderId || null,
-        dueDate: formData.dueDate || null
       };
 
       if (isEdit) {
@@ -253,14 +293,6 @@ const AccountFormPage = () => {
     { value: 'refunded', label: 'Refunded' }
   ];
 
-  // Currency options
-  const currencyOptions = [
-    { value: 'INR', label: 'INR (₹)' },
-    { value: 'USD', label: 'USD ($)' },
-    { value: 'EUR', label: 'EUR (€)' },
-    { value: 'GBP', label: 'GBP (£)' }
-  ];
-
   if (loading && isEdit) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -321,18 +353,20 @@ const AccountFormPage = () => {
           </div>
 
           {/* Sub Category and Amount */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Sub Category
-              </label>
-              <Input
-                value={formData.subCategory}
-                onChange={(e) => handleInputChange('subCategory', e.target.value)}
-                placeholder="Enter sub category (optional)"
-                error={errors.subCategory}
-              />
-            </div>
+          <div className={`grid ${visibleFields.subCategory ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'} gap-6`}>
+            {visibleFields.subCategory && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Sub Category
+                </label>
+                <Input
+                  value={formData.subCategory}
+                  onChange={(e) => handleInputChange('subCategory', e.target.value)}
+                  placeholder="Enter sub category (optional)"
+                  error={errors.subCategory}
+                />
+              </div>
+            )}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Amount *
@@ -349,30 +383,18 @@ const AccountFormPage = () => {
             </div>
           </div>
 
-          {/* Currency and Branch */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Currency
-              </label>
-              <Select
-                options={currencyOptions}
-                value={formData.currency}
-                onChange={(value) => handleInputChange('currency', value)}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Branch *
-              </label>
-              <Select
-                options={branchOptions}
-                value={formData.branchId}
-                onChange={(value) => handleInputChange('branchId', value)}
-                placeholder="Select branch"
-                error={errors.branchId}
-              />
-            </div>
+          {/* Branch */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Branch *
+            </label>
+            <Select
+              options={branchOptions}
+              value={formData.branchId}
+              onChange={(value) => handleInputChange('branchId', value)}
+              placeholder="Select branch"
+              error={errors.branchId}
+            />
           </div>
 
           {/* Description */}
@@ -413,33 +435,21 @@ const AccountFormPage = () => {
             </div>
           </div>
 
-          {/* Transaction Date and Due Date */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Transaction Date *
-              </label>
-              <Input
-                type="date"
-                value={formData.transactionDate}
-                onChange={(e) => handleInputChange('transactionDate', e.target.value)}
-                error={errors.transactionDate}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Due Date
-              </label>
-              <Input
-                type="date"
-                value={formData.dueDate}
-                onChange={(e) => handleInputChange('dueDate', e.target.value)}
-              />
-            </div>
+          {/* Transaction Date */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Transaction Date *
+            </label>
+            <Input
+              type="date"
+              value={formData.transactionDate}
+              onChange={(e) => handleInputChange('transactionDate', e.target.value)}
+              error={errors.transactionDate}
+            />
           </div>
 
           {/* Reference Number and Order ID */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className={`grid ${visibleFields.orderId ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'} gap-6`}>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Reference Number
@@ -450,34 +460,49 @@ const AccountFormPage = () => {
                 placeholder="Enter reference number"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Order ID
-              </label>
-              <Input
-                value={formData.orderId}
-                onChange={(e) => handleInputChange('orderId', e.target.value)}
-                placeholder="Enter order ID (optional)"
-              />
-            </div>
+            {visibleFields.orderId && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Order ID
+                </label>
+                <Input
+                  value={formData.orderId}
+                  onChange={(e) => handleInputChange('orderId', e.target.value)}
+                  placeholder="Enter order ID (optional)"
+                />
+              </div>
+            )}
           </div>
 
           {/* Vendor/Customer Name */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                {formData.transactionType === 'income' ? 'Customer Name' : 'Vendor Name'}
-              </label>
-              <Input
-                value={formData.transactionType === 'income' ? formData.customerName : formData.vendorName}
-                onChange={(e) => handleInputChange(
-                  formData.transactionType === 'income' ? 'customerName' : 'vendorName', 
-                  e.target.value
-                )}
-                placeholder={`Enter ${formData.transactionType === 'income' ? 'customer' : 'vendor'} name`}
-              />
+          {(visibleFields.customerName || visibleFields.vendorName) && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {visibleFields.customerName && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Customer Name
+                  </label>
+                  <Input
+                    value={formData.customerName}
+                    onChange={(e) => handleInputChange('customerName', e.target.value)}
+                    placeholder="Enter customer name"
+                  />
+                </div>
+              )}
+              {visibleFields.vendorName && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Vendor Name
+                  </label>
+                  <Input
+                    value={formData.vendorName}
+                    onChange={(e) => handleInputChange('vendorName', e.target.value)}
+                    placeholder="Enter vendor name"
+                  />
+                </div>
+              )}
             </div>
-          </div>
+          )}
 
           {/* Notes */}
           <div>
@@ -490,6 +515,26 @@ const AccountFormPage = () => {
               placeholder="Enter additional notes (optional)"
               rows={3}
             />
+          </div>
+
+          {/* Form Actions */}
+          <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => navigate('/accounts')}
+              disabled={loading}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              loading={loading}
+              disabled={loading}
+            >
+              {isEdit ? 'Update Account' : 'Create Account'}
+            </Button>
           </div>
         </form>
       </div>

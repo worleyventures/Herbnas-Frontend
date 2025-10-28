@@ -11,10 +11,15 @@ import {
 } from 'react-icons/hi2';
 import { Button, Input, Select, TextArea, CommonModal } from './index';
 import { createAccount, updateAccount } from '../../redux/actions/accountActions';
+import { getAllBranches } from '../../redux/actions/branchActions';
 import { addNotification } from '../../redux/slices/uiSlice';
 
-const AccountFormModal = ({ isOpen, onClose, account = null, branches = [] }) => {
+const AccountFormModal = ({ isOpen, onClose, account = null }) => {
   const dispatch = useDispatch();
+  
+  // Get branches from Redux store
+  const { branches = [], loading: branchesLoading } = useSelector(state => state.branches || {});
+  
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     transactionType: 'income',
@@ -28,13 +33,19 @@ const AccountFormModal = ({ isOpen, onClose, account = null, branches = [] }) =>
     paymentMethod: 'cash',
     paymentStatus: 'completed',
     transactionDate: new Date().toISOString().split('T')[0],
-    dueDate: '',
     referenceNumber: '',
     vendorName: '',
     customerName: '',
     notes: ''
   });
   const [errors, setErrors] = useState({});
+
+  // Load branches when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      dispatch(getAllBranches());
+    }
+  }, [isOpen, dispatch]);
 
   // Reset form when modal opens/closes or account changes
   useEffect(() => {
@@ -53,7 +64,6 @@ const AccountFormModal = ({ isOpen, onClose, account = null, branches = [] }) =>
           paymentMethod: account.paymentMethod || 'cash',
           paymentStatus: account.paymentStatus || 'completed',
           transactionDate: account.transactionDate ? new Date(account.transactionDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-          dueDate: account.dueDate ? new Date(account.dueDate).toISOString().split('T')[0] : '',
           referenceNumber: account.referenceNumber || '',
           vendorName: account.vendorName || '',
           customerName: account.customerName || '',
@@ -73,7 +83,6 @@ const AccountFormModal = ({ isOpen, onClose, account = null, branches = [] }) =>
           paymentMethod: 'cash',
           paymentStatus: 'completed',
           transactionDate: new Date().toISOString().split('T')[0],
-          dueDate: '',
           referenceNumber: '',
           vendorName: '',
           customerName: '',
@@ -142,7 +151,6 @@ const AccountFormModal = ({ isOpen, onClose, account = null, branches = [] }) =>
         ...formData,
         amount: parseFloat(formData.amount),
         orderId: formData.orderId || null,
-        dueDate: formData.dueDate || null
       };
 
       if (account) {
@@ -212,6 +220,59 @@ const AccountFormModal = ({ isOpen, onClose, account = null, branches = [] }) =>
     label: `${branch.branchName} (${branch.branchCode})`
   }));
 
+  // Debug: Log branches data
+  console.log('AccountFormModal - branches:', branches);
+  console.log('AccountFormModal - branchOptions:', branchOptions);
+
+  // Determine which fields to show based on transaction type and category
+  const showFields = () => {
+    const fields = {
+      // Common fields - always show
+      transactionType: true,
+      category: true,
+      amount: true,
+      branchId: true,
+      description: true,
+      paymentMethod: true,
+      paymentStatus: true,
+      transactionDate: true,
+      referenceNumber: true,
+      notes: true,
+
+      // Conditional fields
+      subCategory: false,
+      orderId: false,
+      customerName: false,
+      vendorName: false,
+    };
+
+    const { transactionType, category } = formData;
+
+    // Show sub-category for most categories
+    if (category) {
+      fields.subCategory = true;
+    }
+
+    // Show order ID for income transactions (sales, service)
+    if (transactionType === 'income' && ['sales', 'service'].includes(category)) {
+      fields.orderId = true;
+    }
+
+    // Show customer name for income transactions
+    if (transactionType === 'income') {
+      fields.customerName = true;
+    }
+
+    // Show vendor name for expense transactions
+    if (transactionType === 'expense') {
+      fields.vendorName = true;
+    }
+
+    return fields;
+  };
+
+  const visibleFields = showFields();
+
   // Payment method options
   const paymentMethodOptions = [
     { value: 'cash', label: 'Cash' },
@@ -229,14 +290,6 @@ const AccountFormModal = ({ isOpen, onClose, account = null, branches = [] }) =>
     { value: 'pending', label: 'Pending' },
     { value: 'failed', label: 'Failed' },
     { value: 'refunded', label: 'Refunded' }
-  ];
-
-  // Currency options
-  const currencyOptions = [
-    { value: 'INR', label: 'INR (₹)' },
-    { value: 'USD', label: 'USD ($)' },
-    { value: 'EUR', label: 'EUR (€)' },
-    { value: 'GBP', label: 'GBP (£)' }
   ];
 
   if (!isOpen) return null;
@@ -284,18 +337,20 @@ const AccountFormModal = ({ isOpen, onClose, account = null, branches = [] }) =>
         </div>
 
         {/* Sub Category and Amount */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Sub Category
-            </label>
-            <Input
-              value={formData.subCategory}
-              onChange={(e) => handleInputChange('subCategory', e.target.value)}
-              placeholder="Enter sub category (optional)"
-              error={errors.subCategory}
-            />
-          </div>
+        <div className={`grid ${visibleFields.subCategory ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'} gap-4`}>
+          {visibleFields.subCategory && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Sub Category
+              </label>
+              <Input
+                value={formData.subCategory}
+                onChange={(e) => handleInputChange('subCategory', e.target.value)}
+                placeholder="Enter sub category (optional)"
+                error={errors.subCategory}
+              />
+            </div>
+          )}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Amount *
@@ -312,30 +367,18 @@ const AccountFormModal = ({ isOpen, onClose, account = null, branches = [] }) =>
           </div>
         </div>
 
-        {/* Currency and Branch */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Currency
-            </label>
-            <Select
-              options={currencyOptions}
-              value={formData.currency}
-              onChange={(value) => handleInputChange('currency', value)}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Branch *
-            </label>
-            <Select
-              options={branchOptions}
-              value={formData.branchId}
-              onChange={(value) => handleInputChange('branchId', value)}
-              placeholder="Select branch"
-              error={errors.branchId}
-            />
-          </div>
+        {/* Branch */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Branch *
+          </label>
+          <Select
+            options={branchOptions}
+            value={formData.branchId}
+            onChange={(value) => handleInputChange('branchId', value)}
+            placeholder="Select branch"
+            error={errors.branchId}
+          />
         </div>
 
         {/* Description */}
@@ -376,33 +419,21 @@ const AccountFormModal = ({ isOpen, onClose, account = null, branches = [] }) =>
           </div>
         </div>
 
-        {/* Transaction Date and Due Date */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Transaction Date *
-            </label>
-            <Input
-              type="date"
-              value={formData.transactionDate}
-              onChange={(e) => handleInputChange('transactionDate', e.target.value)}
-              error={errors.transactionDate}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Due Date
-            </label>
-            <Input
-              type="date"
-              value={formData.dueDate}
-              onChange={(e) => handleInputChange('dueDate', e.target.value)}
-            />
-          </div>
+        {/* Transaction Date */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Transaction Date *
+          </label>
+          <Input
+            type="date"
+            value={formData.transactionDate}
+            onChange={(e) => handleInputChange('transactionDate', e.target.value)}
+            error={errors.transactionDate}
+          />
         </div>
 
         {/* Reference Number and Order ID */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className={`grid ${visibleFields.orderId ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'} gap-4`}>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Reference Number
@@ -413,34 +444,49 @@ const AccountFormModal = ({ isOpen, onClose, account = null, branches = [] }) =>
               placeholder="Enter reference number"
             />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Order ID
-            </label>
-            <Input
-              value={formData.orderId}
-              onChange={(e) => handleInputChange('orderId', e.target.value)}
-              placeholder="Enter order ID (optional)"
-            />
-          </div>
+          {visibleFields.orderId && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Order ID
+              </label>
+              <Input
+                value={formData.orderId}
+                onChange={(e) => handleInputChange('orderId', e.target.value)}
+                placeholder="Enter order ID (optional)"
+              />
+            </div>
+          )}
         </div>
 
         {/* Vendor/Customer Name */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              {formData.transactionType === 'income' ? 'Customer Name' : 'Vendor Name'}
-            </label>
-            <Input
-              value={formData.transactionType === 'income' ? formData.customerName : formData.vendorName}
-              onChange={(e) => handleInputChange(
-                formData.transactionType === 'income' ? 'customerName' : 'vendorName', 
-                e.target.value
-              )}
-              placeholder={`Enter ${formData.transactionType === 'income' ? 'customer' : 'vendor'} name`}
-            />
+        {(visibleFields.customerName || visibleFields.vendorName) && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {visibleFields.customerName && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Customer Name
+                </label>
+                <Input
+                  value={formData.customerName}
+                  onChange={(e) => handleInputChange('customerName', e.target.value)}
+                  placeholder="Enter customer name"
+                />
+              </div>
+            )}
+            {visibleFields.vendorName && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Vendor Name
+                </label>
+                <Input
+                  value={formData.vendorName}
+                  onChange={(e) => handleInputChange('vendorName', e.target.value)}
+                  placeholder="Enter vendor name"
+                />
+              </div>
+            )}
           </div>
-        </div>
+        )}
 
         {/* Notes */}
         <div>
