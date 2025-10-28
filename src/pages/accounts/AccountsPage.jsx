@@ -60,8 +60,8 @@ const AccountsPage = () => {
   // Local state
   const [activeTab, setActiveTab] = useState('overview');
   const [searchTerm, setSearchTerm] = useState('');
-  const [transactionTypeFilter, setTransactionTypeFilter] = useState('all');
-  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [monthFilter, setMonthFilter] = useState('all');
+  const [yearFilter, setYearFilter] = useState('all');
   const [branchFilter, setBranchFilter] = useState('all');
   const [paymentStatusFilter, setPaymentStatusFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
@@ -80,19 +80,26 @@ const AccountsPage = () => {
         page: currentPage,
         limit: 10,
         search: searchTerm,
-        transactionType: transactionTypeFilter !== 'all' ? transactionTypeFilter : undefined,
-        category: categoryFilter !== 'all' ? categoryFilter : undefined,
+        month: monthFilter !== 'all' ? monthFilter : undefined,
+        year: yearFilter !== 'all' ? yearFilter : undefined,
         branchId: branchFilter !== 'all' ? branchFilter : undefined,
         paymentStatus: paymentStatusFilter !== 'all' ? paymentStatusFilter : undefined
       }));
-      dispatch(getAccountStats());
+      dispatch(getAccountStats({
+        month: monthFilter !== 'all' ? monthFilter : undefined,
+        year: yearFilter !== 'all' ? yearFilter : undefined,
+        branchId: branchFilter !== 'all' ? branchFilter : undefined
+      }));
       
       // Load branch summary for super admin
       if (isSuperAdmin) {
-        dispatch(getBranchSummary());
+        dispatch(getBranchSummary({
+          month: monthFilter !== 'all' ? monthFilter : undefined,
+          year: yearFilter !== 'all' ? yearFilter : undefined
+        }));
       }
     }
-  }, [activeTab, currentPage, searchTerm, transactionTypeFilter, categoryFilter, branchFilter, paymentStatusFilter, dispatch, isSuperAdmin]);
+  }, [activeTab, currentPage, searchTerm, monthFilter, yearFilter, branchFilter, paymentStatusFilter, dispatch, isSuperAdmin]);
 
   // Handle search
   const handleSearch = (e) => {
@@ -101,13 +108,13 @@ const AccountsPage = () => {
   };
 
   // Handle filters
-  const handleTransactionTypeFilter = (value) => {
-    setTransactionTypeFilter(value);
+  const handleMonthFilter = (value) => {
+    setMonthFilter(value);
     setCurrentPage(1);
   };
 
-  const handleCategoryFilter = (value) => {
-    setCategoryFilter(value);
+  const handleYearFilter = (value) => {
+    setYearFilter(value);
     setCurrentPage(1);
   };
 
@@ -160,21 +167,21 @@ const AccountsPage = () => {
         setShowDeleteModal(false);
         setAccountToDelete(null);
         
-        // Refresh the accounts list
-        dispatch(getAllAccounts({
-          page: currentPage,
-          limit: 10,
-          search: searchTerm,
-          transactionType: transactionTypeFilter !== 'all' ? transactionTypeFilter : undefined,
-          category: categoryFilter !== 'all' ? categoryFilter : undefined,
-          branchId: branchFilter !== 'all' ? branchFilter : undefined,
-          paymentStatus: paymentStatusFilter !== 'all' ? paymentStatusFilter : undefined
-        }));
-      } catch (error) {
-        dispatch(addNotification({
-          type: 'error',
-          message: error || 'Failed to delete account entry'
-        }));
+         // Refresh the accounts list
+         dispatch(getAllAccounts({
+           page: currentPage,
+           limit: 10,
+           search: searchTerm,
+           month: monthFilter !== 'all' ? monthFilter : undefined,
+           year: yearFilter !== 'all' ? yearFilter : undefined,
+           branchId: branchFilter !== 'all' ? branchFilter : undefined,
+           paymentStatus: paymentStatusFilter !== 'all' ? paymentStatusFilter : undefined
+         }));
+    } catch (error) {
+      dispatch(addNotification({
+        type: 'error',
+        message: error || 'Failed to delete account entry'
+      }));
       }
     }
   };
@@ -319,30 +326,30 @@ const AccountsPage = () => {
   ];
 
   // Filter options
-  const transactionTypeOptions = [
-    { value: 'all', label: 'All Types' },
-    { value: 'income', label: 'Income' },
-    { value: 'expense', label: 'Expense' },
-    { value: 'purchase', label: 'Purchase' }
+  const monthOptions = [
+    { value: 'all', label: 'All Months' },
+    { value: '1', label: 'January' },
+    { value: '2', label: 'February' },
+    { value: '3', label: 'March' },
+    { value: '4', label: 'April' },
+    { value: '5', label: 'May' },
+    { value: '6', label: 'June' },
+    { value: '7', label: 'July' },
+    { value: '8', label: 'August' },
+    { value: '9', label: 'September' },
+    { value: '10', label: 'October' },
+    { value: '11', label: 'November' },
+    { value: '12', label: 'December' }
   ];
 
-  const categoryOptions = [
-    { value: 'all', label: 'All Categories' },
-    { value: 'sales', label: 'Sales' },
-    { value: 'service', label: 'Service' },
-    { value: 'commission', label: 'Commission' },
-    { value: 'interest', label: 'Interest' },
-    { value: 'investment', label: 'Investment' },
-    { value: 'raw_materials', label: 'Raw Materials' },
-    { value: 'labor', label: 'Labor' },
-    { value: 'utilities', label: 'Utilities' },
-    { value: 'rent', label: 'Rent' },
-    { value: 'equipment', label: 'Equipment' },
-    { value: 'marketing', label: 'Marketing' },
-    { value: 'transportation', label: 'Transportation' },
-    { value: 'maintenance', label: 'Maintenance' },
-    { value: 'insurance', label: 'Insurance' },
-    { value: 'taxes', label: 'Taxes' }
+  // Generate year options for last 5 years
+  const currentYear = new Date().getFullYear();
+  const yearOptions = [
+    { value: 'all', label: 'All Years' },
+    ...Array.from({ length: 5 }, (_, i) => ({
+      value: String(currentYear - i),
+      label: String(currentYear - i)
+    }))
   ];
 
   const paymentStatusOptions = [
@@ -357,41 +364,41 @@ const AccountsPage = () => {
   const renderOverviewContent = () => {
     if (isSuperAdmin) {
       // Super admin sees only branch summary
-      return (
-        <div className="space-y-6">
-          {/* Statistics Cards */}
-          {stats && (
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              <StatCard
-                title="Total Income"
-                value={`₹${stats.summary?.totalIncome?.toLocaleString() || 0}`}
-                icon={HiArrowUp}
-                color="green"
-                loading={statsLoading}
-              />
-              <StatCard
-                title="Total Expense"
-                value={`₹${stats.summary?.totalExpense?.toLocaleString() || 0}`}
-                icon={HiArrowDown}
-                color="red"
-                loading={statsLoading}
-              />
-              <StatCard
-                title="Net Profit"
-                value={`₹${stats.summary?.netProfit?.toLocaleString() || 0}`}
-                icon={HiCurrencyDollar}
-                color={stats.summary?.netProfit >= 0 ? 'green' : 'red'}
-                loading={statsLoading}
-              />
-              <StatCard
-                title="Total Transactions"
-                value={stats.summary?.totalTransactions || 0}
-                icon={HiClipboardDocumentList}
-                color="blue"
-                loading={statsLoading}
-              />
-            </div>
-          )}
+  return (
+    <div className="space-y-6">
+      {/* Statistics Cards */}
+      {stats && (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <StatCard
+            title="Total Income"
+            value={`₹${stats.summary?.totalIncome?.toLocaleString() || 0}`}
+            icon={HiArrowUp}
+            color="green"
+            loading={statsLoading}
+          />
+          <StatCard
+            title="Total Expense"
+            value={`₹${stats.summary?.totalExpense?.toLocaleString() || 0}`}
+            icon={HiArrowDown}
+            color="red"
+            loading={statsLoading}
+          />
+          <StatCard
+            title="Net Profit"
+            value={`₹${stats.summary?.netProfit?.toLocaleString() || 0}`}
+            icon={HiCurrencyDollar}
+            color={stats.summary?.netProfit >= 0 ? 'green' : 'red'}
+            loading={statsLoading}
+          />
+          <StatCard
+            title="Total Transactions"
+            value={stats.summary?.totalTransactions || 0}
+            icon={HiClipboardDocumentList}
+            color="blue"
+            loading={statsLoading}
+          />
+        </div>
+      )}
 
           {/* Branch Summary for Super Admin */}
           {branchSummary && (
@@ -536,6 +543,7 @@ const AccountsPage = () => {
                   icon={HiArrowUp}
                   gradient="green"
                   loading={statsLoading}
+                  subtitle="Includes accounts + completed leads"
                 />
                 <StatCard
                   title="Total Expense"
@@ -563,49 +571,49 @@ const AccountsPage = () => {
 
             {/* Search and Filter Section */}
             <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-              <div className="w-full sm:w-80">
+          <div className="w-full sm:w-80">
                 <SearchInput
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Search accounts..."
-                  icon={HiMagnifyingGlass}
-                />
-              </div>
-              <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0">
-                <Select
-                  value={transactionTypeFilter}
-                  onChange={handleTransactionTypeFilter}
-                  options={transactionTypeOptions}
-                  className="w-full sm:w-48"
-                />
-                <Select
-                  value={categoryFilter}
-                  onChange={handleCategoryFilter}
-                  options={categoryOptions}
-                  className="w-full sm:w-48"
-                />
-                <Select
-                  value={paymentStatusFilter}
-                  onChange={handlePaymentStatusFilter}
-                  options={paymentStatusOptions}
-                  className="w-full sm:w-48"
-                />
-              </div>
-            </div>
+              placeholder="Search accounts..."
+              icon={HiMagnifyingGlass}
+            />
+          </div>
+             <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0">
+               <Select
+                 value={monthFilter}
+                 onChange={handleMonthFilter}
+                 options={monthOptions}
+                 className="w-full sm:w-48"
+               />
+               <Select
+                 value={yearFilter}
+                 onChange={handleYearFilter}
+                 options={yearOptions}
+                 className="w-full sm:w-48"
+               />
+               <Select
+                 value={paymentStatusFilter}
+                 onChange={handlePaymentStatusFilter}
+                 options={paymentStatusOptions}
+                 className="w-full sm:w-48"
+               />
+         </div>
+      </div>
 
-            {/* Accounts Table */}
-            <div className="bg-white">
-              <Table
-                data={accounts}
-                columns={columns}
-                loading={loading}
-                error={error}
-                pagination={pagination}
-                onPageChange={handlePageChange}
-                emptyMessage="No accounts found"
-                emptyIcon={HiClipboardDocumentList}
-              />
-            </div>
+      {/* Accounts Table */}
+      <div className="bg-white">
+        <Table
+          data={accounts}
+          columns={columns}
+          loading={loading}
+          error={error}
+          pagination={pagination}
+          onPageChange={handlePageChange}
+          emptyMessage="No accounts found"
+          emptyIcon={HiClipboardDocumentList}
+        />
+      </div>
           </div>
         );
     }
@@ -651,6 +659,7 @@ const AccountsPage = () => {
                 icon={HiArrowUp}
                 gradient="green"
                 loading={statsLoading}
+                subtitle="Includes accounts + completed leads"
               />
               <StatCard
                 title="Total Expense"
@@ -686,20 +695,20 @@ const AccountsPage = () => {
                 icon={HiMagnifyingGlass}
               />
             </div>
-            <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0">
-              <Select
-                value={transactionTypeFilter}
-                onChange={handleTransactionTypeFilter}
-                options={transactionTypeOptions}
-                className="w-full sm:w-48"
-              />
-              <Select
-                value={categoryFilter}
-                onChange={handleCategoryFilter}
-                options={categoryOptions}
-                className="w-full sm:w-48"
-              />
-            </div>
+             <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0">
+               <Select
+                 value={monthFilter}
+                 onChange={handleMonthFilter}
+                 options={monthOptions}
+                 className="w-full sm:w-48"
+               />
+               <Select
+                 value={yearFilter}
+                 onChange={handleYearFilter}
+                 options={yearOptions}
+                 className="w-full sm:w-48"
+               />
+             </div>
           </div>
 
           {/* Branch Summary Table */}
@@ -708,7 +717,16 @@ const AccountsPage = () => {
               <div className="flex items-center justify-between mb-6">
                 <div>
                   <h2 className="text-xl font-semibold text-gray-900">Branch Summary</h2>
-                  <p className="text-gray-600 mt-1">Current month's income and expense by branch</p>
+                  <p className="text-gray-600 mt-1">
+                    {monthFilter !== 'all' && yearFilter !== 'all' 
+                      ? `${monthOptions.find(m => m.value === monthFilter)?.label} ${yearFilter} income (accounts + completed leads) and expense by branch`
+                      : monthFilter !== 'all'
+                      ? `${monthOptions.find(m => m.value === monthFilter)?.label} income (accounts + completed leads) and expense by branch`
+                      : yearFilter !== 'all'
+                      ? `${yearFilter} income (accounts + completed leads) and expense by branch`
+                      : 'Current month\'s income (accounts + completed leads) and expense by branch'
+                    }
+                  </p>
                 </div>
                 <div className="text-sm text-gray-500">
                   {branchSummary.period && (
@@ -751,56 +769,77 @@ const AccountsPage = () => {
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                        {branchSummary.summary?.map((branch) => (
-                          <tr key={branch.branchId} className="hover:bg-gray-50">
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div>
-                                <div className="text-sm font-medium text-gray-900">
-                                  {branch.branchName}
+                        {branchSummary.summary?.length > 0 ? (
+                          branchSummary.summary?.map((branch) => (
+                            <tr key={branch.branchId} className="hover:bg-gray-50">
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div>
+                                  <div className="text-sm font-medium text-gray-900">
+                                    {branch.branchName}
+                                  </div>
+                                  <div className="text-sm text-gray-500">
+                                    {branch.branchCode}
+                                  </div>
                                 </div>
-                                <div className="text-sm text-gray-500">
-                                  {branch.branchCode}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="text-sm font-medium text-green-600">
+                                  ₹{branch.income?.toLocaleString() || 0}
                                 </div>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm font-medium text-green-600">
-                                ₹{branch.income?.toLocaleString() || 0}
-                              </div>
-                              <div className="text-xs text-gray-500">
-                                {branch.incomeCount || 0} transactions
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm font-medium text-red-600">
-                                ₹{branch.expense?.toLocaleString() || 0}
-                              </div>
-                              <div className="text-xs text-gray-500">
-                                {branch.expenseCount || 0} transactions
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm font-medium text-blue-600">
-                                ₹{branch.purchase?.toLocaleString() || 0}
-                              </div>
-                              <div className="text-xs text-gray-500">
-                                {branch.purchaseCount || 0} transactions
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className={`text-sm font-medium ${branch.netAmount >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                ₹{branch.netAmount?.toLocaleString() || 0}
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm text-gray-900">
-                                {(branch.incomeCount || 0) + (branch.expenseCount || 0) + (branch.purchaseCount || 0)}
+                                <div className="text-xs text-gray-500">
+                                  {branch.incomeCount || 0} transactions
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="text-sm font-medium text-red-600">
+                                  ₹{branch.expense?.toLocaleString() || 0}
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  {branch.expenseCount || 0} transactions
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="text-sm font-medium text-blue-600">
+                                  ₹{branch.purchase?.toLocaleString() || 0}
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  {branch.purchaseCount || 0} transactions
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className={`text-sm font-medium ${branch.netAmount >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                  ₹{branch.netAmount?.toLocaleString() || 0}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="text-sm text-gray-900">
+                                  {(branch.incomeCount || 0) + (branch.expenseCount || 0) + (branch.purchaseCount || 0)}
+                                </div>
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan="6" className="px-6 py-8 text-center text-gray-500">
+                              <div className="flex flex-col items-center">
+                                <HiClipboardDocumentList className="h-12 w-12 text-gray-300 mb-2" />
+                                <p className="text-lg font-medium">No data found</p>
+                                <p className="text-sm">
+                                  {monthFilter !== 'all' && yearFilter !== 'all' 
+                                    ? `No transactions found for ${monthOptions.find(m => m.value === monthFilter)?.label} ${yearFilter}`
+                                    : monthFilter !== 'all'
+                                    ? `No transactions found for ${monthOptions.find(m => m.value === monthFilter)?.label}`
+                                    : yearFilter !== 'all'
+                                    ? `No transactions found for ${yearFilter}`
+                                    : 'No transactions found for the current period'
+                                  }
+                                </p>
                               </div>
                             </td>
                           </tr>
-                        ))}
+                        )}
                       </tbody>
-                      {branchSummary.totals && (
+                      {branchSummary.totals && branchSummary.summary?.length > 0 && (
                         <tfoot className="bg-gray-50">
                           <tr>
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
