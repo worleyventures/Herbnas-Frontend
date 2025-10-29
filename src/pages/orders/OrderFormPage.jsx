@@ -90,6 +90,7 @@ const OrderFormPage = () => {
     paymentMethod: 'cash',
     paymentStatus: 'pending',
     paymentNotes: '',
+    amountReceived: 0,
     expectedDeliveryDate: ''
   });
   
@@ -148,6 +149,7 @@ const OrderFormPage = () => {
         paymentMethod: order.paymentMethod || 'cash',
         paymentStatus: order.paymentStatus || 'pending',
         paymentNotes: order.paymentNotes || '',
+        amountReceived: order.amountReceived || 0,
         expectedDeliveryDate: order.expectedDeliveryDate ? new Date(order.expectedDeliveryDate).toISOString().split('T')[0] : ''
       });
     }
@@ -451,6 +453,7 @@ const OrderFormPage = () => {
         paymentMethod: formData.paymentMethod,
         paymentStatus: formData.paymentStatus,
         paymentNotes: formData.paymentNotes,
+        amountReceived: formData.amountReceived,
         expectedDeliveryDate: formData.expectedDeliveryDate
       };
       
@@ -874,6 +877,19 @@ const OrderFormPage = () => {
                     onChange={handleSelectChange('paymentStatus')}
                     placeholder="Select payment status"
                     error={errors.paymentStatus}
+                  />
+                </div>
+                <div>
+                  <Input
+                    label="Received Amount"
+                    type="number"
+                    value={formData.amountReceived}
+                    onChange={(e) => handleInputChange('amountReceived', e.target.value)}
+                    placeholder="₹0.00"
+                    min="0"
+                    step="0.01"
+                    error={errors.amountReceived}
+                    helperText="Amount received for this order"
                   />
                 </div>
                 <div>
