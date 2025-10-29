@@ -171,7 +171,7 @@ export const SearchInput = ({
   onChange,
   placeholder = "Search...",
   className = "",
-  size = "sm",
+  size = "md",
   icon = HiDocumentText,
   ...props
 }) => {

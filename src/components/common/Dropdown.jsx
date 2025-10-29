@@ -101,7 +101,7 @@ const Dropdown = ({
           }}
           disabled={disabled || loading}
           className={`
-            w-full px-4 py-2.5 pr-8 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] text-sm bg-white shadow-sm hover:border-[#8bc34a]/50 cursor-pointer text-left
+            w-full px-4 py-2 pr-8 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] text-sm bg-white shadow-sm hover:border-[#8bc34a]/50 cursor-pointer text-left
             ${error ? 'border-red-300 focus:ring-red-500' : 'border-gray-300'}
             ${disabled || loading ? 'bg-gray-50 cursor-not-allowed' : ''}
             ${isOpen ? 'border-[#8bc34a]' : ''}

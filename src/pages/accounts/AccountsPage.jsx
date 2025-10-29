@@ -12,7 +12,8 @@ import {
   HiTrash,
   HiClipboardDocumentList,
   HiShoppingCart,
-  HiChartBar
+  HiChartBar,
+  HiArrowLeft
 } from 'react-icons/hi2';
 import { Button, Input, Select, Table, StatusBadge, Loading, StatCard, CommonModal, SearchInput } from '../../components/common';
 import {
@@ -66,6 +67,10 @@ const AccountsPage = () => {
   const [accountToDelete, setAccountToDelete] = useState(null);
   const [showViewModal, setShowViewModal] = useState(false);
   const [accountToView, setAccountToView] = useState(null);
+  
+  // Drill-down state for Super Admin
+  const [selectedBranch, setSelectedBranch] = useState(null);
+  const [showBranchDetails, setShowBranchDetails] = useState(false);
 
   // Role-based access
   const isSuperAdmin = user?.role === 'super_admin';
@@ -102,9 +107,37 @@ const AccountsPage = () => {
     }
   }, [activeTab, currentPage, searchTerm, monthFilter, yearFilter, branchFilter, paymentStatusFilter, dispatch, isSuperAdmin, isAccountsManager, user?.branch?._id, user?.branch]);
 
-  // Handle search
-  const handleSearch = (e) => {
-    setSearchTerm(e.target.value);
+  // Load accounts for selected branch drill-down
+  useEffect(() => {
+    if (showBranchDetails && selectedBranch) {
+      dispatch(getAllAccounts({
+        page: currentPage,
+        limit: 10,
+        search: searchTerm,
+        month: monthFilter !== 'all' ? monthFilter : undefined,
+        year: yearFilter !== 'all' ? yearFilter : undefined,
+        branchId: selectedBranch.branchId,
+        paymentStatus: paymentStatusFilter !== 'all' ? paymentStatusFilter : undefined
+      }));
+      dispatch(getAccountStats({
+        month: monthFilter !== 'all' ? monthFilter : undefined,
+        year: yearFilter !== 'all' ? yearFilter : undefined,
+        branchId: selectedBranch.branchId
+      }));
+    }
+  }, [showBranchDetails, selectedBranch, currentPage, searchTerm, monthFilter, yearFilter, paymentStatusFilter, dispatch]);
+
+  // Handle branch row click for drill-down
+  const handleBranchClick = (branch) => {
+    setSelectedBranch(branch);
+    setShowBranchDetails(true);
+    setCurrentPage(1); // Reset to first page
+  };
+
+  // Handle back to branch summary
+  const handleBackToSummary = () => {
+    setShowBranchDetails(false);
+    setSelectedBranch(null);
     setCurrentPage(1);
   };
 
@@ -637,7 +670,7 @@ const AccountsPage = () => {
                   title="Net Profit"
                   value={`₹${stats.summary?.netProfit?.toLocaleString() || 0}`}
                   icon={HiCurrencyDollar}
-                  gradient={stats.summary?.netProfit >= 0 ? 'green' : 'red'}
+                  gradient="purple"
                   loading={statsLoading}
                 />
                 <StatCard
@@ -729,8 +762,120 @@ const AccountsPage = () => {
 
       {/* Content based on role */}
       {isSuperAdmin ? (
-        // Super Admin: Branch Summary Dashboard
-        <div className="space-y-6">
+        showBranchDetails ? (
+          // Super Admin: Branch Details View (Drill-down)
+          <div className="space-y-6">
+            {/* Back Button */}
+            <div className="flex items-center space-x-4">
+              <Button
+                variant="outline"
+                onClick={handleBackToSummary}
+                icon={HiArrowLeft}
+                size="sm"
+              >
+                Back to Branch Summary
+              </Button>
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">
+                  {selectedBranch?.branchName} ({selectedBranch?.branchCode})
+                </h2>
+                <p className="text-sm text-gray-600">
+                  Account details for selected branch
+                  {monthFilter !== 'all' && yearFilter !== 'all' 
+                    ? ` - ${monthOptions.find(m => m.value === monthFilter)?.label} ${yearFilter}`
+                    : monthFilter !== 'all'
+                    ? ` - ${monthOptions.find(m => m.value === monthFilter)?.label}`
+                    : yearFilter !== 'all'
+                    ? ` - ${yearFilter}`
+                    : ''
+                  }
+                </p>
+              </div>
+            </div>
+
+            {/* Statistics Cards for Selected Branch */}
+            {stats && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
+                <StatCard
+                  title="Total Income"
+                  value={`₹${stats.summary?.totalIncome?.toLocaleString() || 0}`}
+                  icon={HiArrowUp}
+                  gradient="green"
+                  loading={statsLoading}
+                />
+                <StatCard
+                  title="Total Expense"
+                  value={`₹${stats.summary?.totalExpense?.toLocaleString() || 0}`}
+                  icon={HiArrowDown}
+                  gradient="red"
+                  loading={statsLoading}
+                />
+                <StatCard
+                  title="Net Profit"
+                  value={`₹${stats.summary?.netProfit?.toLocaleString() || 0}`}
+                  icon={HiCurrencyDollar}
+                  gradient="purple"
+                  loading={statsLoading}
+                />
+                <StatCard
+                  title="Total Transactions"
+                  value={stats.summary?.totalTransactions || 0}
+                  icon={HiClipboardDocumentList}
+                  gradient="blue"
+                  loading={statsLoading}
+                />
+              </div>
+            )}
+
+            {/* Search and Filter Section */}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+              <div className="w-full sm:w-80">
+                <SearchInput
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Search accounts..."
+                  icon={HiMagnifyingGlass}
+                />
+              </div>
+              <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0">
+                <Select
+                  value={monthFilter}
+                  onChange={handleMonthFilter}
+                  options={monthOptions}
+                  className="w-full sm:w-48"
+                />
+                <Select
+                  value={yearFilter}
+                  onChange={handleYearFilter}
+                  options={yearOptions}
+                  className="w-full sm:w-48"
+                />
+                <Select
+                  value={paymentStatusFilter}
+                  onChange={handlePaymentStatusFilter}
+                  options={paymentStatusOptions}
+                  className="w-full sm:w-48"
+                />
+              </div>
+            </div>
+
+            {/* Accounts Table */}
+            <div className="bg-white">
+              <Table
+                data={accounts}
+                columns={columns}
+                loading={loading}
+                error={error}
+                pagination={pagination}
+                onPageChange={handlePageChange}
+                emptyMessage="No accounts found"
+                emptyIcon={HiClipboardDocumentList}
+              />
+            </div>
+          </div>
+        ) : (
+          // Super Admin: Branch Summary Dashboard
+          <div className="space-y-6">
           {/* Statistics Cards */}
           {stats && (
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
@@ -753,7 +898,7 @@ const AccountsPage = () => {
                 title="Net Profit"
                 value={`₹${stats.summary?.netProfit?.toLocaleString() || 0}`}
                 icon={HiCurrencyDollar}
-                gradient={stats.summary?.netProfit >= 0 ? 'green' : 'red'}
+                gradient="purple"
                 loading={statsLoading}
               />
               <StatCard
@@ -829,14 +974,23 @@ const AccountsPage = () => {
                       <tbody className="bg-white divide-y divide-gray-200">
                         {branchSummary.summary?.length > 0 ? (
                           branchSummary.summary?.map((branch) => (
-                            <tr key={branch.branchId} className="hover:bg-gray-50">
+                            <tr 
+                              key={branch.branchId} 
+                              className="hover:bg-gray-50 cursor-pointer transition-colors duration-200 group"
+                              onClick={() => handleBranchClick(branch)}
+                            >
                               <td className="px-6 py-4 whitespace-nowrap">
-                                <div>
-                                  <div className="text-sm font-medium text-gray-900">
-                                    {branch.branchName}
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <div className="text-sm font-medium text-gray-900">
+                                      {branch.branchName}
+                                    </div>
+                                    <div className="text-sm text-gray-500">
+                                      {branch.branchCode}
+                                    </div>
                                   </div>
-                                  <div className="text-sm text-gray-500">
-                                    {branch.branchCode}
+                                  <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                                    <HiArrowLeft className="h-4 w-4 text-gray-400 rotate-180" />
                                   </div>
                                 </div>
                               </td>
@@ -928,6 +1082,7 @@ const AccountsPage = () => {
             </div>
           )}
         </div>
+        )
       ) : isAccountsManager ? (
         // Accounts Manager: Simplified view with only cards and table
         <div className="space-y-6">
@@ -952,7 +1107,7 @@ const AccountsPage = () => {
                 title="Net Profit"
                 value={`₹${stats.summary?.netProfit?.toLocaleString() || 0}`}
                 icon={HiCurrencyDollar}
-                gradient={stats.summary?.netProfit >= 0 ? 'green' : 'red'}
+                gradient="purple"
                 loading={statsLoading}
               />
               <StatCard
