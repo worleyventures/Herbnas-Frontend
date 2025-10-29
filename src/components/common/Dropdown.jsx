@@ -123,17 +123,21 @@ const Dropdown = ({
 
         {/* Dropdown Menu */}
         {isOpen && (
-          <div className="absolute z-[60] w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-80 overflow-y-auto">
+          <div 
+            className="absolute z-[60] w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-80 overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Search Input */}
             {searchable && (
-              <div className="p-2 border-b border-gray-200">
+              <div className="p-2 border-b border-gray-200" onClick={(e) => e.stopPropagation()}>
                 <input
                   type="text"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
+                  onFocus={(e) => e.stopPropagation()}
+                  onClick={(e) => e.stopPropagation()}
                   placeholder={searchPlaceholder}
                   className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a]"
-                  onClick={(e) => e.stopPropagation()}
                 />
               </div>
             )}

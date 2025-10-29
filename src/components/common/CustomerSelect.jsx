@@ -33,11 +33,12 @@ const CustomerSelect = ({
     };
 
     if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
+      // Use click event with capture phase to allow button clicks to complete first
+      document.addEventListener('click', handleClickOutside, true);
     }
     
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('click', handleClickOutside, true);
     };
   }, [isOpen]);
 
@@ -60,6 +61,7 @@ const CustomerSelect = ({
           name: name
         }
       };
+      // Call onChange with the synthetic event
       onChange(syntheticEvent);
     }
     
@@ -158,7 +160,11 @@ const CustomerSelect = ({
                   <button
                     key={option.value}
                     type="button"
-                    onClick={() => handleSelectChange(option.value)}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleSelectChange(option.value);
+                    }}
                     className={`
                       w-full px-4 py-2 text-left text-sm hover:bg-gray-100 focus:outline-none focus:bg-gray-100
                       ${value === option.value ? 'bg-[#8bc34a] text-white hover:bg-[#7cb342]' : 'text-gray-900'}

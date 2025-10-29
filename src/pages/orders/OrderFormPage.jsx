@@ -86,6 +86,7 @@ const OrderFormPage = () => {
     taxAmount: 0,
     discountAmount: 0,
     shippingAmount: 0,
+    codCharges: 0,
     paymentMethod: 'cash',
     paymentStatus: 'pending',
     paymentNotes: '',
@@ -94,6 +95,7 @@ const OrderFormPage = () => {
   
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  const [isBranchDisabled, setIsBranchDisabled] = useState(false);
 
   // Load data on component mount
   useEffect(() => {
@@ -111,6 +113,13 @@ const OrderFormPage = () => {
   useEffect(() => {
     if (isEdit && order) {
       const customerId = order.customerType === 'user' ? (order.customerId?._id || '') : (order.leadId?._id || '');
+      
+      // Check if order's customer is a lead with assigned branch
+      let shouldDisableBranch = false;
+      if (order.customerType === 'lead' && order.leadId && typeof order.leadId === 'object') {
+        shouldDisableBranch = !!order.leadId.dispatchedFrom;
+      }
+      setIsBranchDisabled(shouldDisableBranch);
       
       setFormData({
         customerId,
@@ -135,6 +144,7 @@ const OrderFormPage = () => {
         taxAmount: order.taxAmount || 0,
         discountAmount: order.discountAmount || 0,
         shippingAmount: order.shippingAmount || 0,
+        codCharges: order.codCharges || 0,
         paymentMethod: order.paymentMethod || 'cash',
         paymentStatus: order.paymentStatus || 'pending',
         paymentNotes: order.paymentNotes || '',
@@ -161,19 +171,38 @@ const OrderFormPage = () => {
   };
 
   // Handle select change
-  const handleSelectChange = (field) => (value) => {
+  const handleSelectChange = (field) => (eventOrValue) => {
+    // Extract value from event object or use direct value
+    const value = eventOrValue?.target?.value !== undefined ? eventOrValue.target.value : eventOrValue;
+    
     if (field === 'customerId') {
       // Find the selected customer and set customer type
       const allCustomers = [...leads, ...users.filter(user => user.role === 'customer')];
       const selectedCustomer = allCustomers.find(customer => customer._id === value);
       
-      if (selectedCustomer) {
+      if (selectedCustomer && value) {
         const customerType = selectedCustomer.customerName ? 'lead' : 'user';
+        
+        // Check if it's a lead with an assigned branch
+        let branchIdFromLead = '';
+        let shouldDisableBranch = false;
+        
+        if (customerType === 'lead' && selectedCustomer.dispatchedFrom) {
+          // Extract branch ID from dispatchedFrom (could be object or string)
+          branchIdFromLead = typeof selectedCustomer.dispatchedFrom === 'object' 
+            ? (selectedCustomer.dispatchedFrom._id || selectedCustomer.dispatchedFrom)
+            : selectedCustomer.dispatchedFrom;
+          shouldDisableBranch = !!branchIdFromLead;
+        }
+        
         setFormData(prev => ({
           ...prev,
           customerId: value,
-          customerType
+          customerType,
+          branchId: branchIdFromLead || prev.branchId // Only update if lead has branch, otherwise keep existing
         }));
+        
+        setIsBranchDisabled(shouldDisableBranch);
 
         // Auto-fill shipping address if it's a lead
         if (customerType === 'lead' && selectedCustomer.address) {
@@ -191,7 +220,33 @@ const OrderFormPage = () => {
             }
           }));
         }
+      } else {
+        // Customer cleared (empty value) - reset all related fields
+        setIsBranchDisabled(false);
+        setFormData(prev => ({
+          ...prev,
+          customerId: '',
+          customerType: 'user',
+          branchId: '', // Clear branch
+          shippingAddress: {
+            // Reset shipping address to empty
+            name: '',
+            address: '',
+            city: '',
+            state: '',
+            pincode: '',
+            phone: '',
+            email: ''
+          }
+        }));
       }
+    } else if (field === 'paymentMethod') {
+      // When payment method changes, reset COD charges if not COD
+      setFormData(prev => ({
+        ...prev,
+        [field]: value,
+        codCharges: value === 'cod' ? prev.codCharges : 0
+      }));
     } else {
       setFormData(prev => ({
         ...prev,
@@ -228,7 +283,10 @@ const OrderFormPage = () => {
   };
 
   // Handle item change
-  const handleItemChange = (index, field, value) => {
+  const handleItemChange = (index, field, eventOrValue) => {
+    // Extract value from event object or use direct value
+    const value = eventOrValue?.target?.value !== undefined ? eventOrValue.target.value : eventOrValue;
+    
     setFormData(prev => ({
       ...prev,
       items: prev.items.map((item, i) => 
@@ -283,8 +341,9 @@ const OrderFormPage = () => {
     const taxAmount = parseFloat(formData.taxAmount) || 0;
     const discountAmount = parseFloat(formData.discountAmount) || 0;
     const shippingAmount = parseFloat(formData.shippingAmount) || 0;
+    const codCharges = formData.paymentMethod === 'cod' ? (parseFloat(formData.codCharges) || 0) : 0;
     
-    const totalAmount = subtotal + taxAmount + shippingAmount - discountAmount;
+    const totalAmount = subtotal + taxAmount + shippingAmount + codCharges - discountAmount;
     
     return { subtotal, totalAmount };
   };
@@ -388,6 +447,7 @@ const OrderFormPage = () => {
         taxAmount: formData.taxAmount,
         discountAmount: formData.discountAmount,
         shippingAmount: formData.shippingAmount,
+        codCharges: formData.paymentMethod === 'cod' ? formData.codCharges : 0,
         paymentMethod: formData.paymentMethod,
         paymentStatus: formData.paymentStatus,
         paymentNotes: formData.paymentNotes,
@@ -494,7 +554,7 @@ const OrderFormPage = () => {
           {/* Main Form */}
           <div className="lg:col-span-2 space-y-6">
             {/* Order Details */}
-            <div className="bg-white p-6 rounded-lg shadow">
+            <div className="pb-6">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Order Details</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -520,13 +580,15 @@ const OrderFormPage = () => {
                     placeholder="Select branch"
                     error={errors.branchId}
                     loading={branchesLoading}
+                    disabled={isBranchDisabled}
+                    className={isBranchDisabled ? 'opacity-60 cursor-not-allowed' : ''}
                   />
                 </div>
               </div>
             </div>
 
             {/* Order Items */}
-            <div className="bg-white p-6 rounded-lg shadow">
+            <div className="pb-6">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-medium text-gray-900">Order Items</h3>
                 <Button
@@ -542,7 +604,7 @@ const OrderFormPage = () => {
               
               <div className="space-y-4">
                 {formData.items.map((item, index) => (
-                  <div key={index} className="grid grid-cols-1 md:grid-cols-12 gap-4 p-4 border rounded-lg">
+                  <div key={index} className="grid grid-cols-1 md:grid-cols-12 gap-4 py-3">
                     <div className="md:col-span-6">
                       <label className="block text-sm font-medium mb-2">
                         Product *
@@ -602,7 +664,7 @@ const OrderFormPage = () => {
             </div>
 
             {/* Shipping Address */}
-            <div className="bg-white p-6 rounded-lg shadow">
+            <div className="pb-6">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Shipping Address</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2">
@@ -678,7 +740,7 @@ const OrderFormPage = () => {
             </div>
 
             {/* Delivery Information */}
-            <div className="bg-white p-6 rounded-lg shadow">
+            <div className="pb-6">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Delivery Information</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -696,7 +758,7 @@ const OrderFormPage = () => {
             </div>
 
             {/* Notes */}
-            <div className="bg-white p-6 rounded-lg shadow">
+            <div className="pb-6">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Notes</h3>
               <div className="space-y-4">
                 <TextArea
@@ -712,8 +774,19 @@ const OrderFormPage = () => {
 
           {/* Sidebar */}
           <div className="space-y-6">
+            {/* Payment Method */}
+            <div className="pb-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Payment Method</h3>
+              <Select
+                options={paymentMethodOptions}
+                value={formData.paymentMethod}
+                onChange={handleSelectChange('paymentMethod')}
+                placeholder="Select payment method"
+              />
+            </div>
+
             {/* Order Summary */}
-            <div className="bg-white p-6 rounded-lg shadow">
+            <div className="pb-6">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Order Summary</h3>
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
@@ -762,6 +835,22 @@ const OrderFormPage = () => {
                     />
                   </div>
                 </div>
+                {formData.paymentMethod === 'cod' && (
+                  <div className="flex justify-between items-center gap-3">
+                    <span className="text-sm text-gray-600">COD Charges</span>
+                    <div className="w-24">
+                      <Input
+                        type="number"
+                        value={formData.codCharges}
+                        onChange={(e) => handleInputChange('codCharges', e.target.value)}
+                        placeholder="0"
+                        min="0"
+                        step="0.01"
+                        size="sm"
+                      />
+                    </div>
+                  </div>
+                )}
                 <div className="border-t pt-3">
                   <div className="flex justify-between items-center">
                     <span className="text-base font-medium text-gray-900">Total</span>
@@ -771,19 +860,8 @@ const OrderFormPage = () => {
               </div>
             </div>
 
-            {/* Payment Method */}
-            <div className="bg-white p-6 rounded-lg shadow">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Payment Method</h3>
-              <Select
-                options={paymentMethodOptions}
-                value={formData.paymentMethod}
-                onChange={handleSelectChange('paymentMethod')}
-                placeholder="Select payment method"
-              />
-            </div>
-
             {/* Payment Status and Notes */}
-            <div className="bg-white p-6 rounded-lg shadow">
+            <div className="pb-6">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Payment Information</h3>
               <div className="space-y-4">
                 <div>
@@ -813,7 +891,7 @@ const OrderFormPage = () => {
             </div>
 
             {/* Submit Button */}
-            <div className="bg-white p-6 rounded-lg shadow">
+            <div className="pt-6">
               <Button
                 type="submit"
                 variant="primary"
