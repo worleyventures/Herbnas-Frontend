@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -7,15 +7,10 @@ import {
   HiCube,
   HiBuildingOffice,
   HiCurrencyDollar,
-  HiDocumentText,
-  HiClipboardDocumentList,
-  HiArrowUp,
-  HiArrowDown,
   HiEye,
   HiPencil,
   HiTrash,
-  HiMagnifyingGlass,
-  HiFunnel
+  HiMagnifyingGlass
 } from 'react-icons/hi2';
 import { 
   Button, 
@@ -64,6 +59,7 @@ const PurchaseManagement = () => {
   const statsLoading = useSelector(selectAccountStatsLoading);
   const pagination = useSelector(selectAccountPagination);
   const createLoading = useSelector(selectAccountCreateLoading);
+  const { user } = useSelector((state) => state.auth);
   
   // Additional state for purchase management
   const { rawMaterials = [] } = useSelector((state) => state.inventory);
@@ -79,6 +75,9 @@ const PurchaseManagement = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [accountToDelete, setAccountToDelete] = useState(null);
+
+  // Role-based access
+  const isAccountsManager = user?.role === 'accounts_manager';
   
   // Form state
   const [formData, setFormData] = useState({
@@ -113,6 +112,17 @@ const PurchaseManagement = () => {
     dispatch(getAllProducts({ page: 1, limit: 1000 }));
     dispatch(getAllBranches());
   }, [currentPage, searchTerm, purchaseTypeFilter, branchFilter, dispatch]);
+
+  // Auto-select branch for accounts managers
+  useEffect(() => {
+    if (isAccountsManager && user?.branch && branches.length > 0) {
+      const userBranchId = user.branch?._id || user.branch;
+      setFormData(prev => ({
+        ...prev,
+        branchId: userBranchId
+      }));
+    }
+  }, [isAccountsManager, user?.branch, branches.length]);
 
   // Filter accounts for purchase transactions
   const purchaseAccounts = accounts.filter(account => account.transactionType === 'purchase');
@@ -166,6 +176,11 @@ const PurchaseManagement = () => {
         message: error || 'Failed to create purchase account entry'
       }));
     }
+  };
+
+  // Handle edit account
+  const handleEditAccount = (id) => {
+    navigate(`/accounts/edit/${id}`);
   };
 
   // Handle delete account
@@ -310,19 +325,21 @@ const PurchaseManagement = () => {
             <HiEye className="w-4 h-4" />
           </button>
           <button
-            onClick={() => {/* Handle edit */}}
+            onClick={() => handleEditAccount(account._id)}
             className="text-gray-500 hover:text-gray-700 transition-colors"
             title="Edit Account"
           >
             <HiPencil className="w-4 h-4" />
           </button>
-          <button
-            onClick={() => handleDeleteAccount(account._id)}
-            className="text-gray-500 hover:text-gray-700 transition-colors"
-            title="Delete Account"
-          >
-            <HiTrash className="w-4 h-4" />
-          </button>
+          {!isAccountsManager && (
+            <button
+              onClick={() => handleDeleteAccount(account._id)}
+              className="text-gray-500 hover:text-gray-700 transition-colors"
+              title="Delete Account"
+            >
+              <HiTrash className="w-4 h-4" />
+            </button>
+          )}
         </div>
       )
     }
@@ -576,7 +593,14 @@ const PurchaseManagement = () => {
                 onChange={(value) => setFormData({ ...formData, branchId: value })}
                 options={branchOptions}
                 placeholder="Select Branch"
+                disabled={isAccountsManager}
+                className={isAccountsManager ? 'opacity-60 cursor-not-allowed' : ''}
               />
+              {isAccountsManager && (
+                <p className="mt-1 text-sm text-gray-500">
+                  Branch is automatically set to your assigned branch
+                </p>
+              )}
             </div>
           </div>
 

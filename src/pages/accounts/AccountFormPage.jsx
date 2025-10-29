@@ -1,16 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate, useParams } from 'react-router-dom';
-import {
-  HiArrowLeft,
-  HiCurrencyDollar,
-  HiBuildingOffice,
-  HiCalendar,
-  HiDocumentText,
-  HiUser,
-  HiTag,
-  HiCheckCircle
-} from 'react-icons/hi2';
 import { Button, Input, Select, TextArea, Loading } from '../../components/common';
 import { createAccount, updateAccount, getAccountById } from '../../redux/actions/accountActions';
 import { getAllBranches } from '../../redux/actions/branchActions';
@@ -24,6 +14,10 @@ const AccountFormPage = () => {
 
   // Get branches from Redux store
   const { branches = [], loading: branchesLoading } = useSelector(state => state.branches || {});
+  
+  // Get user information for role-based functionality
+  const { user } = useSelector((state) => state.auth);
+  const isAccountsManager = user?.role === 'accounts_manager';
 
   // Debug: Log branches data
   console.log('AccountFormPage - branches:', branches);
@@ -97,6 +91,17 @@ const AccountFormPage = () => {
       loadAccountData();
     }
   }, [isEdit, id, dispatch, navigate]);
+
+  // Auto-select branch for accounts managers when creating new accounts
+  useEffect(() => {
+    if (!isEdit && isAccountsManager && user?.branch && branches.length > 0) {
+      const userBranchId = user.branch?._id || user.branch;
+      setFormData(prev => ({
+        ...prev,
+        branchId: userBranchId
+      }));
+    }
+  }, [isEdit, isAccountsManager, user?.branch, branches.length]);
 
   // Handle input changes
   const handleInputChange = (field, value) => {
@@ -394,6 +399,8 @@ const AccountFormPage = () => {
               onChange={(value) => handleInputChange('branchId', value)}
               placeholder="Select branch"
               error={errors.branchId}
+              disabled={isAccountsManager}
+              className={isAccountsManager ? 'opacity-60 cursor-not-allowed' : ''}
             />
           </div>
 

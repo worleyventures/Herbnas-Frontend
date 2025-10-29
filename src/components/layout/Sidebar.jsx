@@ -135,7 +135,8 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
         hoverColor: 'group-hover:text-teal-600',
         hoverBgColor: 'group-hover:bg-gray-50'
       },
-      {
+      // Accounts - hidden for production managers
+      ...(stableUserRole !== 'production_manager' ? [{
         name: 'Accounts',
         href: '/accounts',
         icon: HiCurrencyDollar,
@@ -144,7 +145,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
         bgColor: 'bg-gray-100',
         hoverColor: 'group-hover:text-gray-600',
         hoverBgColor: 'group-hover:bg-gray-50'
-      },
+      }] : []),
     ];
 
     // Add admin-only navigation items using stable role

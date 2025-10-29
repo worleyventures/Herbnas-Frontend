@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import {
-  HiXMark,
-  HiPlus,
   HiMagnifyingGlass,
   HiFunnel,
   HiArrowPath,
@@ -12,8 +11,6 @@ import {
   HiEye,
   HiPencil,
   HiTrash,
-  HiCalendar,
-  HiBuildingOffice,
   HiClipboardDocumentList
 } from 'react-icons/hi2';
 import { Button, Input, Select, Table, StatusBadge, Loading, StatCard, CommonModal } from './index';
@@ -35,6 +32,7 @@ import { addNotification } from '../../redux/slices/uiSlice';
 
 const AccountsModal = ({ isOpen, onClose }) => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   
   // Redux state
   const accounts = useSelector(selectAccounts);
@@ -43,6 +41,7 @@ const AccountsModal = ({ isOpen, onClose }) => {
   const stats = useSelector(selectAccountStats);
   const statsLoading = useSelector(selectAccountStatsLoading);
   const pagination = useSelector(selectAccountPagination);
+  const { user } = useSelector((state) => state.auth);
   
   // Local state
   const [searchTerm, setSearchTerm] = useState('');
@@ -54,6 +53,9 @@ const AccountsModal = ({ isOpen, onClose }) => {
   const [showFilters, setShowFilters] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [accountToDelete, setAccountToDelete] = useState(null);
+
+  // Role-based access
+  const isAccountsManager = user?.role === 'accounts_manager';
 
   // Load data when modal opens
   useEffect(() => {
@@ -117,6 +119,11 @@ const AccountsModal = ({ isOpen, onClose }) => {
     setCurrentPage(page);
   };
 
+  // Handle edit account
+  const handleEditAccount = (id) => {
+    navigate(`/accounts/edit/${id}`);
+  };
+
   // Handle delete account
   const handleDeleteAccount = (accountId) => {
     const account = accounts.find(a => a._id === accountId);
@@ -172,8 +179,89 @@ const AccountsModal = ({ isOpen, onClose }) => {
     }
   };
 
-  // Table columns
-  const columns = [
+  // Table columns - different for accounts managers vs other roles
+  const columns = isAccountsManager ? [
+    // Simplified columns for accounts managers
+    {
+      key: 'accountId',
+      label: 'Account ID',
+      render: (account) => (
+        <div className="font-medium text-gray-900">
+          {account.accountId}
+        </div>
+      )
+    },
+    {
+      key: 'transactionType',
+      label: 'Type',
+      render: (account) => (
+        <StatusBadge
+          status={account.transactionType}
+          color={getTransactionTypeColor(account.transactionType)}
+        />
+      )
+    },
+    {
+      key: 'category',
+      label: 'Category',
+      render: (account) => (
+        <div className="text-sm text-gray-900">
+          {account.category.replace('_', ' ').toUpperCase()}
+        </div>
+      )
+    },
+    {
+      key: 'amount',
+      label: 'Amount',
+      render: (account) => (
+        <div className={`font-medium ${account.transactionType === 'income' ? 'text-green-600' : 'text-red-600'}`}>
+          {account.formattedAmount}
+        </div>
+      )
+    },
+    {
+      key: 'paymentStatus',
+      label: 'Payment',
+      render: (account) => (
+        <StatusBadge
+          status={account.paymentStatus}
+          color={getPaymentStatusColor(account.paymentStatus)}
+        />
+      )
+    },
+    {
+      key: 'transactionDate',
+      label: 'Date',
+      render: (account) => (
+        <div className="text-sm text-gray-900">
+          {new Date(account.transactionDate).toLocaleDateString()}
+        </div>
+      )
+    },
+    {
+      key: 'actions',
+      label: 'Actions',
+      render: (account) => (
+        <div className="flex space-x-2">
+          <button
+            onClick={() => {/* Handle view */}}
+            className="text-gray-500 hover:text-gray-700 transition-colors"
+            title="View Account"
+          >
+            <HiEye className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => handleEditAccount(account._id)}
+            className="text-gray-500 hover:text-gray-700 transition-colors"
+            title="Edit Account"
+          >
+            <HiPencil className="w-4 h-4" />
+          </button>
+        </div>
+      )
+    }
+  ] : [
+    // Full columns for other roles (super admin, admin)
     {
       key: 'accountId',
       label: 'Account ID',
@@ -266,7 +354,7 @@ const AccountsModal = ({ isOpen, onClose }) => {
             <HiEye className="w-4 h-4" />
           </button>
           <button
-            onClick={() => {/* Handle edit */}}
+            onClick={() => handleEditAccount(account._id)}
             className="text-gray-500 hover:text-gray-700 transition-colors"
             title="Edit Account"
           >
