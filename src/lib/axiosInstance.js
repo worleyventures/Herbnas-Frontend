@@ -89,12 +89,31 @@ api.interceptors.response.use(
       }
     }
     
-    // Handle other errors
-    const errorMessage = error.response?.data?.message || error.message || 'Something went wrong';
+    // Handle other errors (including network errors)
+    let errorMessage = 'Something went wrong';
+    
+    if (error.response) {
+      // HTTP error with response
+      errorMessage = error.response.data?.message || error.message || `Request failed with status ${error.response.status}`;
+    } else if (error.request) {
+      // Network error (no response received)
+      if (error.code === 'ERR_NETWORK' || error.message?.includes('Network Error') || error.message?.includes('ERR_CONNECTION_REFUSED')) {
+        errorMessage = 'Unable to connect to server. Please check if the backend server is running.';
+      } else if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+        errorMessage = 'Request timed out. Please try again.';
+      } else {
+        errorMessage = error.message || 'Network error. Please check your connection.';
+      }
+    } else {
+      // Other errors
+      errorMessage = error.message || 'An unexpected error occurred';
+    }
+    
     return Promise.reject({
       message: errorMessage,
       status: error.response?.status,
-      data: error.response?.data
+      data: error.response?.data,
+      isNetworkError: !error.response && error.request
     });
   }
 );

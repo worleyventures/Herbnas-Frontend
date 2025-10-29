@@ -38,12 +38,13 @@ const Dropdown = ({
     };
 
     if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
+      // Use click event instead of mousedown to allow button clicks to complete
+      document.addEventListener('click', handleClickOutside, true);
+      
+      return () => {
+        document.removeEventListener('click', handleClickOutside, true);
+      };
     }
-    
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
   }, [isOpen]);
 
   // Filter options based on search term
@@ -54,7 +55,6 @@ const Dropdown = ({
     : options;
 
   const handleSelectChange = (optionValue) => {
-    console.log('handleSelectChange called with:', optionValue);
     if (onChange) {
       // Create a synthetic event object to match expected interface
       const syntheticEvent = {
@@ -63,10 +63,7 @@ const Dropdown = ({
           name: name
         }
       };
-      console.log('Calling onChange with synthetic event:', syntheticEvent);
       onChange(syntheticEvent);
-    } else {
-      console.error('Dropdown: onChange function is not provided');
     }
     
     setIsOpen(false);
@@ -81,7 +78,9 @@ const Dropdown = ({
     }
   };
 
-  const selectedOption = options.find(option => option.value === value);
+  // Ensure value is always defined (never undefined)
+  const safeValue = value !== undefined && value !== null ? value : '';
+  const selectedOption = options.find(option => option.value === safeValue);
 
   return (
     <div className={`space-y-1 ${className}`} ref={dropdownRef}>
@@ -162,15 +161,10 @@ const Dropdown = ({
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    console.log('Option clicked:', option.value, option.label);
-                    // Option clicked
                     handleSelectChange(option.value);
                   }}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                  }}
                   className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-100 focus:outline-none focus:bg-gray-100 transition-colors ${
-                    value === option.value ? 'bg-[#8bc34a]/10 text-[#8bc34a] font-medium' : 'text-gray-900'
+                    safeValue === option.value ? 'bg-[#8bc34a]/10 text-[#8bc34a] font-medium' : 'text-gray-900'
                   }`}
                 >
                   {option.label}

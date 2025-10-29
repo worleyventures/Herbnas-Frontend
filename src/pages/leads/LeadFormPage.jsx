@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import LeadFormStepper from '../../components/dashboard/leads/LeadFormStepper';
+import LeadFormSingle from '../../components/dashboard/leads/LeadFormSingle';
 import { createLead, updateLead, getLeadById, clearLeadSuccess, clearLeadErrors } from '../../redux/actions/leadActions';
 import { HiArrowLeft } from 'react-icons/hi2';
 
@@ -96,33 +96,56 @@ const LeadFormPage = () => {
         return;
       }
       
-      dispatch(updateLead({ leadId: currentLead._id, leadData: formData }));
+      // Clean up the data before sending (same mapping as create)
+      const cleanedData = {
+        customerName: formData.customerName?.trim() || undefined,
+        customerMobile: formData.mobileNumber?.trim(),
+        email: formData.email?.trim() || undefined,
+        age: formData.age ? parseInt(formData.age) : undefined,
+        gender: formData.gender || undefined,
+        maritalStatus: formData.maritalStatus || undefined,
+        leadStatus: formData.leadStatus || 'new_lead',
+        priority: formData.priority || 'medium',
+        leadSource: formData.leadSource || undefined,
+        notes: formData.notes?.trim() || undefined,
+        healthIssues: formData.healthIssues || [],
+        products: formData.products?.map(p => typeof p === 'object' ? p._id || p : p).filter(Boolean) || [],
+        dispatchedFrom: formData.branchId && String(formData.branchId).trim() !== '' ? String(formData.branchId).trim() : null,
+        assignedTo: formData.assignedTo || undefined,
+        address: formData.address || {},
+        reminders: formData.reminders || []
+      };
+      
+      console.log('Cleaned update data being sent:', JSON.stringify(cleanedData, null, 2));
+      dispatch(updateLead({ leadId: currentLead._id, leadData: cleanedData }));
     } else {
       console.log('Creating new lead with data:', JSON.stringify(formData, null, 2));
       
       // Validate required fields before sending
-      if (!formData.customerName || !formData.customerMobile) {
+      if (!formData.mobileNumber) {
         console.error('Missing required fields:', {
-          customerName: formData.customerName,
-          customerMobile: formData.customerMobile
+          mobileNumber: formData.mobileNumber
         });
         return;
       }
       
       // Clean up the data before sending
       const cleanedData = {
-        customerName: formData.customerName?.trim(),
-        customerMobile: formData.customerMobile?.trim(),
-        customerEmail: formData.customerEmail?.trim() || undefined,
+        customerName: formData.customerName?.trim() || undefined,
+        customerMobile: formData.mobileNumber?.trim(),
+        email: formData.email?.trim() || undefined,
         age: formData.age ? parseInt(formData.age) : undefined,
         gender: formData.gender || undefined,
         maritalStatus: formData.maritalStatus || undefined,
-        healthIssues: formData.healthIssues || [],
-        products: formData.products || [],
-        payment: formData.payment || undefined,
-        dispatchedFrom: formData.dispatchedFrom || undefined,
-        address: formData.address || {},
         leadStatus: formData.leadStatus || 'new_lead',
+        priority: formData.priority || 'medium',
+        leadSource: formData.leadSource || undefined,
+        notes: formData.notes?.trim() || undefined,
+        healthIssues: formData.healthIssues || [],
+        products: formData.products?.map(p => typeof p === 'object' ? p._id || p : p).filter(Boolean) || [],
+        dispatchedFrom: formData.branchId && String(formData.branchId).trim() !== '' ? String(formData.branchId).trim() : null,
+        assignedTo: formData.assignedTo || undefined,
+        address: formData.address || {},
         reminders: formData.reminders || []
       };
       
@@ -143,7 +166,7 @@ const LeadFormPage = () => {
 
       {/* Form Content */}
       <div className="max-w-7xl mx-auto py-6" style={{overflow: 'visible'}}>
-        <LeadFormStepper
+        <LeadFormSingle
           selectedLead={currentLead}
           onSubmit={handleSubmit}
           onCancel={handleCancel}

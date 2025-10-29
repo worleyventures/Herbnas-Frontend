@@ -874,8 +874,8 @@ const AccountsPage = () => {
             </div>
           </div>
         ) : (
-          // Super Admin: Branch Summary Dashboard
-          <div className="space-y-6">
+        // Super Admin: Branch Summary Dashboard
+        <div className="space-y-6">
           {/* Statistics Cards */}
           {stats && (
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
@@ -981,12 +981,12 @@ const AccountsPage = () => {
                             >
                               <td className="px-6 py-4 whitespace-nowrap">
                                 <div className="flex items-center justify-between">
-                                  <div>
-                                    <div className="text-sm font-medium text-gray-900">
-                                      {branch.branchName}
-                                    </div>
-                                    <div className="text-sm text-gray-500">
-                                      {branch.branchCode}
+                                <div>
+                                  <div className="text-sm font-medium text-gray-900">
+                                    {branch.branchName}
+                                  </div>
+                                  <div className="text-sm text-gray-500">
+                                    {branch.branchCode}
                                     </div>
                                   </div>
                                   <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200">

@@ -40,7 +40,10 @@ export const getActiveBranches = createAsyncThunk(
       const response = await api.get('/branches/active');
       return response.data;
     } catch (err) {
-      return rejectWithValue(err.response?.data?.message || err.message);
+      // The axios interceptor already formats the error message
+      // Extract the message from the error object
+      const errorMessage = err.message || err.response?.data?.message || 'Failed to load branches';
+      return rejectWithValue(errorMessage);
     }
   }
 );

@@ -508,10 +508,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
             >
               <StatCard
                 title="Order Completed"
-                value={cardCounts.converted}
-                icon={HiCheckCircle}
-                iconBg="bg-gradient-to-br from-purple-500 to-purple-600"
-                gradient="purple"
+                gradient="blue"
                 change="+8%"
                 changeType="increase"
                 className="h-full"

@@ -82,7 +82,20 @@ const productSlice = createSlice({
       })
       .addCase(getActiveProducts.fulfilled, (state, action) => {
         state.loading = false;
-        state.products = action.payload.data.products || [];
+        const responseData = action.payload;
+        // Handle various response structures
+        if (responseData?.data?.products && Array.isArray(responseData.data.products)) {
+          state.products = responseData.data.products;
+        } else if (responseData?.data && Array.isArray(responseData.data)) {
+          state.products = responseData.data;
+        } else if (Array.isArray(responseData?.products)) {
+          state.products = responseData.products;
+        } else if (Array.isArray(responseData)) {
+          state.products = responseData;
+        } else {
+          console.warn('Unexpected products response structure:', responseData);
+          state.products = [];
+        }
         state.error = null;
       })
       .addCase(getActiveProducts.rejected, (state, action) => {

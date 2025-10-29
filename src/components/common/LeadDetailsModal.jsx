@@ -1,4 +1,6 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
+import { getActiveBranches } from '../../redux/actions/branchActions';
 import {
   HiPencil,
   HiTrash
@@ -14,7 +16,44 @@ const LeadDetailsModal = ({
   onEdit, 
   onDelete 
 }) => {
+  const dispatch = useDispatch();
+  // Get branches from Redux to resolve branch names
+  const { branches } = useSelector((state) => state.branches);
+  
+  // Load branches if not already loaded
+  useEffect(() => {
+    if (isOpen && (!branches || branches.length === 0)) {
+      dispatch(getActiveBranches());
+    }
+  }, [isOpen, branches, dispatch]);
+  
   if (!isOpen || !lead) return null;
+  
+  // Helper function to get branch name
+  const getBranchName = () => {
+    // If dispatchedFrom is already populated with branchName
+    if (lead.dispatchedFrom?.branchName) {
+      return lead.dispatchedFrom.branchName;
+    }
+    
+    // If dispatchedFrom is an object but no branchName, try other fields
+    if (lead.dispatchedFrom && typeof lead.dispatchedFrom === 'object') {
+      return lead.dispatchedFrom.name || (lead.dispatchedFrom._id ? 'Loading...' : 'N/A');
+    }
+    
+    // If dispatchedFrom is just an ID (string), look it up in branches
+    if (lead.dispatchedFrom && typeof lead.dispatchedFrom === 'string') {
+      const branch = Array.isArray(branches) && branches.length > 0
+        ? branches.find(b => {
+            const branchId = b._id || b.id;
+            return branchId && (branchId.toString() === lead.dispatchedFrom.toString());
+          })
+        : null;
+      return branch ? branch.branchName : branches?.length === 0 ? 'N/A' : 'Loading...';
+    }
+    
+    return 'N/A';
+  };
 
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
@@ -91,7 +130,7 @@ const LeadDetailsModal = ({
     fields: [
       {
         label: 'Assigned Branch',
-        value: lead.dispatchedFrom?.branchName || 'N/A'
+        value: getBranchName()
       },
       {
         label: 'Address',

@@ -131,7 +131,20 @@ const branchSlice = createSlice({
       })
       .addCase(getActiveBranches.fulfilled, (state, action) => {
         state.loading = false;
-        state.branches = action.payload.data.branches || action.payload.data;
+        // Handle different response structures
+        const responseData = action.payload;
+        if (responseData?.data?.branches && Array.isArray(responseData.data.branches)) {
+          state.branches = responseData.data.branches;
+        } else if (responseData?.data && Array.isArray(responseData.data)) {
+          state.branches = responseData.data;
+        } else if (Array.isArray(responseData?.branches)) {
+          state.branches = responseData.branches;
+        } else if (Array.isArray(responseData)) {
+          state.branches = responseData;
+        } else {
+          console.warn('Unexpected branches response structure:', responseData);
+          state.branches = [];
+        }
         state.error = null;
       })
       .addCase(getActiveBranches.rejected, (state, action) => {
