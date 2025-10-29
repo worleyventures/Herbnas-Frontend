@@ -75,11 +75,25 @@ const BranchCRUD = ({
       key: 'branchAddress',
       label: 'Address',
       sortable: true,
-      render: (branch) => (
-        <div className="text-sm text-gray-900 max-w-48 truncate" title={branch.branchAddress}>
-          {branch.branchAddress}
-        </div>
-      )
+      render: (branch) => {
+        // Handle both string and object address formats
+        let addressText = '';
+        let addressTitle = '';
+        
+        if (typeof branch.branchAddress === 'object' && branch.branchAddress !== null) {
+          addressText = `${branch.branchAddress.street || ''}, ${branch.branchAddress.city || ''}, ${branch.branchAddress.state || ''} - ${branch.branchAddress.pinCode || ''}`;
+          addressTitle = addressText;
+        } else {
+          addressText = branch.branchAddress || 'N/A';
+          addressTitle = addressText;
+        }
+        
+        return (
+          <div className="text-sm text-gray-900 max-w-48 truncate" title={addressTitle}>
+            {addressText}
+          </div>
+        );
+      }
     },
     {
       key: 'incentiveType',

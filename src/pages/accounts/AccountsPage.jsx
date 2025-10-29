@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -153,7 +153,7 @@ const AccountsPage = () => {
         }));
       }
     }
-  }, [activeTab, currentPage, searchTerm, dateRangeFilter, fromDate, toDate, getDateRange, branchFilter, paymentStatusFilter, dispatch, isSuperAdmin, isAccountsManager, user?.branch?._id, user?.branch]);
+  }, [activeTab, currentPage, searchTerm, getDateRange, branchFilter, paymentStatusFilter, dispatch, isSuperAdmin, isAccountsManager, user?.branch?._id, user?.branch]);
 
   // Separate effect to reload branch summary when date range changes (for super admin)
   useEffect(() => {

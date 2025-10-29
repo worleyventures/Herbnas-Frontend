@@ -225,7 +225,11 @@ const BranchDetailsPage = () => {
                     <InfoCard
                       icon={HiMapPin}
                       label="Branch Address"
-                      value={branch.branchAddress}
+                      value={
+                        typeof branch.branchAddress === 'object' && branch.branchAddress !== null
+                          ? `${branch.branchAddress.street || ''}, ${branch.branchAddress.city || ''}, ${branch.branchAddress.state || ''} - ${branch.branchAddress.pinCode || ''}`
+                          : branch.branchAddress || 'N/A'
+                      }
                       className="md:col-span-2"
                     />
                   </div>

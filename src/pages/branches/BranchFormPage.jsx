@@ -32,12 +32,18 @@ const BranchFormPage = () => {
   const [formData, setFormData] = useState({
     branchName: '',
     branchCode: '',
-    branchAddress: '',
+    branchAddress: {
+      street: '',
+      city: '',
+      state: '',
+      pinCode: ''
+    },
     incentiveType: 0,
     isActive: true
   });
 
   const [errors, setErrors] = useState({});
+  const [pincodeLoading, setPincodeLoading] = useState(false);
 
   // Load branch data if editing and we have an ID
   useEffect(() => {
@@ -50,10 +56,29 @@ const BranchFormPage = () => {
   useEffect(() => {
     const branchData = selectedBranch || reduxBranch;
     if (branchData) {
+      // Handle both old format (string) and new format (object)
+      let addressData = {
+        street: '',
+        city: '',
+        state: '',
+        pinCode: ''
+      };
+      
+      if (typeof branchData.branchAddress === 'string') {
+        addressData.street = branchData.branchAddress || '';
+      } else if (branchData.branchAddress) {
+        addressData = {
+          street: branchData.branchAddress.street || '',
+          city: branchData.branchAddress.city || '',
+          state: branchData.branchAddress.state || '',
+          pinCode: branchData.branchAddress.pinCode || ''
+        };
+      }
+      
       setFormData({
         branchName: branchData.branchName || '',
         branchCode: branchData.branchCode || '',
-        branchAddress: branchData.branchAddress || '',
+        branchAddress: addressData,
         incentiveType: branchData.incentiveType || 0,
         isActive: branchData.isActive !== undefined ? branchData.isActive : true
       });
@@ -61,7 +86,12 @@ const BranchFormPage = () => {
       setFormData({
         branchName: '',
         branchCode: '',
-        branchAddress: '',
+        branchAddress: {
+          street: '',
+          city: '',
+          state: '',
+          pinCode: ''
+        },
         incentiveType: 0,
         isActive: true
       });
@@ -71,14 +101,64 @@ const BranchFormPage = () => {
   // Handle success states - navigate away from form
   // Note: Success handling will be done in the form submission
 
+  // Pincode lookup function
+  const handlePincodeLookup = async (pincode) => {
+    if (!pincode || pincode.length !== 6) {
+      return;
+    }
+
+    setPincodeLoading(true);
+    try {
+      // Using postalpincode.in API (free, no API key required)
+      const response = await fetch(`https://api.postalpincode.in/pincode/${pincode}`);
+      const data = await response.json();
+      
+      if (data && data[0] && data[0].Status === 'Success' && data[0].PostOffice && data[0].PostOffice.length > 0) {
+        const postOffice = data[0].PostOffice[0];
+        setFormData(prev => ({
+          ...prev,
+          branchAddress: {
+            ...prev.branchAddress,
+            city: postOffice.Block || postOffice.District || '',
+            state: postOffice.State || '',
+            pinCode: pincode
+          }
+        }));
+      } else {
+        console.warn('Pincode not found or invalid');
+      }
+    } catch (error) {
+      console.error('Error fetching pincode data:', error);
+    } finally {
+      setPincodeLoading(false);
+    }
+  };
+
   // Handle input changes
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
     
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
+    // Handle nested objects (branchAddress)
+    if (name.startsWith('branchAddress.')) {
+      const field = name.split('.')[1];
+      setFormData(prev => ({
+        ...prev,
+        branchAddress: {
+          ...prev.branchAddress,
+          [field]: value
+        }
+      }));
+      
+      // Auto-fetch city and state when pinCode is entered
+      if (field === 'pinCode' && value.length === 6) {
+        handlePincodeLookup(value);
+      }
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: type === 'checkbox' ? checked : value
+      }));
+    }
     
     // Clear error when user starts typing
     if (errors[name]) {
@@ -101,8 +181,20 @@ const BranchFormPage = () => {
       newErrors.branchCode = 'Branch code is required';
     }
     
-    if (!formData.branchAddress.trim()) {
-      newErrors.branchAddress = 'Branch address is required';
+    if (!formData.branchAddress.street.trim()) {
+      newErrors.branchAddress = 'Street address is required';
+    }
+    
+    if (!formData.branchAddress.city.trim()) {
+      newErrors.city = 'City is required';
+    }
+    
+    if (!formData.branchAddress.state.trim()) {
+      newErrors.state = 'State is required';
+    }
+    
+    if (!formData.branchAddress.pinCode.trim()) {
+      newErrors.pinCode = 'Pincode is required';
     }
     
     if (formData.incentiveType < 0) {
@@ -148,9 +240,9 @@ const BranchFormPage = () => {
     <div className="min-h-screen bg-white">
 
       {/* Main Content */}
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen">
         {/* Header */}
-        <div className="bg-white border-b border-gray-200">
+        <div className="bg-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between py-6">
               <div className="flex items-center space-x-3">
@@ -182,7 +274,7 @@ const BranchFormPage = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <form onSubmit={handleSubmit} className="space-y-8">
             {/* Basic Information */}
-            <div className="bg-gray-50 rounded-lg p-4">
+            <div className="p-4">
               <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                 <HiBuildingOffice2 className="h-5 w-5 mr-2 text-[#22c55e]" />
                 Branch Information
@@ -211,13 +303,13 @@ const BranchFormPage = () => {
                 
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Branch Address *
+                    Street Address *
                   </label>
                   <textarea
-                    name="branchAddress"
-                    value={formData.branchAddress}
+                    name="branchAddress.street"
+                    value={formData.branchAddress.street || ''}
                     onChange={handleInputChange}
-                    placeholder="Enter branch address"
+                    placeholder="Enter street address"
                     rows={3}
                     className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#22c55e]-500 focus:border-transparent ${
                       errors.branchAddress ? 'border-red-300' : 'border-gray-300'
@@ -228,11 +320,71 @@ const BranchFormPage = () => {
                     <p className="mt-1 text-sm text-red-600">{errors.branchAddress}</p>
                   )}
                 </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Pincode *
+                    {pincodeLoading && <span className="ml-2 text-xs text-blue-600">Fetching...</span>}
+                  </label>
+                  <Input
+                    name="branchAddress.pinCode"
+                    value={formData.branchAddress.pinCode || ''}
+                    onChange={handleInputChange}
+                    placeholder="Enter 6-digit pincode"
+                    type="text"
+                    maxLength="6"
+                    pattern="[0-9]{6}"
+                    error={errors.pinCode}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    City *
+                  </label>
+                  <Input
+                    name="branchAddress.city"
+                    value={formData.branchAddress.city || ''}
+                    onChange={handleInputChange}
+                    placeholder="City (auto-filled from pincode)"
+                    readOnly={!!formData.branchAddress.pinCode && formData.branchAddress.pinCode.length === 6}
+                    className={formData.branchAddress.pinCode && formData.branchAddress.pinCode.length === 6 ? 'bg-gray-50' : ''}
+                    error={errors.city}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    State *
+                  </label>
+                  <Input
+                    name="branchAddress.state"
+                    value={formData.branchAddress.state || ''}
+                    onChange={handleInputChange}
+                    placeholder="State (auto-filled from pincode)"
+                    readOnly={!!formData.branchAddress.pinCode && formData.branchAddress.pinCode.length === 6}
+                    className={formData.branchAddress.pinCode && formData.branchAddress.pinCode.length === 6 ? 'bg-gray-50' : ''}
+                    error={errors.state}
+                  />
+                </div>
+
+                <div className="md:col-span-2 flex items-center space-x-3">
+                  <input
+                    type="checkbox"
+                    name="isActive"
+                    checked={formData.isActive}
+                    onChange={handleInputChange}
+                    className="h-4 w-4 text-[#22c55e] focus:ring-[#22c55e] border-gray-300 rounded"
+                  />
+                  <label className="text-sm font-medium text-gray-700">
+                    Active Branch
+                  </label>
+                </div>
               </div>
             </div>
 
             {/* Settings */}
-            <div className="bg-gray-50 rounded-lg p-4">
+            <div className="p-4">
               <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                 <HiCog6Tooth className="h-5 w-5 mr-2 text-[#22c55e]" />
                 Branch Settings
@@ -250,19 +402,6 @@ const BranchFormPage = () => {
                   min="0"
                   step="0.01"
                 />
-                
-                <div className="flex items-center space-x-3">
-                  <input
-                    type="checkbox"
-                    name="isActive"
-                    checked={formData.isActive}
-                    onChange={handleInputChange}
-                    className="h-4 w-4 text-[#22c55e] focus:ring-[#22c55e] border-gray-300 rounded"
-                  />
-                  <label className="text-sm font-medium text-gray-700">
-                    Active Branch
-                  </label>
-                </div>
               </div>
             </div>
 
@@ -281,7 +420,7 @@ const BranchFormPage = () => {
             )}
 
             {/* Form Actions */}
-            <div className="flex items-center justify-end space-x-3 pt-6 border-t border-gray-200">
+            <div className="flex items-center justify-end space-x-3 pt-6">
               <Button
                 type="button"
                 onClick={handleBack}

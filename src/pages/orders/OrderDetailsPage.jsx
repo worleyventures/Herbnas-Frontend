@@ -428,7 +428,11 @@ const OrderDetailsPage = () => {
               </div>
               <div className="flex items-center space-x-2">
                 <HiMapPin className="h-4 w-4 text-gray-400" />
-                <span className="text-sm text-gray-900">{order.branchId?.branchAddress}</span>
+                <span className="text-sm text-gray-900">
+                  {typeof order.branchId?.branchAddress === 'object' && order.branchId?.branchAddress !== null
+                    ? `${order.branchId.branchAddress.street || ''}, ${order.branchId.branchAddress.city || ''}, ${order.branchId.branchAddress.state || ''} - ${order.branchId.branchAddress.pinCode || ''}`
+                    : order.branchId?.branchAddress || 'N/A'}
+                </span>
               </div>
             </div>
           </div>
