@@ -18,6 +18,7 @@ import {
   HiTrash
 } from 'react-icons/hi2';
 import { Button, Input, Select, Table, StatusBadge, Loading, StatCard, CommonModal } from '../../components/common';
+import OrderDetailsModal from '../../components/common/OrderDetailsModal';
 import {
   getAllOrders,
   getOrderStats,
@@ -54,6 +55,8 @@ const OrdersPage = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [orderToDelete, setOrderToDelete] = useState(null);
+  const [showOrderModal, setShowOrderModal] = useState(false);
+  const [selectedOrderId, setSelectedOrderId] = useState(null);
 
   // Load data on component mount
   useEffect(() => {
@@ -96,11 +99,13 @@ const OrdersPage = () => {
 
   // Handle view order
   const handleViewOrder = (orderId) => {
-    navigate(`/orders/${orderId}`);
+    setSelectedOrderId(orderId);
+    setShowOrderModal(true);
   };
 
   // Handle edit order
   const handleEditOrder = (orderId) => {
+    setShowOrderModal(false);
     navigate(`/orders/edit/${orderId}`);
   };
 
@@ -416,6 +421,19 @@ const OrdersPage = () => {
           emptyIcon={HiClipboardDocumentList}
         />
       </div>
+
+      {/* Order Details Modal */}
+      <OrderDetailsModal
+        isOpen={showOrderModal}
+        onClose={() => {
+          setShowOrderModal(false);
+          setSelectedOrderId(null);
+        }}
+        orderId={selectedOrderId}
+        onEdit={handleEditOrder}
+        onDelete={handleDeleteOrder}
+        onRefresh={handleRefresh}
+      />
 
       {/* Delete Confirmation Modal */}
       <CommonModal
