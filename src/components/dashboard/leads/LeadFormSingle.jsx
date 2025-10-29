@@ -578,51 +578,54 @@ const LeadFormSingle = ({
               </div>
             </div>
 
-            {/* Age, Gender, Marital Status */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Age
-                </label>
-                <Input
-                  name="age"
-                  value={formData.age}
-                  onChange={handleInputChange}
-                  placeholder="Enter age"
-                  type="number"
-                  min="1"
-                  max="150"
-                />
-              </div>
+            {/* Age, Gender, Marital Status - Only in edit mode */}
+            {mode === 'edit' && (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Age
+                  </label>
+                  <Input
+                    name="age"
+                    value={formData.age}
+                    onChange={handleInputChange}
+                    placeholder="Enter age"
+                    type="number"
+                    min="1"
+                    max="150"
+                  />
+                </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Gender
-                </label>
-                <Select
-                  name="gender"
-                  value={formData.gender}
-                  onChange={handleInputChange}
-                  options={genderOptions}
-                  placeholder="Select gender"
-                />
-              </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Gender
+                  </label>
+                  <Select
+                    name="gender"
+                    value={formData.gender}
+                    onChange={handleInputChange}
+                    options={genderOptions}
+                    placeholder="Select gender"
+                  />
+                </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Marital Status
-                </label>
-                <Select
-                  name="maritalStatus"
-                  value={formData.maritalStatus}
-                  onChange={handleInputChange}
-                  options={maritalStatusOptions}
-                  placeholder="Select marital status"
-                />
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Marital Status
+                  </label>
+                  <Select
+                    name="maritalStatus"
+                    value={formData.maritalStatus}
+                    onChange={handleInputChange}
+                    options={maritalStatusOptions}
+                    placeholder="Select marital status"
+                  />
+                </div>
               </div>
-            </div>
+            )}
 
-            {/* Address */}
+            {/* Address - Only in edit mode */}
+            {mode === 'edit' && (
             <div className="space-y-4">
               <div className="flex items-center space-x-3">
                 <div className="h-10 w-10 bg-teal-100 rounded-xl flex items-center justify-center">
@@ -704,6 +707,7 @@ const LeadFormSingle = ({
                 </div>
               </div>
             </div>
+            )}
 
             {/* Lead Information */}
             <div className="space-y-4">
@@ -930,7 +934,8 @@ const LeadFormSingle = ({
               )}
             </div>
 
-            {/* Health Issues and Products - Side by Side */}
+            {/* Health Issues and Products - Side by Side - Only in edit mode */}
+            {mode === 'edit' && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Health Issues */}
               <div className="space-y-4">
@@ -1108,6 +1113,7 @@ const LeadFormSingle = ({
                 )}
               </div>
             </div>
+            )}
           </div>
 
           {/* Form Actions */}
