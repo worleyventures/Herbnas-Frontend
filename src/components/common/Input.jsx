@@ -1,6 +1,6 @@
 import React from 'react';
 import Dropdown from './Dropdown';
-import { HiDocumentText } from 'react-icons/hi2';
+import { HiMagnifyingGlass } from 'react-icons/hi2';
 
 const Input = ({
   type = "text",
@@ -76,7 +76,7 @@ const Input = ({
       
       <div className="relative group">
         {Icon && iconPosition === 'left' && (
-          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none z-10">
             <Icon className={`${getIconSize()} text-gray-400 transition-colors duration-200 ${error ? 'text-red-500' : 'group-focus-within:text-[#8bc34a]'}`} />
           </div>
         )}
@@ -94,7 +94,7 @@ const Input = ({
         />
         
         {Icon && iconPosition === 'right' && (
-          <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
+          <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none z-10">
             <Icon className={`${getIconSize()} text-gray-400 transition-colors duration-200 ${error ? 'text-red-500' : 'group-focus-within:text-[#8bc34a]'}`} />
           </div>
         )}
@@ -131,18 +131,15 @@ export const Select = ({
   name,
   ...props
 }) => {
-  // Handle the onChange to extract the value from the synthetic event
+  // Handle the onChange to extract value from event and pass it directly
   const handleChange = (syntheticEvent) => {
-    console.log('Select handleChange called with:', syntheticEvent);
     if (onChange) {
-      // If onChange expects just the value (not an event), extract it
-      if (typeof onChange === 'function' && syntheticEvent.target) {
-        console.log('Extracting value:', syntheticEvent.target.value);
-        onChange(syntheticEvent.target.value);
-      } else {
-        console.log('Passing through synthetic event');
-        onChange(syntheticEvent);
-      }
+      // Extract value from synthetic event object
+      const value = syntheticEvent?.target?.value !== undefined 
+        ? syntheticEvent.target.value 
+        : syntheticEvent;
+      // Pass the direct value to onChange (most components expect direct value)
+      onChange(value);
     }
   };
 
@@ -171,8 +168,8 @@ export const SearchInput = ({
   onChange,
   placeholder = "Search...",
   className = "",
-  size = "sm",
-  icon = HiDocumentText,
+  size = "md",
+  icon = HiMagnifyingGlass,
   ...props
 }) => {
   return (

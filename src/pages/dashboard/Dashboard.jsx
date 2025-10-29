@@ -1,10 +1,17 @@
 import React, { useState } from 'react';
+import { useSelector } from 'react-redux';
 import { HiUsers, HiDocumentText, HiBuildingOffice2, HiHeart, HiTrendingUp, HiClock, HiCheckCircle, HiExclamationTriangle, HiCurrencyDollar } from 'react-icons/hi2';
 import { AccountsModal } from '../../components/common';
 
 const Dashboard = () => {
   // Modal state
   const [showAccountsModal, setShowAccountsModal] = useState(false);
+  
+  // Get current user for role-based functionality
+  const { user } = useSelector((state) => state.auth);
+  
+  // Check if user is production manager
+  const isProductionManager = user?.role === 'production_manager';
 
   // Mock data - replace with actual data from your API
   const stats = [
@@ -192,21 +199,25 @@ const Dashboard = () => {
             <HiHeart className="h-8 w-8 text-[#558b2f] mb-2 group-hover:scale-110 transition-transform duration-200" />
             <span className="text-sm font-medium text-[#558b2f]">Health Issue</span>
           </button>
-          <button 
-            onClick={() => setShowAccountsModal(true)}
-            className="flex flex-col items-center p-4 bg-gradient-to-br from-[#8bc34a]/10 to-[#558b2f]/10 hover:from-[#8bc34a]/20 hover:to-[#558b2f]/20 rounded-lg transition-all duration-200 group border border-[#558b2f]/20 hover:border-[#558b2f]/40"
-          >
-            <HiCurrencyDollar className="h-8 w-8 text-[#558b2f] mb-2 group-hover:scale-110 transition-transform duration-200" />
-            <span className="text-sm font-medium text-[#558b2f]">Accounts</span>
-          </button>
+          {!isProductionManager && (
+            <button 
+              onClick={() => setShowAccountsModal(true)}
+              className="flex flex-col items-center p-4 bg-gradient-to-br from-[#8bc34a]/10 to-[#558b2f]/10 hover:from-[#8bc34a]/20 hover:to-[#558b2f]/20 rounded-lg transition-all duration-200 group border border-[#558b2f]/20 hover:border-[#558b2f]/40"
+            >
+              <HiCurrencyDollar className="h-8 w-8 text-[#558b2f] mb-2 group-hover:scale-110 transition-transform duration-200" />
+              <span className="text-sm font-medium text-[#558b2f]">Accounts</span>
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Accounts Modal */}
-      <AccountsModal
-        isOpen={showAccountsModal}
-        onClose={() => setShowAccountsModal(false)}
-      />
+      {/* Accounts Modal - only show for non-production managers */}
+      {!isProductionManager && (
+        <AccountsModal
+          isOpen={showAccountsModal}
+          onClose={() => setShowAccountsModal(false)}
+        />
+      )}
     </div>
   );
 };

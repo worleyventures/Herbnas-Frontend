@@ -7,6 +7,7 @@ import Layout from './components/layout/Layout';
 import Dashboard from './components/dashboard/Dashboard';
 import Login from './pages/auth/Login';
 import ProtectedRoute from './components/auth/ProtectedRoute';
+import RoleProtectedRoute from './components/auth/RoleProtectedRoute';
 import AuthInitializer from './components/auth/AuthInitializer';
 import LeadsPage from './components/dashboard/LeadsDashboard';
 import LeadFormPage from './pages/leads/LeadFormPage';
@@ -102,9 +103,21 @@ function App() {
             <Route path="/orders/new" element={<OrderFormPage />} />
             <Route path="/orders/edit/:id" element={<OrderFormPage />} />
             <Route path="/orders/:id" element={<OrderDetailsPage />} />
-            <Route path="/accounts" element={<AccountsPage />} />
-            <Route path="/accounts/new" element={<AccountFormPage />} />
-            <Route path="/accounts/edit/:id" element={<AccountFormPage />} />
+            <Route path="/accounts" element={
+              <RoleProtectedRoute allowedRoles={['super_admin', 'admin', 'accounts_manager']}>
+                <AccountsPage />
+              </RoleProtectedRoute>
+            } />
+            <Route path="/accounts/new" element={
+              <RoleProtectedRoute allowedRoles={['super_admin', 'admin', 'accounts_manager']}>
+                <AccountFormPage />
+              </RoleProtectedRoute>
+            } />
+            <Route path="/accounts/edit/:id" element={
+              <RoleProtectedRoute allowedRoles={['super_admin', 'admin', 'accounts_manager']}>
+                <AccountFormPage />
+              </RoleProtectedRoute>
+            } />
             <Route path="/payrolls" element={<PayrollPage />} />
             <Route path="/payrolls/new" element={<PayrollFormPage />} />
             <Route path="/payrolls/edit/:id" element={<PayrollFormPage />} />

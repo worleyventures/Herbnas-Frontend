@@ -477,7 +477,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
                 value={cardCounts.newLead}
                 icon={HiUser}
                 iconBg="bg-gradient-to-br from-blue-500 to-blue-600"
-                gradient="blue"
+                gradient="indigo"
                 change="+5%"
                 changeType="increase"
                 className="h-full"
@@ -508,10 +508,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
             >
               <StatCard
                 title="Order Completed"
-                value={cardCounts.converted}
-                icon={HiCheckCircle}
-                iconBg="bg-gradient-to-br from-purple-500 to-purple-600"
-                gradient="purple"
+                gradient="blue"
                 change="+8%"
                 changeType="increase"
                 className="h-full"
@@ -726,7 +723,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
                 value={cardCounts.qualified}
                 icon={HiCheckCircle}
                 iconBg="bg-gradient-to-br from-green-500 to-green-600"
-                gradient="green"
+                gradient="emerald"
                 change="+2%"
                 changeType="increase"
                 className="h-full"
@@ -762,7 +759,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
                 value={cardCounts.converted}
                 icon={HiCheckCircle}
                 iconBg="bg-gradient-to-br from-purple-500 to-purple-600"
-                gradient="purple"
+                gradient="amber"
                 change="+8%"
                 changeType="increase"
                 className="h-full"

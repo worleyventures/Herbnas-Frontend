@@ -1,11 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import {
   HiPlus,
   HiMagnifyingGlass,
-  HiFunnel,
-  HiArrowPath,
   HiCurrencyDollar,
   HiArrowUp,
   HiArrowDown,
@@ -15,8 +13,7 @@ import {
   HiClipboardDocumentList,
   HiShoppingCart,
   HiChartBar,
-  HiBuildingOffice,
-  HiCalendar
+  HiArrowLeft
 } from 'react-icons/hi2';
 import { Button, Input, Select, Table, StatusBadge, Loading, StatCard, CommonModal, SearchInput } from '../../components/common';
 import {
@@ -68,6 +65,12 @@ const AccountsPage = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [accountToDelete, setAccountToDelete] = useState(null);
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [accountToView, setAccountToView] = useState(null);
+  
+  // Drill-down state for Super Admin
+  const [selectedBranch, setSelectedBranch] = useState(null);
+  const [showBranchDetails, setShowBranchDetails] = useState(false);
 
   // Role-based access
   const isSuperAdmin = user?.role === 'super_admin';
@@ -75,20 +78,23 @@ const AccountsPage = () => {
 
   // Load data on component mount
   useEffect(() => {
-    if (activeTab === 'overview') {
+    if (activeTab === 'overview' || isAccountsManager) {
+      // For accounts managers, always filter by their branch
+      const branchId = isAccountsManager ? (user?.branch?._id || user?.branch) : (branchFilter !== 'all' ? branchFilter : undefined);
+      
       dispatch(getAllAccounts({
         page: currentPage,
         limit: 10,
         search: searchTerm,
         month: monthFilter !== 'all' ? monthFilter : undefined,
         year: yearFilter !== 'all' ? yearFilter : undefined,
-        branchId: branchFilter !== 'all' ? branchFilter : undefined,
+        branchId: branchId,
         paymentStatus: paymentStatusFilter !== 'all' ? paymentStatusFilter : undefined
       }));
       dispatch(getAccountStats({
         month: monthFilter !== 'all' ? monthFilter : undefined,
         year: yearFilter !== 'all' ? yearFilter : undefined,
-        branchId: branchFilter !== 'all' ? branchFilter : undefined
+        branchId: branchId
       }));
       
       // Load branch summary for super admin
@@ -99,11 +105,39 @@ const AccountsPage = () => {
         }));
       }
     }
-  }, [activeTab, currentPage, searchTerm, monthFilter, yearFilter, branchFilter, paymentStatusFilter, dispatch, isSuperAdmin]);
+  }, [activeTab, currentPage, searchTerm, monthFilter, yearFilter, branchFilter, paymentStatusFilter, dispatch, isSuperAdmin, isAccountsManager, user?.branch?._id, user?.branch]);
 
-  // Handle search
-  const handleSearch = (e) => {
-    setSearchTerm(e.target.value);
+  // Load accounts for selected branch drill-down
+  useEffect(() => {
+    if (showBranchDetails && selectedBranch) {
+      dispatch(getAllAccounts({
+        page: currentPage,
+        limit: 10,
+        search: searchTerm,
+        month: monthFilter !== 'all' ? monthFilter : undefined,
+        year: yearFilter !== 'all' ? yearFilter : undefined,
+        branchId: selectedBranch.branchId,
+        paymentStatus: paymentStatusFilter !== 'all' ? paymentStatusFilter : undefined
+      }));
+      dispatch(getAccountStats({
+        month: monthFilter !== 'all' ? monthFilter : undefined,
+        year: yearFilter !== 'all' ? yearFilter : undefined,
+        branchId: selectedBranch.branchId
+      }));
+    }
+  }, [showBranchDetails, selectedBranch, currentPage, searchTerm, monthFilter, yearFilter, paymentStatusFilter, dispatch]);
+
+  // Handle branch row click for drill-down
+  const handleBranchClick = (branch) => {
+    setSelectedBranch(branch);
+    setShowBranchDetails(true);
+    setCurrentPage(1); // Reset to first page
+  };
+
+  // Handle back to branch summary
+  const handleBackToSummary = () => {
+    setShowBranchDetails(false);
+    setSelectedBranch(null);
     setCurrentPage(1);
   };
 
@@ -140,12 +174,14 @@ const AccountsPage = () => {
 
   // Handle view account
   const handleViewAccount = (id) => {
-    navigate(`/accounts/${id}`);
+    const account = accounts.find(acc => acc._id === id);
+    setAccountToView(account);
+    setShowViewModal(true);
   };
 
   // Handle edit account
   const handleEditAccount = (id) => {
-    navigate(`/accounts/${id}/edit`);
+    navigate(`/accounts/edit/${id}`);
   };
 
   // Handle delete account
@@ -168,13 +204,14 @@ const AccountsPage = () => {
         setAccountToDelete(null);
         
          // Refresh the accounts list
+         const branchId = isAccountsManager ? (user?.branch?._id || user?.branch) : (branchFilter !== 'all' ? branchFilter : undefined);
          dispatch(getAllAccounts({
            page: currentPage,
            limit: 10,
            search: searchTerm,
            month: monthFilter !== 'all' ? monthFilter : undefined,
            year: yearFilter !== 'all' ? yearFilter : undefined,
-           branchId: branchFilter !== 'all' ? branchFilter : undefined,
+           branchId: branchId,
            paymentStatus: paymentStatusFilter !== 'all' ? paymentStatusFilter : undefined
          }));
     } catch (error) {
@@ -213,8 +250,89 @@ const AccountsPage = () => {
     }
   };
 
-  // Table columns
-  const columns = [
+  // Table columns - different for accounts managers vs other roles
+  const columns = isAccountsManager ? [
+    // Simplified columns for accounts managers
+    {
+      key: 'accountId',
+      label: 'Account ID',
+      render: (account) => (
+        <div className="font-medium text-gray-900">
+          {account.accountId}
+        </div>
+      )
+    },
+    {
+      key: 'transactionType',
+      label: 'Type',
+      render: (account) => (
+        <StatusBadge
+          status={account.transactionType}
+          color={getTransactionTypeColor(account.transactionType)}
+        />
+      )
+    },
+    {
+      key: 'category',
+      label: 'Category',
+      render: (account) => (
+        <div className="text-sm text-gray-900">
+          {account.category.replace('_', ' ').toUpperCase()}
+        </div>
+      )
+    },
+    {
+      key: 'amount',
+      label: 'Amount',
+      render: (account) => (
+        <div className={`font-medium ${account.transactionType === 'income' ? 'text-green-600' : 'text-red-600'}`}>
+          {account.formattedAmount}
+        </div>
+      )
+    },
+    {
+      key: 'paymentStatus',
+      label: 'Payment',
+      render: (account) => (
+        <StatusBadge
+          status={account.paymentStatus}
+          color={getPaymentStatusColor(account.paymentStatus)}
+        />
+      )
+    },
+    {
+      key: 'transactionDate',
+      label: 'Date',
+      render: (account) => (
+        <div className="text-sm text-gray-900">
+          {new Date(account.transactionDate).toLocaleDateString()}
+        </div>
+      )
+    },
+    {
+      key: 'actions',
+      label: 'Actions',
+      render: (account) => (
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() => handleViewAccount(account._id)}
+            className="text-gray-500 hover:text-gray-700 transition-colors"
+            title="View Account"
+          >
+            <HiEye className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => handleEditAccount(account._id)}
+            className="text-gray-500 hover:text-gray-700 transition-colors"
+            title="Edit Account"
+          >
+            <HiPencil className="w-4 h-4" />
+          </button>
+        </div>
+      )
+    }
+  ] : [
+    // Full columns for other roles (super admin, admin)
     {
       key: 'accountId',
       label: 'Account ID',
@@ -402,12 +520,8 @@ const AccountsPage = () => {
 
           {/* Branch Summary for Super Admin */}
           {branchSummary && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="bg-white shadow-sm p-6">
               <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h2 className="text-xl font-semibold text-gray-900">Branch Summary</h2>
-                  <p className="text-gray-600 mt-1">Current month's income and expense by branch</p>
-                </div>
                 <div className="text-sm text-gray-500">
                   {branchSummary.period && (
                     <span>
@@ -556,7 +670,7 @@ const AccountsPage = () => {
                   title="Net Profit"
                   value={`₹${stats.summary?.netProfit?.toLocaleString() || 0}`}
                   icon={HiCurrencyDollar}
-                  gradient={stats.summary?.netProfit >= 0 ? 'green' : 'red'}
+                  gradient="purple"
                   loading={statsLoading}
                 />
                 <StatCard
@@ -629,7 +743,7 @@ const AccountsPage = () => {
             {isSuperAdmin 
               ? 'Manage all branch accounts, expenses, and incomes across all branches' 
               : isAccountsManager 
-              ? `Manage accounts, expenses, and incomes for ${user?.branchId?.branchName || 'your branch'}`
+              ? `Manage accounts, expenses, and incomes for ${user?.branch?.branchName || 'your branch'}`
               : 'Manage all branch accounts, expenses, and incomes'
             }
           </p>
@@ -648,6 +762,118 @@ const AccountsPage = () => {
 
       {/* Content based on role */}
       {isSuperAdmin ? (
+        showBranchDetails ? (
+          // Super Admin: Branch Details View (Drill-down)
+          <div className="space-y-6">
+            {/* Back Button */}
+            <div className="flex items-center space-x-4">
+              <Button
+                variant="outline"
+                onClick={handleBackToSummary}
+                icon={HiArrowLeft}
+                size="sm"
+              >
+                Back to Branch Summary
+              </Button>
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">
+                  {selectedBranch?.branchName} ({selectedBranch?.branchCode})
+                </h2>
+                <p className="text-sm text-gray-600">
+                  Account details for selected branch
+                  {monthFilter !== 'all' && yearFilter !== 'all' 
+                    ? ` - ${monthOptions.find(m => m.value === monthFilter)?.label} ${yearFilter}`
+                    : monthFilter !== 'all'
+                    ? ` - ${monthOptions.find(m => m.value === monthFilter)?.label}`
+                    : yearFilter !== 'all'
+                    ? ` - ${yearFilter}`
+                    : ''
+                  }
+                </p>
+              </div>
+            </div>
+
+            {/* Statistics Cards for Selected Branch */}
+            {stats && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
+                <StatCard
+                  title="Total Income"
+                  value={`₹${stats.summary?.totalIncome?.toLocaleString() || 0}`}
+                  icon={HiArrowUp}
+                  gradient="green"
+                  loading={statsLoading}
+                />
+                <StatCard
+                  title="Total Expense"
+                  value={`₹${stats.summary?.totalExpense?.toLocaleString() || 0}`}
+                  icon={HiArrowDown}
+                  gradient="red"
+                  loading={statsLoading}
+                />
+                <StatCard
+                  title="Net Profit"
+                  value={`₹${stats.summary?.netProfit?.toLocaleString() || 0}`}
+                  icon={HiCurrencyDollar}
+                  gradient="purple"
+                  loading={statsLoading}
+                />
+                <StatCard
+                  title="Total Transactions"
+                  value={stats.summary?.totalTransactions || 0}
+                  icon={HiClipboardDocumentList}
+                  gradient="blue"
+                  loading={statsLoading}
+                />
+              </div>
+            )}
+
+            {/* Search and Filter Section */}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+              <div className="w-full sm:w-80">
+                <SearchInput
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Search accounts..."
+                  icon={HiMagnifyingGlass}
+                />
+              </div>
+              <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0">
+                <Select
+                  value={monthFilter}
+                  onChange={handleMonthFilter}
+                  options={monthOptions}
+                  className="w-full sm:w-48"
+                />
+                <Select
+                  value={yearFilter}
+                  onChange={handleYearFilter}
+                  options={yearOptions}
+                  className="w-full sm:w-48"
+                />
+                <Select
+                  value={paymentStatusFilter}
+                  onChange={handlePaymentStatusFilter}
+                  options={paymentStatusOptions}
+                  className="w-full sm:w-48"
+                />
+              </div>
+            </div>
+
+            {/* Accounts Table */}
+            <div className="bg-white">
+              <Table
+                data={accounts}
+                columns={columns}
+                loading={loading}
+                error={error}
+                pagination={pagination}
+                onPageChange={handlePageChange}
+                emptyMessage="No accounts found"
+                emptyIcon={HiClipboardDocumentList}
+              />
+            </div>
+          </div>
+        ) : (
         // Super Admin: Branch Summary Dashboard
         <div className="space-y-6">
           {/* Statistics Cards */}
@@ -672,7 +898,7 @@ const AccountsPage = () => {
                 title="Net Profit"
                 value={`₹${stats.summary?.netProfit?.toLocaleString() || 0}`}
                 icon={HiCurrencyDollar}
-                gradient={stats.summary?.netProfit >= 0 ? 'green' : 'red'}
+                gradient="purple"
                 loading={statsLoading}
               />
               <StatCard
@@ -713,30 +939,7 @@ const AccountsPage = () => {
 
           {/* Branch Summary Table */}
           {branchSummary && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h2 className="text-xl font-semibold text-gray-900">Branch Summary</h2>
-                  <p className="text-gray-600 mt-1">
-                    {monthFilter !== 'all' && yearFilter !== 'all' 
-                      ? `${monthOptions.find(m => m.value === monthFilter)?.label} ${yearFilter} income (accounts + completed leads) and expense by branch`
-                      : monthFilter !== 'all'
-                      ? `${monthOptions.find(m => m.value === monthFilter)?.label} income (accounts + completed leads) and expense by branch`
-                      : yearFilter !== 'all'
-                      ? `${yearFilter} income (accounts + completed leads) and expense by branch`
-                      : 'Current month\'s income (accounts + completed leads) and expense by branch'
-                    }
-                  </p>
-                </div>
-                <div className="text-sm text-gray-500">
-                  {branchSummary.period && (
-                    <span>
-                      {new Date(branchSummary.period.startDate).toLocaleDateString()} - {new Date(branchSummary.period.endDate).toLocaleDateString()}
-                    </span>
-                  )}
-                </div>
-              </div>
-
+            <div className="bg-white p-6">
               {branchSummaryLoading ? (
                 <div className="flex justify-center py-8">
                   <Loading />
@@ -771,14 +974,23 @@ const AccountsPage = () => {
                       <tbody className="bg-white divide-y divide-gray-200">
                         {branchSummary.summary?.length > 0 ? (
                           branchSummary.summary?.map((branch) => (
-                            <tr key={branch.branchId} className="hover:bg-gray-50">
+                            <tr 
+                              key={branch.branchId} 
+                              className="hover:bg-gray-50 cursor-pointer transition-colors duration-200 group"
+                              onClick={() => handleBranchClick(branch)}
+                            >
                               <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="flex items-center justify-between">
                                 <div>
                                   <div className="text-sm font-medium text-gray-900">
                                     {branch.branchName}
                                   </div>
                                   <div className="text-sm text-gray-500">
                                     {branch.branchCode}
+                                    </div>
+                                  </div>
+                                  <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                                    <HiArrowLeft className="h-4 w-4 text-gray-400 rotate-180" />
                                   </div>
                                 </div>
                               </td>
@@ -870,6 +1082,90 @@ const AccountsPage = () => {
             </div>
           )}
         </div>
+        )
+      ) : isAccountsManager ? (
+        // Accounts Manager: Simplified view with only cards and table
+        <div className="space-y-6">
+          {/* Statistics Cards */}
+          {stats && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
+              <StatCard
+                title="Total Income"
+                value={`₹${stats.summary?.totalIncome?.toLocaleString() || 0}`}
+                icon={HiArrowUp}
+                gradient="green"
+                loading={statsLoading}
+              />
+              <StatCard
+                title="Total Expense"
+                value={`₹${stats.summary?.totalExpense?.toLocaleString() || 0}`}
+                icon={HiArrowDown}
+                gradient="red"
+                loading={statsLoading}
+              />
+              <StatCard
+                title="Net Profit"
+                value={`₹${stats.summary?.netProfit?.toLocaleString() || 0}`}
+                icon={HiCurrencyDollar}
+                gradient="purple"
+                loading={statsLoading}
+              />
+              <StatCard
+                title="Total Transactions"
+                value={stats.summary?.totalTransactions || 0}
+                icon={HiClipboardDocumentList}
+                gradient="blue"
+                loading={statsLoading}
+              />
+            </div>
+          )}
+
+          {/* Search and Filter Section */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            <div className="w-full sm:w-80">
+              <SearchInput
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search accounts..."
+                icon={HiMagnifyingGlass}
+              />
+            </div>
+            <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0">
+              <Select
+                value={monthFilter}
+                onChange={handleMonthFilter}
+                options={monthOptions}
+                className="w-full sm:w-48"
+              />
+              <Select
+                value={yearFilter}
+                onChange={handleYearFilter}
+                options={yearOptions}
+                className="w-full sm:w-48"
+              />
+              <Select
+                value={paymentStatusFilter}
+                onChange={handlePaymentStatusFilter}
+                options={paymentStatusOptions}
+                className="w-full sm:w-48"
+              />
+            </div>
+          </div>
+
+          {/* Accounts Table */}
+          <div className="bg-white">
+            <Table
+              data={accounts}
+              columns={columns}
+              loading={loading}
+              error={error}
+              pagination={pagination}
+              onPageChange={handlePageChange}
+              emptyMessage="No accounts found"
+              emptyIcon={HiClipboardDocumentList}
+            />
+          </div>
+        </div>
       ) : (
         // Other roles: Tabbed interface
         <>
@@ -924,6 +1220,155 @@ const AccountsPage = () => {
           {activeTab === 'reports' && <FinancialReports />}
         </>
       )}
+
+      {/* View Account Modal */}
+      <CommonModal
+        isOpen={showViewModal}
+        onClose={() => setShowViewModal(false)}
+        title="Account Details"
+        subtitle="View account transaction details"
+        icon={HiEye}
+        iconColor="from-blue-500 to-blue-600"
+        size="lg"
+        showCloseButton={true}
+      >
+        {accountToView && (
+          <div className="space-y-6">
+            {/* Account Header */}
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    {accountToView.accountId}
+                  </h3>
+                  <p className="text-sm text-gray-600">
+                    {accountToView.transactionType === 'income' ? 'Income' : 'Expense'} Transaction
+                  </p>
+                </div>
+                <div className={`px-3 py-1 rounded-full text-sm font-medium ${
+                  accountToView.transactionType === 'income' 
+                    ? 'bg-green-100 text-green-800' 
+                    : 'bg-red-100 text-red-800'
+                }`}>
+                  {accountToView.transactionType.toUpperCase()}
+                </div>
+              </div>
+            </div>
+
+            {/* Account Details */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Amount</label>
+                  <p className={`text-lg font-semibold ${
+                    accountToView.transactionType === 'income' ? 'text-green-600' : 'text-red-600'
+                  }`}>
+                    {accountToView.formattedAmount}
+                  </p>
+                </div>
+                
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Category</label>
+                  <p className="text-sm text-gray-900">
+                    {accountToView.category.replace('_', ' ').toUpperCase()}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Branch</label>
+                  <p className="text-sm text-gray-900">
+                    {accountToView.branchId?.branchName} ({accountToView.branchId?.branchCode})
+                  </p>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Payment Status</label>
+                  <p className={`text-sm font-medium ${
+                    accountToView.paymentStatus === 'completed' ? 'text-green-600' :
+                    accountToView.paymentStatus === 'pending' ? 'text-yellow-600' :
+                    accountToView.paymentStatus === 'failed' ? 'text-red-600' : 'text-gray-600'
+                  }`}>
+                    {accountToView.paymentStatus.toUpperCase()}
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Transaction Date</label>
+                  <p className="text-sm text-gray-900">
+                    {new Date(accountToView.transactionDate).toLocaleDateString()}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Payment Method</label>
+                  <p className="text-sm text-gray-900">
+                    {accountToView.paymentMethod?.toUpperCase() || 'N/A'}
+                  </p>
+                </div>
+
+                {accountToView.referenceNumber && (
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Reference Number</label>
+                    <p className="text-sm text-gray-900">{accountToView.referenceNumber}</p>
+                  </div>
+                )}
+
+                {accountToView.vendorName && (
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Vendor</label>
+                    <p className="text-sm text-gray-900">{accountToView.vendorName}</p>
+                  </div>
+                )}
+
+                {accountToView.customerName && (
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Customer</label>
+                    <p className="text-sm text-gray-900">{accountToView.customerName}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Description */}
+            <div>
+              <label className="text-sm font-medium text-gray-500">Description</label>
+              <p className="text-sm text-gray-900 mt-1">{accountToView.description}</p>
+            </div>
+
+            {/* Notes */}
+            {accountToView.notes && (
+              <div>
+                <label className="text-sm font-medium text-gray-500">Notes</label>
+                <p className="text-sm text-gray-900 mt-1">{accountToView.notes}</p>
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex justify-end space-x-3 pt-4 border-t">
+              <Button
+                variant="outline"
+                onClick={() => setShowViewModal(false)}
+                size="sm"
+              >
+                Close
+              </Button>
+              <Button
+                variant="primary"
+                onClick={() => {
+                  setShowViewModal(false);
+                  handleEditAccount(accountToView._id);
+                }}
+                icon={HiPencil}
+                size="sm"
+              >
+                Edit Account
+              </Button>
+            </div>
+          </div>
+        )}
+      </CommonModal>
 
       {/* Delete Confirmation Modal */}
       <CommonModal
