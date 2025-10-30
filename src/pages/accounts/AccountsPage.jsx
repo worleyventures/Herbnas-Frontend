@@ -57,7 +57,7 @@ const AccountsPage = () => {
   // Local state
   const [activeTab, setActiveTab] = useState('overview');
   const [searchTerm, setSearchTerm] = useState('');
-  const [dateRangeFilter, setDateRangeFilter] = useState('thisMonth');
+  const [dateRangeFilter, setDateRangeFilter] = useState('today');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [branchFilter, setBranchFilter] = useState('all');
