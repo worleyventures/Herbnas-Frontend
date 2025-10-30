@@ -60,6 +60,11 @@ const AccountsModal = ({ isOpen, onClose }) => {
   // Load data when modal opens
   useEffect(() => {
     if (isOpen) {
+      const today = new Date();
+      const startDate = new Date(today);
+      startDate.setHours(0, 0, 0, 0);
+      const start = startDate.toISOString().split('T')[0];
+      const end = today.toISOString().split('T')[0];
       dispatch(getAllAccounts({
         page: currentPage,
         limit: 10,
@@ -67,9 +72,11 @@ const AccountsModal = ({ isOpen, onClose }) => {
         transactionType: transactionTypeFilter !== 'all' ? transactionTypeFilter : undefined,
         category: categoryFilter !== 'all' ? categoryFilter : undefined,
         branchId: branchFilter !== 'all' ? branchFilter : undefined,
-        paymentStatus: paymentStatusFilter !== 'all' ? paymentStatusFilter : undefined
+        paymentStatus: paymentStatusFilter !== 'all' ? paymentStatusFilter : undefined,
+        startDate: start,
+        endDate: end
       }));
-      dispatch(getAccountStats());
+      dispatch(getAccountStats({ startDate: start, endDate: end }));
     }
   }, [isOpen, currentPage, searchTerm, transactionTypeFilter, categoryFilter, branchFilter, paymentStatusFilter, dispatch]);
 
@@ -102,6 +109,11 @@ const AccountsModal = ({ isOpen, onClose }) => {
 
   // Handle refresh
   const handleRefresh = () => {
+    const today = new Date();
+    const startDate = new Date(today);
+    startDate.setHours(0, 0, 0, 0);
+    const start = startDate.toISOString().split('T')[0];
+    const end = today.toISOString().split('T')[0];
     dispatch(getAllAccounts({
       page: currentPage,
       limit: 10,
@@ -109,9 +121,11 @@ const AccountsModal = ({ isOpen, onClose }) => {
       transactionType: transactionTypeFilter !== 'all' ? transactionTypeFilter : undefined,
       category: categoryFilter !== 'all' ? categoryFilter : undefined,
       branchId: branchFilter !== 'all' ? branchFilter : undefined,
-      paymentStatus: paymentStatusFilter !== 'all' ? paymentStatusFilter : undefined
+      paymentStatus: paymentStatusFilter !== 'all' ? paymentStatusFilter : undefined,
+      startDate: start,
+      endDate: end
     }));
-    dispatch(getAccountStats());
+    dispatch(getAccountStats({ startDate: start, endDate: end }));
   };
 
   // Handle page change

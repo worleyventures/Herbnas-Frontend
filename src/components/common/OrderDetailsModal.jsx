@@ -729,8 +729,6 @@ const OrderDetailsModal = ({ isOpen, onClose, orderId, onEdit, onDelete, onRefre
         onClose={onClose}
         title="Order Details"
         subtitle={order ? `Order #${order.orderNumber || order.orderId}` : ''}
-        icon={HiEye}
-        iconColor="from-blue-500 to-blue-600"
         size="xl"
         showFooter={true}
         footerContent={footerContent}
@@ -753,16 +751,6 @@ const OrderDetailsModal = ({ isOpen, onClose, orderId, onEdit, onDelete, onRefre
                   status={order.status}
                   color={getStatusColor(order.status)}
                 />
-                <Button
-                  onClick={() => {
-                    setNewStatus(order.status);
-                    setShowStatusModal(true);
-                  }}
-                  variant="outline"
-                  size="sm"
-                >
-                  Update
-                </Button>
               </div>
               <div className="flex items-center space-x-2">
                 <span className="text-sm text-gray-600">Payment Status:</span>
@@ -770,16 +758,6 @@ const OrderDetailsModal = ({ isOpen, onClose, orderId, onEdit, onDelete, onRefre
                   status={order.paymentStatus}
                   color={getPaymentStatusColor(order.paymentStatus)}
                 />
-                <Button
-                  onClick={() => {
-                    setNewPaymentStatus(order.paymentStatus);
-                    setShowPaymentModal(true);
-                  }}
-                  variant="outline"
-                  size="sm"
-                >
-                  Update
-                </Button>
               </div>
             </div>
 
@@ -801,74 +779,6 @@ const OrderDetailsModal = ({ isOpen, onClose, orderId, onEdit, onDelete, onRefre
             <p className="text-gray-500">No order data available</p>
           </div>
         )}
-      </CommonModal>
-
-      {/* Status Update Modal */}
-      <CommonModal
-        isOpen={showStatusModal}
-        onClose={() => setShowStatusModal(false)}
-        title="Update Order Status"
-        size="sm"
-        showFooter={true}
-        footerContent={
-          <div className="flex space-x-2 justify-end">
-            <Button
-              onClick={() => setShowStatusModal(false)}
-              variant="outline"
-              size="sm"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleStatusUpdate}
-              variant="primary"
-              size="sm"
-            >
-              Update Status
-            </Button>
-          </div>
-        }
-      >
-        <Select
-          options={statusOptions.map(opt => ({ value: opt.value, label: opt.label }))}
-          value={newStatus}
-          onChange={(value) => setNewStatus(value)}
-          placeholder="Select status"
-        />
-      </CommonModal>
-
-      {/* Payment Status Update Modal */}
-      <CommonModal
-        isOpen={showPaymentModal}
-        onClose={() => setShowPaymentModal(false)}
-        title="Update Payment Status"
-        size="sm"
-        showFooter={true}
-        footerContent={
-          <div className="flex space-x-2 justify-end">
-            <Button
-              onClick={() => setShowPaymentModal(false)}
-              variant="outline"
-              size="sm"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handlePaymentStatusUpdate}
-              variant="primary"
-              size="sm"
-            >
-              Update Payment Status
-            </Button>
-          </div>
-        }
-      >
-        <Select
-          options={paymentStatusOptions.map(opt => ({ value: opt.value, label: opt.label }))}
-          value={newPaymentStatus}
-          onChange={(value) => setNewPaymentStatus(value)}
-          placeholder="Select payment status"
-        />
       </CommonModal>
     </>
   );

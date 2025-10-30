@@ -261,6 +261,7 @@ const AccountFormPage = () => {
         { value: 'raw_materials', label: 'Raw Materials' },
         { value: 'labor', label: 'Labor' },
         { value: 'utilities', label: 'Utilities' },
+        { value: 'eb', label: 'EB' },
         { value: 'rent', label: 'Rent' },
         { value: 'equipment', label: 'Equipment' },
         { value: 'marketing', label: 'Marketing' },
@@ -307,9 +308,9 @@ const AccountFormPage = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Page Header */}
-      <div className="bg-white p-6">
+      <div className="bg-white p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <div>
@@ -325,8 +326,8 @@ const AccountFormPage = () => {
       </div>
 
       {/* Form */}
-      <div className="bg-white p-6">
-        <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="bg-white p-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
           {/* Transaction Type and Category */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
@@ -358,20 +359,18 @@ const AccountFormPage = () => {
           </div>
 
           {/* Sub Category and Amount */}
-          <div className={`grid ${visibleFields.subCategory ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'} gap-6`}>
-            {visibleFields.subCategory && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Sub Category
-                </label>
-                <Input
-                  value={formData.subCategory}
-                  onChange={(e) => handleInputChange('subCategory', e.target.value)}
-                  placeholder="Enter sub category (optional)"
-                  error={errors.subCategory}
-                />
-              </div>
-            )}
+          <div className={`grid grid-cols-1 md:grid-cols-2 gap-6`}>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Sub Category
+              </label>
+              <Input
+                value={formData.subCategory}
+                onChange={(e) => handleInputChange('subCategory', e.target.value)}
+                placeholder="Enter sub category (optional)"
+                error={errors.subCategory}
+              />
+            </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Amount *
@@ -388,20 +387,33 @@ const AccountFormPage = () => {
             </div>
           </div>
 
-          {/* Branch */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Branch *
-            </label>
-            <Select
-              options={branchOptions}
-              value={formData.branchId}
-              onChange={(value) => handleInputChange('branchId', value)}
-              placeholder="Select branch"
-              error={errors.branchId}
-              disabled={isAccountsManager}
-              className={isAccountsManager ? 'opacity-60 cursor-not-allowed' : ''}
-            />
+          {/* Branch and Transaction Date */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Branch *
+              </label>
+              <Select
+                options={branchOptions}
+                value={formData.branchId}
+                onChange={(value) => handleInputChange('branchId', value)}
+                placeholder="Select branch"
+                error={errors.branchId}
+                disabled={isAccountsManager}
+                className={isAccountsManager ? 'opacity-60 cursor-not-allowed' : ''}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Transaction Date *
+              </label>
+              <Input
+                type="date"
+                value={formData.transactionDate}
+                onChange={(e) => handleInputChange('transactionDate', e.target.value)}
+                error={errors.transactionDate}
+              />
+            </div>
           </div>
 
           {/* Description */}
@@ -442,21 +454,10 @@ const AccountFormPage = () => {
             </div>
           </div>
 
-          {/* Transaction Date */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Transaction Date *
-            </label>
-            <Input
-              type="date"
-              value={formData.transactionDate}
-              onChange={(e) => handleInputChange('transactionDate', e.target.value)}
-              error={errors.transactionDate}
-            />
-          </div>
+          
 
-          {/* Reference Number and Order ID */}
-          <div className={`grid ${visibleFields.orderId ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'} gap-6`}>
+          {/* Reference Number and Vendor/Order (single row) */}
+          <div className={`grid grid-cols-1 md:grid-cols-2 gap-6`}>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Reference Number
@@ -467,7 +468,18 @@ const AccountFormPage = () => {
                 placeholder="Enter reference number"
               />
             </div>
-            {visibleFields.orderId && (
+            {visibleFields.vendorName ? (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Vendor Name
+                </label>
+                <Input
+                  value={formData.vendorName}
+                  onChange={(e) => handleInputChange('vendorName', e.target.value)}
+                  placeholder="Enter vendor name"
+                />
+              </div>
+            ) : visibleFields.orderId ? (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Order ID
@@ -478,13 +490,14 @@ const AccountFormPage = () => {
                   placeholder="Enter order ID (optional)"
                 />
               </div>
+            ) : (
+              <div className="hidden md:block"></div>
             )}
           </div>
 
-          {/* Vendor/Customer Name */}
-          {(visibleFields.customerName || visibleFields.vendorName) && (
+          {/* Vendor/Customer Name (customer only; vendor shown with reference) */}
+          {(visibleFields.customerName) && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {visibleFields.customerName && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Customer Name
@@ -495,19 +508,7 @@ const AccountFormPage = () => {
                     placeholder="Enter customer name"
                   />
                 </div>
-              )}
-              {visibleFields.vendorName && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Vendor Name
-                  </label>
-                  <Input
-                    value={formData.vendorName}
-                    onChange={(e) => handleInputChange('vendorName', e.target.value)}
-                    placeholder="Enter vendor name"
-                  />
-                </div>
-              )}
+              <div className="hidden md:block"></div>
             </div>
           )}
 

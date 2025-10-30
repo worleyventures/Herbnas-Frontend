@@ -305,7 +305,7 @@ const AccountFormModal = ({ isOpen, onClose, account = null }) => {
       size="xl"
       showCloseButton={true}
     >
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-4">
         {/* Transaction Type and Category */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
@@ -337,20 +337,18 @@ const AccountFormModal = ({ isOpen, onClose, account = null }) => {
         </div>
 
         {/* Sub Category and Amount */}
-        <div className={`grid ${visibleFields.subCategory ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'} gap-4`}>
-          {visibleFields.subCategory && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Sub Category
-              </label>
-              <Input
-                value={formData.subCategory}
-                onChange={(e) => handleInputChange('subCategory', e.target.value)}
-                placeholder="Enter sub category (optional)"
-                error={errors.subCategory}
-              />
-            </div>
-          )}
+        <div className={`grid grid-cols-1 md:grid-cols-2 gap-4`}>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Sub Category
+            </label>
+            <Input
+              value={formData.subCategory}
+              onChange={(e) => handleInputChange('subCategory', e.target.value)}
+              placeholder="Enter sub category (optional)"
+              error={errors.subCategory}
+            />
+          </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Amount *
@@ -367,18 +365,31 @@ const AccountFormModal = ({ isOpen, onClose, account = null }) => {
           </div>
         </div>
 
-        {/* Branch */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Branch *
-          </label>
-          <Select
-            options={branchOptions}
-            value={formData.branchId}
-            onChange={(value) => handleInputChange('branchId', value)}
-            placeholder="Select branch"
-            error={errors.branchId}
-          />
+        {/* Branch and Transaction Date */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Branch *
+            </label>
+            <Select
+              options={branchOptions}
+              value={formData.branchId}
+              onChange={(value) => handleInputChange('branchId', value)}
+              placeholder="Select branch"
+              error={errors.branchId}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Transaction Date *
+            </label>
+            <Input
+              type="date"
+              value={formData.transactionDate}
+              onChange={(e) => handleInputChange('transactionDate', e.target.value)}
+              error={errors.transactionDate}
+            />
+          </div>
         </div>
 
         {/* Description */}
@@ -419,21 +430,10 @@ const AccountFormModal = ({ isOpen, onClose, account = null }) => {
           </div>
         </div>
 
-        {/* Transaction Date */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Transaction Date *
-          </label>
-          <Input
-            type="date"
-            value={formData.transactionDate}
-            onChange={(e) => handleInputChange('transactionDate', e.target.value)}
-            error={errors.transactionDate}
-          />
-        </div>
+        
 
-        {/* Reference Number and Order ID */}
-        <div className={`grid ${visibleFields.orderId ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'} gap-4`}>
+        {/* Reference Number and Vendor/Order (single row) */}
+        <div className={`grid grid-cols-1 md:grid-cols-2 gap-4`}>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Reference Number
@@ -444,7 +444,18 @@ const AccountFormModal = ({ isOpen, onClose, account = null }) => {
               placeholder="Enter reference number"
             />
           </div>
-          {visibleFields.orderId && (
+          {visibleFields.vendorName ? (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Vendor Name
+              </label>
+              <Input
+                value={formData.vendorName}
+                onChange={(e) => handleInputChange('vendorName', e.target.value)}
+                placeholder="Enter vendor name"
+              />
+            </div>
+          ) : visibleFields.orderId ? (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Order ID
@@ -455,13 +466,14 @@ const AccountFormModal = ({ isOpen, onClose, account = null }) => {
                 placeholder="Enter order ID (optional)"
               />
             </div>
+          ) : (
+            <div className="hidden md:block"></div>
           )}
         </div>
 
-        {/* Vendor/Customer Name */}
-        {(visibleFields.customerName || visibleFields.vendorName) && (
+        {/* Vendor/Customer Name (customer only; vendor shown with reference) */}
+        {(visibleFields.customerName) && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {visibleFields.customerName && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Customer Name
@@ -472,19 +484,7 @@ const AccountFormModal = ({ isOpen, onClose, account = null }) => {
                   placeholder="Enter customer name"
                 />
               </div>
-            )}
-            {visibleFields.vendorName && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Vendor Name
-                </label>
-                <Input
-                  value={formData.vendorName}
-                  onChange={(e) => handleInputChange('vendorName', e.target.value)}
-                  placeholder="Enter vendor name"
-                />
-              </div>
-            )}
+            <div className="hidden md:block"></div>
           </div>
         )}
 

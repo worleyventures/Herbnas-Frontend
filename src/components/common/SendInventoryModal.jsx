@@ -238,7 +238,11 @@ const SendInventoryModal = ({
                     </div>
                     <div className="md:col-span-2">
                       <span className="text-gray-500">Address:</span>
-                      <span className="ml-2 font-medium">{selectedBranch.branchAddress}</span>
+                      <span className="ml-2 font-medium">
+                        {typeof selectedBranch.branchAddress === 'object' && selectedBranch.branchAddress !== null
+                          ? `${selectedBranch.branchAddress.street || ''}, ${selectedBranch.branchAddress.city || ''}, ${selectedBranch.branchAddress.state || ''} - ${selectedBranch.branchAddress.pinCode || ''}`
+                          : selectedBranch.branchAddress || 'N/A'}
+                      </span>
                     </div>
                   </div>
                 </div>

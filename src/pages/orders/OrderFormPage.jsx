@@ -46,6 +46,7 @@ import {
   selectLeads,
   selectLeadLoading
 } from '../../redux/slices/leadSlice';
+import { createSalesAccount } from '../../redux/actions/accountActions';
 
 const OrderFormPage = () => {
   const { id } = useParams();
@@ -90,7 +91,9 @@ const OrderFormPage = () => {
     paymentMethod: 'cash',
     paymentStatus: 'pending',
     paymentNotes: '',
-    expectedDeliveryDate: ''
+    amountReceived: 0,
+    expectedDeliveryDate: '',
+    status: 'draft' // Add status field
   });
   
   const [errors, setErrors] = useState({});
@@ -148,7 +151,9 @@ const OrderFormPage = () => {
         paymentMethod: order.paymentMethod || 'cash',
         paymentStatus: order.paymentStatus || 'pending',
         paymentNotes: order.paymentNotes || '',
-        expectedDeliveryDate: order.expectedDeliveryDate ? new Date(order.expectedDeliveryDate).toISOString().split('T')[0] : ''
+        amountReceived: order.amountReceived || 0,
+        expectedDeliveryDate: order.expectedDeliveryDate ? new Date(order.expectedDeliveryDate).toISOString().split('T')[0] : '',
+        status: order.status || 'draft' // Add this line
       });
     }
   }, [isEdit, order]);
@@ -246,6 +251,11 @@ const OrderFormPage = () => {
         ...prev,
         [field]: value,
         codCharges: value === 'cod' ? prev.codCharges : 0
+      }));
+    } else if (field === 'status') {
+      setFormData(prev => ({
+        ...prev,
+        [field]: value
       }));
     } else {
       setFormData(prev => ({
@@ -410,6 +420,10 @@ const OrderFormPage = () => {
       newErrors.paymentStatus = 'Payment status is required';
     }
     
+    if (!formData.status) {
+      newErrors.status = 'Order status is required';
+    }
+    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -451,21 +465,41 @@ const OrderFormPage = () => {
         paymentMethod: formData.paymentMethod,
         paymentStatus: formData.paymentStatus,
         paymentNotes: formData.paymentNotes,
-        expectedDeliveryDate: formData.expectedDeliveryDate
+        amountReceived: formData.amountReceived,
+        expectedDeliveryDate: formData.expectedDeliveryDate,
+        status: formData.status
       };
       
       if (isEdit) {
-        await dispatch(updateOrder({ id, orderData })).unwrap();
+        const updated = await dispatch(updateOrder({ id, orderData })).unwrap();
         dispatch(addNotification({
           type: 'success',
           message: 'Order updated successfully!'
         }));
+        // If there is a partial or full payment, post it to accounts
+        const updatedOrder = updated?.data?.order ?? {};
+        if (Number(updatedOrder.amountReceived) > 0 && ['paid', 'partial'].includes(updatedOrder.paymentStatus)) {
+          await dispatch(createSalesAccount({
+            orderId: updatedOrder._id, // must be actual backend ID
+            paymentMethod: updatedOrder.paymentMethod,
+            paymentStatus: updatedOrder.paymentStatus === 'paid' ? 'completed' : 'pending',
+          }));
+        }
       } else {
-        await dispatch(createOrder(orderData)).unwrap();
+        const created = await dispatch(createOrder(orderData)).unwrap();
         dispatch(addNotification({
           type: 'success',
           message: 'Order created successfully!'
         }));
+        // If there is a partial or full payment, post it to accounts
+        const createdOrder = created?.data?.order ?? {};
+        if (Number(createdOrder.amountReceived) > 0 && ['paid', 'partial'].includes(createdOrder.paymentStatus) && !['draft', 'cancelled'].includes(createdOrder.status)) {
+          await dispatch(createSalesAccount({
+            orderId: createdOrder._id,
+            paymentMethod: createdOrder.paymentMethod,
+            paymentStatus: createdOrder.paymentStatus === 'paid' ? 'completed' : 'pending',
+          }));
+        }
       }
       
       navigate('/orders');
@@ -525,14 +559,53 @@ const OrderFormPage = () => {
     { value: 'failed', label: 'Failed' }
   ];
 
+  const orderStatusOptions = [
+    { value: 'draft', label: 'Draft' },
+    { value: 'confirmed', label: 'Confirmed' },
+    { value: 'picked', label: 'Picked' },
+    { value: 'dispatched', label: 'Dispatched' },
+    { value: 'delivered', label: 'Delivered' },
+    { value: 'returned', label: 'Returned' }
+  ];
+
   const { subtotal, totalAmount } = calculateTotals();
+
+  // Watch paymentStatus and amountReceived to update status logic.
+  useEffect(() => {
+    if (!isEdit) return;
+    if (
+      formData.paymentStatus === 'paid' &&
+      (+formData.amountReceived === +totalAmount)
+    ) {
+      // Auto-set confirmed if not already, and allow edit.
+      setFormData(prev => ({ ...prev, status: prev.status === 'draft' ? 'confirmed' : prev.status || 'confirmed' }));
+    } else {
+      // Always set to draft unless already further progressed (like returned)
+      setFormData(prev => ({ ...prev, status: prev.status === 'confirmed' || prev.status === 'draft' ? 'draft' : prev.status }));
+    }
+  }, [formData.paymentStatus, formData.amountReceived, totalAmount, isEdit]);
+
+  const canEditOrderStatus = (
+    (formData.paymentStatus === 'paid' && +formData.amountReceived === +totalAmount)
+    ||
+    (formData.paymentMethod === 'cod' && +formData.amountReceived > 0)
+  );
 
   if (loading && isEdit) {
     return <Loading />;
   }
 
+  const statusOptions = [...orderStatusOptions];
+  const isKnownStatus = statusOptions.some(opt => opt.value === formData.status);
+  if (!isKnownStatus && formData.status) {
+    statusOptions.push({
+      value: formData.status,
+      label: formData.status.charAt(0).toUpperCase() + formData.status.slice(1)
+    });
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header */}
       <div className="flex justify-between items-center">
         <div className="flex items-center space-x-4">
@@ -549,14 +622,14 @@ const OrderFormPage = () => {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Main Form */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2 space-y-4">
             {/* Order Details */}
-            <div className="pb-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Order Details</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="pb-4">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Order Details</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <CustomerSelect
                     options={customerOptions}
@@ -584,12 +657,23 @@ const OrderFormPage = () => {
                     className={isBranchDisabled ? 'opacity-60 cursor-not-allowed' : ''}
                   />
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Payment Method
+                  </label>
+                  <Select
+                    options={paymentMethodOptions}
+                    value={formData.paymentMethod}
+                    onChange={handleSelectChange('paymentMethod')}
+                    placeholder="Select payment method"
+                  />
+                </div>
               </div>
             </div>
 
             {/* Order Items */}
-            <div className="pb-6">
-              <div className="flex justify-between items-center mb-4">
+            <div className="pb-4">
+              <div className="flex justify-between items-center mb-2">
                 <h3 className="text-lg font-medium text-gray-900">Order Items</h3>
                 <Button
                   type="button"
@@ -602,9 +686,9 @@ const OrderFormPage = () => {
                 </Button>
               </div>
               
-              <div className="space-y-4">
+              <div className="space-y-2">
                 {formData.items.map((item, index) => (
-                  <div key={index} className="grid grid-cols-1 md:grid-cols-12 gap-4 py-3">
+                  <div key={index} className="grid grid-cols-1 md:grid-cols-12 gap-3 py-2">
                     <div className="md:col-span-6">
                       <label className="block text-sm font-medium mb-2">
                         Product *
@@ -664,8 +748,8 @@ const OrderFormPage = () => {
             </div>
 
             {/* Shipping Address */}
-            <div className="pb-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Shipping Address</h3>
+            <div className="pb-4">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Shipping Address</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2">
                   <Input
@@ -740,8 +824,8 @@ const OrderFormPage = () => {
             </div>
 
             {/* Delivery Information */}
-            <div className="pb-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Delivery Information</h3>
+            <div className="pb-4">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Delivery Information</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Input
@@ -758,9 +842,9 @@ const OrderFormPage = () => {
             </div>
 
             {/* Notes */}
-            <div className="pb-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Notes</h3>
-              <div className="space-y-4">
+            <div className="pb-4">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Notes</h3>
+              <div className="space-y-2">
                 <TextArea
                   label="Customer Notes"
                   value={formData.notes}
@@ -773,22 +857,11 @@ const OrderFormPage = () => {
           </div>
 
           {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Payment Method */}
-            <div className="pb-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Payment Method</h3>
-              <Select
-                options={paymentMethodOptions}
-                value={formData.paymentMethod}
-                onChange={handleSelectChange('paymentMethod')}
-                placeholder="Select payment method"
-              />
-            </div>
-
+          <div className="space-y-4">
             {/* Order Summary */}
-            <div className="pb-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Order Summary</h3>
-              <div className="space-y-4">
+            <div className="pb-4">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Order Summary</h3>
+              <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">Subtotal</span>
                   <span className="text-sm font-medium">₹{subtotal.toLocaleString()}</span>
@@ -861,9 +934,9 @@ const OrderFormPage = () => {
             </div>
 
             {/* Payment Status and Notes */}
-            <div className="pb-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Payment Information</h3>
-              <div className="space-y-4">
+            <div className="pb-4">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Payment Information</h3>
+              <div className="space-y-2">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Payment Status
@@ -877,6 +950,19 @@ const OrderFormPage = () => {
                   />
                 </div>
                 <div>
+                  <Input
+                    label="Received Amount"
+                    type="number"
+                    value={formData.amountReceived}
+                    onChange={(e) => handleInputChange('amountReceived', e.target.value)}
+                    placeholder="₹0.00"
+                    min="0"
+                    step="0.01"
+                    error={errors.amountReceived}
+                    helperText="Amount received for this order"
+                  />
+                </div>
+                <div>
                   <TextArea
                     label="Payment Notes"
                     value={formData.paymentNotes}
@@ -887,6 +973,24 @@ const OrderFormPage = () => {
                     helperText="Optional: Add any payment-related notes or transaction IDs"
                   />
                 </div>
+                {isEdit && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Order Status</label>
+                    <Select
+                      options={statusOptions}
+                      value={formData.status || orderStatusOptions[0].value}
+                      onChange={handleSelectChange('status')}
+                      error={errors.status}
+                      disabled={!canEditOrderStatus}
+                      className={!canEditOrderStatus ? 'opacity-60 cursor-not-allowed' : ''}
+                    />
+                    <div className="text-xs text-gray-400 mt-1">
+                      {canEditOrderStatus
+                        ? 'Order status is now editable.'
+                        : "Order status can be changed after full payment or after receiving any amount for COD orders."}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 

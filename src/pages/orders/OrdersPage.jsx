@@ -270,6 +270,22 @@ const OrdersPage = () => {
       )
     },
     {
+      key: 'orderStatus',
+      label: 'Order Status',
+      render: (order) => {
+        // Simple color: delivered=green, returned=orange, closed=gray, others=blue
+        let color = 'blue';
+        if (order.status === 'delivered') color = 'green';
+        else if (order.status === 'returned') color = 'orange';
+        else if (order.status === 'closed') color = 'gray';
+        else if (order.status === 'draft') color = 'gray';
+        else if (order.status === 'confirmed') color = 'purple';
+        else if (order.status === 'picked') color = 'yellow';
+        else if (order.status === 'dispatched') color = 'blue';
+        return <StatusBadge status={order.status} color={color} />;
+      }
+    },
+    {
       key: 'createdAt',
       label: 'Order Date',
       render: (order) => (
@@ -279,16 +295,26 @@ const OrdersPage = () => {
       )
     },
     {
-      key: 'expectedDeliveryDate',
-      label: 'Expected Delivery',
-      render: (order) => (
-        <div className="text-sm text-gray-900">
-          {order.expectedDeliveryDate 
-            ? new Date(order.expectedDeliveryDate).toLocaleDateString()
-            : <span className="text-gray-400">Not set</span>
+      key: 'amountReceived',
+      label: 'Amount Received',
+      render: (order) => {
+        // If amountReceived field exists, use it; otherwise calculate based on payment status
+        let amountReceived = order.amountReceived;
+        
+        if (amountReceived === undefined || amountReceived === null) {
+          if (order.paymentStatus === 'paid') {
+            amountReceived = order.totalAmount || 0;
+          } else {
+            amountReceived = 0;
           }
-        </div>
-      )
+        }
+        
+        return (
+          <div className="font-medium text-gray-900">
+            ₹{amountReceived.toLocaleString()}
+          </div>
+        );
+      }
     },
     {
       key: 'actions',

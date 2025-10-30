@@ -98,6 +98,40 @@ const BranchDetailsModal = ({
     ]
   };
 
+  // Bank details and ready cash
+  const normalizedBankAccounts = Array.isArray(branch.bankAccounts) && branch.bankAccounts.length > 0
+    ? branch.bankAccounts
+    : (branch.bankName || branch.bankAccountNumber || branch.bankIfsc || branch.bankBranch || branch.bankAccountHolder)
+      ? [{
+          bankName: branch.bankName,
+          bankAccountHolder: branch.bankAccountHolder,
+          bankAccountNumber: branch.bankAccountNumber,
+          bankIfsc: branch.bankIfsc,
+          bankBranch: branch.bankBranch
+        }]
+      : [];
+
+  const bankAndCashInfo = {
+    title: 'Bank & Cash',
+    fields: [
+      {
+        label: 'Ready Cash Amount',
+        value: branch.readyCashAmount !== undefined ? String(branch.readyCashAmount) : 'N/A'
+      },
+      {
+        label: 'Ready Cash Remarks',
+        value: branch.readyCashRemarks || 'N/A'
+      },
+      ...normalizedBankAccounts.flatMap((acc, idx) => ([
+        { label: `Bank ${idx + 1} - Name`, value: acc.bankName || 'N/A' },
+        { label: `Bank ${idx + 1} - Account Holder`, value: acc.bankAccountHolder || 'N/A' },
+        { label: `Bank ${idx + 1} - Account Number`, value: acc.bankAccountNumber || 'N/A' },
+        { label: `Bank ${idx + 1} - IFSC`, value: acc.bankIfsc || 'N/A' },
+        { label: `Bank ${idx + 1} - Branch`, value: acc.bankBranch || 'N/A' }
+      ]))
+    ]
+  };
+
   const getStockStatus = (quantity, minQuantity, maxQuantity) => {
     if (quantity <= minQuantity) return { status: 'Low Stock', color: 'text-red-600', bgColor: 'bg-red-100' };
     if (quantity <= minQuantity * 2) return { status: 'Medium Stock', color: 'text-yellow-600', bgColor: 'bg-yellow-100' };
@@ -283,15 +317,19 @@ const BranchDetailsModal = ({
       footerContent={footerContent}
     >
       <div className="space-y-6">
-        {/* Basic and Additional Information */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Basic, Additional and Bank & Cash Information */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div>
             <DetailsView sections={[additionalInfo]} />
           </div>
           <div>
             <DetailsView sections={[basicInfo]} />
           </div>
+          <div>
+            <DetailsView sections={[bankAndCashInfo]} />
+          </div>
         </div>
+
 
         {/* Branch Inventory Section */}
         <div className="border-t border-gray-200 pt-6">

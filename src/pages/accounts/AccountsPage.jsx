@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -57,8 +57,9 @@ const AccountsPage = () => {
   // Local state
   const [activeTab, setActiveTab] = useState('overview');
   const [searchTerm, setSearchTerm] = useState('');
-  const [monthFilter, setMonthFilter] = useState('all');
-  const [yearFilter, setYearFilter] = useState('all');
+  const [dateRangeFilter, setDateRangeFilter] = useState('today');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
   const [branchFilter, setBranchFilter] = useState('all');
   const [paymentStatusFilter, setPaymentStatusFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
@@ -67,6 +68,7 @@ const AccountsPage = () => {
   const [accountToDelete, setAccountToDelete] = useState(null);
   const [showViewModal, setShowViewModal] = useState(false);
   const [accountToView, setAccountToView] = useState(null);
+  const [transactionTypeFilter, setTransactionTypeFilter] = useState('all');
   
   // Drill-down state for Super Admin
   const [selectedBranch, setSelectedBranch] = useState(null);
@@ -76,56 +78,117 @@ const AccountsPage = () => {
   const isSuperAdmin = user?.role === 'super_admin';
   const isAccountsManager = user?.role === 'accounts_manager';
 
+  // Helper function to get date range based on filter selection
+  const getDateRange = useCallback(() => {
+    const today = new Date();
+    today.setHours(23, 59, 59, 999); // End of today
+    
+    switch (dateRangeFilter) {
+      case 'today': {
+        const start = new Date(today);
+        start.setHours(0, 0, 0, 0);
+        return {
+          startDate: start.toISOString().split('T')[0],
+          endDate: today.toISOString().split('T')[0]
+        };
+      }
+      case 'thisWeek': {
+        const start = new Date(today);
+        const dayOfWeek = start.getDay();
+        start.setDate(start.getDate() - dayOfWeek); // Go to Sunday
+        start.setHours(0, 0, 0, 0);
+        return {
+          startDate: start.toISOString().split('T')[0],
+          endDate: today.toISOString().split('T')[0]
+        };
+      }
+      case 'thisMonth': {
+        const start = new Date(today.getFullYear(), today.getMonth(), 1);
+        start.setHours(0, 0, 0, 0);
+        return {
+          startDate: start.toISOString().split('T')[0],
+          endDate: today.toISOString().split('T')[0]
+        };
+      }
+      case 'custom': {
+        if (fromDate && toDate) {
+          return {
+            startDate: fromDate,
+            endDate: toDate
+          };
+        }
+        return null;
+      }
+      default:
+        return null;
+    }
+  }, [dateRangeFilter, fromDate, toDate]);
+
   // Load data on component mount
   useEffect(() => {
     if (activeTab === 'overview' || isAccountsManager) {
       // For accounts managers, always filter by their branch
       const branchId = isAccountsManager ? (user?.branch?._id || user?.branch) : (branchFilter !== 'all' ? branchFilter : undefined);
+      const dateRange = getDateRange();
       
       dispatch(getAllAccounts({
         page: currentPage,
         limit: 10,
         search: searchTerm,
-        month: monthFilter !== 'all' ? monthFilter : undefined,
-        year: yearFilter !== 'all' ? yearFilter : undefined,
+        startDate: dateRange?.startDate,
+        endDate: dateRange?.endDate,
         branchId: branchId,
-        paymentStatus: paymentStatusFilter !== 'all' ? paymentStatusFilter : undefined
+        paymentStatus: paymentStatusFilter !== 'all' ? paymentStatusFilter : undefined,
+        transactionType: transactionTypeFilter !== 'all' ? transactionTypeFilter : undefined
       }));
       dispatch(getAccountStats({
-        month: monthFilter !== 'all' ? monthFilter : undefined,
-        year: yearFilter !== 'all' ? yearFilter : undefined,
+        startDate: dateRange?.startDate,
+        endDate: dateRange?.endDate,
         branchId: branchId
       }));
       
       // Load branch summary for super admin
       if (isSuperAdmin) {
         dispatch(getBranchSummary({
-          month: monthFilter !== 'all' ? monthFilter : undefined,
-          year: yearFilter !== 'all' ? yearFilter : undefined
+          startDate: dateRange?.startDate,
+          endDate: dateRange?.endDate
         }));
       }
     }
-  }, [activeTab, currentPage, searchTerm, monthFilter, yearFilter, branchFilter, paymentStatusFilter, dispatch, isSuperAdmin, isAccountsManager, user?.branch?._id, user?.branch]);
+  }, [activeTab, currentPage, searchTerm, getDateRange, branchFilter, paymentStatusFilter, transactionTypeFilter, dispatch, isSuperAdmin, isAccountsManager, user?.branch?._id, user?.branch]);
+
+  // Separate effect to reload branch summary when date range changes (for super admin)
+  useEffect(() => {
+    if (isSuperAdmin && (activeTab === 'overview' || !showBranchDetails)) {
+      const dateRange = getDateRange();
+      dispatch(getBranchSummary({
+        startDate: dateRange?.startDate,
+        endDate: dateRange?.endDate
+      }));
+    }
+  }, [dateRangeFilter, fromDate, toDate, isSuperAdmin, activeTab, showBranchDetails, getDateRange, dispatch]);
 
   // Load accounts for selected branch drill-down
   useEffect(() => {
     if (showBranchDetails && selectedBranch) {
+      const dateRange = getDateRange();
       dispatch(getAllAccounts({
         page: currentPage,
         limit: 10,
         search: searchTerm,
-        month: monthFilter !== 'all' ? monthFilter : undefined,
-        year: yearFilter !== 'all' ? yearFilter : undefined,
+        startDate: dateRange?.startDate,
+        endDate: dateRange?.endDate,
         branchId: selectedBranch.branchId,
-        paymentStatus: paymentStatusFilter !== 'all' ? paymentStatusFilter : undefined
+        paymentStatus: paymentStatusFilter !== 'all' ? paymentStatusFilter : undefined,
+        transactionType: transactionTypeFilter !== 'all' ? transactionTypeFilter : undefined
       }));
       dispatch(getAccountStats({
-        month: monthFilter !== 'all' ? monthFilter : undefined,
-        year: yearFilter !== 'all' ? yearFilter : undefined,
+        startDate: dateRange?.startDate,
+        endDate: dateRange?.endDate,
         branchId: selectedBranch.branchId
       }));
     }
-  }, [showBranchDetails, selectedBranch, currentPage, searchTerm, monthFilter, yearFilter, paymentStatusFilter, dispatch]);
+  }, [showBranchDetails, selectedBranch, currentPage, searchTerm, getDateRange, paymentStatusFilter, transactionTypeFilter, dispatch]);
 
   // Handle branch row click for drill-down
   const handleBranchClick = (branch) => {
@@ -142,13 +205,23 @@ const AccountsPage = () => {
   };
 
   // Handle filters
-  const handleMonthFilter = (value) => {
-    setMonthFilter(value);
+  const handleDateRangeFilter = (value) => {
+    setDateRangeFilter(value);
+    setCurrentPage(1);
+    // If switching away from custom, clear the dates
+    if (value !== 'custom') {
+      setFromDate('');
+      setToDate('');
+    }
+  };
+
+  const handleFromDateChange = (value) => {
+    setFromDate(value);
     setCurrentPage(1);
   };
 
-  const handleYearFilter = (value) => {
-    setYearFilter(value);
+  const handleToDateChange = (value) => {
+    setToDate(value);
     setCurrentPage(1);
   };
 
@@ -444,30 +517,11 @@ const AccountsPage = () => {
   ];
 
   // Filter options
-  const monthOptions = [
-    { value: 'all', label: 'All Months' },
-    { value: '1', label: 'January' },
-    { value: '2', label: 'February' },
-    { value: '3', label: 'March' },
-    { value: '4', label: 'April' },
-    { value: '5', label: 'May' },
-    { value: '6', label: 'June' },
-    { value: '7', label: 'July' },
-    { value: '8', label: 'August' },
-    { value: '9', label: 'September' },
-    { value: '10', label: 'October' },
-    { value: '11', label: 'November' },
-    { value: '12', label: 'December' }
-  ];
-
-  // Generate year options for last 5 years
-  const currentYear = new Date().getFullYear();
-  const yearOptions = [
-    { value: 'all', label: 'All Years' },
-    ...Array.from({ length: 5 }, (_, i) => ({
-      value: String(currentYear - i),
-      label: String(currentYear - i)
-    }))
+  const dateRangeOptions = [
+    { value: 'today', label: 'Today' },
+    { value: 'thisWeek', label: 'This Week' },
+    { value: 'thisMonth', label: 'This Month' },
+    { value: 'custom', label: 'Custom' }
   ];
 
   const paymentStatusOptions = [
@@ -476,6 +530,13 @@ const AccountsPage = () => {
     { value: 'pending', label: 'Pending' },
     { value: 'failed', label: 'Failed' },
     { value: 'refunded', label: 'Refunded' }
+  ];
+
+  const transactionTypeOptions = [
+    { value: 'all', label: 'All Types' },
+    { value: 'income', label: 'Income' },
+    { value: 'expense', label: 'Expense' },
+    { value: 'purchase', label: 'Purchase' }
   ];
 
   // Render overview content
@@ -693,23 +754,45 @@ const AccountsPage = () => {
               icon={HiMagnifyingGlass}
             />
           </div>
-             <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0">
+             <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0 sm:items-center">
                <Select
-                 value={monthFilter}
-                 onChange={handleMonthFilter}
-                 options={monthOptions}
+                 value={dateRangeFilter}
+                 onChange={handleDateRangeFilter}
+                 options={dateRangeOptions}
                  className="w-full sm:w-48"
                />
-               <Select
-                 value={yearFilter}
-                 onChange={handleYearFilter}
-                 options={yearOptions}
-                 className="w-full sm:w-48"
-               />
+               {dateRangeFilter === 'custom' && (
+                 <>
+                   <div className="w-full sm:w-auto sm:flex sm:items-center sm:gap-2">
+                     <label className="text-sm font-medium text-gray-700 whitespace-nowrap mb-2 sm:mb-0">From</label>
+                     <Input
+                       type="date"
+                       value={fromDate}
+                       onChange={(e) => handleFromDateChange(e.target.value)}
+                       className="w-full sm:w-40"
+                     />
+                   </div>
+                   <div className="w-full sm:w-auto sm:flex sm:items-center sm:gap-2">
+                     <label className="text-sm font-medium text-gray-700 whitespace-nowrap mb-2 sm:mb-0">To</label>
+                     <Input
+                       type="date"
+                       value={toDate}
+                       onChange={(e) => handleToDateChange(e.target.value)}
+                       className="w-full sm:w-40"
+                     />
+                   </div>
+                 </>
+               )}
                <Select
                  value={paymentStatusFilter}
                  onChange={handlePaymentStatusFilter}
                  options={paymentStatusOptions}
+                 className="w-full sm:w-48"
+               />
+               <Select
+                 value={transactionTypeFilter}
+                 onChange={setTransactionTypeFilter}
+                 options={transactionTypeOptions}
                  className="w-full sm:w-48"
                />
          </div>
@@ -781,12 +864,10 @@ const AccountsPage = () => {
                 </h2>
                 <p className="text-sm text-gray-600">
                   Account details for selected branch
-                  {monthFilter !== 'all' && yearFilter !== 'all' 
-                    ? ` - ${monthOptions.find(m => m.value === monthFilter)?.label} ${yearFilter}`
-                    : monthFilter !== 'all'
-                    ? ` - ${monthOptions.find(m => m.value === monthFilter)?.label}`
-                    : yearFilter !== 'all'
-                    ? ` - ${yearFilter}`
+                  {dateRangeFilter === 'custom' && fromDate && toDate
+                    ? ` - ${fromDate} to ${toDate}`
+                    : dateRangeFilter !== 'custom'
+                    ? ` - ${dateRangeOptions.find(d => d.value === dateRangeFilter)?.label}`
                     : ''
                   }
                 </p>
@@ -837,23 +918,45 @@ const AccountsPage = () => {
                   icon={HiMagnifyingGlass}
                 />
               </div>
-              <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0">
+              <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0 sm:items-center">
                 <Select
-                  value={monthFilter}
-                  onChange={handleMonthFilter}
-                  options={monthOptions}
+                  value={dateRangeFilter}
+                  onChange={handleDateRangeFilter}
+                  options={dateRangeOptions}
                   className="w-full sm:w-48"
                 />
-                <Select
-                  value={yearFilter}
-                  onChange={handleYearFilter}
-                  options={yearOptions}
-                  className="w-full sm:w-48"
-                />
+                {dateRangeFilter === 'custom' && (
+                  <>
+                    <div className="w-full sm:w-auto sm:flex sm:items-center sm:gap-2">
+                      <label className="text-sm font-medium text-gray-700 whitespace-nowrap mb-2 sm:mb-0">From</label>
+                      <Input
+                        type="date"
+                        value={fromDate}
+                        onChange={(e) => handleFromDateChange(e.target.value)}
+                        className="w-full sm:w-40"
+                      />
+                    </div>
+                    <div className="w-full sm:w-auto sm:flex sm:items-center sm:gap-2">
+                      <label className="text-sm font-medium text-gray-700 whitespace-nowrap mb-2 sm:mb-0">To</label>
+                      <Input
+                        type="date"
+                        value={toDate}
+                        onChange={(e) => handleToDateChange(e.target.value)}
+                        className="w-full sm:w-40"
+                      />
+                    </div>
+                  </>
+                )}
                 <Select
                   value={paymentStatusFilter}
                   onChange={handlePaymentStatusFilter}
                   options={paymentStatusOptions}
+                  className="w-full sm:w-48"
+                />
+                <Select
+                  value={transactionTypeFilter}
+                  onChange={setTransactionTypeFilter}
+                  options={transactionTypeOptions}
                   className="w-full sm:w-48"
                 />
               </div>
@@ -921,19 +1024,35 @@ const AccountsPage = () => {
                 icon={HiMagnifyingGlass}
               />
             </div>
-             <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0">
+             <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0 sm:items-center">
                <Select
-                 value={monthFilter}
-                 onChange={handleMonthFilter}
-                 options={monthOptions}
+                 value={dateRangeFilter}
+                 onChange={handleDateRangeFilter}
+                 options={dateRangeOptions}
                  className="w-full sm:w-48"
                />
-               <Select
-                 value={yearFilter}
-                 onChange={handleYearFilter}
-                 options={yearOptions}
-                 className="w-full sm:w-48"
-               />
+               {dateRangeFilter === 'custom' && (
+                 <>
+                   <div className="w-full sm:w-auto sm:flex sm:items-center sm:gap-2">
+                     <label className="text-sm font-medium text-gray-700 whitespace-nowrap mb-2 sm:mb-0">From</label>
+                     <Input
+                       type="date"
+                       value={fromDate}
+                       onChange={(e) => handleFromDateChange(e.target.value)}
+                       className="w-full sm:w-40"
+                     />
+                   </div>
+                   <div className="w-full sm:w-auto sm:flex sm:items-center sm:gap-2">
+                     <label className="text-sm font-medium text-gray-700 whitespace-nowrap mb-2 sm:mb-0">To</label>
+                     <Input
+                       type="date"
+                       value={toDate}
+                       onChange={(e) => handleToDateChange(e.target.value)}
+                       className="w-full sm:w-40"
+                     />
+                   </div>
+                 </>
+               )}
              </div>
           </div>
 
@@ -1037,12 +1156,10 @@ const AccountsPage = () => {
                                 <HiClipboardDocumentList className="h-12 w-12 text-gray-300 mb-2" />
                                 <p className="text-lg font-medium">No data found</p>
                                 <p className="text-sm">
-                                  {monthFilter !== 'all' && yearFilter !== 'all' 
-                                    ? `No transactions found for ${monthOptions.find(m => m.value === monthFilter)?.label} ${yearFilter}`
-                                    : monthFilter !== 'all'
-                                    ? `No transactions found for ${monthOptions.find(m => m.value === monthFilter)?.label}`
-                                    : yearFilter !== 'all'
-                                    ? `No transactions found for ${yearFilter}`
+                                  {dateRangeFilter === 'custom' && fromDate && toDate
+                                    ? `No transactions found for ${fromDate} to ${toDate}`
+                                    : dateRangeFilter !== 'custom'
+                                    ? `No transactions found for ${dateRangeOptions.find(d => d.value === dateRangeFilter)?.label}`
                                     : 'No transactions found for the current period'
                                   }
                                 </p>
@@ -1130,23 +1247,45 @@ const AccountsPage = () => {
                 icon={HiMagnifyingGlass}
               />
             </div>
-            <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0">
+              <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0 sm:items-center">
               <Select
-                value={monthFilter}
-                onChange={handleMonthFilter}
-                options={monthOptions}
+                value={dateRangeFilter}
+                onChange={handleDateRangeFilter}
+                options={dateRangeOptions}
                 className="w-full sm:w-48"
               />
-              <Select
-                value={yearFilter}
-                onChange={handleYearFilter}
-                options={yearOptions}
-                className="w-full sm:w-48"
-              />
+              {dateRangeFilter === 'custom' && (
+                <>
+                  <div className="w-full sm:w-auto sm:flex sm:items-center sm:gap-2">
+                    <label className="text-sm font-medium text-gray-700 whitespace-nowrap mb-2 sm:mb-0">From</label>
+                    <Input
+                      type="date"
+                      value={fromDate}
+                      onChange={(e) => handleFromDateChange(e.target.value)}
+                      className="w-full sm:w-40"
+                    />
+                  </div>
+                  <div className="w-full sm:w-auto sm:flex sm:items-center sm:gap-2">
+                    <label className="text-sm font-medium text-gray-700 whitespace-nowrap mb-2 sm:mb-0">To</label>
+                    <Input
+                      type="date"
+                      value={toDate}
+                      onChange={(e) => handleToDateChange(e.target.value)}
+                      className="w-full sm:w-40"
+                    />
+                  </div>
+                </>
+              )}
               <Select
                 value={paymentStatusFilter}
                 onChange={handlePaymentStatusFilter}
                 options={paymentStatusOptions}
+                className="w-full sm:w-48"
+              />
+              <Select
+                value={transactionTypeFilter}
+                onChange={setTransactionTypeFilter}
+                options={transactionTypeOptions}
                 className="w-full sm:w-48"
               />
             </div>
