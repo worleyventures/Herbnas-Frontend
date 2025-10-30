@@ -34,6 +34,51 @@ import {
   selectOrderError
 } from '../../redux/slices/orderSlice';
 
+// Order Tracker Component
+function OrderTracker({ order }) {
+  const steps = [
+    { key: 'draft', label: 'Draft' },
+    { key: 'confirmed', label: 'Confirmed' },
+    { key: 'picked', label: 'Picked' },
+    { key: 'dispatched', label: 'Dispatched' },
+    { key: 'delivered', label: 'Delivered' },
+    { key: 'closed', label: 'Closed' },
+    { key: 'returned', label: 'Returned' }
+  ];
+
+  // Find index of current step
+  let currentIdx = steps.findIndex(s => s.key === order.status);
+  // If status is returned, highlight all except closed
+  if (order.status === 'returned') currentIdx = steps.length - 1;
+  // Hide tracker if status is undefined/bogus
+  if (currentIdx === -1) return null;
+
+  return (
+    <div className="flex flex-col mb-4">
+      <div className="flex flex-row justify-between items-center w-full max-w-4xl mx-auto">
+        {steps.map((s, idx) => (
+          <div
+            key={s.key}
+            className={`flex-1 flex flex-col items-center ${idx < steps.length - 1 ? 'mr-4' : ''}`}
+          >
+            <div
+              className={`h-8 w-8 rounded-full flex items-center justify-center font-bold text-xs
+                ${idx < currentIdx ? 'bg-green-500 text-white' : idx === currentIdx ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-500'}
+              `}
+            >
+              {idx + 1}
+            </div>
+            <span className={`mt-1 text-xs font-semibold ${idx <= currentIdx ? 'text-gray-900' : 'text-gray-400'}`}>{s.label}</span>
+            {idx < steps.length - 1 && (
+              <div className={`w-full h-1 mt-2 mb-1 ${idx < currentIdx - 1 ? 'bg-green-500' : idx + 1 === currentIdx ? 'bg-blue-500' : 'bg-gray-200'}`}></div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 const OrderDetailsPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -44,11 +89,7 @@ const OrderDetailsPage = () => {
   const loading = useSelector(selectOrderLoading);
   const error = useSelector(selectOrderError);
   
-  // Local state
-  const [showStatusModal, setShowStatusModal] = useState(false);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [newStatus, setNewStatus] = useState('');
-  const [newPaymentStatus, setNewPaymentStatus] = useState('');
+  // Local state (removed updating from view page)
 
   // Load order data
   useEffect(() => {
@@ -241,6 +282,13 @@ const OrderDetailsPage = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Order Information */}
         <div className="lg:col-span-2 space-y-6">
+          {/* Order Tracker */}
+          {(order.paymentStatus === 'paid' && order.paymentMethod !== 'cod') ||
+            (order.paymentStatus === 'partial' && order.paymentMethod === 'cod') ? (
+            <div className="bg-white p-6 rounded-lg shadow mb-4">
+              <OrderTracker order={order} />
+            </div>
+          ) : null}
           {/* Order Status */}
           <div className="bg-white p-6 rounded-lg shadow">
             <h3 className="text-lg font-medium text-gray-900 mb-4">Order Status</h3>
@@ -254,16 +302,6 @@ const OrderDetailsPage = () => {
                     status={order.status}
                     color={getStatusColor(order.status)}
                   />
-                  <Button
-                    onClick={() => {
-                      setNewStatus(order.status);
-                      setShowStatusModal(true);
-                    }}
-                    variant="outline"
-                    size="sm"
-                  >
-                    Update
-                  </Button>
                 </div>
               </div>
               <div>
@@ -275,16 +313,6 @@ const OrderDetailsPage = () => {
                     status={order.paymentStatus}
                     color={getPaymentStatusColor(order.paymentStatus)}
                   />
-                  <Button
-                    onClick={() => {
-                      setNewPaymentStatus(order.paymentStatus);
-                      setShowPaymentModal(true);
-                    }}
-                    variant="outline"
-                    size="sm"
-                  >
-                    Update
-                  </Button>
                 </div>
               </div>
             </div>

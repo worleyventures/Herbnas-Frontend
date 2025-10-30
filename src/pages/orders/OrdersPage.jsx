@@ -270,6 +270,22 @@ const OrdersPage = () => {
       )
     },
     {
+      key: 'orderStatus',
+      label: 'Order Status',
+      render: (order) => {
+        // Simple color: delivered=green, returned=orange, closed=gray, others=blue
+        let color = 'blue';
+        if (order.status === 'delivered') color = 'green';
+        else if (order.status === 'returned') color = 'orange';
+        else if (order.status === 'closed') color = 'gray';
+        else if (order.status === 'draft') color = 'gray';
+        else if (order.status === 'confirmed') color = 'purple';
+        else if (order.status === 'picked') color = 'yellow';
+        else if (order.status === 'dispatched') color = 'blue';
+        return <StatusBadge status={order.status} color={color} />;
+      }
+    },
+    {
       key: 'createdAt',
       label: 'Order Date',
       render: (order) => (
