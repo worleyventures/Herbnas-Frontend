@@ -68,6 +68,7 @@ const AccountsPage = () => {
   const [accountToDelete, setAccountToDelete] = useState(null);
   const [showViewModal, setShowViewModal] = useState(false);
   const [accountToView, setAccountToView] = useState(null);
+  const [transactionTypeFilter, setTransactionTypeFilter] = useState('all');
   
   // Drill-down state for Super Admin
   const [selectedBranch, setSelectedBranch] = useState(null);
@@ -137,7 +138,8 @@ const AccountsPage = () => {
         startDate: dateRange?.startDate,
         endDate: dateRange?.endDate,
         branchId: branchId,
-        paymentStatus: paymentStatusFilter !== 'all' ? paymentStatusFilter : undefined
+        paymentStatus: paymentStatusFilter !== 'all' ? paymentStatusFilter : undefined,
+        transactionType: transactionTypeFilter !== 'all' ? transactionTypeFilter : undefined
       }));
       dispatch(getAccountStats({
         startDate: dateRange?.startDate,
@@ -153,7 +155,7 @@ const AccountsPage = () => {
         }));
       }
     }
-  }, [activeTab, currentPage, searchTerm, getDateRange, branchFilter, paymentStatusFilter, dispatch, isSuperAdmin, isAccountsManager, user?.branch?._id, user?.branch]);
+  }, [activeTab, currentPage, searchTerm, getDateRange, branchFilter, paymentStatusFilter, transactionTypeFilter, dispatch, isSuperAdmin, isAccountsManager, user?.branch?._id, user?.branch]);
 
   // Separate effect to reload branch summary when date range changes (for super admin)
   useEffect(() => {
@@ -177,7 +179,8 @@ const AccountsPage = () => {
         startDate: dateRange?.startDate,
         endDate: dateRange?.endDate,
         branchId: selectedBranch.branchId,
-        paymentStatus: paymentStatusFilter !== 'all' ? paymentStatusFilter : undefined
+        paymentStatus: paymentStatusFilter !== 'all' ? paymentStatusFilter : undefined,
+        transactionType: transactionTypeFilter !== 'all' ? transactionTypeFilter : undefined
       }));
       dispatch(getAccountStats({
         startDate: dateRange?.startDate,
@@ -185,7 +188,7 @@ const AccountsPage = () => {
         branchId: selectedBranch.branchId
       }));
     }
-  }, [showBranchDetails, selectedBranch, currentPage, searchTerm, getDateRange, paymentStatusFilter, dispatch]);
+  }, [showBranchDetails, selectedBranch, currentPage, searchTerm, getDateRange, paymentStatusFilter, transactionTypeFilter, dispatch]);
 
   // Handle branch row click for drill-down
   const handleBranchClick = (branch) => {
@@ -529,6 +532,13 @@ const AccountsPage = () => {
     { value: 'refunded', label: 'Refunded' }
   ];
 
+  const transactionTypeOptions = [
+    { value: 'all', label: 'All Types' },
+    { value: 'income', label: 'Income' },
+    { value: 'expense', label: 'Expense' },
+    { value: 'purchase', label: 'Purchase' }
+  ];
+
   // Render overview content
   const renderOverviewContent = () => {
     if (isSuperAdmin) {
@@ -779,6 +789,12 @@ const AccountsPage = () => {
                  options={paymentStatusOptions}
                  className="w-full sm:w-48"
                />
+               <Select
+                 value={transactionTypeFilter}
+                 onChange={setTransactionTypeFilter}
+                 options={transactionTypeOptions}
+                 className="w-full sm:w-48"
+               />
          </div>
       </div>
 
@@ -935,6 +951,12 @@ const AccountsPage = () => {
                   value={paymentStatusFilter}
                   onChange={handlePaymentStatusFilter}
                   options={paymentStatusOptions}
+                  className="w-full sm:w-48"
+                />
+                <Select
+                  value={transactionTypeFilter}
+                  onChange={setTransactionTypeFilter}
+                  options={transactionTypeOptions}
                   className="w-full sm:w-48"
                 />
               </div>
@@ -1258,6 +1280,12 @@ const AccountsPage = () => {
                 value={paymentStatusFilter}
                 onChange={handlePaymentStatusFilter}
                 options={paymentStatusOptions}
+                className="w-full sm:w-48"
+              />
+              <Select
+                value={transactionTypeFilter}
+                onChange={setTransactionTypeFilter}
+                options={transactionTypeOptions}
                 className="w-full sm:w-48"
               />
             </div>

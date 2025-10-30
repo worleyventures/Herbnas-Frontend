@@ -46,6 +46,7 @@ import {
   selectLeads,
   selectLeadLoading
 } from '../../redux/slices/leadSlice';
+import { createSalesAccount } from '../../redux/actions/accountActions';
 
 const OrderFormPage = () => {
   const { id } = useParams();
@@ -470,17 +471,35 @@ const OrderFormPage = () => {
       };
       
       if (isEdit) {
-        await dispatch(updateOrder({ id, orderData })).unwrap();
+        const updated = await dispatch(updateOrder({ id, orderData })).unwrap();
         dispatch(addNotification({
           type: 'success',
           message: 'Order updated successfully!'
         }));
+        // If there is a partial or full payment, post it to accounts
+        const updatedOrder = updated?.data?.order ?? {};
+        if (Number(updatedOrder.amountReceived) > 0 && ['paid', 'partial'].includes(updatedOrder.paymentStatus)) {
+          await dispatch(createSalesAccount({
+            orderId: updatedOrder._id, // must be actual backend ID
+            paymentMethod: updatedOrder.paymentMethod,
+            paymentStatus: updatedOrder.paymentStatus === 'paid' ? 'completed' : 'pending',
+          }));
+        }
       } else {
-        await dispatch(createOrder(orderData)).unwrap();
+        const created = await dispatch(createOrder(orderData)).unwrap();
         dispatch(addNotification({
           type: 'success',
           message: 'Order created successfully!'
         }));
+        // If there is a partial or full payment, post it to accounts
+        const createdOrder = created?.data?.order ?? {};
+        if (Number(createdOrder.amountReceived) > 0 && ['paid', 'partial'].includes(createdOrder.paymentStatus) && !['draft', 'cancelled'].includes(createdOrder.status)) {
+          await dispatch(createSalesAccount({
+            orderId: createdOrder._id,
+            paymentMethod: createdOrder.paymentMethod,
+            paymentStatus: createdOrder.paymentStatus === 'paid' ? 'completed' : 'pending',
+          }));
+        }
       }
       
       navigate('/orders');
