@@ -566,6 +566,12 @@ const OrderFormPage = () => {
     }
   }, [formData.paymentStatus, formData.amountReceived, totalAmount, isEdit]);
 
+  const canEditOrderStatus = (
+    (formData.paymentStatus === 'paid' && +formData.amountReceived === +totalAmount)
+    ||
+    (formData.paymentMethod === 'cod' && +formData.amountReceived > 0)
+  );
+
   if (loading && isEdit) {
     return <Loading />;
   }
@@ -956,15 +962,13 @@ const OrderFormPage = () => {
                       value={formData.status || orderStatusOptions[0].value}
                       onChange={handleSelectChange('status')}
                       error={errors.status}
-                      disabled={!(formData.paymentStatus === 'paid' && +formData.amountReceived === +totalAmount)}
-                      className={!(formData.paymentStatus === 'paid' && +formData.amountReceived === +totalAmount)
-                        ? 'opacity-60 cursor-not-allowed'
-                        : ''}
+                      disabled={!canEditOrderStatus}
+                      className={!canEditOrderStatus ? 'opacity-60 cursor-not-allowed' : ''}
                     />
                     <div className="text-xs text-gray-400 mt-1">
-                      {formData.paymentStatus === 'paid' && +formData.amountReceived === +totalAmount
+                      {canEditOrderStatus
                         ? 'Order status is now editable.'
-                        : 'Order status can be changed after payment is fully received.'}
+                        : "Order status can be changed after full payment or after receiving any amount for COD orders."}
                     </div>
                   </div>
                 )}
