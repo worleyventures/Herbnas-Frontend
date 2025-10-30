@@ -39,7 +39,18 @@ const BranchFormPage = () => {
       pinCode: ''
     },
     incentiveType: 0,
-    isActive: true
+    isActive: true,
+    bankAccounts: [
+      {
+        bankName: '',
+        bankAccountNumber: '',
+        bankIfsc: '',
+        bankBranch: '',
+        bankAccountHolder: ''
+      }
+    ],
+    readyCashAmount: 0,
+    readyCashRemarks: ''
   });
 
   const [errors, setErrors] = useState({});
@@ -80,7 +91,26 @@ const BranchFormPage = () => {
         branchCode: branchData.branchCode || '',
         branchAddress: addressData,
         incentiveType: branchData.incentiveType || 0,
-        isActive: branchData.isActive !== undefined ? branchData.isActive : true
+        isActive: branchData.isActive !== undefined ? branchData.isActive : true,
+        bankAccounts: Array.isArray(branchData.bankAccounts) && branchData.bankAccounts.length > 0
+          ? branchData.bankAccounts.map(acc => ({
+              bankName: acc.bankName || '',
+              bankAccountNumber: acc.bankAccountNumber || '',
+              bankIfsc: acc.bankIfsc || '',
+              bankBranch: acc.bankBranch || '',
+              bankAccountHolder: acc.bankAccountHolder || ''
+            }))
+          : [
+              {
+                bankName: branchData.bankName || '',
+                bankAccountNumber: branchData.bankAccountNumber || '',
+                bankIfsc: branchData.bankIfsc || '',
+                bankBranch: branchData.bankBranch || '',
+                bankAccountHolder: branchData.bankAccountHolder || ''
+              }
+            ],
+        readyCashAmount: branchData.readyCashAmount || 0,
+        readyCashRemarks: branchData.readyCashRemarks || ''
       });
     } else if (mode === 'create') {
       setFormData({
@@ -93,7 +123,18 @@ const BranchFormPage = () => {
           pinCode: ''
         },
         incentiveType: 0,
-        isActive: true
+        isActive: true,
+        bankAccounts: [
+          {
+            bankName: '',
+            bankAccountNumber: '',
+            bankIfsc: '',
+            bankBranch: '',
+            bankAccountHolder: ''
+          }
+        ],
+        readyCashAmount: 0,
+        readyCashRemarks: ''
       });
     }
   }, [selectedBranch, reduxBranch, mode]);
@@ -153,6 +194,19 @@ const BranchFormPage = () => {
       if (field === 'pinCode' && value.length === 6) {
         handlePincodeLookup(value);
       }
+    } else if (name.startsWith('bankAccounts[')) {
+      // name format: bankAccounts[INDEX].field
+      const match = name.match(/^bankAccounts\[(\d+)\]\.(.+)$/);
+      if (match) {
+        const index = parseInt(match[1], 10);
+        const field = match[2];
+        setFormData(prev => {
+          const nextAccounts = prev.bankAccounts.map((acc, i) =>
+            i === index ? { ...acc, [field]: value } : acc
+          );
+          return { ...prev, bankAccounts: nextAccounts };
+        });
+      }
     } else {
       setFormData(prev => ({
         ...prev,
@@ -167,6 +221,41 @@ const BranchFormPage = () => {
         [name]: ''
       }));
     }
+  };
+
+  const handleAddBankAccount = () => {
+    const lastIndex = formData.bankAccounts.length - 1;
+    const last = formData.bankAccounts[lastIndex];
+    const missing = {};
+    if (!last.bankName || !last.bankName.trim()) {
+      missing[`bankAccounts[${lastIndex}].bankName`] = 'Bank name is required';
+    }
+    if (!last.bankAccountNumber || !last.bankAccountNumber.trim()) {
+      missing[`bankAccounts[${lastIndex}].bankAccountNumber`] = 'Account number is required';
+    }
+    if (!last.bankIfsc || !last.bankIfsc.trim()) {
+      missing[`bankAccounts[${lastIndex}].bankIfsc`] = 'IFSC code is required';
+    }
+    
+    if (Object.keys(missing).length > 0) {
+      setErrors(prev => ({ ...prev, ...missing }));
+      return;
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      bankAccounts: [
+        ...prev.bankAccounts,
+        { bankName: '', bankAccountNumber: '', bankIfsc: '', bankBranch: '', bankAccountHolder: '' }
+      ]
+    }));
+  };
+
+  const handleRemoveBankAccount = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      bankAccounts: prev.bankAccounts.filter((_, i) => i !== index)
+    }));
   };
 
   // Validate form
@@ -201,6 +290,10 @@ const BranchFormPage = () => {
       newErrors.incentiveType = 'Incentive type must be a positive number';
     }
     
+    if (formData.readyCashAmount < 0) {
+      newErrors.readyCashAmount = 'Ready cash must be 0 or a positive number';
+    }
+    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -217,6 +310,16 @@ const BranchFormPage = () => {
       ...formData,
       incentiveType: parseFloat(formData.incentiveType)
     };
+
+    // Backward compatibility: also send flat bank fields from the first account if present
+    if (Array.isArray(branchData.bankAccounts) && branchData.bankAccounts.length > 0) {
+      const first = branchData.bankAccounts[0];
+      branchData.bankName = first.bankName;
+      branchData.bankAccountNumber = first.bankAccountNumber;
+      branchData.bankIfsc = first.bankIfsc;
+      branchData.bankBranch = first.bankBranch;
+      branchData.bankAccountHolder = first.bankAccountHolder;
+    }
 
     try {
       if (mode === 'create') {
@@ -402,6 +505,116 @@ const BranchFormPage = () => {
                   min="0"
                   step="0.01"
                 />
+              </div>
+            </div>
+
+            {/* Bank Details */}
+            <div className="p-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                  <HiCog6Tooth className="h-5 w-5 mr-2 text-[#22c55e]" />
+                  Bank Details
+                </h3>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="xs"
+                  onClick={handleAddBankAccount}
+                >
+                  Add Bank Account
+                </Button>
+              </div>
+              <div className="space-y-6">
+                {formData.bankAccounts.map((acc, index) => (
+                  <div key={index} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="md:col-span-2 flex items-center justify-between mb-1">
+                      <span className="text-sm font-medium text-gray-700">Bank Account {index + 1}</span>
+                      {formData.bankAccounts.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveBankAccount(index)}
+                          className="text-red-600 text-sm hover:underline"
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                    <Input
+                      label="Bank Name"
+                      name={`bankAccounts[${index}].bankName`}
+                      value={acc.bankName}
+                      onChange={handleInputChange}
+                      placeholder="Enter bank name"
+                      error={errors[`bankAccounts[${index}].bankName`]}
+                    />
+                    <Input
+                      label="Account Holder Name"
+                      name={`bankAccounts[${index}].bankAccountHolder`}
+                      value={acc.bankAccountHolder}
+                      onChange={handleInputChange}
+                      placeholder="Enter account holder name"
+                    />
+                    <Input
+                      label="Account Number"
+                      name={`bankAccounts[${index}].bankAccountNumber`}
+                      value={acc.bankAccountNumber}
+                      onChange={handleInputChange}
+                      placeholder="Enter account number"
+                      error={errors[`bankAccounts[${index}].bankAccountNumber`]}
+                    />
+                    <Input
+                      label="IFSC Code"
+                      name={`bankAccounts[${index}].bankIfsc`}
+                      value={acc.bankIfsc}
+                      onChange={handleInputChange}
+                      placeholder="Enter IFSC code"
+                      error={errors[`bankAccounts[${index}].bankIfsc`]}
+                    />
+                    <Input
+                      label="Bank Branch"
+                      name={`bankAccounts[${index}].bankBranch`}
+                      value={acc.bankBranch}
+                      onChange={handleInputChange}
+                      placeholder="Enter bank branch"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Ready Cash */}
+            <div className="p-4">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                <HiCog6Tooth className="h-5 w-5 mr-2 text-[#22c55e]" />
+                Ready Cash
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Input
+                  label="Ready Cash Amount"
+                  name="readyCashAmount"
+                  type="number"
+                  value={formData.readyCashAmount}
+                  onChange={handleInputChange}
+                  placeholder="0"
+                  error={errors.readyCashAmount}
+                  min="0"
+                  step="0.01"
+                />
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Remarks
+                  </label>
+                  <textarea
+                    name="readyCashRemarks"
+                    value={formData.readyCashRemarks}
+                    onChange={handleInputChange}
+                    placeholder="Optional notes about ready cash"
+                    rows={3}
+                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#22c55e]-500 focus:border-transparent ${
+                      errors.readyCashRemarks ? 'border-red-300' : 'border-gray-300'
+                    }`}
+                  />
+                </div>
               </div>
             </div>
 
