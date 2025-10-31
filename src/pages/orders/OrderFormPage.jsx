@@ -605,7 +605,7 @@ const OrderFormPage = () => {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Header */}
       <div className="flex justify-between items-center">
         <div className="flex items-center space-x-4">
@@ -622,15 +622,18 @@ const OrderFormPage = () => {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <form onSubmit={handleSubmit} className="space-y-3">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
           {/* Main Form */}
-          <div className="lg:col-span-2 space-y-4">
+          <div className="lg:col-span-2 space-y-3">
             {/* Order Details */}
-            <div className="pb-4">
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Order Details</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
+            <div className="pb-2">
+              <h3 className="text-lg font-medium text-gray-900 mb-1.5">Order Details</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="w-full flex flex-col">
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Customer *
+                  </label>
                   <CustomerSelect
                     options={customerOptions}
                     value={formData.customerId}
@@ -638,12 +641,12 @@ const OrderFormPage = () => {
                     placeholder="Search and select customer"
                     error={errors.customerId}
                     loading={leadsLoading || usersLoading}
-                    label="Customer *"
                     name="customerId"
+                    className="w-full"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                <div className="w-full flex flex-col">
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
                     Branch *
                   </label>
                   <Select
@@ -654,11 +657,11 @@ const OrderFormPage = () => {
                     error={errors.branchId}
                     loading={branchesLoading}
                     disabled={isBranchDisabled}
-                    className={isBranchDisabled ? 'opacity-60 cursor-not-allowed' : ''}
+                    className={`w-full ${isBranchDisabled ? 'opacity-60 cursor-not-allowed' : ''}`}
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                <div className="w-full flex flex-col">
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
                     Payment Method
                   </label>
                   <Select
@@ -666,14 +669,15 @@ const OrderFormPage = () => {
                     value={formData.paymentMethod}
                     onChange={handleSelectChange('paymentMethod')}
                     placeholder="Select payment method"
+                    className="w-full"
                   />
                 </div>
               </div>
             </div>
 
             {/* Order Items */}
-            <div className="pb-4">
-              <div className="flex justify-between items-center mb-2">
+            <div className="pb-2">
+              <div className="flex justify-between items-center mb-1.5">
                 <h3 className="text-lg font-medium text-gray-900">Order Items</h3>
                 <Button
                   type="button"
@@ -688,9 +692,9 @@ const OrderFormPage = () => {
               
               <div className="space-y-2">
                 {formData.items.map((item, index) => (
-                  <div key={index} className="grid grid-cols-1 md:grid-cols-12 gap-3 py-2">
-                    <div className="md:col-span-6">
-                      <label className="block text-sm font-medium mb-2">
+                  <div key={index} className="grid grid-cols-1 md:grid-cols-12 gap-3 py-1.5">
+                    <div className="md:col-span-6 w-full flex flex-col">
+                      <label className="block text-sm font-medium mb-1.5">
                         Product *
                       </label>
                       <Select
@@ -700,10 +704,11 @@ const OrderFormPage = () => {
                         placeholder="Select product"
                         error={errors[`items.${index}.productId`]}
                         loading={productsLoading}
+                        className="w-full"
                       />
                     </div>
-                    <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <div className="md:col-span-2 w-full flex flex-col">
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
                         Quantity *
                       </label>
                       <Input
@@ -713,10 +718,11 @@ const OrderFormPage = () => {
                         placeholder="Qty"
                         error={errors[`items.${index}.quantity`]}
                         min="1"
+                        className="w-full"
                       />
                     </div>
-                    <div className="md:col-span-3">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <div className="md:col-span-3 w-full flex flex-col">
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
                         Price *
                       </label>
                       <Input
@@ -727,6 +733,7 @@ const OrderFormPage = () => {
                         error={errors[`items.${index}.unitPrice`]}
                         min="0"
                         step="0.01"
+                        className="w-full"
                       />
                     </div>
                     <div className="md:col-span-1 flex items-end">
@@ -748,10 +755,10 @@ const OrderFormPage = () => {
             </div>
 
             {/* Shipping Address */}
-            <div className="pb-4">
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Shipping Address</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="md:col-span-2">
+            <div className="pb-2">
+              <h3 className="text-lg font-medium text-gray-900 mb-1.5">Shipping Address</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="md:col-span-2 w-full flex flex-col">
                   <Input
                     label="Name *"
                     value={formData.shippingAddress.name}
@@ -759,9 +766,10 @@ const OrderFormPage = () => {
                     placeholder="Full name"
                     error={errors['shippingAddress.name']}
                     icon={HiUser}
+                    className="w-full"
                   />
                 </div>
-                <div className="md:col-span-2">
+                <div className="md:col-span-2 w-full flex flex-col">
                   <TextArea
                     label="Address *"
                     value={formData.shippingAddress.address}
@@ -770,36 +778,40 @@ const OrderFormPage = () => {
                     error={errors['shippingAddress.address']}
                     icon={HiMapPin}
                     rows={3}
+                    className="w-full"
                   />
                 </div>
-                <div>
+                <div className="w-full flex flex-col">
                   <Input
                     label="City *"
                     value={formData.shippingAddress.city}
                     onChange={(e) => handleShippingAddressChange('city', e.target.value)}
                     placeholder="City"
                     error={errors['shippingAddress.city']}
+                    className="w-full"
                   />
                 </div>
-                <div>
+                <div className="w-full flex flex-col">
                   <Input
                     label="State *"
                     value={formData.shippingAddress.state}
                     onChange={(e) => handleShippingAddressChange('state', e.target.value)}
                     placeholder="State"
                     error={errors['shippingAddress.state']}
+                    className="w-full"
                   />
                 </div>
-                <div>
+                <div className="w-full flex flex-col">
                   <Input
                     label="Pincode *"
                     value={formData.shippingAddress.pincode}
                     onChange={(e) => handleShippingAddressChange('pincode', e.target.value)}
                     placeholder="Pincode"
                     error={errors['shippingAddress.pincode']}
+                    className="w-full"
                   />
                 </div>
-                <div>
+                <div className="w-full flex flex-col">
                   <Input
                     label="Phone *"
                     value={formData.shippingAddress.phone}
@@ -807,9 +819,10 @@ const OrderFormPage = () => {
                     placeholder="Phone number"
                     error={errors['shippingAddress.phone']}
                     icon={HiPhone}
+                    className="w-full"
                   />
                 </div>
-                <div>
+                <div className="w-full flex flex-col">
                   <Input
                     label="Email"
                     type="email"
@@ -818,16 +831,17 @@ const OrderFormPage = () => {
                     placeholder="Email address"
                     error={errors['shippingAddress.email']}
                     icon={HiEnvelope}
+                    className="w-full"
                   />
                 </div>
               </div>
             </div>
 
             {/* Delivery Information */}
-            <div className="pb-4">
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Delivery Information</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
+            <div className="pb-2">
+              <h3 className="text-lg font-medium text-gray-900 mb-1.5">Delivery Information</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="w-full flex flex-col">
                   <Input
                     label="Expected Delivery Date"
                     type="date"
@@ -836,31 +850,35 @@ const OrderFormPage = () => {
                     placeholder="Select expected delivery date"
                     error={errors.expectedDeliveryDate}
                     helperText="Optional: When do you expect this order to be delivered?"
+                    className="w-full"
                   />
                 </div>
               </div>
             </div>
 
             {/* Notes */}
-            <div className="pb-4">
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Notes</h3>
+            <div className="pb-2">
+              <h3 className="text-lg font-medium text-gray-900 mb-1.5">Notes</h3>
               <div className="space-y-2">
-                <TextArea
-                  label="Customer Notes"
-                  value={formData.notes}
-                  onChange={(e) => handleInputChange('notes', e.target.value)}
-                  placeholder="Notes for the customer"
-                  rows={3}
-                />
+                <div className="w-full flex flex-col">
+                  <TextArea
+                    label="Customer Notes"
+                    value={formData.notes}
+                    onChange={(e) => handleInputChange('notes', e.target.value)}
+                    placeholder="Notes for the customer"
+                    rows={3}
+                    className="w-full"
+                  />
+                </div>
               </div>
             </div>
           </div>
 
           {/* Sidebar */}
-          <div className="space-y-4">
+          <div className="space-y-3">
             {/* Order Summary */}
-            <div className="pb-4">
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Order Summary</h3>
+            <div className="pb-2">
+              <h3 className="text-lg font-medium text-gray-900 mb-1.5">Order Summary</h3>
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">Subtotal</span>
@@ -934,11 +952,11 @@ const OrderFormPage = () => {
             </div>
 
             {/* Payment Status and Notes */}
-            <div className="pb-4">
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Payment Information</h3>
+            <div className="pb-2">
+              <h3 className="text-lg font-medium text-gray-900 mb-1.5">Payment Information</h3>
               <div className="space-y-2">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                <div className="w-full flex flex-col">
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
                     Payment Status
                   </label>
                   <Select
@@ -947,9 +965,10 @@ const OrderFormPage = () => {
                     onChange={handleSelectChange('paymentStatus')}
                     placeholder="Select payment status"
                     error={errors.paymentStatus}
+                    className="w-full"
                   />
                 </div>
-                <div>
+                <div className="w-full flex flex-col">
                   <Input
                     label="Received Amount"
                     type="number"
@@ -960,9 +979,10 @@ const OrderFormPage = () => {
                     step="0.01"
                     error={errors.amountReceived}
                     helperText="Amount received for this order"
+                    className="w-full"
                   />
                 </div>
-                <div>
+                <div className="w-full flex flex-col">
                   <TextArea
                     label="Payment Notes"
                     value={formData.paymentNotes}
@@ -971,18 +991,19 @@ const OrderFormPage = () => {
                     rows={3}
                     error={errors.paymentNotes}
                     helperText="Optional: Add any payment-related notes or transaction IDs"
+                    className="w-full"
                   />
                 </div>
                 {isEdit && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Order Status</label>
+                  <div className="w-full flex flex-col">
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Order Status</label>
                     <Select
                       options={statusOptions}
                       value={formData.status || orderStatusOptions[0].value}
                       onChange={handleSelectChange('status')}
                       error={errors.status}
                       disabled={!canEditOrderStatus}
-                      className={!canEditOrderStatus ? 'opacity-60 cursor-not-allowed' : ''}
+                      className={`w-full ${!canEditOrderStatus ? 'opacity-60 cursor-not-allowed' : ''}`}
                     />
                     <div className="text-xs text-gray-400 mt-1">
                       {canEditOrderStatus
@@ -995,7 +1016,7 @@ const OrderFormPage = () => {
             </div>
 
             {/* Submit Button */}
-            <div className="pt-6">
+            <div className="pt-3">
               <Button
                 type="submit"
                 variant="primary"
