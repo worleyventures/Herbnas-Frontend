@@ -3,7 +3,7 @@ import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { HiArrowLeft, HiBuildingOffice2, HiMapPin, HiCog6Tooth, HiExclamationTriangle, HiCheckCircle, HiXMark } from 'react-icons/hi2';
 import { Button, Input, Select } from '../../components/common';
-import { createBranch, updateBranch, getBranchById } from '../../redux/actions/branchActions';
+import { createBranch, updateBranch, getBranchById, getAllBranches } from '../../redux/actions/branchActions';
 import { clearError, clearBranchSuccess } from '../../redux/slices/branchSlice';
 
 const BranchFormPage = () => {
@@ -25,9 +25,12 @@ const BranchFormPage = () => {
     branches
   } = useSelector(state => state.branches || {});
   
-  // Find the branch by ID if we're editing
+  // Find the branch by ID if we're editing - prefer latest from Redux
   const reduxBranch = mode === 'edit' && branchId ? 
     branches.find(branch => branch._id === branchId) : null;
+  
+  // Always prefer Redux branch (fresh from server) over location state (may be stale)
+  const currentBranch = reduxBranch || selectedBranch;
   
   const [formData, setFormData] = useState({
     branchName: '',
@@ -46,7 +49,8 @@ const BranchFormPage = () => {
         bankAccountNumber: '',
         bankIfsc: '',
         bankBranch: '',
-        bankAccountHolder: ''
+        bankAccountHolder: '',
+        accountBalance: ''
       }
     ],
     readyCashAmount: 0,
@@ -56,16 +60,16 @@ const BranchFormPage = () => {
   const [errors, setErrors] = useState({});
   const [pincodeLoading, setPincodeLoading] = useState(false);
 
-  // Load branch data if editing and we have an ID
+  // Load branch data if editing and we have an ID - always fetch fresh data from server
   useEffect(() => {
-    if (mode === 'edit' && branchId && !selectedBranch) {
+    if (mode === 'edit' && branchId) {
       dispatch(getBranchById(branchId));
     }
-  }, [dispatch, mode, branchId, selectedBranch]);
+  }, [dispatch, mode, branchId]);
 
-  // Initialize form data
+  // Initialize form data - always use currentBranch which prefers fresh Redux data
   useEffect(() => {
-    const branchData = selectedBranch || reduxBranch;
+    const branchData = currentBranch;
     if (branchData) {
       // Handle both old format (string) and new format (object)
       let addressData = {
@@ -90,7 +94,9 @@ const BranchFormPage = () => {
         branchName: branchData.branchName || '',
         branchCode: branchData.branchCode || '',
         branchAddress: addressData,
-        incentiveType: branchData.incentiveType || 0,
+        incentiveType: branchData.incentiveType !== undefined && branchData.incentiveType !== null 
+          ? (typeof branchData.incentiveType === 'number' ? branchData.incentiveType : parseFloat(branchData.incentiveType) || 0)
+          : 0,
         isActive: branchData.isActive !== undefined ? branchData.isActive : true,
         bankAccounts: Array.isArray(branchData.bankAccounts) && branchData.bankAccounts.length > 0
           ? branchData.bankAccounts.map(acc => ({
@@ -98,7 +104,8 @@ const BranchFormPage = () => {
               bankAccountNumber: acc.bankAccountNumber || '',
               bankIfsc: acc.bankIfsc || '',
               bankBranch: acc.bankBranch || '',
-              bankAccountHolder: acc.bankAccountHolder || ''
+              bankAccountHolder: acc.bankAccountHolder || '',
+              accountBalance: acc.accountBalance || ''
             }))
           : [
               {
@@ -106,7 +113,8 @@ const BranchFormPage = () => {
                 bankAccountNumber: branchData.bankAccountNumber || '',
                 bankIfsc: branchData.bankIfsc || '',
                 bankBranch: branchData.bankBranch || '',
-                bankAccountHolder: branchData.bankAccountHolder || ''
+                bankAccountHolder: branchData.bankAccountHolder || '',
+                accountBalance: branchData.accountBalance || ''
               }
             ],
         readyCashAmount: branchData.readyCashAmount || 0,
@@ -130,14 +138,15 @@ const BranchFormPage = () => {
             bankAccountNumber: '',
             bankIfsc: '',
             bankBranch: '',
-            bankAccountHolder: ''
+            bankAccountHolder: '',
+            accountBalance: ''
           }
         ],
         readyCashAmount: 0,
         readyCashRemarks: ''
       });
     }
-  }, [selectedBranch, reduxBranch, mode]);
+  }, [currentBranch, mode, branchId]);
 
   // Handle success states - navigate away from form
   // Note: Success handling will be done in the form submission
@@ -200,17 +209,29 @@ const BranchFormPage = () => {
       if (match) {
         const index = parseInt(match[1], 10);
         const field = match[2];
+        // Handle number fields for bank accounts (accountBalance)
+        const processedValue = type === 'number' && (field === 'accountBalance' || field === 'readyCashAmount')
+          ? (value === '' ? '' : parseFloat(value) || 0)
+          : value;
         setFormData(prev => {
           const nextAccounts = prev.bankAccounts.map((acc, i) =>
-            i === index ? { ...acc, [field]: value } : acc
+            i === index ? { ...acc, [field]: processedValue } : acc
           );
           return { ...prev, bankAccounts: nextAccounts };
         });
       }
     } else {
+      // Handle number fields (incentiveType, readyCashAmount)
+      let processedValue = value;
+      if (type === 'number') {
+        if (name === 'incentiveType' || name === 'readyCashAmount') {
+          processedValue = value === '' ? '' : (parseFloat(value) || 0);
+        }
+      }
+      
       setFormData(prev => ({
         ...prev,
-        [name]: type === 'checkbox' ? checked : value
+        [name]: type === 'checkbox' ? checked : processedValue
       }));
     }
     
@@ -246,7 +267,7 @@ const BranchFormPage = () => {
       ...prev,
       bankAccounts: [
         ...prev.bankAccounts,
-        { bankName: '', bankAccountNumber: '', bankIfsc: '', bankBranch: '', bankAccountHolder: '' }
+        { bankName: '', bankAccountNumber: '', bankIfsc: '', bankBranch: '', bankAccountHolder: '', accountBalance: '' }
       ]
     }));
   };
@@ -308,7 +329,9 @@ const BranchFormPage = () => {
 
     const branchData = {
       ...formData,
-      incentiveType: parseFloat(formData.incentiveType)
+      incentiveType: formData.incentiveType !== undefined && formData.incentiveType !== null && formData.incentiveType !== ''
+        ? parseFloat(formData.incentiveType) || 0
+        : 0
     };
 
     // Backward compatibility: also send flat bank fields from the first account if present
@@ -325,7 +348,9 @@ const BranchFormPage = () => {
       if (mode === 'create') {
         await dispatch(createBranch(branchData)).unwrap();
       } else {
-        await dispatch(updateBranch({ branchId, branchData })).unwrap();
+        const result = await dispatch(updateBranch({ branchId, branchData })).unwrap();
+        // Refresh the branch list to show updated data
+        dispatch(getAllBranches({}));
       }
       // Navigate back on success
       navigate('/branches');
@@ -555,7 +580,7 @@ const BranchFormPage = () => {
                         />
                       </div>
                     </div>
-                    {/* Second Row - 2 fields */}
+                    {/* Second Row - 3 fields */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                       <div className="w-full flex flex-col">
                         <Input
@@ -575,6 +600,19 @@ const BranchFormPage = () => {
                           value={acc.bankBranch}
                           onChange={handleInputChange}
                           placeholder="Enter bank branch"
+                          className="w-full"
+                        />
+                      </div>
+                      <div className="w-full flex flex-col">
+                        <Input
+                          label="Account Balance"
+                          name={`bankAccounts[${index}].accountBalance`}
+                          type="number"
+                          value={acc.accountBalance}
+                          onChange={handleInputChange}
+                          placeholder="0.00"
+                          min="0"
+                          step="0.01"
                           className="w-full"
                         />
                       </div>
@@ -643,12 +681,13 @@ const BranchFormPage = () => {
                   label="Incentive Type"
                   name="incentiveType"
                   type="number"
-                  value={formData.incentiveType}
+                  value={formData.incentiveType !== undefined && formData.incentiveType !== null ? formData.incentiveType : ''}
                   onChange={handleInputChange}
                   placeholder="0"
                   error={errors.incentiveType}
                   min="0"
                   step="0.01"
+                  className="w-full"
                 />
               </div>
             </div>

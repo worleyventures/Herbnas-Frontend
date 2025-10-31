@@ -153,6 +153,31 @@ const branchSlice = createSlice({
         state.branches = [];
       })
       
+      // Get branch by ID
+      .addCase(getBranchById.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(getBranchById.fulfilled, (state, action) => {
+        state.loading = false;
+        const branch = action.payload.data.branch || action.payload.data;
+        if (branch && branch._id) {
+          const index = state.branches.findIndex(b => b._id === branch._id);
+          if (index !== -1) {
+            // Update existing branch in array
+            state.branches[index] = branch;
+          } else {
+            // Add new branch to array if not found
+            state.branches.push(branch);
+          }
+        }
+        state.error = null;
+      })
+      .addCase(getBranchById.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      
       // Create branch
       .addCase(createBranch.pending, (state) => {
         state.loading = true;
@@ -176,9 +201,15 @@ const branchSlice = createSlice({
       .addCase(updateBranch.fulfilled, (state, action) => {
         state.loading = false;
         const updatedBranch = action.payload.data.branch || action.payload.data;
-        const index = state.branches.findIndex(branch => branch._id === updatedBranch._id);
-        if (index !== -1) {
-          state.branches[index] = updatedBranch;
+        if (updatedBranch && updatedBranch._id) {
+          const index = state.branches.findIndex(branch => branch._id === updatedBranch._id);
+          if (index !== -1) {
+            // Replace entire branch object to ensure all fields are updated
+            state.branches[index] = { ...updatedBranch };
+          } else {
+            // If branch not found in array, add it
+            state.branches.push(updatedBranch);
+          }
         }
         state.error = null;
       })
