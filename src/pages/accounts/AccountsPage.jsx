@@ -20,8 +20,11 @@ import {
   getAllAccounts,
   getAccountStats,
   getBranchSummary,
-  deleteAccount
+  deleteAccount,
+  getAccountById
 } from '../../redux/actions/accountActions';
+import { getOrderById } from '../../redux/actions/orderActions';
+import { getBranchById } from '../../redux/actions/branchActions';
 import {
   selectAccounts,
   selectAccountLoading,
@@ -68,6 +71,9 @@ const AccountsPage = () => {
   const [accountToDelete, setAccountToDelete] = useState(null);
   const [showViewModal, setShowViewModal] = useState(false);
   const [accountToView, setAccountToView] = useState(null);
+  const [orderDetails, setOrderDetails] = useState(null);
+  const [branchDetails, setBranchDetails] = useState(null);
+  const [loadingAccountDetails, setLoadingAccountDetails] = useState(false);
   const [transactionTypeFilter, setTransactionTypeFilter] = useState('all');
   
   // Drill-down state for Super Admin
@@ -246,10 +252,53 @@ const AccountsPage = () => {
   };
 
   // Handle view account
-  const handleViewAccount = (id) => {
+  const handleViewAccount = async (id) => {
     const account = accounts.find(acc => acc._id === id);
     setAccountToView(account);
     setShowViewModal(true);
+    setOrderDetails(null);
+    setBranchDetails(null);
+    setLoadingAccountDetails(true);
+    
+    try {
+      // Fetch full account details to get populated orderId
+      const accountResult = await dispatch(getAccountById(id)).unwrap();
+      const fullAccount = accountResult.data?.account || account;
+      
+      // Fetch order if orderId exists
+      if (fullAccount.orderId) {
+        try {
+          const orderId = typeof fullAccount.orderId === 'object' ? fullAccount.orderId._id : fullAccount.orderId;
+          const orderResult = await dispatch(getOrderById(orderId)).unwrap();
+          const order = orderResult.data?.order || orderResult.data;
+          setOrderDetails(order);
+          
+          // Fetch branch details for ready cash and bank accounts
+          if (order.branchId) {
+            const branchId = typeof order.branchId === 'object' ? order.branchId._id : order.branchId;
+            const branchResult = await dispatch(getBranchById(branchId)).unwrap();
+            const branch = branchResult.data?.branch || branchResult.data;
+            setBranchDetails(branch);
+          }
+        } catch (error) {
+          console.error('Error fetching order/branch details:', error);
+        }
+      } else if (fullAccount.branchId) {
+        // Fetch branch even if no order (for manual accounts)
+        const branchId = typeof fullAccount.branchId === 'object' ? fullAccount.branchId._id : fullAccount.branchId;
+        try {
+          const branchResult = await dispatch(getBranchById(branchId)).unwrap();
+          const branch = branchResult.data?.branch || branchResult.data;
+          setBranchDetails(branch);
+        } catch (error) {
+          console.error('Error fetching branch details:', error);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching account details:', error);
+    } finally {
+      setLoadingAccountDetails(false);
+    }
   };
 
   // Handle edit account
@@ -1467,8 +1516,62 @@ const AccountsPage = () => {
                     <p className="text-sm text-gray-900">{accountToView.customerName}</p>
                   </div>
                 )}
+                
+                {/* Payment Account / Ready Cash */}
+                {(() => {
+                  const paymentMethod = orderDetails?.paymentMethod || accountToView.paymentMethod;
+                  const bankAccountId = orderDetails?.bankAccountId;
+                  const isCashOrCod = paymentMethod && ['cash', 'cod'].includes(paymentMethod.toLowerCase());
+                  const isBankPayment = paymentMethod && ['cash', 'card', 'netbanking'].includes(paymentMethod.toLowerCase());
+                  
+                  if (isCashOrCod && branchDetails) {
+                    return (
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">Payment Received Account</label>
+                        <p className="text-sm text-gray-900 font-medium">
+                          Ready Cash
+                        </p>
+                      </div>
+                    );
+                  }
+                  
+                  if (isBankPayment && bankAccountId && branchDetails?.bankAccounts) {
+                    const bankAccount = Array.isArray(branchDetails.bankAccounts) 
+                      ? branchDetails.bankAccounts.find(
+                          acc => (acc._id && acc._id.toString() === bankAccountId) || 
+                                 (acc.bankAccountNumber === bankAccountId)
+                        )
+                      : null;
+                    
+                    if (bankAccount) {
+                      return (
+                        <div>
+                          <label className="text-sm font-medium text-gray-500">Payment Received Account</label>
+                          <div className="text-sm text-gray-900">
+                            <p className="font-medium">{bankAccount.bankName || 'Bank'}</p>
+                            <p className="text-xs text-gray-600 mt-1">
+                              Account: {bankAccount.bankAccountNumber || 'N/A'}
+                            </p>
+                            {bankAccount.bankIfsc && (
+                              <p className="text-xs text-gray-600">IFSC: {bankAccount.bankIfsc}</p>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    }
+                  }
+                  
+                  return null;
+                })()}
               </div>
             </div>
+            
+            {loadingAccountDetails && (
+              <div className="text-center py-4">
+                <Loading />
+                <p className="text-sm text-gray-500 mt-2">Loading payment account details...</p>
+              </div>
+            )}
 
             {/* Description */}
             <div>

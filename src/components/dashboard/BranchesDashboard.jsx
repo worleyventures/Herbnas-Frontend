@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   HiPlus,
   HiBuildingOffice2,
@@ -29,6 +29,7 @@ import BranchCRUD from './branches/BranchCRUD';
 
 const BranchesDashboard = ({ propActiveView = 'table' }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useDispatch();
   const [activeView, setActiveView] = useState(propActiveView || 'table');
   const [selectedBranch, setSelectedBranch] = useState(null);
@@ -75,6 +76,18 @@ const BranchesDashboard = ({ propActiveView = 'table' }) => {
       dispatch(getAllBranches(params));
     }
   }, [dispatch, isAuthenticated, user, currentPage, searchTerm, filterStatus, itemsPerPage]);
+
+  // Refresh branches when navigating to this page (e.g., returning from edit form)
+  useEffect(() => {
+    if (isAuthenticated && user && location.pathname === '/branches') {
+      dispatch(getAllBranches({
+        page: currentPage,
+        limit: itemsPerPage,
+        search: searchTerm,
+        status: filterStatus === 'all' ? '' : filterStatus
+      }));
+    }
+  }, [location.pathname, dispatch, isAuthenticated, user]);
 
   // Fetch unfiltered branches and stats for cards and performance
   useEffect(() => {

@@ -189,7 +189,7 @@ const UserFormPage = () => {
       {/* Header */}
       <div className="bg-white">
         <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between py-6">
+          <div className="flex items-center justify-between py-4">
             <div className="flex items-center space-x-3">
               <div className="p-2 bg-blue-100 rounded-lg">
                 <HiUser className="h-6 w-6 text-blue-600" />
@@ -208,14 +208,14 @@ const UserFormPage = () => {
       </div>
 
       {/* Form Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-6">
-            <div className="p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div className="space-y-3">
+            <div className="p-3">
+              <h3 className="text-lg font-medium text-gray-900 mb-2 flex items-center">
                 <HiUser className="h-5 w-5 mr-2 text-blue-500" /> Personal Information
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <Input
                   label="First Name"
                   name="firstName"
@@ -257,12 +257,12 @@ const UserFormPage = () => {
             </div>
 
             {mode === 'edit' && (
-              <div className="bg-white p-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+              <div className="bg-white p-3">
+                <h3 className="text-lg font-medium text-gray-900 mb-2 flex items-center">
                   <HiKey className="h-5 w-5 mr-2 text-blue-500" /> Security Information
                 </h3>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       New Password
@@ -330,11 +330,11 @@ const UserFormPage = () => {
             )}
 
             {mode === 'create' && (
-              <div className="bg-white p-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+              <div className="bg-white p-3">
+                <h3 className="text-lg font-medium text-gray-900 mb-2 flex items-center">
                   <HiKey className="h-5 w-5 mr-2 text-blue-500" /> Security Information
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Password
@@ -403,11 +403,11 @@ const UserFormPage = () => {
               </div>
             )}
 
-            <div className="bg-white p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+            <div className="bg-white p-3">
+              <h3 className="text-lg font-medium text-gray-900 mb-2 flex items-center">
                 <HiBuildingOffice2 className="h-5 w-5 mr-2 text-blue-500" /> Work Information
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <Select
                   label="Role"
                   name="role"
@@ -427,7 +427,7 @@ const UserFormPage = () => {
                   required
                 />
               </div>
-              <div className="mt-4 flex items-center">
+              <div className="mt-2 flex items-center">
                 <input
                   id="isActive"
                   name="isActive"
@@ -456,7 +456,7 @@ const UserFormPage = () => {
             )}
 
             {/* Form Actions */}
-            <div className="bg-white p-6">
+            <div className="bg-white p-3">
               <div className="flex items-center justify-end gap-4">
                 <Button
                   type="button"
