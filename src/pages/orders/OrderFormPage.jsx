@@ -21,7 +21,7 @@ import {
   getOrderById,
 } from '../../redux/actions/orderActions';
 import { getAllProducts } from '../../redux/actions/productActions';
-import { getAllBranches } from '../../redux/actions/branchActions';
+import { getAllBranches, getBranchById } from '../../redux/actions/branchActions';
 import { getAllUsers } from '../../redux/actions/userActions';
 import { getAllLeads } from '../../redux/actions/leadActions';
 import { addNotification } from '../../redux/slices/uiSlice';
@@ -93,12 +93,14 @@ const OrderFormPage = () => {
     paymentNotes: '',
     amountReceived: 0,
     expectedDeliveryDate: '',
-    status: 'draft' // Add status field
+    status: 'draft', // Add status field
+    bankAccountId: '' // Selected bank account for the order
   });
   
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [isBranchDisabled, setIsBranchDisabled] = useState(false);
+  const [selectedBranchDetails, setSelectedBranchDetails] = useState(null);
 
   // Load data on component mount
   useEffect(() => {
@@ -153,10 +155,41 @@ const OrderFormPage = () => {
         paymentNotes: order.paymentNotes || '',
         amountReceived: order.amountReceived || 0,
         expectedDeliveryDate: order.expectedDeliveryDate ? new Date(order.expectedDeliveryDate).toISOString().split('T')[0] : '',
-        status: order.status || 'draft' // Add this line
+        status: order.status || 'draft', // Add this line
+        bankAccountId: order.bankAccountId || ''
       });
     }
   }, [isEdit, order]);
+
+  // Fetch branch details when branchId changes to get bank accounts
+  useEffect(() => {
+    const fetchBranchDetails = async () => {
+      if (formData.branchId) {
+        try {
+          const result = await dispatch(getBranchById(formData.branchId)).unwrap();
+          const branchData = result.data?.branch || result.data;
+          setSelectedBranchDetails(branchData);
+          // If only one bank account and payment method requires it, auto-select
+          if (branchData?.bankAccounts && Array.isArray(branchData.bankAccounts) && branchData.bankAccounts.length === 1) {
+            const paymentMethodsRequiringAccount = ['cash', 'card', 'netbanking'];
+            if (paymentMethodsRequiringAccount.includes(formData.paymentMethod)) {
+              setFormData(prev => ({
+                ...prev,
+                bankAccountId: branchData.bankAccounts[0]._id || ''
+              }));
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching branch details:', error);
+          setSelectedBranchDetails(null);
+        }
+      } else {
+        setSelectedBranchDetails(null);
+      }
+    };
+    
+    fetchBranchDetails();
+  }, [formData.branchId, formData.paymentMethod, dispatch]);
 
   // Handle input change
   const handleInputChange = (field, value) => {
@@ -247,11 +280,21 @@ const OrderFormPage = () => {
       }
     } else if (field === 'paymentMethod') {
       // When payment method changes, reset COD charges if not COD
+      // Also reset bankAccountId if payment method doesn't require it
       setFormData(prev => ({
         ...prev,
         [field]: value,
-        codCharges: value === 'cod' ? prev.codCharges : 0
+        codCharges: value === 'cod' ? prev.codCharges : 0,
+        bankAccountId: ['cash', 'card', 'netbanking'].includes(value) ? prev.bankAccountId : ''
       }));
+    } else if (field === 'branchId') {
+      // When branch changes, reset bank account selection
+      setFormData(prev => ({
+        ...prev,
+        [field]: value,
+        bankAccountId: '' // Reset bank account when branch changes
+      }));
+      setSelectedBranchDetails(null);
     } else if (field === 'status') {
       setFormData(prev => ({
         ...prev,
@@ -270,6 +313,38 @@ const OrderFormPage = () => {
         ...prev,
         [field]: ''
       }));
+    }
+    
+    // Validate amountReceived against total in real-time
+    if (field === 'amountReceived') {
+      // Calculate totals with updated value
+      const updatedFormData = { ...formData, [field]: value };
+      const subtotal = updatedFormData.items.reduce((sum, item) => {
+        const quantity = parseInt(item.quantity) || 0;
+        const unitPrice = parseFloat(item.unitPrice) || 0;
+        return sum + (quantity * unitPrice);
+      }, 0);
+      
+      const taxAmount = parseFloat(updatedFormData.taxAmount) || 0;
+      const discountAmount = parseFloat(updatedFormData.discountAmount) || 0;
+      const shippingAmount = parseFloat(updatedFormData.shippingAmount) || 0;
+      const codCharges = updatedFormData.paymentMethod === 'cod' ? (parseFloat(updatedFormData.codCharges) || 0) : 0;
+      const totalAmount = subtotal + taxAmount + shippingAmount + codCharges - discountAmount;
+      
+      const amountReceived = parseFloat(value) || 0;
+      
+      if (amountReceived > totalAmount) {
+        setErrors(prev => ({
+          ...prev,
+          amountReceived: `Received amount (₹${amountReceived.toLocaleString()}) cannot be greater than total amount (₹${totalAmount.toLocaleString()})`
+        }));
+      } else if (errors.amountReceived && amountReceived <= totalAmount) {
+        // Clear error if it's now valid
+        setErrors(prev => ({
+          ...prev,
+          amountReceived: ''
+        }));
+      }
     }
   };
 
@@ -362,6 +437,9 @@ const OrderFormPage = () => {
   const validateForm = () => {
     const newErrors = {};
     
+    // Calculate total amount for validation
+    const { totalAmount } = calculateTotals();
+    const amountReceived = parseFloat(formData.amountReceived) || 0;
     
     // Validate customer based on type
     if (formData.customerType === 'user' && !formData.customerId) {
@@ -424,6 +502,11 @@ const OrderFormPage = () => {
       newErrors.status = 'Order status is required';
     }
     
+    // Validate received amount cannot exceed total amount
+    if (amountReceived > totalAmount) {
+      newErrors.amountReceived = `Received amount (₹${amountReceived.toLocaleString()}) cannot be greater than total amount (₹${totalAmount.toLocaleString()})`;
+    }
+    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -467,7 +550,8 @@ const OrderFormPage = () => {
         paymentNotes: formData.paymentNotes,
         amountReceived: formData.amountReceived,
         expectedDeliveryDate: formData.expectedDeliveryDate,
-        status: formData.status
+        status: formData.status,
+        bankAccountId: formData.bankAccountId || undefined // Include bank account ID if selected
       };
       
       if (isEdit) {
@@ -546,8 +630,6 @@ const OrderFormPage = () => {
     { value: 'card', label: 'Card' },
     { value: 'upi', label: 'UPI' },
     { value: 'netbanking', label: 'Net Banking' },
-    { value: 'wallet', label: 'Wallet' },
-    { value: 'cheque', label: 'Cheque' },
     { value: 'cod', label: 'Cash on Delivery' }
   ];
 
@@ -977,8 +1059,9 @@ const OrderFormPage = () => {
                     placeholder="₹0.00"
                     min="0"
                     step="0.01"
-                    error={errors.amountReceived}
-                    helperText="Amount received for this order"
+                    error={!!errors.amountReceived}
+                    errorMessage={errors.amountReceived}
+                    helperText={errors.amountReceived ? "" : "Amount received for this order"}
                     className="w-full"
                   />
                 </div>
@@ -994,6 +1077,81 @@ const OrderFormPage = () => {
                     className="w-full"
                   />
                 </div>
+                {/* Bank Account Selection - Show only for Cash, Card, or Net Banking */}
+                {['cash', 'card', 'netbanking'].includes(formData.paymentMethod) && formData.branchId && selectedBranchDetails && (
+                  <div className="w-full flex flex-col">
+                    {(() => {
+                      // Get bank accounts from branch
+                      const bankAccounts = Array.isArray(selectedBranchDetails.bankAccounts) && selectedBranchDetails.bankAccounts.length > 0
+                        ? selectedBranchDetails.bankAccounts
+                        : (selectedBranchDetails.bankName || selectedBranchDetails.bankAccountNumber)
+                          ? [{
+                              _id: 'single',
+                              bankName: selectedBranchDetails.bankName,
+                              bankAccountHolder: selectedBranchDetails.bankAccountHolder,
+                              bankAccountNumber: selectedBranchDetails.bankAccountNumber,
+                              bankIfsc: selectedBranchDetails.bankIfsc,
+                              bankBranch: selectedBranchDetails.bankBranch
+                            }]
+                          : [];
+                      
+                      if (bankAccounts.length === 0) {
+                        return (
+                          <div className="w-full">
+                            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                              Bank Account
+                            </label>
+                            <div className="text-sm text-gray-500 p-2 bg-gray-50 rounded border">
+                              No bank accounts available for this branch
+                            </div>
+                          </div>
+                        );
+                      }
+                      
+                      if (bankAccounts.length === 1) {
+                        const account = bankAccounts[0];
+                        return (
+                          <div className="w-full">
+                            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                              Bank Account
+                            </label>
+                            <div className="text-sm text-gray-900 p-2 bg-gray-50 rounded border">
+                              <div className="font-medium">{account.bankName || 'N/A'}</div>
+                              <div className="text-xs text-gray-600 mt-1">
+                                Account: {account.bankAccountNumber || 'N/A'} | 
+                                IFSC: {account.bankIfsc || 'N/A'} | 
+                                Holder: {account.bankAccountHolder || 'N/A'}
+                              </div>
+                            </div>
+                            <input type="hidden" value={account._id || 'single'} />
+                          </div>
+                        );
+                      }
+                      
+                      // Multiple accounts - show dropdown
+                      const bankAccountOptions = bankAccounts.map(acc => ({
+                        value: acc._id || acc.bankAccountNumber,
+                        label: `${acc.bankName || 'Bank'} - ${acc.bankAccountNumber || 'N/A'} (${acc.bankIfsc || 'IFSC'})`
+                      }));
+                      
+                      return (
+                        <div className="w-full flex flex-col">
+                          <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                            Bank Account
+                          </label>
+                          <Select
+                            options={bankAccountOptions}
+                            value={formData.bankAccountId}
+                            onChange={handleSelectChange('bankAccountId')}
+                            placeholder="Select bank account"
+                            error={errors.bankAccountId}
+                            className="w-full"
+                          />
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
                 {isEdit && (
                   <div className="w-full flex flex-col">
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Order Status</label>
