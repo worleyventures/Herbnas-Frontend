@@ -200,12 +200,12 @@ const HealthIssueDetailsModal = ({
       showFooter={true}
       footerContent={footerContent}
     >
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div>
-          <DetailsView sections={[additionalInfo]} />
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
           <DetailsView sections={[basicInfo]} />
+        </div>
+        <div>
+          <DetailsView sections={[additionalInfo]} />
         </div>
       </div>
     </CommonModal>

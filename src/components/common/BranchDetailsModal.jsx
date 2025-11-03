@@ -316,9 +316,9 @@ const BranchDetailsModal = ({
       showFooter={true}
       footerContent={footerContent}
     >
-      <div className="space-y-6">
+      <div className="space-y-4">
         {/* Basic, Additional and Bank & Cash Information */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <DetailsView sections={[additionalInfo]} />
           </div>

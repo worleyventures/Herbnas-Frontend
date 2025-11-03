@@ -24,6 +24,7 @@ import { getAllProducts } from '../../redux/actions/productActions';
 import { getAllBranches, getBranchById } from '../../redux/actions/branchActions';
 import { getAllUsers } from '../../redux/actions/userActions';
 import { getAllLeads } from '../../redux/actions/leadActions';
+import { getAllCourierPartners, createCourierPartner } from '../../redux/actions/courierPartnerActions';
 import { addNotification } from '../../redux/slices/uiSlice';
 import {
   selectCurrentOrder,
@@ -84,8 +85,8 @@ const OrderFormPage = () => {
     },
     notes: '',
     internalNotes: '',
-    taxAmount: 0,
-    discountAmount: 0,
+    taxPercentage: 0,
+    discountPercentage: 0,
     shippingAmount: 0,
     codCharges: 0,
     paymentMethod: 'cash',
@@ -94,13 +95,20 @@ const OrderFormPage = () => {
     amountReceived: 0,
     expectedDeliveryDate: '',
     status: 'draft', // Add status field
-    bankAccountId: '' // Selected bank account for the order
+    bankAccountId: '', // Selected bank account for the order
+    returnReason: '', // Reason for cancellation/return
+    courierPartnerId: '' // Courier partner for delivery
   });
   
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [isBranchDisabled, setIsBranchDisabled] = useState(false);
   const [selectedBranchDetails, setSelectedBranchDetails] = useState(null);
+  const [pincodeLoading, setPincodeLoading] = useState(false);
+  const [againReceiveAmount, setAgainReceiveAmount] = useState(0);
+  const [courierPartners, setCourierPartners] = useState([]);
+  const [showAddCourierModal, setShowAddCourierModal] = useState(false);
+  const [newCourierName, setNewCourierName] = useState('');
 
   // Load data on component mount
   useEffect(() => {
@@ -108,11 +116,27 @@ const OrderFormPage = () => {
     dispatch(getAllBranches({ page: 1, limit: 1000, isActive: true }));
     dispatch(getAllUsers({ page: 1, limit: 1000, isActive: true }));
     dispatch(getAllLeads({ page: 1, limit: 1000 }));
+    dispatch(getAllCourierPartners({ isActive: true }));
     
     if (isEdit && id) {
       dispatch(getOrderById(id));
     }
   }, [dispatch, isEdit, id]);
+  
+  // Fetch and update courier partners list
+  useEffect(() => {
+    const fetchCourierPartners = async () => {
+      try {
+        const result = await dispatch(getAllCourierPartners({ isActive: true })).unwrap();
+        const partners = result.data?.courierPartners || [];
+        setCourierPartners(partners);
+        console.log('[OrderFormPage] Loaded courier partners:', partners.length);
+      } catch (error) {
+        console.error('Error fetching courier partners:', error);
+      }
+    };
+    fetchCourierPartners();
+  }, [dispatch, showAddCourierModal]);
 
   // Update form data when order is loaded
   useEffect(() => {
@@ -146,8 +170,28 @@ const OrderFormPage = () => {
         },
         notes: order.notes || '',
         internalNotes: order.internalNotes || '',
-        taxAmount: order.taxAmount || 0,
-        discountAmount: order.discountAmount || 0,
+        taxPercentage: (() => {
+          // Calculate tax percentage from stored taxAmount and subtotal
+          const orderSubtotal = order.items?.reduce((sum, item) => {
+            const qty = parseInt(item.quantity) || 0;
+            const price = parseFloat(item.unitPrice) || 0;
+            return sum + (qty * price);
+          }, 0) || 0;
+          return order.taxAmount && orderSubtotal > 0 
+            ? parseFloat(((order.taxAmount / orderSubtotal) * 100).toFixed(2))
+            : 0;
+        })(),
+        discountPercentage: (() => {
+          // Calculate discount percentage from stored discountAmount and subtotal
+          const orderSubtotal = order.items?.reduce((sum, item) => {
+            const qty = parseInt(item.quantity) || 0;
+            const price = parseFloat(item.unitPrice) || 0;
+            return sum + (qty * price);
+          }, 0) || 0;
+          return order.discountAmount && orderSubtotal > 0 
+            ? parseFloat(((order.discountAmount / orderSubtotal) * 100).toFixed(2))
+            : 0;
+        })(),
         shippingAmount: order.shippingAmount || 0,
         codCharges: order.codCharges || 0,
         paymentMethod: order.paymentMethod || 'cash',
@@ -155,9 +199,14 @@ const OrderFormPage = () => {
         paymentNotes: order.paymentNotes || '',
         amountReceived: order.amountReceived || 0,
         expectedDeliveryDate: order.expectedDeliveryDate ? new Date(order.expectedDeliveryDate).toISOString().split('T')[0] : '',
-        status: order.status || 'draft', // Add this line
-        bankAccountId: order.bankAccountId || ''
+        status: order.status || 'draft',
+        bankAccountId: order.bankAccountId || '',
+        returnReason: order.returnReason || '',
+        courierPartnerId: order.courierPartnerId?._id || order.courierPartnerId || ''
       });
+      
+      // Reset again receive amount when loading order
+      setAgainReceiveAmount(0);
     }
   }, [isEdit, order]);
 
@@ -169,9 +218,9 @@ const OrderFormPage = () => {
           const result = await dispatch(getBranchById(formData.branchId)).unwrap();
           const branchData = result.data?.branch || result.data;
           setSelectedBranchDetails(branchData);
-          // If only one bank account and payment method requires it, auto-select
+          // If only one bank account and payment method requires it, auto-select (cash goes to ready cash, not bank account)
           if (branchData?.bankAccounts && Array.isArray(branchData.bankAccounts) && branchData.bankAccounts.length === 1) {
-            const paymentMethodsRequiringAccount = ['cash', 'card', 'netbanking'];
+            const paymentMethodsRequiringAccount = ['card', 'netbanking'];
             if (paymentMethodsRequiringAccount.includes(formData.paymentMethod)) {
               setFormData(prev => ({
                 ...prev,
@@ -280,12 +329,12 @@ const OrderFormPage = () => {
       }
     } else if (field === 'paymentMethod') {
       // When payment method changes, reset COD charges if not COD
-      // Also reset bankAccountId if payment method doesn't require it
+      // Also reset bankAccountId if payment method doesn't require it (cash goes to ready cash, not bank account)
       setFormData(prev => ({
         ...prev,
         [field]: value,
         codCharges: value === 'cod' ? prev.codCharges : 0,
-        bankAccountId: ['cash', 'card', 'netbanking'].includes(value) ? prev.bankAccountId : ''
+        bankAccountId: ['card', 'netbanking'].includes(value) ? prev.bankAccountId : ''
       }));
     } else if (field === 'branchId') {
       // When branch changes, reset bank account selection
@@ -325,8 +374,12 @@ const OrderFormPage = () => {
         return sum + (quantity * unitPrice);
       }, 0);
       
-      const taxAmount = parseFloat(updatedFormData.taxAmount) || 0;
-      const discountAmount = parseFloat(updatedFormData.discountAmount) || 0;
+      // Calculate tax and discount from percentages
+      const taxPercentage = parseFloat(updatedFormData.taxPercentage) || 0;
+      const discountPercentage = parseFloat(updatedFormData.discountPercentage) || 0;
+      const taxAmount = (subtotal * taxPercentage) / 100;
+      const discountAmount = (subtotal * discountPercentage) / 100;
+      
       const shippingAmount = parseFloat(updatedFormData.shippingAmount) || 0;
       const codCharges = updatedFormData.paymentMethod === 'cod' ? (parseFloat(updatedFormData.codCharges) || 0) : 0;
       const totalAmount = subtotal + taxAmount + shippingAmount + codCharges - discountAmount;
@@ -348,6 +401,39 @@ const OrderFormPage = () => {
     }
   };
 
+  // Pincode lookup function
+  const handlePincodeLookup = async (pincode) => {
+    if (!pincode || pincode.length !== 6) {
+      return;
+    }
+
+    setPincodeLoading(true);
+    try {
+      // Using postalpincode.in API (free, no API key required)
+      const response = await fetch(`https://api.postalpincode.in/pincode/${pincode}`);
+      const data = await response.json();
+      
+      if (data && data[0] && data[0].Status === 'Success' && data[0].PostOffice && data[0].PostOffice.length > 0) {
+        const postOffice = data[0].PostOffice[0];
+        setFormData(prev => ({
+          ...prev,
+          shippingAddress: {
+            ...prev.shippingAddress,
+            city: postOffice.Block || postOffice.District || '',
+            state: postOffice.State || '',
+            pincode: pincode
+          }
+        }));
+      } else {
+        console.warn('Pincode not found or invalid');
+      }
+    } catch (error) {
+      console.error('Error fetching pincode data:', error);
+    } finally {
+      setPincodeLoading(false);
+    }
+  };
+
   // Handle shipping address change
   const handleShippingAddressChange = (field, value) => {
     setFormData(prev => ({
@@ -357,6 +443,11 @@ const OrderFormPage = () => {
         [field]: value
       }
     }));
+    
+    // Auto-fetch city and state when pinCode is entered
+    if (field === 'pincode' && value.length === 6) {
+      handlePincodeLookup(value);
+    }
     
     // Clear error when user starts typing
     if (errors[`shippingAddress.${field}`]) {
@@ -423,14 +514,18 @@ const OrderFormPage = () => {
       return sum + (quantity * unitPrice);
     }, 0);
     
-    const taxAmount = parseFloat(formData.taxAmount) || 0;
-    const discountAmount = parseFloat(formData.discountAmount) || 0;
+    // Calculate tax and discount from percentages
+    const taxPercentage = parseFloat(formData.taxPercentage) || 0;
+    const discountPercentage = parseFloat(formData.discountPercentage) || 0;
+    const taxAmount = (subtotal * taxPercentage) / 100;
+    const discountAmount = (subtotal * discountPercentage) / 100;
+    
     const shippingAmount = parseFloat(formData.shippingAmount) || 0;
     const codCharges = formData.paymentMethod === 'cod' ? (parseFloat(formData.codCharges) || 0) : 0;
     
     const totalAmount = subtotal + taxAmount + shippingAmount + codCharges - discountAmount;
     
-    return { subtotal, totalAmount };
+    return { subtotal, taxAmount, discountAmount, totalAmount };
   };
 
   // Validate form
@@ -502,9 +597,32 @@ const OrderFormPage = () => {
       newErrors.status = 'Order status is required';
     }
     
+    // Validate return reason if status is returned
+    if (formData.status === 'returned' && !formData.returnReason?.trim()) {
+      newErrors.returnReason = 'Reason for cancellation is required when order status is returned';
+    }
+    
+    // Validate courier partner if status is picked
+    if (formData.status === 'picked' && !formData.courierPartnerId) {
+      newErrors.courierPartnerId = 'Courier partner is required when order status is picked';
+    }
+    
     // Validate received amount cannot exceed total amount
-    if (amountReceived > totalAmount) {
-      newErrors.amountReceived = `Received amount (₹${amountReceived.toLocaleString()}) cannot be greater than total amount (₹${totalAmount.toLocaleString()})`;
+    // For partial payment in edit mode, validate the total (original + additional)
+    const finalAmountReceived = isEdit && formData.paymentStatus === 'partial'
+      ? parseFloat(formData.amountReceived || 0) + parseFloat(againReceiveAmount || 0)
+      : amountReceived;
+    
+    if (finalAmountReceived > totalAmount) {
+      newErrors.amountReceived = `Received amount (₹${finalAmountReceived.toLocaleString()}) cannot be greater than total amount (₹${totalAmount.toLocaleString()})`;
+    }
+    
+    // Validate again receive amount if in partial payment mode
+    if (isEdit && formData.paymentStatus === 'partial' && againReceiveAmount > 0) {
+      const balance = totalAmount - parseFloat(formData.amountReceived || 0);
+      if (againReceiveAmount > balance) {
+        newErrors.againReceiveAmount = `Additional amount (₹${againReceiveAmount.toLocaleString()}) cannot exceed balance (₹${balance.toLocaleString()})`;
+      }
     }
     
     setErrors(newErrors);
@@ -541,17 +659,29 @@ const OrderFormPage = () => {
         shippingAddress: formData.shippingAddress,
         notes: formData.notes,
         internalNotes: formData.internalNotes,
-        taxAmount: formData.taxAmount,
-        discountAmount: formData.discountAmount,
+        taxAmount: calculateTotals().taxAmount,
+        discountAmount: calculateTotals().discountAmount,
         shippingAmount: formData.shippingAmount,
         codCharges: formData.paymentMethod === 'cod' ? formData.codCharges : 0,
         paymentMethod: formData.paymentMethod,
-        paymentStatus: formData.paymentStatus,
+        paymentStatus: (() => {
+          // If partial payment and additional amount makes it fully paid, change status to paid
+          if (isEdit && formData.paymentStatus === 'partial' && againReceiveAmount > 0) {
+            const finalAmount = parseFloat(formData.amountReceived || 0) + parseFloat(againReceiveAmount || 0);
+            return finalAmount >= calculateTotals().totalAmount ? 'paid' : 'partial';
+          }
+          return formData.paymentStatus;
+        })(),
         paymentNotes: formData.paymentNotes,
-        amountReceived: formData.amountReceived,
+        amountReceived: isEdit && formData.paymentStatus === 'partial' && againReceiveAmount > 0
+          ? parseFloat(formData.amountReceived || 0) + parseFloat(againReceiveAmount || 0)
+          : formData.amountReceived,
         expectedDeliveryDate: formData.expectedDeliveryDate,
-        status: formData.status,
-        bankAccountId: formData.bankAccountId || undefined // Include bank account ID if selected
+        // Don't send 'draft' status if payment is received - let backend auto-set it
+        status: (formData.amountReceived > 0 && formData.status === 'draft') ? undefined : formData.status,
+        bankAccountId: formData.bankAccountId || undefined, // Include bank account ID if selected
+        returnReason: formData.status === 'returned' ? formData.returnReason : undefined, // Include return reason if status is returned
+        courierPartnerId: formData.courierPartnerId || undefined // Include courier partner ID if selected
       };
       
       if (isEdit) {
@@ -562,12 +692,32 @@ const OrderFormPage = () => {
         }));
         // If there is a partial or full payment, post it to accounts
         const updatedOrder = updated?.data?.order ?? {};
-        if (Number(updatedOrder.amountReceived) > 0 && ['paid', 'partial'].includes(updatedOrder.paymentStatus)) {
-          await dispatch(createSalesAccount({
-            orderId: updatedOrder._id, // must be actual backend ID
-            paymentMethod: updatedOrder.paymentMethod,
-            paymentStatus: updatedOrder.paymentStatus === 'paid' ? 'completed' : 'pending',
-          }));
+        const finalAmountReceived = isEdit && formData.paymentStatus === 'partial' && againReceiveAmount > 0
+          ? parseFloat(formData.amountReceived || 0) + parseFloat(againReceiveAmount || 0)
+          : Number(updatedOrder.amountReceived);
+        
+        const finalPaymentStatus = finalAmountReceived >= calculateTotals().totalAmount ? 'paid' : updatedOrder.paymentStatus;
+        
+        if (finalAmountReceived > 0 && ['paid', 'partial'].includes(finalPaymentStatus)) {
+          try {
+            const accountResult = await dispatch(createSalesAccount({
+              orderId: updatedOrder._id, // must be actual backend ID
+              paymentMethod: updatedOrder.paymentMethod,
+              paymentStatus: finalPaymentStatus === 'paid' ? 'completed' : 'pending',
+            })).unwrap();
+            console.log('[OrderFormPage] Account created successfully after update:', accountResult);
+          } catch (error) {
+            console.error('[OrderFormPage] Failed to create account entry after update:', error);
+            dispatch(addNotification({
+              type: 'warning',
+              message: 'Order updated but account entry may not have been created. Please check.'
+            }));
+          }
+        }
+        
+        // Reset again receive amount after successful update
+        if (isEdit && againReceiveAmount > 0) {
+          setAgainReceiveAmount(0);
         }
       } else {
         const created = await dispatch(createOrder(orderData)).unwrap();
@@ -576,13 +726,25 @@ const OrderFormPage = () => {
           message: 'Order created successfully!'
         }));
         // If there is a partial or full payment, post it to accounts
+        // Allow draft orders with payments to create accounts (money received should be tracked)
+        // Only block cancelled orders
         const createdOrder = created?.data?.order ?? {};
-        if (Number(createdOrder.amountReceived) > 0 && ['paid', 'partial'].includes(createdOrder.paymentStatus) && !['draft', 'cancelled'].includes(createdOrder.status)) {
-          await dispatch(createSalesAccount({
-            orderId: createdOrder._id,
-            paymentMethod: createdOrder.paymentMethod,
-            paymentStatus: createdOrder.paymentStatus === 'paid' ? 'completed' : 'pending',
-          }));
+        if (Number(createdOrder.amountReceived) > 0 && ['paid', 'partial'].includes(createdOrder.paymentStatus) && createdOrder.status !== 'cancelled') {
+          try {
+            const accountResult = await dispatch(createSalesAccount({
+              orderId: createdOrder._id,
+              paymentMethod: createdOrder.paymentMethod,
+              paymentStatus: createdOrder.paymentStatus === 'paid' ? 'completed' : 'pending',
+            })).unwrap();
+            console.log('[OrderFormPage] Account created successfully:', accountResult);
+          } catch (error) {
+            console.error('[OrderFormPage] Failed to create account entry:', error);
+            // Don't block navigation, but log the error
+            dispatch(addNotification({
+              type: 'warning',
+              message: 'Order created but account entry may not have been created. Please check.'
+            }));
+          }
         }
       }
       
@@ -619,7 +781,40 @@ const OrderFormPage = () => {
     label: `${branch.branchName} (${branch.branchCode})`
   }));
 
-  const productOptions = products.map(product => ({
+  // Filter products based on selected branch inventory
+  const getFilteredProducts = () => {
+    // If no branch is selected, show all products
+    if (!formData.branchId || !selectedBranchDetails?.branchInventory) {
+      return products;
+    }
+    
+    // Get product IDs that are already in the order items (for edit mode, preserve existing selections)
+    const existingProductIds = formData.items
+      .filter(item => item.productId)
+      .map(item => item.productId.toString());
+    
+    // Get product IDs that are in the branch inventory
+    const branchInventoryProductIds = selectedBranchDetails.branchInventory
+      .filter(invItem => invItem.product && invItem.isAvailable !== false && invItem.quantity > 0)
+      .map(invItem => {
+        // Handle both populated and non-populated product references
+        return typeof invItem.product === 'object' 
+          ? invItem.product._id?.toString() || invItem.product.toString()
+          : invItem.product.toString();
+      });
+    
+    // Include both products from branch inventory and existing order items
+    const allowedProductIds = [...new Set([...branchInventoryProductIds, ...existingProductIds])];
+    
+    // Filter products to only include those in branch inventory or already in order
+    return products.filter(product => 
+      allowedProductIds.includes(product._id.toString())
+    );
+  };
+
+  const filteredProducts = getFilteredProducts();
+  
+  const productOptions = filteredProducts.map(product => ({
     value: product._id,
     label: `${product.productName} (${product.productId}) - ₹${product.price}`,
     price: product.price
@@ -643,6 +838,7 @@ const OrderFormPage = () => {
 
   const orderStatusOptions = [
     { value: 'draft', label: 'Draft' },
+    { value: 'pending', label: 'Pending' },
     { value: 'confirmed', label: 'Confirmed' },
     { value: 'picked', label: 'Picked' },
     { value: 'dispatched', label: 'Dispatched' },
@@ -650,27 +846,49 @@ const OrderFormPage = () => {
     { value: 'returned', label: 'Returned' }
   ];
 
-  const { subtotal, totalAmount } = calculateTotals();
+  const { subtotal, taxAmount, discountAmount, totalAmount } = calculateTotals();
+
+  // Watch paymentStatus and automatically set amountReceived to totalAmount when payment is "paid"
+  useEffect(() => {
+    if (formData.paymentStatus === 'paid') {
+      // Set amountReceived equal to totalAmount when payment status is "paid"
+      setFormData(prev => ({
+        ...prev,
+        amountReceived: totalAmount
+      }));
+    }
+  }, [formData.paymentStatus, totalAmount]);
 
   // Watch paymentStatus and amountReceived to update status logic.
   useEffect(() => {
-    if (!isEdit) return;
-    if (
-      formData.paymentStatus === 'paid' &&
-      (+formData.amountReceived === +totalAmount)
-    ) {
-      // Auto-set confirmed if not already, and allow edit.
-      setFormData(prev => ({ ...prev, status: prev.status === 'draft' ? 'confirmed' : prev.status || 'confirmed' }));
-    } else {
-      // Always set to draft unless already further progressed (like returned)
-      setFormData(prev => ({ ...prev, status: prev.status === 'confirmed' || prev.status === 'draft' ? 'draft' : prev.status }));
+    const amountReceived = parseFloat(formData.amountReceived) || 0;
+    const isFullyPaid = formData.paymentStatus === 'paid' && amountReceived === totalAmount;
+    const hasAnyPayment = amountReceived > 0 && ['paid', 'partial'].includes(formData.paymentStatus);
+    
+    // If fully paid, change to 'confirmed'
+    if (isFullyPaid && formData.status === 'draft') {
+      setFormData(prev => ({ ...prev, status: 'confirmed' }));
     }
-  }, [formData.paymentStatus, formData.amountReceived, totalAmount, isEdit]);
+    // If any amount is received and status is still 'draft', change to 'pending'
+    else if (hasAnyPayment && formData.status === 'draft' && !isFullyPaid) {
+      setFormData(prev => ({ ...prev, status: 'pending' }));
+    }
+    // If payment is removed (amountReceived becomes 0), reset to draft (only if not already progressed further)
+    else if (amountReceived === 0 && formData.paymentStatus === 'pending' && ['pending', 'confirmed'].includes(formData.status)) {
+      setFormData(prev => ({ ...prev, status: 'draft' }));
+    }
+  }, [formData.paymentStatus, formData.amountReceived, formData.status, totalAmount]);
 
+  // Allow editing order status if:
+  // 1. Fully paid, OR
+  // 2. Any amount received (partial or full payment for any payment method), OR
+  // 3. Payment method is COD (Cash on Delivery) - allow status edit even before payment
   const canEditOrderStatus = (
     (formData.paymentStatus === 'paid' && +formData.amountReceived === +totalAmount)
     ||
-    (formData.paymentMethod === 'cod' && +formData.amountReceived > 0)
+    (+formData.amountReceived > 0 && ['paid', 'partial'].includes(formData.paymentStatus))
+    ||
+    (formData.paymentMethod === 'cod') // COD orders can have status edited even without payment
   );
 
   if (loading && isEdit) {
@@ -865,12 +1083,25 @@ const OrderFormPage = () => {
                 </div>
                 <div className="w-full flex flex-col">
                   <Input
+                    label="Pincode *"
+                    value={formData.shippingAddress.pincode}
+                    onChange={(e) => handleShippingAddressChange('pincode', e.target.value.replace(/\D/g, ''))}
+                    placeholder="Enter 6-digit pincode"
+                    error={errors['shippingAddress.pincode']}
+                    maxLength={6}
+                    helperText={pincodeLoading ? "Fetching city and state..." : "City and state will be auto-filled"}
+                    className="w-full"
+                  />
+                </div>
+                <div className="w-full flex flex-col">
+                  <Input
                     label="City *"
                     value={formData.shippingAddress.city}
                     onChange={(e) => handleShippingAddressChange('city', e.target.value)}
-                    placeholder="City"
+                    placeholder="City (auto-filled from pincode)"
                     error={errors['shippingAddress.city']}
-                    className="w-full"
+                    readOnly={!!formData.shippingAddress.pincode && formData.shippingAddress.pincode.length === 6}
+                    className={`w-full ${formData.shippingAddress.pincode && formData.shippingAddress.pincode.length === 6 ? 'opacity-60 cursor-not-allowed bg-gray-50' : ''}`}
                   />
                 </div>
                 <div className="w-full flex flex-col">
@@ -878,19 +1109,10 @@ const OrderFormPage = () => {
                     label="State *"
                     value={formData.shippingAddress.state}
                     onChange={(e) => handleShippingAddressChange('state', e.target.value)}
-                    placeholder="State"
+                    placeholder="State (auto-filled from pincode)"
                     error={errors['shippingAddress.state']}
-                    className="w-full"
-                  />
-                </div>
-                <div className="w-full flex flex-col">
-                  <Input
-                    label="Pincode *"
-                    value={formData.shippingAddress.pincode}
-                    onChange={(e) => handleShippingAddressChange('pincode', e.target.value)}
-                    placeholder="Pincode"
-                    error={errors['shippingAddress.pincode']}
-                    className="w-full"
+                    readOnly={!!formData.shippingAddress.pincode && formData.shippingAddress.pincode.length === 6}
+                    className={`w-full ${formData.shippingAddress.pincode && formData.shippingAddress.pincode.length === 6 ? 'opacity-60 cursor-not-allowed bg-gray-50' : ''}`}
                   />
                 </div>
                 <div className="w-full flex flex-col">
@@ -967,14 +1189,20 @@ const OrderFormPage = () => {
                   <span className="text-sm font-medium">₹{subtotal.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between items-center gap-3">
-                  <span className="text-sm text-gray-600">Tax</span>
+                  <div className="flex flex-col">
+                    <span className="text-sm text-gray-600">Tax (%)</span>
+                    {taxAmount > 0 && (
+                      <span className="text-xs text-gray-500">₹{taxAmount.toFixed(2)}</span>
+                    )}
+                  </div>
                   <div className="w-24">
                     <Input
                       type="number"
-                      value={formData.taxAmount}
-                      onChange={(e) => handleInputChange('taxAmount', e.target.value)}
+                      value={formData.taxPercentage}
+                      onChange={(e) => handleInputChange('taxPercentage', e.target.value)}
                       placeholder="0"
                       min="0"
+                      max="100"
                       step="0.01"
                       size="sm"
                     />
@@ -995,14 +1223,20 @@ const OrderFormPage = () => {
                   </div>
                 </div>
                 <div className="flex justify-between items-center gap-3">
-                  <span className="text-sm text-gray-600">Discount</span>
+                  <div className="flex flex-col">
+                    <span className="text-sm text-gray-600">Discount (%)</span>
+                    {discountAmount > 0 && (
+                      <span className="text-xs text-gray-500">₹{discountAmount.toFixed(2)}</span>
+                    )}
+                  </div>
                   <div className="w-24">
                     <Input
                       type="number"
-                      value={formData.discountAmount}
-                      onChange={(e) => handleInputChange('discountAmount', e.target.value)}
+                      value={formData.discountPercentage}
+                      onChange={(e) => handleInputChange('discountPercentage', e.target.value)}
                       placeholder="0"
                       min="0"
+                      max="100"
                       step="0.01"
                       size="sm"
                     />
@@ -1059,12 +1293,59 @@ const OrderFormPage = () => {
                     placeholder="₹0.00"
                     min="0"
                     step="0.01"
+                    disabled={formData.paymentStatus === 'paid' || (isEdit && formData.paymentStatus === 'partial')}
                     error={!!errors.amountReceived}
                     errorMessage={errors.amountReceived}
-                    helperText={errors.amountReceived ? "" : "Amount received for this order"}
-                    className="w-full"
+                    helperText={
+                      formData.paymentStatus === 'paid' 
+                        ? "Amount automatically set to total amount for fully paid orders"
+                        : (isEdit && formData.paymentStatus === 'partial')
+                        ? "Original received amount (use 'Again Receive Amount' to add more)"
+                        : formData.paymentMethod === 'cash'
+                        ? "Cash payments will be added to branch's ready cash"
+                        : (errors.amountReceived ? "" : "Amount received for this order")
+                    }
+                    className={`w-full ${(formData.paymentStatus === 'paid' || (isEdit && formData.paymentStatus === 'partial')) ? 'opacity-60 cursor-not-allowed bg-gray-50' : ''}`}
                   />
                 </div>
+                {/* Again Receive Amount and Balance - Show only for partial payment in edit mode */}
+                {isEdit && formData.paymentStatus === 'partial' && (
+                  <div className="w-full flex flex-col">
+                    <Input
+                      label="Again Receive Amount"
+                      type="number"
+                      value={againReceiveAmount}
+                      onChange={(e) => {
+                        const value = parseFloat(e.target.value) || 0;
+                        setAgainReceiveAmount(value);
+                        // Validate that again receive amount doesn't exceed balance
+                        const balance = totalAmount - parseFloat(formData.amountReceived || 0);
+                        if (value > balance) {
+                          setErrors(prev => ({
+                            ...prev,
+                            againReceiveAmount: `Additional amount (₹${value.toLocaleString()}) cannot exceed balance (₹${balance.toLocaleString()})`
+                          }));
+                        } else {
+                          setErrors(prev => {
+                            const newErrors = { ...prev };
+                            delete newErrors.againReceiveAmount;
+                            return newErrors;
+                          });
+                        }
+                      }}
+                      placeholder="₹0.00"
+                      min="0"
+                      step="0.01"
+                      error={!!errors.againReceiveAmount}
+                      errorMessage={errors.againReceiveAmount}
+                      helperText="Enter additional amount to receive"
+                      className="w-full"
+                    />
+                    <span className="text-sm text-gray-600 mt-1">
+                      Balance Value: ₹{Math.max(0, (totalAmount - parseFloat(formData.amountReceived || 0) - parseFloat(againReceiveAmount || 0))).toLocaleString()}
+                    </span>
+                  </div>
+                )}
                 <div className="w-full flex flex-col">
                   <TextArea
                     label="Payment Notes"
@@ -1077,8 +1358,8 @@ const OrderFormPage = () => {
                     className="w-full"
                   />
                 </div>
-                {/* Bank Account Selection - Show only for Cash, Card, or Net Banking */}
-                {['cash', 'card', 'netbanking'].includes(formData.paymentMethod) && formData.branchId && selectedBranchDetails && (
+                {/* Bank Account Selection - Show only for Card or Net Banking (Cash goes to Ready Cash) */}
+                {['card', 'netbanking'].includes(formData.paymentMethod) && formData.branchId && selectedBranchDetails && (
                   <div className="w-full flex flex-col">
                     {(() => {
                       // Get bank accounts from branch
@@ -1165,13 +1446,168 @@ const OrderFormPage = () => {
                     />
                     <div className="text-xs text-gray-400 mt-1">
                       {canEditOrderStatus
-                        ? 'Order status is now editable.'
-                        : "Order status can be changed after full payment or after receiving any amount for COD orders."}
+                        ? (formData.paymentMethod === 'cod' && Number(formData.amountReceived) === 0
+                            ? 'Order status is editable for Cash on Delivery orders.'
+                            : 'Order status is now editable.')
+                        : "Order status can be changed after receiving any payment amount or if payment method is Cash on Delivery."}
                     </div>
+                  </div>
+                )}
+                {/* Courier Partner - Show only when status is 'picked' */}
+                {formData.status === 'picked' && (
+                  <div className="w-full flex flex-col space-y-4">
+                    <div className="w-full flex flex-col">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="block text-sm font-medium text-gray-700">Courier Partner *</label>
+                        <button
+                          type="button"
+                          onClick={() => setShowAddCourierModal(true)}
+                          className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                        >
+                          <HiPlus className="w-3 h-3" />
+                          Add New
+                        </button>
+                      </div>
+                      <Select
+                        options={courierPartners.map(partner => ({
+                          value: partner._id,
+                          label: partner.name
+                        }))}
+                        value={formData.courierPartnerId}
+                        onChange={(value) => {
+                          if (value) {
+                            handleInputChange('courierPartnerId', value);
+                          }
+                        }}
+                        error={errors.courierPartnerId}
+                        className="w-full"
+                        placeholder="Select courier partner"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowAddCourierModal(true)}
+                        className="text-xs text-blue-600 hover:text-blue-800 mt-1 flex items-center gap-1 self-start"
+                      >
+                        <HiPlus className="w-3 h-3" />
+                        Add New Courier Partner
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {/* Reason for Cancellation - Show only when status is 'returned' */}
+                {formData.status === 'returned' && (
+                  <div className="w-full flex flex-col">
+                    <TextArea
+                      label="Reason for Cancellation *"
+                      value={formData.returnReason}
+                      onChange={(e) => handleInputChange('returnReason', e.target.value)}
+                      placeholder="Enter reason for order cancellation/return..."
+                      rows={3}
+                      error={errors.returnReason}
+                      helperText="Please provide a reason for returning this order"
+                      className="w-full"
+                    />
                   </div>
                 )}
               </div>
             </div>
+
+            {/* Add Courier Partner Modal */}
+            {showAddCourierModal && (
+              <div className="fixed inset-0 z-50 overflow-y-auto">
+                <div className="flex min-h-full items-center justify-center p-4 text-center sm:p-0">
+                  {/* Backdrop */}
+                  <div
+                    className="fixed inset-0 bg-black/20 backdrop-blur-sm transition-opacity"
+                    onClick={() => {
+                      setShowAddCourierModal(false);
+                      setNewCourierName('');
+                    }}
+                  ></div>
+
+                  {/* Modal Content */}
+                  <div className="relative transform overflow-hidden rounded-2xl bg-white/95 backdrop-blur-md text-left shadow-2xl transition-all w-full max-w-md">
+                    {/* Header */}
+                    <div className="px-6 py-4 border-b border-gray-200 bg-gray-50/50">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-lg font-semibold text-gray-900">
+                          Add New Courier Partner
+                        </h3>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowAddCourierModal(false);
+                            setNewCourierName('');
+                          }}
+                          className="text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#22c55e] focus:ring-offset-2 rounded-md p-1"
+                        >
+                          <HiXMark className="h-6 w-6" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Body */}
+                    <div className="px-6 py-4 sm:p-6">
+                      <div className="space-y-4">
+                        <Input
+                          label="Courier Partner Name *"
+                          value={newCourierName}
+                          onChange={(e) => setNewCourierName(e.target.value)}
+                          placeholder="Enter courier partner name (e.g., BlueDart, FedEx, etc.)"
+                          className="w-full"
+                        />
+                        <div className="flex gap-2 justify-end pt-2">
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            onClick={() => {
+                              setShowAddCourierModal(false);
+                              setNewCourierName('');
+                            }}
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="primary"
+                            onClick={async () => {
+                              if (!newCourierName.trim()) {
+                                dispatch(addNotification({
+                                  type: 'error',
+                                  message: 'Please enter courier partner name'
+                                }));
+                                return;
+                              }
+                              try {
+                                const result = await dispatch(createCourierPartner({ name: newCourierName.trim() })).unwrap();
+                                const newPartner = result.data?.courierPartner;
+                                if (newPartner) {
+                                  setCourierPartners(prev => [...prev, newPartner]);
+                                  setFormData(prev => ({ ...prev, courierPartnerId: newPartner._id }));
+                                  setShowAddCourierModal(false);
+                                  setNewCourierName('');
+                                  dispatch(addNotification({
+                                    type: 'success',
+                                    message: 'Courier partner added successfully'
+                                  }));
+                                }
+                              } catch (error) {
+                                dispatch(addNotification({
+                                  type: 'error',
+                                  message: error || 'Failed to create courier partner'
+                                }));
+                              }
+                            }}
+                          >
+                            Add
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Submit Button */}
             <div className="pt-3">

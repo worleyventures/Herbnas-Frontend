@@ -171,6 +171,21 @@ const OrderDetailsModal = ({ isOpen, onClose, orderId, onEdit, onDelete, onRefre
       : order.leadId?.customerMobile;
 
     const codCharges = order.paymentMethod === 'cod' ? (order.codCharges || 0) : 0;
+    
+    // Calculate subtotal from items to ensure accuracy
+    const calculatedSubtotal = order.items?.reduce((sum, item) => {
+      const quantity = parseInt(item.quantity) || 0;
+      const unitPrice = parseFloat(item.unitPrice) || 0;
+      const totalPrice = parseFloat(item.totalPrice) || (quantity * unitPrice);
+      return sum + totalPrice;
+    }, 0) || 0;
+    
+    // Use calculated subtotal (fallback to stored if calculation fails)
+    const subtotal = calculatedSubtotal > 0 ? calculatedSubtotal : (order.subtotal || 0);
+    
+    // Recalculate totalAmount based on correct subtotal
+    const totalAmount = subtotal + (order.taxAmount || 0) + (order.shippingAmount || 0) + codCharges - (order.discountAmount || 0);
+    
     const invoiceNumber = order.orderNumber || order.orderId;
     const invoiceDate = new Date(order.createdAt).toLocaleDateString('en-IN', {
       year: 'numeric',
@@ -356,7 +371,7 @@ const OrderDetailsModal = ({ isOpen, onClose, orderId, onEdit, onDelete, onRefre
           <div class="totals">
             <div class="total-row">
               <span class="total-label">Subtotal:</span>
-              <span class="total-amount">₹${order.subtotal?.toLocaleString() || '0'}</span>
+              <span class="total-amount">₹${subtotal.toLocaleString()}</span>
             </div>
             ${order.taxAmount > 0 ? `
               <div class="total-row">
@@ -384,7 +399,7 @@ const OrderDetailsModal = ({ isOpen, onClose, orderId, onEdit, onDelete, onRefre
             ` : ''}
             <div class="total-row grand-total">
               <span class="total-label">Total Amount:</span>
-              <span class="total-amount">₹${order.totalAmount?.toLocaleString() || '0'}</span>
+              <span class="total-amount">₹${totalAmount.toLocaleString()}</span>
             </div>
           </div>
           
@@ -452,6 +467,25 @@ const OrderDetailsModal = ({ isOpen, onClose, orderId, onEdit, onDelete, onRefre
       : order.leadId?.customerMobile;
 
     const codCharges = order.paymentMethod === 'cod' ? (order.codCharges || 0) : 0;
+    
+    // Calculate subtotal from items to ensure accuracy (fallback to stored subtotal if items don't match)
+    const calculatedSubtotal = (order.items && Array.isArray(order.items)) 
+      ? order.items.reduce((sum, item) => {
+          const quantity = parseInt(item.quantity) || 0;
+          const unitPrice = parseFloat(item.unitPrice) || 0;
+          const totalPrice = parseFloat(item.totalPrice) || (quantity * unitPrice);
+          return sum + totalPrice;
+        }, 0)
+      : 0;
+    
+    // Use calculated subtotal if it's valid, otherwise fall back to stored subtotal
+    const subtotal = calculatedSubtotal > 0 ? calculatedSubtotal : (parseFloat(order.subtotal) || 0);
+    
+    // Recalculate totalAmount based on correct subtotal
+    const taxAmountValue = parseFloat(order.taxAmount) || 0;
+    const shippingAmountValue = parseFloat(order.shippingAmount) || 0;
+    const discountAmountValue = parseFloat(order.discountAmount) || 0;
+    const totalAmount = subtotal + taxAmountValue + shippingAmountValue + codCharges - discountAmountValue;
 
     const orderInfo = {
       title: 'Order Information',
@@ -576,7 +610,7 @@ const OrderDetailsModal = ({ isOpen, onClose, orderId, onEdit, onDelete, onRefre
       fields: [
         {
           label: 'Subtotal',
-          value: `₹${order.subtotal?.toLocaleString() || '0'}`,
+          value: `₹${subtotal.toLocaleString()}`,
           type: 'price'
         },
         {
@@ -601,8 +635,18 @@ const OrderDetailsModal = ({ isOpen, onClose, orderId, onEdit, onDelete, onRefre
         }] : []),
         {
           label: 'Total Amount',
-          value: `₹${order.totalAmount?.toLocaleString() || '0'}`,
+          value: `₹${totalAmount.toLocaleString()}`,
           type: 'price'
+        }
+      ]
+    };
+
+    const courierPartnerInfo = {
+      title: 'Courier Partner',
+      fields: [
+        {
+          label: 'Courier Name',
+          value: order.courierPartnerId?.name || 'N/A'
         }
       ]
     };
@@ -621,7 +665,17 @@ const OrderDetailsModal = ({ isOpen, onClose, orderId, onEdit, onDelete, onRefre
       ]
     };
 
-    return [orderInfo, customerInfo, branchInfo, shippingInfo, financialInfo, notesInfo].filter(section => section.fields.length > 0);
+    const allSections = [
+      orderInfo, 
+      customerInfo, 
+      branchInfo, 
+      shippingInfo, 
+      financialInfo,
+      ...(order.courierPartnerId ? [courierPartnerInfo] : []),
+      notesInfo
+    ];
+    
+    return allSections.filter(section => section.fields.length > 0);
   };
 
   const sections = prepareSections();
@@ -742,9 +796,9 @@ const OrderDetailsModal = ({ isOpen, onClose, orderId, onEdit, onDelete, onRefre
             <p className="text-red-600">{error}</p>
           </div>
         ) : order ? (
-          <div className="space-y-6">
+          <div className="space-y-4">
             {/* Order Status Badges */}
-            <div className="flex items-center space-x-4 pb-4 border-b border-gray-200">
+            <div className="flex items-center space-x-4 pb-3 border-b border-gray-200">
               <div className="flex items-center space-x-2">
                 <span className="text-sm text-gray-600">Order Status:</span>
                 <StatusBadge
@@ -765,12 +819,15 @@ const OrderDetailsModal = ({ isOpen, onClose, orderId, onEdit, onDelete, onRefre
             {orderItemsSection}
 
             {/* Details Sections */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <DetailsView sections={sections.slice(0, Math.ceil(sections.length / 2))} />
+                <DetailsView sections={sections.slice(0, Math.ceil(sections.length / 3))} />
               </div>
               <div>
-                <DetailsView sections={sections.slice(Math.ceil(sections.length / 2))} />
+                <DetailsView sections={sections.slice(Math.ceil(sections.length / 3), Math.ceil(sections.length * 2 / 3))} />
+              </div>
+              <div>
+                <DetailsView sections={sections.slice(Math.ceil(sections.length * 2 / 3))} />
               </div>
             </div>
           </div>

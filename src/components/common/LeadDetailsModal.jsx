@@ -234,12 +234,15 @@ const LeadDetailsModal = ({
       showFooter={true}
       footerContent={footerContent}
     >
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
-          <DetailsView sections={sections.slice(0, Math.ceil(sections.length / 2))} />
+          <DetailsView sections={sections.slice(0, Math.ceil(sections.length / 3))} />
         </div>
         <div>
-          <DetailsView sections={sections.slice(Math.ceil(sections.length / 2))} />
+          <DetailsView sections={sections.slice(Math.ceil(sections.length / 3), Math.ceil(sections.length * 2 / 3))} />
+        </div>
+        <div>
+          <DetailsView sections={sections.slice(Math.ceil(sections.length * 2 / 3))} />
         </div>
       </div>
     </CommonModal>

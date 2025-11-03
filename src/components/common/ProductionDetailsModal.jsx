@@ -195,17 +195,16 @@ const ProductionDetailsModal = ({
       showFooter={true}
       footerContent={footerContent}
     >
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Left Column - Additional Info and Notes */}
-        <div className="space-y-4">
-          <DetailsView sections={[additionalInfo]} />
-          {notesInfo && <DetailsView sections={[notesInfo]} />}
-        </div>
-        
-        {/* Right Column - Basic Info */}
-        <div className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
           <DetailsView sections={[basicInfo]} />
+        </div>
+        <div>
+          <DetailsView sections={[additionalInfo]} />
+        </div>
+        <div>
           {rawMaterialsInfo && <DetailsView sections={[rawMaterialsInfo]} />}
+          {notesInfo && <DetailsView sections={[notesInfo]} />}
         </div>
       </div>
     </CommonModal>
