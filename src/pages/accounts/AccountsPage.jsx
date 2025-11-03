@@ -201,6 +201,9 @@ const AccountsPage = () => {
     setSelectedBranch(branch);
     setShowBranchDetails(true);
     setCurrentPage(1); // Reset to first page
+    setTransactionTypeFilter('all'); // Reset transaction type filter to show all types
+    setPaymentStatusFilter('all'); // Reset payment status filter to show all statuses
+    setSearchTerm(''); // Reset search term
   };
 
   // Handle back to branch summary
@@ -507,11 +510,11 @@ const AccountsPage = () => {
       )
     },
     {
-      key: 'description',
-      label: 'Description',
+      key: 'orderId',
+      label: 'Order ID',
       render: (account) => (
-        <div className="text-sm text-gray-900 max-w-xs truncate">
-          {account.description}
+        <div className="text-sm text-gray-900 font-medium">
+          {account.orderId?.orderId || account.orderId || '-'}
         </div>
       )
     },
@@ -1028,37 +1031,39 @@ const AccountsPage = () => {
         ) : (
         // Super Admin: Branch Summary Dashboard
         <div className="space-y-6">
-          {/* Statistics Cards */}
-          {stats && (
+          {/* Statistics Cards - Use branchSummary totals when available, otherwise fall back to stats */}
+          {(branchSummary?.totals || stats) && (
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
               <StatCard
                 title="Total Income"
-                value={`₹${stats.summary?.totalIncome?.toLocaleString() || 0}`}
+                value={`₹${(branchSummary?.totals?.totalIncome || stats?.summary?.totalIncome || 0).toLocaleString()}`}
                 icon={HiArrowUp}
                 gradient="green"
-                loading={statsLoading}
+                loading={branchSummaryLoading || statsLoading}
                 subtitle="Includes accounts + completed leads"
               />
               <StatCard
                 title="Total Expense"
-                value={`₹${stats.summary?.totalExpense?.toLocaleString() || 0}`}
+                value={`₹${(branchSummary?.totals?.totalExpense || stats?.summary?.totalExpense || 0).toLocaleString()}`}
                 icon={HiArrowDown}
                 gradient="red"
-                loading={statsLoading}
+                loading={branchSummaryLoading || statsLoading}
               />
               <StatCard
                 title="Net Profit"
-                value={`₹${stats.summary?.netProfit?.toLocaleString() || 0}`}
+                value={`₹${(branchSummary?.totals?.totalNetAmount || stats?.summary?.netProfit || 0).toLocaleString()}`}
                 icon={HiCurrencyDollar}
                 gradient="purple"
-                loading={statsLoading}
+                loading={branchSummaryLoading || statsLoading}
               />
               <StatCard
                 title="Total Transactions"
-                value={stats.summary?.totalTransactions || 0}
+                value={(branchSummary?.totals ? 
+                  ((branchSummary.totals.totalIncomeCount || 0) + (branchSummary.totals.totalExpenseCount || 0) + (branchSummary.totals.totalPurchaseCount || 0)) :
+                  (stats?.summary?.totalTransactions || 0))}
                 icon={HiClipboardDocumentList}
                 gradient="blue"
-                loading={statsLoading}
+                loading={branchSummaryLoading || statsLoading}
               />
             </div>
           )}

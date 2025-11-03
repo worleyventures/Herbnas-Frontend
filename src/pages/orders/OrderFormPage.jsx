@@ -102,6 +102,7 @@ const OrderFormPage = () => {
   const [isBranchDisabled, setIsBranchDisabled] = useState(false);
   const [selectedBranchDetails, setSelectedBranchDetails] = useState(null);
   const [pincodeLoading, setPincodeLoading] = useState(false);
+  const [againReceiveAmount, setAgainReceiveAmount] = useState(0);
 
   // Load data on component mount
   useEffect(() => {
@@ -176,9 +177,12 @@ const OrderFormPage = () => {
         paymentNotes: order.paymentNotes || '',
         amountReceived: order.amountReceived || 0,
         expectedDeliveryDate: order.expectedDeliveryDate ? new Date(order.expectedDeliveryDate).toISOString().split('T')[0] : '',
-        status: order.status || 'draft', // Add this line
+        status: order.status || 'draft',
         bankAccountId: order.bankAccountId || ''
       });
+      
+      // Reset again receive amount when loading order
+      setAgainReceiveAmount(0);
     }
   }, [isEdit, order]);
 
@@ -570,8 +574,21 @@ const OrderFormPage = () => {
     }
     
     // Validate received amount cannot exceed total amount
-    if (amountReceived > totalAmount) {
-      newErrors.amountReceived = `Received amount (₹${amountReceived.toLocaleString()}) cannot be greater than total amount (₹${totalAmount.toLocaleString()})`;
+    // For partial payment in edit mode, validate the total (original + additional)
+    const finalAmountReceived = isEdit && formData.paymentStatus === 'partial'
+      ? parseFloat(formData.amountReceived || 0) + parseFloat(againReceiveAmount || 0)
+      : amountReceived;
+    
+    if (finalAmountReceived > totalAmount) {
+      newErrors.amountReceived = `Received amount (₹${finalAmountReceived.toLocaleString()}) cannot be greater than total amount (₹${totalAmount.toLocaleString()})`;
+    }
+    
+    // Validate again receive amount if in partial payment mode
+    if (isEdit && formData.paymentStatus === 'partial' && againReceiveAmount > 0) {
+      const balance = totalAmount - parseFloat(formData.amountReceived || 0);
+      if (againReceiveAmount > balance) {
+        newErrors.againReceiveAmount = `Additional amount (₹${againReceiveAmount.toLocaleString()}) cannot exceed balance (₹${balance.toLocaleString()})`;
+      }
     }
     
     setErrors(newErrors);
@@ -613,9 +630,18 @@ const OrderFormPage = () => {
         shippingAmount: formData.shippingAmount,
         codCharges: formData.paymentMethod === 'cod' ? formData.codCharges : 0,
         paymentMethod: formData.paymentMethod,
-        paymentStatus: formData.paymentStatus,
+        paymentStatus: (() => {
+          // If partial payment and additional amount makes it fully paid, change status to paid
+          if (isEdit && formData.paymentStatus === 'partial' && againReceiveAmount > 0) {
+            const finalAmount = parseFloat(formData.amountReceived || 0) + parseFloat(againReceiveAmount || 0);
+            return finalAmount >= calculateTotals().totalAmount ? 'paid' : 'partial';
+          }
+          return formData.paymentStatus;
+        })(),
         paymentNotes: formData.paymentNotes,
-        amountReceived: formData.amountReceived,
+        amountReceived: isEdit && formData.paymentStatus === 'partial' && againReceiveAmount > 0
+          ? parseFloat(formData.amountReceived || 0) + parseFloat(againReceiveAmount || 0)
+          : formData.amountReceived,
         expectedDeliveryDate: formData.expectedDeliveryDate,
         status: formData.status,
         bankAccountId: formData.bankAccountId || undefined // Include bank account ID if selected
@@ -629,12 +655,23 @@ const OrderFormPage = () => {
         }));
         // If there is a partial or full payment, post it to accounts
         const updatedOrder = updated?.data?.order ?? {};
-        if (Number(updatedOrder.amountReceived) > 0 && ['paid', 'partial'].includes(updatedOrder.paymentStatus)) {
+        const finalAmountReceived = isEdit && formData.paymentStatus === 'partial' && againReceiveAmount > 0
+          ? parseFloat(formData.amountReceived || 0) + parseFloat(againReceiveAmount || 0)
+          : Number(updatedOrder.amountReceived);
+        
+        const finalPaymentStatus = finalAmountReceived >= calculateTotals().totalAmount ? 'paid' : updatedOrder.paymentStatus;
+        
+        if (finalAmountReceived > 0 && ['paid', 'partial'].includes(finalPaymentStatus)) {
           await dispatch(createSalesAccount({
             orderId: updatedOrder._id, // must be actual backend ID
             paymentMethod: updatedOrder.paymentMethod,
-            paymentStatus: updatedOrder.paymentStatus === 'paid' ? 'completed' : 'pending',
+            paymentStatus: finalPaymentStatus === 'paid' ? 'completed' : 'pending',
           }));
+        }
+        
+        // Reset again receive amount after successful update
+        if (isEdit && againReceiveAmount > 0) {
+          setAgainReceiveAmount(0);
         }
       } else {
         const created = await dispatch(createOrder(orderData)).unwrap();
@@ -1164,19 +1201,59 @@ const OrderFormPage = () => {
                     placeholder="₹0.00"
                     min="0"
                     step="0.01"
-                    disabled={formData.paymentStatus === 'paid'}
+                    disabled={formData.paymentStatus === 'paid' || (isEdit && formData.paymentStatus === 'partial')}
                     error={!!errors.amountReceived}
                     errorMessage={errors.amountReceived}
                     helperText={
                       formData.paymentStatus === 'paid' 
                         ? "Amount automatically set to total amount for fully paid orders"
+                        : (isEdit && formData.paymentStatus === 'partial')
+                        ? "Original received amount (use 'Again Receive Amount' to add more)"
                         : formData.paymentMethod === 'cash'
                         ? "Cash payments will be added to branch's ready cash"
                         : (errors.amountReceived ? "" : "Amount received for this order")
                     }
-                    className={`w-full ${formData.paymentStatus === 'paid' ? 'opacity-60 cursor-not-allowed bg-gray-50' : ''}`}
+                    className={`w-full ${(formData.paymentStatus === 'paid' || (isEdit && formData.paymentStatus === 'partial')) ? 'opacity-60 cursor-not-allowed bg-gray-50' : ''}`}
                   />
                 </div>
+                {/* Again Receive Amount and Balance - Show only for partial payment in edit mode */}
+                {isEdit && formData.paymentStatus === 'partial' && (
+                  <div className="w-full flex flex-col">
+                    <Input
+                      label="Again Receive Amount"
+                      type="number"
+                      value={againReceiveAmount}
+                      onChange={(e) => {
+                        const value = parseFloat(e.target.value) || 0;
+                        setAgainReceiveAmount(value);
+                        // Validate that again receive amount doesn't exceed balance
+                        const balance = totalAmount - parseFloat(formData.amountReceived || 0);
+                        if (value > balance) {
+                          setErrors(prev => ({
+                            ...prev,
+                            againReceiveAmount: `Additional amount (₹${value.toLocaleString()}) cannot exceed balance (₹${balance.toLocaleString()})`
+                          }));
+                        } else {
+                          setErrors(prev => {
+                            const newErrors = { ...prev };
+                            delete newErrors.againReceiveAmount;
+                            return newErrors;
+                          });
+                        }
+                      }}
+                      placeholder="₹0.00"
+                      min="0"
+                      step="0.01"
+                      error={!!errors.againReceiveAmount}
+                      errorMessage={errors.againReceiveAmount}
+                      helperText="Enter additional amount to receive"
+                      className="w-full"
+                    />
+                    <span className="text-sm text-gray-600 mt-1">
+                      Balance Value: ₹{Math.max(0, (totalAmount - parseFloat(formData.amountReceived || 0) - parseFloat(againReceiveAmount || 0))).toLocaleString()}
+                    </span>
+                  </div>
+                )}
                 <div className="w-full flex flex-col">
                   <TextArea
                     label="Payment Notes"
