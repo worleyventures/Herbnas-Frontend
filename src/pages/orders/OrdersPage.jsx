@@ -270,6 +270,19 @@ const OrdersPage = () => {
       )
     },
     {
+      key: 'paymentId',
+      label: 'Payment ID',
+      render: (order) => (
+        <div className="text-sm">
+          {order.paymentId ? (
+            <span className="font-medium text-gray-900">{order.paymentId}</span>
+          ) : (
+            <span className="text-gray-400 italic">-</span>
+          )}
+        </div>
+      )
+    },
+    {
       key: 'orderStatus',
       label: 'Order Status',
       render: (order) => {
