@@ -233,7 +233,7 @@ const PayrollDetailsModal = ({ isOpen, onClose, payrollId, onEdit, onDelete }) =
           </div>
 
           {/* Additional Details */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Bank Details */}
             <div className="space-y-4">
               <h3 className="text-sm font-bold bg-gradient-to-r from-[#8bc34a] to-[#558b2f] bg-clip-text text-transparent">Bank Details</h3>

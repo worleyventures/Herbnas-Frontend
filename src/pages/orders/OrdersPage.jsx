@@ -193,6 +193,28 @@ const OrdersPage = () => {
     }
   };
 
+  // Helper function to calculate total amount from order items
+  const calculateOrderTotal = (order) => {
+    // Calculate subtotal from items
+    const calculatedSubtotal = (order.items && Array.isArray(order.items))
+      ? order.items.reduce((sum, item) => {
+          const quantity = parseInt(item.quantity) || 0;
+          const unitPrice = parseFloat(item.unitPrice) || 0;
+          const totalPrice = parseFloat(item.totalPrice) || (quantity * unitPrice);
+          return sum + totalPrice;
+        }, 0)
+      : 0;
+    
+    const subtotal = calculatedSubtotal > 0 ? calculatedSubtotal : (parseFloat(order.subtotal) || 0);
+    const taxAmount = parseFloat(order.taxAmount) || 0;
+    const shippingAmount = parseFloat(order.shippingAmount) || 0;
+    const discountAmount = parseFloat(order.discountAmount) || 0;
+    const codCharges = order.paymentMethod === 'cod' ? (parseFloat(order.codCharges) || 0) : 0;
+    
+    const totalAmount = subtotal + taxAmount + shippingAmount + codCharges - discountAmount;
+    return totalAmount;
+  };
+
   // Table columns
   const columns = [
     {
@@ -253,11 +275,14 @@ const OrdersPage = () => {
     {
       key: 'totalAmount',
       label: 'Total Amount',
-      render: (order) => (
-        <div className="font-medium text-gray-900">
-          ₹{order.totalAmount?.toLocaleString()}
-        </div>
-      )
+      render: (order) => {
+        const calculatedTotal = calculateOrderTotal(order);
+        return (
+          <div className="font-medium text-gray-900">
+            ₹{calculatedTotal.toLocaleString()}
+          </div>
+        );
+      }
     },
     {
       key: 'paymentStatus',
@@ -316,7 +341,8 @@ const OrdersPage = () => {
         
         if (amountReceived === undefined || amountReceived === null) {
           if (order.paymentStatus === 'paid') {
-            amountReceived = order.totalAmount || 0;
+            const calculatedTotal = calculateOrderTotal(order);
+            amountReceived = calculatedTotal || 0;
           } else {
             amountReceived = 0;
           }
@@ -518,7 +544,7 @@ const OrdersPage = () => {
                   ? `${orderToDelete.customerId?.firstName || ''} ${orderToDelete.customerId?.lastName || ''}`.trim()
                   : orderToDelete.leadId?.customerName || 'Unknown Customer'
               }</p>
-              <p><strong>Total Amount:</strong> ₹{orderToDelete.totalAmount?.toLocaleString()}</p>
+              <p><strong>Total Amount:</strong> ₹{orderToDelete ? calculateOrderTotal(orderToDelete).toLocaleString() : '0'}</p>
             </div>
           )}
           <p className="text-sm text-gray-500">

@@ -120,14 +120,12 @@ const ProductDetailsModal = ({
       showFooter={true}
       footerContent={footerContent}
     >
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Left Column - Additional Information */}
-        <div>
-          <DetailsView sections={[additionalInfo]} />
-        </div>
-        {/* Right Column - Basic Information */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
           <DetailsView sections={[basicInfo]} />
+        </div>
+        <div>
+          <DetailsView sections={[additionalInfo]} />
         </div>
       </div>
     </CommonModal>

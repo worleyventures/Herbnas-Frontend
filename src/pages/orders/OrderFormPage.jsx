@@ -24,6 +24,7 @@ import { getAllProducts } from '../../redux/actions/productActions';
 import { getAllBranches, getBranchById } from '../../redux/actions/branchActions';
 import { getAllUsers } from '../../redux/actions/userActions';
 import { getAllLeads } from '../../redux/actions/leadActions';
+import { getAllCourierPartners, createCourierPartner } from '../../redux/actions/courierPartnerActions';
 import { addNotification } from '../../redux/slices/uiSlice';
 import {
   selectCurrentOrder,
@@ -94,7 +95,9 @@ const OrderFormPage = () => {
     amountReceived: 0,
     expectedDeliveryDate: '',
     status: 'draft', // Add status field
-    bankAccountId: '' // Selected bank account for the order
+    bankAccountId: '', // Selected bank account for the order
+    returnReason: '', // Reason for cancellation/return
+    courierPartnerId: '' // Courier partner for delivery
   });
   
   const [errors, setErrors] = useState({});
@@ -103,6 +106,9 @@ const OrderFormPage = () => {
   const [selectedBranchDetails, setSelectedBranchDetails] = useState(null);
   const [pincodeLoading, setPincodeLoading] = useState(false);
   const [againReceiveAmount, setAgainReceiveAmount] = useState(0);
+  const [courierPartners, setCourierPartners] = useState([]);
+  const [showAddCourierModal, setShowAddCourierModal] = useState(false);
+  const [newCourierName, setNewCourierName] = useState('');
 
   // Load data on component mount
   useEffect(() => {
@@ -110,11 +116,27 @@ const OrderFormPage = () => {
     dispatch(getAllBranches({ page: 1, limit: 1000, isActive: true }));
     dispatch(getAllUsers({ page: 1, limit: 1000, isActive: true }));
     dispatch(getAllLeads({ page: 1, limit: 1000 }));
+    dispatch(getAllCourierPartners({ isActive: true }));
     
     if (isEdit && id) {
       dispatch(getOrderById(id));
     }
   }, [dispatch, isEdit, id]);
+  
+  // Fetch and update courier partners list
+  useEffect(() => {
+    const fetchCourierPartners = async () => {
+      try {
+        const result = await dispatch(getAllCourierPartners({ isActive: true })).unwrap();
+        const partners = result.data?.courierPartners || [];
+        setCourierPartners(partners);
+        console.log('[OrderFormPage] Loaded courier partners:', partners.length);
+      } catch (error) {
+        console.error('Error fetching courier partners:', error);
+      }
+    };
+    fetchCourierPartners();
+  }, [dispatch, showAddCourierModal]);
 
   // Update form data when order is loaded
   useEffect(() => {
@@ -178,7 +200,9 @@ const OrderFormPage = () => {
         amountReceived: order.amountReceived || 0,
         expectedDeliveryDate: order.expectedDeliveryDate ? new Date(order.expectedDeliveryDate).toISOString().split('T')[0] : '',
         status: order.status || 'draft',
-        bankAccountId: order.bankAccountId || ''
+        bankAccountId: order.bankAccountId || '',
+        returnReason: order.returnReason || '',
+        courierPartnerId: order.courierPartnerId?._id || order.courierPartnerId || ''
       });
       
       // Reset again receive amount when loading order
@@ -573,6 +597,16 @@ const OrderFormPage = () => {
       newErrors.status = 'Order status is required';
     }
     
+    // Validate return reason if status is returned
+    if (formData.status === 'returned' && !formData.returnReason?.trim()) {
+      newErrors.returnReason = 'Reason for cancellation is required when order status is returned';
+    }
+    
+    // Validate courier partner if status is picked
+    if (formData.status === 'picked' && !formData.courierPartnerId) {
+      newErrors.courierPartnerId = 'Courier partner is required when order status is picked';
+    }
+    
     // Validate received amount cannot exceed total amount
     // For partial payment in edit mode, validate the total (original + additional)
     const finalAmountReceived = isEdit && formData.paymentStatus === 'partial'
@@ -643,8 +677,11 @@ const OrderFormPage = () => {
           ? parseFloat(formData.amountReceived || 0) + parseFloat(againReceiveAmount || 0)
           : formData.amountReceived,
         expectedDeliveryDate: formData.expectedDeliveryDate,
-        status: formData.status,
-        bankAccountId: formData.bankAccountId || undefined // Include bank account ID if selected
+        // Don't send 'draft' status if payment is received - let backend auto-set it
+        status: (formData.amountReceived > 0 && formData.status === 'draft') ? undefined : formData.status,
+        bankAccountId: formData.bankAccountId || undefined, // Include bank account ID if selected
+        returnReason: formData.status === 'returned' ? formData.returnReason : undefined, // Include return reason if status is returned
+        courierPartnerId: formData.courierPartnerId || undefined // Include courier partner ID if selected
       };
       
       if (isEdit) {
@@ -662,11 +699,20 @@ const OrderFormPage = () => {
         const finalPaymentStatus = finalAmountReceived >= calculateTotals().totalAmount ? 'paid' : updatedOrder.paymentStatus;
         
         if (finalAmountReceived > 0 && ['paid', 'partial'].includes(finalPaymentStatus)) {
-          await dispatch(createSalesAccount({
-            orderId: updatedOrder._id, // must be actual backend ID
-            paymentMethod: updatedOrder.paymentMethod,
-            paymentStatus: finalPaymentStatus === 'paid' ? 'completed' : 'pending',
-          }));
+          try {
+            const accountResult = await dispatch(createSalesAccount({
+              orderId: updatedOrder._id, // must be actual backend ID
+              paymentMethod: updatedOrder.paymentMethod,
+              paymentStatus: finalPaymentStatus === 'paid' ? 'completed' : 'pending',
+            })).unwrap();
+            console.log('[OrderFormPage] Account created successfully after update:', accountResult);
+          } catch (error) {
+            console.error('[OrderFormPage] Failed to create account entry after update:', error);
+            dispatch(addNotification({
+              type: 'warning',
+              message: 'Order updated but account entry may not have been created. Please check.'
+            }));
+          }
         }
         
         // Reset again receive amount after successful update
@@ -684,11 +730,21 @@ const OrderFormPage = () => {
         // Only block cancelled orders
         const createdOrder = created?.data?.order ?? {};
         if (Number(createdOrder.amountReceived) > 0 && ['paid', 'partial'].includes(createdOrder.paymentStatus) && createdOrder.status !== 'cancelled') {
-          await dispatch(createSalesAccount({
-            orderId: createdOrder._id,
-            paymentMethod: createdOrder.paymentMethod,
-            paymentStatus: createdOrder.paymentStatus === 'paid' ? 'completed' : 'pending',
-          }));
+          try {
+            const accountResult = await dispatch(createSalesAccount({
+              orderId: createdOrder._id,
+              paymentMethod: createdOrder.paymentMethod,
+              paymentStatus: createdOrder.paymentStatus === 'paid' ? 'completed' : 'pending',
+            })).unwrap();
+            console.log('[OrderFormPage] Account created successfully:', accountResult);
+          } catch (error) {
+            console.error('[OrderFormPage] Failed to create account entry:', error);
+            // Don't block navigation, but log the error
+            dispatch(addNotification({
+              type: 'warning',
+              message: 'Order created but account entry may not have been created. Please check.'
+            }));
+          }
         }
       }
       
@@ -725,7 +781,40 @@ const OrderFormPage = () => {
     label: `${branch.branchName} (${branch.branchCode})`
   }));
 
-  const productOptions = products.map(product => ({
+  // Filter products based on selected branch inventory
+  const getFilteredProducts = () => {
+    // If no branch is selected, show all products
+    if (!formData.branchId || !selectedBranchDetails?.branchInventory) {
+      return products;
+    }
+    
+    // Get product IDs that are already in the order items (for edit mode, preserve existing selections)
+    const existingProductIds = formData.items
+      .filter(item => item.productId)
+      .map(item => item.productId.toString());
+    
+    // Get product IDs that are in the branch inventory
+    const branchInventoryProductIds = selectedBranchDetails.branchInventory
+      .filter(invItem => invItem.product && invItem.isAvailable !== false && invItem.quantity > 0)
+      .map(invItem => {
+        // Handle both populated and non-populated product references
+        return typeof invItem.product === 'object' 
+          ? invItem.product._id?.toString() || invItem.product.toString()
+          : invItem.product.toString();
+      });
+    
+    // Include both products from branch inventory and existing order items
+    const allowedProductIds = [...new Set([...branchInventoryProductIds, ...existingProductIds])];
+    
+    // Filter products to only include those in branch inventory or already in order
+    return products.filter(product => 
+      allowedProductIds.includes(product._id.toString())
+    );
+  };
+
+  const filteredProducts = getFilteredProducts();
+  
+  const productOptions = filteredProducts.map(product => ({
     value: product._id,
     label: `${product.productName} (${product.productId}) - ₹${product.price}`,
     price: product.price
@@ -792,11 +881,14 @@ const OrderFormPage = () => {
 
   // Allow editing order status if:
   // 1. Fully paid, OR
-  // 2. Any amount received (partial or full payment for any payment method)
+  // 2. Any amount received (partial or full payment for any payment method), OR
+  // 3. Payment method is COD (Cash on Delivery) - allow status edit even before payment
   const canEditOrderStatus = (
     (formData.paymentStatus === 'paid' && +formData.amountReceived === +totalAmount)
     ||
     (+formData.amountReceived > 0 && ['paid', 'partial'].includes(formData.paymentStatus))
+    ||
+    (formData.paymentMethod === 'cod') // COD orders can have status edited even without payment
   );
 
   if (loading && isEdit) {
@@ -1354,13 +1446,168 @@ const OrderFormPage = () => {
                     />
                     <div className="text-xs text-gray-400 mt-1">
                       {canEditOrderStatus
-                        ? 'Order status is now editable.'
-                        : "Order status can be changed after receiving any payment amount."}
+                        ? (formData.paymentMethod === 'cod' && Number(formData.amountReceived) === 0
+                            ? 'Order status is editable for Cash on Delivery orders.'
+                            : 'Order status is now editable.')
+                        : "Order status can be changed after receiving any payment amount or if payment method is Cash on Delivery."}
                     </div>
+                  </div>
+                )}
+                {/* Courier Partner - Show only when status is 'picked' */}
+                {formData.status === 'picked' && (
+                  <div className="w-full flex flex-col space-y-4">
+                    <div className="w-full flex flex-col">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="block text-sm font-medium text-gray-700">Courier Partner *</label>
+                        <button
+                          type="button"
+                          onClick={() => setShowAddCourierModal(true)}
+                          className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                        >
+                          <HiPlus className="w-3 h-3" />
+                          Add New
+                        </button>
+                      </div>
+                      <Select
+                        options={courierPartners.map(partner => ({
+                          value: partner._id,
+                          label: partner.name
+                        }))}
+                        value={formData.courierPartnerId}
+                        onChange={(value) => {
+                          if (value) {
+                            handleInputChange('courierPartnerId', value);
+                          }
+                        }}
+                        error={errors.courierPartnerId}
+                        className="w-full"
+                        placeholder="Select courier partner"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowAddCourierModal(true)}
+                        className="text-xs text-blue-600 hover:text-blue-800 mt-1 flex items-center gap-1 self-start"
+                      >
+                        <HiPlus className="w-3 h-3" />
+                        Add New Courier Partner
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {/* Reason for Cancellation - Show only when status is 'returned' */}
+                {formData.status === 'returned' && (
+                  <div className="w-full flex flex-col">
+                    <TextArea
+                      label="Reason for Cancellation *"
+                      value={formData.returnReason}
+                      onChange={(e) => handleInputChange('returnReason', e.target.value)}
+                      placeholder="Enter reason for order cancellation/return..."
+                      rows={3}
+                      error={errors.returnReason}
+                      helperText="Please provide a reason for returning this order"
+                      className="w-full"
+                    />
                   </div>
                 )}
               </div>
             </div>
+
+            {/* Add Courier Partner Modal */}
+            {showAddCourierModal && (
+              <div className="fixed inset-0 z-50 overflow-y-auto">
+                <div className="flex min-h-full items-center justify-center p-4 text-center sm:p-0">
+                  {/* Backdrop */}
+                  <div
+                    className="fixed inset-0 bg-black/20 backdrop-blur-sm transition-opacity"
+                    onClick={() => {
+                      setShowAddCourierModal(false);
+                      setNewCourierName('');
+                    }}
+                  ></div>
+
+                  {/* Modal Content */}
+                  <div className="relative transform overflow-hidden rounded-2xl bg-white/95 backdrop-blur-md text-left shadow-2xl transition-all w-full max-w-md">
+                    {/* Header */}
+                    <div className="px-6 py-4 border-b border-gray-200 bg-gray-50/50">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-lg font-semibold text-gray-900">
+                          Add New Courier Partner
+                        </h3>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowAddCourierModal(false);
+                            setNewCourierName('');
+                          }}
+                          className="text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#22c55e] focus:ring-offset-2 rounded-md p-1"
+                        >
+                          <HiXMark className="h-6 w-6" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Body */}
+                    <div className="px-6 py-4 sm:p-6">
+                      <div className="space-y-4">
+                        <Input
+                          label="Courier Partner Name *"
+                          value={newCourierName}
+                          onChange={(e) => setNewCourierName(e.target.value)}
+                          placeholder="Enter courier partner name (e.g., BlueDart, FedEx, etc.)"
+                          className="w-full"
+                        />
+                        <div className="flex gap-2 justify-end pt-2">
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            onClick={() => {
+                              setShowAddCourierModal(false);
+                              setNewCourierName('');
+                            }}
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="primary"
+                            onClick={async () => {
+                              if (!newCourierName.trim()) {
+                                dispatch(addNotification({
+                                  type: 'error',
+                                  message: 'Please enter courier partner name'
+                                }));
+                                return;
+                              }
+                              try {
+                                const result = await dispatch(createCourierPartner({ name: newCourierName.trim() })).unwrap();
+                                const newPartner = result.data?.courierPartner;
+                                if (newPartner) {
+                                  setCourierPartners(prev => [...prev, newPartner]);
+                                  setFormData(prev => ({ ...prev, courierPartnerId: newPartner._id }));
+                                  setShowAddCourierModal(false);
+                                  setNewCourierName('');
+                                  dispatch(addNotification({
+                                    type: 'success',
+                                    message: 'Courier partner added successfully'
+                                  }));
+                                }
+                              } catch (error) {
+                                dispatch(addNotification({
+                                  type: 'error',
+                                  message: error || 'Failed to create courier partner'
+                                }));
+                              }
+                            }}
+                          >
+                            Add
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Submit Button */}
             <div className="pt-3">
