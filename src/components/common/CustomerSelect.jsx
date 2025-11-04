@@ -53,15 +53,18 @@ const CustomerSelect = ({
   });
 
   const handleSelectChange = (optionValue) => {
+    // Ensure we're passing the actual option value
     if (onChange) {
       // Create a synthetic event object to match expected interface
       const syntheticEvent = {
         target: {
-          value: optionValue,
+          value: optionValue, // Keep original value type
           name: name
-        }
+        },
+        preventDefault: () => {},
+        stopPropagation: () => {}
       };
-      // Call onChange with the synthetic event
+      // Call onChange immediately - the form handler will update state
       onChange(syntheticEvent);
     }
     
@@ -83,8 +86,14 @@ const CustomerSelect = ({
     }
   };
 
-  // Get display value
-  const selectedOption = options.find(option => option.value === value);
+  // Get display value - convert both to strings for comparison to handle type mismatches
+  // Handle empty string, null, undefined properly
+  const safeValue = value !== undefined && value !== null && value !== '' ? String(value) : '';
+  const selectedOption = safeValue ? options.find(option => {
+    // Compare both as strings to handle type mismatches
+    const optionValueStr = String(option.value || '');
+    return optionValueStr === safeValue;
+  }) : null;
   const displayValue = selectedOption ? selectedOption.label : '';
 
   return (
@@ -152,7 +161,11 @@ const CustomerSelect = ({
 
         {/* Dropdown Menu */}
         {isOpen && (
-          <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-80 overflow-y-auto">
+          <div 
+            className="absolute z-[100] w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-80 overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.preventDefault()}
+          >
             {/* Options List */}
             {filteredOptions.length > 0 ? (
               <div className="py-1">
@@ -165,14 +178,18 @@ const CustomerSelect = ({
                       e.stopPropagation();
                       handleSelectChange(option.value);
                     }}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
                     className={`
                       w-full px-4 py-2 text-left text-sm hover:bg-gray-100 focus:outline-none focus:bg-gray-100
-                      ${value === option.value ? 'bg-[#8bc34a] text-white hover:bg-[#7cb342]' : 'text-gray-900'}
+                      ${String(value) === String(option.value) ? 'bg-[#8bc34a] text-white hover:bg-[#7cb342]' : 'text-gray-900'}
                     `}
                   >
                     <div className="flex flex-col">
                       <span className="font-medium">{option.label.split(' | ')[0]}</span>
-                      <span className={`text-xs ${value === option.value ? 'text-gray-200' : 'text-gray-500'}`}>
+                      <span className={`text-xs ${String(value) === String(option.value) ? 'text-gray-200' : 'text-gray-500'}`}>
                         {option.label.split(' | ').slice(1).join(' | ')}
                       </span>
                     </div>

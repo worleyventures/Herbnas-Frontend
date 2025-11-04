@@ -44,20 +44,23 @@ const InputWithDropdown = ({
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
+    if (isOpen) {
+      // Use click event with capture phase to allow button clicks to complete first
+      document.addEventListener('click', handleClickOutside, true);
+      return () => {
+        document.removeEventListener('click', handleClickOutside, true);
+      };
+    }
+  }, [isOpen]);
 
-  // Update search term when value changes
+  // Update search term when value changes - convert both to strings for comparison
   useEffect(() => {
-    if (value) {
-      const selectedOption = options.find(option => option.value === value);
+    if (value !== undefined && value !== null && value !== '') {
+      const selectedOption = options.find(option => String(option.value) === String(value));
       if (selectedOption) {
         setSearchTerm(selectedOption.label);
       } else {
-        setSearchTerm(value);
+        setSearchTerm(String(value));
       }
     } else {
       setSearchTerm('');
@@ -71,7 +74,11 @@ const InputWithDropdown = ({
     setIsOpen(true);
   };
 
-  const handleOptionSelect = (option) => {
+  const handleOptionSelect = (option, e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     setSearchTerm(option.label);
     onChange({
       target: {
@@ -145,13 +152,21 @@ const InputWithDropdown = ({
         </div>
 
         {isOpen && (
-          <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+          <div 
+            className="absolute z-[100] w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto"
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.preventDefault()}
+          >
             {filteredOptions.length > 0 ? (
               filteredOptions.map((option) => (
                 <button
                   key={option.value}
                   type="button"
-                  onClick={() => handleOptionSelect(option)}
+                  onClick={(e) => handleOptionSelect(option, e)}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
                   className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 focus:outline-none focus:bg-gray-100"
                 >
                   <div className="font-medium text-gray-900">{option.label}</div>

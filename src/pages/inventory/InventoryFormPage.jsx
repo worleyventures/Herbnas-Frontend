@@ -3,7 +3,7 @@ import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { HiArrowLeft, HiCube, HiBuildingOffice2, HiExclamationTriangle, HiCheckCircle, HiPlus, HiXCircle, HiXMark } from 'react-icons/hi2';
 import { Button, Input, Select } from '../../components/common';
-import { createOrUpdateInventory, getAllFinishedGoods } from '../../redux/actions/inventoryActions';
+import { createOrUpdateInventory, getAllFinishedGoods, getAllRawMaterials, getInventoryStats } from '../../redux/actions/inventoryActions';
 import { getAllProducts } from '../../redux/actions/productActions';
 import { clearError } from '../../redux/slices/inventorySlice';
 import RawMaterialForm from '../../components/inventory/RawMaterialForm';
@@ -215,6 +215,10 @@ const InventoryFormPage = () => {
 
         await dispatch(createOrUpdateInventory(inventoryData)).unwrap();
       }
+      
+      // Refresh inventory list after update
+      await dispatch(getAllFinishedGoods({ page: 1, limit: 1000 }));
+      dispatch(getInventoryStats());
       
       // Navigate back on success
       navigate('/inventory');

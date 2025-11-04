@@ -19,6 +19,7 @@ import {
   createOrder,
   updateOrder,
   getOrderById,
+  getAllOrders,
 } from '../../redux/actions/orderActions';
 import { getAllProducts } from '../../redux/actions/productActions';
 import { getAllBranches, getBranchById } from '../../redux/actions/branchActions';
@@ -137,6 +138,19 @@ const OrderFormPage = () => {
     };
     fetchCourierPartners();
   }, [dispatch, showAddCourierModal]);
+  
+  // Refresh courier partners when payment method changes to COD to get updated deposit amounts
+  useEffect(() => {
+    if (formData.paymentMethod === 'cod') {
+      dispatch(getAllCourierPartners({ isActive: true })).then((result) => {
+        if (result.payload?.data?.courierPartners) {
+          setCourierPartners(result.payload.data.courierPartners);
+        }
+      }).catch((error) => {
+        console.error('Error refreshing courier partners:', error);
+      });
+    }
+  }, [formData.paymentMethod, dispatch]);
 
   // Update form data when order is loaded
   useEffect(() => {
@@ -336,6 +350,43 @@ const OrderFormPage = () => {
         codCharges: value === 'cod' ? prev.codCharges : 0,
         bankAccountId: ['card', 'netbanking'].includes(value) ? prev.bankAccountId : ''
       }));
+      // Trigger branch details refresh when payment method changes (if branch is already selected)
+      // The useEffect will handle the actual fetch, but we need to ensure it triggers
+      if (formData.branchId && selectedBranchDetails) {
+        // Branch details are already loaded, just ensure they're available
+        // The conditional rendering will show bank account or ready cash based on payment method
+        // If payment method requires bank account and only one exists, auto-select it
+        if (['card', 'netbanking'].includes(value)) {
+          const bankAccounts = Array.isArray(selectedBranchDetails.bankAccounts) && selectedBranchDetails.bankAccounts.length > 0
+            ? selectedBranchDetails.bankAccounts
+            : (selectedBranchDetails.bankName || selectedBranchDetails.bankAccountNumber)
+              ? [{
+                  _id: 'single',
+                  bankName: selectedBranchDetails.bankName,
+                  bankAccountHolder: selectedBranchDetails.bankAccountHolder,
+                  bankAccountNumber: selectedBranchDetails.bankAccountNumber,
+                  bankIfsc: selectedBranchDetails.bankIfsc,
+                  bankBranch: selectedBranchDetails.bankBranch
+                }]
+              : [];
+          if (bankAccounts.length === 1 && !formData.bankAccountId) {
+            setFormData(prev => ({
+              ...prev,
+              bankAccountId: bankAccounts[0]._id || 'single'
+            }));
+          }
+        }
+      } else if (formData.branchId && !selectedBranchDetails) {
+        // Branch is selected but details not loaded yet - trigger fetch
+        dispatch(getBranchById(formData.branchId)).then((result) => {
+          const branchData = result.payload?.data?.branch || result.payload?.data;
+          if (branchData) {
+            setSelectedBranchDetails(branchData);
+          }
+        }).catch((error) => {
+          console.error('Error fetching branch details:', error);
+        });
+      }
     } else if (field === 'branchId') {
       // When branch changes, reset bank account selection
       setFormData(prev => ({
@@ -602,9 +653,11 @@ const OrderFormPage = () => {
       newErrors.returnReason = 'Reason for cancellation is required when order status is returned';
     }
     
-    // Validate courier partner if status is picked
-    if (formData.status === 'picked' && !formData.courierPartnerId) {
-      newErrors.courierPartnerId = 'Courier partner is required when order status is picked';
+    // Validate courier partner if status is picked or payment method is COD
+    if ((formData.status === 'picked' || formData.paymentMethod === 'cod') && !formData.courierPartnerId) {
+      newErrors.courierPartnerId = formData.paymentMethod === 'cod' 
+        ? 'Courier partner is required for Cash on Delivery orders'
+        : 'Courier partner is required when order status is picked';
     }
     
     // Validate received amount cannot exceed total amount
@@ -747,6 +800,15 @@ const OrderFormPage = () => {
           }
         }
       }
+      
+      // Refresh orders list after create/update
+      await dispatch(getAllOrders({
+        page: 1,
+        limit: 10,
+        search: '',
+        paymentStatus: ''
+      }));
+      dispatch(getOrderStats());
       
       navigate('/orders');
     } catch (error) {
@@ -1000,7 +1062,7 @@ const OrderFormPage = () => {
                       <Select
                         options={productOptions}
                         value={item.productId}
-                        onChange={(value) => handleItemChange(index, 'productId', value)}
+                        onChange={(e) => handleItemChange(index, 'productId', e)}
                         placeholder="Select product"
                         error={errors[`items.${index}.productId`]}
                         loading={productsLoading}
@@ -1358,7 +1420,7 @@ const OrderFormPage = () => {
                     className="w-full"
                   />
                 </div>
-                {/* Bank Account Selection - Show only for Card or Net Banking (Cash goes to Ready Cash) */}
+                {/* Bank Account Selection - Show only for Card or Net Banking */}
                 {['card', 'netbanking'].includes(formData.paymentMethod) && formData.branchId && selectedBranchDetails && (
                   <div className="w-full flex flex-col">
                     {(() => {
@@ -1404,7 +1466,7 @@ const OrderFormPage = () => {
                                 Holder: {account.bankAccountHolder || 'N/A'}
                               </div>
                             </div>
-                            <input type="hidden" value={account._id || 'single'} />
+                            <input type="hidden" value={account._id || 'single'} name="bankAccountId" />
                           </div>
                         );
                       }
@@ -1418,7 +1480,7 @@ const OrderFormPage = () => {
                       return (
                         <div className="w-full flex flex-col">
                           <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                            Bank Account
+                            Bank Account *
                           </label>
                           <Select
                             options={bankAccountOptions}
@@ -1433,7 +1495,28 @@ const OrderFormPage = () => {
                     })()}
                   </div>
                 )}
-                {isEdit && (
+                
+                {/* Ready Cash Display - Show for Cash, UPI, and COD */}
+                {['cash', 'upi', 'cod'].includes(formData.paymentMethod) && formData.branchId && selectedBranchDetails && (
+                  <div className="w-full flex flex-col">
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      Ready Cash
+                    </label>
+                    <div className="text-sm text-gray-900 p-2 bg-green-50 rounded border border-green-200">
+                      <div className="font-medium text-green-800">
+                        {selectedBranchDetails.readyCashAmount !== undefined && selectedBranchDetails.readyCashAmount !== null
+                          ? `₹${parseFloat(selectedBranchDetails.readyCashAmount).toLocaleString()}`
+                          : '₹0.00'
+                        }
+                      </div>
+                      <div className="text-xs text-green-600 mt-1">
+                        Payment will be added to branch's ready cash
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {/* Order Status - Show in edit mode or when payment method is COD */}
+                {(isEdit || formData.paymentMethod === 'cod') && (
                   <div className="w-full flex flex-col">
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Order Status</label>
                     <Select
@@ -1441,20 +1524,20 @@ const OrderFormPage = () => {
                       value={formData.status || orderStatusOptions[0].value}
                       onChange={handleSelectChange('status')}
                       error={errors.status}
-                      disabled={!canEditOrderStatus}
-                      className={`w-full ${!canEditOrderStatus ? 'opacity-60 cursor-not-allowed' : ''}`}
+                      disabled={isEdit && !canEditOrderStatus}
+                      className={`w-full ${(isEdit && !canEditOrderStatus) ? 'opacity-60 cursor-not-allowed' : ''}`}
                     />
                     <div className="text-xs text-gray-400 mt-1">
-                      {canEditOrderStatus
-                        ? (formData.paymentMethod === 'cod' && Number(formData.amountReceived) === 0
-                            ? 'Order status is editable for Cash on Delivery orders.'
-                            : 'Order status is now editable.')
-                        : "Order status can be changed after receiving any payment amount or if payment method is Cash on Delivery."}
+                      {isEdit && !canEditOrderStatus
+                        ? "Order status can be changed after receiving any payment amount or if payment method is Cash on Delivery."
+                        : (formData.paymentMethod === 'cod' 
+                            ? 'Order status can be set for Cash on Delivery orders. Select courier partner when status is "Picked".'
+                            : 'Order status is now editable.')}
                     </div>
                   </div>
                 )}
-                {/* Courier Partner - Show only when status is 'picked' */}
-                {formData.status === 'picked' && (
+                {/* Courier Partner - Show when payment method is COD or when status is 'picked' */}
+                {(formData.paymentMethod === 'cod' || formData.status === 'picked') && (
                   <div className="w-full flex flex-col space-y-4">
                     <div className="w-full flex flex-col">
                       <div className="flex items-center justify-between mb-1.5">
@@ -1474,7 +1557,8 @@ const OrderFormPage = () => {
                           label: partner.name
                         }))}
                         value={formData.courierPartnerId}
-                        onChange={(value) => {
+                        onChange={(e) => {
+                          const value = e.target.value;
                           if (value) {
                             handleInputChange('courierPartnerId', value);
                           }
@@ -1483,6 +1567,45 @@ const OrderFormPage = () => {
                         className="w-full"
                         placeholder="Select courier partner"
                       />
+                      {/* Show courier partner deposit amount and branch COD amount */}
+                      {formData.courierPartnerId && formData.paymentMethod === 'cod' && (
+                        <div className="w-full mt-2 space-y-2">
+                          {/* Courier Partner Deposit Amount */}
+                          {(() => {
+                            const selectedPartner = courierPartners.find(p => p._id === formData.courierPartnerId);
+                            return selectedPartner && (
+                              <div className="text-sm text-gray-900 p-2 bg-purple-50 rounded border border-purple-200">
+                                <div className="font-medium text-purple-800">
+                                  Courier Partner Deposit Amount: ₹{selectedPartner.depositAmount 
+                                    ? parseFloat(selectedPartner.depositAmount).toLocaleString() 
+                                    : '0.00'}
+                                </div>
+                                <div className="text-xs text-purple-600 mt-1">
+                                  Total COD amount collected by this courier partner
+                                </div>
+                              </div>
+                            );
+                          })()}
+                          
+                          {/* Branch COD Amount for this Courier Partner */}
+                          {formData.branchId && selectedBranchDetails && (
+                            <div className="text-sm text-gray-900 p-2 bg-blue-50 rounded border border-blue-200">
+                              <div className="font-medium text-blue-800">
+                                Branch COD Amount: ₹{(() => {
+                                  const courierCod = selectedBranchDetails.courierCodAmounts?.find(
+                                    cod => cod.courierPartnerId?._id?.toString() === formData.courierPartnerId ||
+                                           cod.courierPartnerId?.toString() === formData.courierPartnerId
+                                  );
+                                  return courierCod ? parseFloat(courierCod.amount || 0).toLocaleString() : '0.00';
+                                })()}
+                              </div>
+                              <div className="text-xs text-blue-600 mt-1">
+                                COD amount collected by this courier partner for this branch
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
                       <button
                         type="button"
                         onClick={() => setShowAddCourierModal(true)}

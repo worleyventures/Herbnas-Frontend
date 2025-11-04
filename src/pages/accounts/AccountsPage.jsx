@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   HiPlus,
   HiMagnifyingGlass,
@@ -42,6 +42,7 @@ import FinancialReports from '../../components/accounts/FinancialReports';
 
 const AccountsPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useDispatch();
   
   // Get current user for role-based functionality
@@ -214,7 +215,8 @@ const AccountsPage = () => {
   };
 
   // Handle filters
-  const handleDateRangeFilter = (value) => {
+  const handleDateRangeFilter = (e) => {
+    const value = e.target.value;
     setDateRangeFilter(value);
     setCurrentPage(1);
     // If switching away from custom, clear the dates
@@ -234,13 +236,18 @@ const AccountsPage = () => {
     setCurrentPage(1);
   };
 
-  const handleBranchFilter = (value) => {
-    setBranchFilter(value);
+  const handleBranchFilter = (e) => {
+    setBranchFilter(e.target.value);
     setCurrentPage(1);
   };
 
-  const handlePaymentStatusFilter = (value) => {
-    setPaymentStatusFilter(value);
+  const handlePaymentStatusFilter = (e) => {
+    setPaymentStatusFilter(e.target.value);
+    setCurrentPage(1);
+  };
+
+  const handleTransactionTypeFilter = (e) => {
+    setTransactionTypeFilter(e.target.value);
     setCurrentPage(1);
   };
 
@@ -843,7 +850,7 @@ const AccountsPage = () => {
                />
                <Select
                  value={transactionTypeFilter}
-                 onChange={setTransactionTypeFilter}
+                 onChange={handleTransactionTypeFilter}
                  options={transactionTypeOptions}
                  className="w-full sm:w-48"
                />

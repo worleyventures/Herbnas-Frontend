@@ -14,7 +14,7 @@ import {
   HiArrowLeft
 } from 'react-icons/hi2';
 import { Button, Input, Select, TextArea, Loading } from '../common';
-import { createProduction, updateProduction, getProductionById } from '../../redux/actions/productionActions';
+import { createProduction, updateProduction, getProductionById, getAllProductions } from '../../redux/actions/productionActions';
 import { getActiveProducts } from '../../redux/actions/productActions';
 import { getAllRawMaterials } from '../../redux/actions/inventoryActions';
 import { addNotification } from '../../redux/slices/uiSlice';
@@ -321,6 +321,11 @@ const ProductionForm = () => {
           message: 'Production batch updated successfully',
           duration: 3000
         }));
+        // Refresh productions list after update
+        await dispatch(getAllProductions({
+          page: 1,
+          limit: 1000
+        }));
       } else {
         await dispatch(createProduction(productionData)).unwrap();
         dispatch(addNotification({
@@ -328,6 +333,11 @@ const ProductionForm = () => {
           title: 'Production Created',
           message: 'Production batch created successfully',
           duration: 3000
+        }));
+        // Refresh productions list after creation
+        await dispatch(getAllProductions({
+          page: 1,
+          limit: 1000
         }));
       }
 

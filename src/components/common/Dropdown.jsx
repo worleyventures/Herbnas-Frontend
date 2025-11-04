@@ -55,14 +55,19 @@ const Dropdown = ({
     : options;
 
   const handleSelectChange = (optionValue) => {
+    // Ensure we're passing the actual option value (not converting to string)
+    // The parent component will handle the value type
     if (onChange) {
       // Create a synthetic event object to match expected interface
       const syntheticEvent = {
         target: {
-          value: optionValue,
+          value: optionValue, // Keep original value type
           name: name
-        }
+        },
+        preventDefault: () => {},
+        stopPropagation: () => {}
       };
+      // Call onChange immediately - the form handler will update state
       onChange(syntheticEvent);
     }
     
@@ -79,8 +84,14 @@ const Dropdown = ({
   };
 
   // Ensure value is always defined (never undefined)
-  const safeValue = value !== undefined && value !== null ? value : '';
-  const selectedOption = options.find(option => option.value === safeValue);
+  // Convert both to strings for comparison to handle type mismatches (string vs number)
+  // Handle empty string, null, undefined, 0, and false values properly
+  const safeValue = value !== undefined && value !== null && value !== '' ? String(value) : '';
+  const selectedOption = safeValue ? options.find(option => {
+    // Compare both as strings to handle type mismatches
+    const optionValueStr = String(option.value || '');
+    return optionValueStr === safeValue;
+  }) : null;
 
   return (
     <div className={`space-y-1 ${className}`} ref={dropdownRef}>
@@ -124,8 +135,9 @@ const Dropdown = ({
         {/* Dropdown Menu */}
         {isOpen && (
           <div 
-            className="absolute z-[60] w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-80 overflow-y-auto"
+            className="absolute z-[100] w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-80 overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.preventDefault()}
           >
             {/* Search Input */}
             {searchable && (
@@ -167,8 +179,12 @@ const Dropdown = ({
                     e.stopPropagation();
                     handleSelectChange(option.value);
                   }}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
                   className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-100 focus:outline-none focus:bg-gray-100 transition-colors ${
-                    safeValue === option.value ? 'bg-[#8bc34a]/10 text-[#8bc34a] font-medium' : 'text-gray-900'
+                    String(safeValue) === String(option.value) ? 'bg-[#8bc34a]/10 text-[#8bc34a] font-medium' : 'text-gray-900'
                   }`}
                 >
                   {option.label}

@@ -177,18 +177,25 @@ const LeadFormSingle = ({
   // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
+      // Check if click is outside health issue dropdown
       if (healthIssueRef.current && !healthIssueRef.current.contains(event.target)) {
         setShowHealthIssueDropdown(false);
       }
+      // Check if click is outside product dropdown
       if (productRef.current && !productRef.current.contains(event.target)) {
         setShowProductDropdown(false);
       }
     };
-
-    // Use click instead of mousedown to allow dropdown options to be clicked
+    
+    // Use click event with capture phase to handle clicks properly
     if (showHealthIssueDropdown || showProductDropdown) {
-      document.addEventListener('click', handleClickOutside, true);
+      // Use a small timeout to ensure the click event on options completes first
+      const timeoutId = setTimeout(() => {
+        document.addEventListener('click', handleClickOutside, true);
+      }, 0);
+      
       return () => {
+        clearTimeout(timeoutId);
         document.removeEventListener('click', handleClickOutside, true);
       };
     }
@@ -401,6 +408,23 @@ const LeadFormSingle = ({
     datetime.setHours(hour24, parseInt(minutes), 0, 0);
     
     return datetime.toISOString();
+  };
+
+  // State to control visibility of reminder input fields
+  const [showReminderFields, setShowReminderFields] = useState(false);
+
+  // Initialize showReminderFields based on mode and existing reminders
+  useEffect(() => {
+    if (mode === 'edit' && formData.reminders && formData.reminders.length > 0) {
+      setShowReminderFields(true);
+    } else if (mode === 'create') {
+      setShowReminderFields(false);
+    }
+  }, [mode, formData.reminders]);
+
+  // Toggle reminder fields visibility
+  const handleToggleReminderFields = () => {
+    setShowReminderFields(prev => !prev);
   };
 
   // Add reminder
@@ -837,10 +861,10 @@ const LeadFormSingle = ({
               </div>
             </div>
 
-            {/* Reminders */}
-            <div className="space-y-4">
-              {/* Header with Add Reminder Button */}
-              <div className="flex items-center justify-between">
+            {/* Reminders - Input Fields - Only show when showReminderFields is true */}
+            {showReminderFields && (
+              <div className="space-y-4">
+                {/* Header */}
                 <div className="flex items-center space-x-3">
                   <div className="h-10 w-10 bg-yellow-100 rounded-xl flex items-center justify-center">
                     <HiBell className="h-5 w-5 text-yellow-600" />
@@ -850,89 +874,116 @@ const LeadFormSingle = ({
                     <p className="text-sm text-gray-600">Set follow-up reminders and notes</p>
                   </div>
                 </div>
-                <Button
-                  type="button"
-                  onClick={handleAddReminder}
-                  icon={HiPlus}
-                  size="sm"
-                >
-                  Add Reminder
-                </Button>
-              </div>
 
-              {/* Reminder Input Fields */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                    <Input
+                      name="date"
+                      value={newReminder.date}
+                      onChange={handleReminderChange}
+                      placeholder="dd-mm-yyyy"
+                      type="date"
+                      icon={HiCalendar}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Time</label>
+                    <Input
+                      name="time"
+                      value={newReminder.time}
+                      onChange={handleReminderChange}
+                      placeholder="--:--"
+                      type="time"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">AM/PM</label>
+                    <Select
+                      name="ampm"
+                      value={newReminder.ampm}
+                      onChange={handleReminderChange}
+                      options={[
+                        { value: 'AM', label: 'AM' },
+                        { value: 'PM', label: 'PM' }
+                      ]}
+                    />
+                  </div>
+                </div>
+                
+                {/* Reminder Note */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
-                  <Input
-                    name="date"
-                    value={newReminder.date}
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Reminder Note</label>
+                  <TextArea
+                    name="note"
+                    value={newReminder.note}
                     onChange={handleReminderChange}
-                    placeholder="dd-mm-yyyy"
-                    type="date"
-                    icon={HiCalendar}
+                    placeholder="Enter reminder note..."
+                    rows={2}
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Time</label>
-                  <Input
-                    name="time"
-                    value={newReminder.time}
-                    onChange={handleReminderChange}
-                    placeholder="--:--"
-                    type="time"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">AM/PM</label>
-                  <Select
-                    name="ampm"
-                    value={newReminder.ampm}
-                    onChange={handleReminderChange}
-                    options={[
-                      { value: 'AM', label: 'AM' },
-                      { value: 'PM', label: 'PM' }
-                    ]}
-                  />
-                </div>
-              </div>
-              
-              {/* Reminder Note */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Reminder Note</label>
-                <TextArea
-                  name="note"
-                  value={newReminder.note}
-                  onChange={handleReminderChange}
-                  placeholder="Enter reminder note..."
-                  rows={2}
-                />
-              </div>
 
-              {/* Existing Reminders */}
-              {formData.reminders.length > 0 && (
-                <div className="space-y-2">
-                  <h5 className="text-sm font-medium text-gray-900">Existing Reminders</h5>
-                  {formData.reminders.map((reminder) => (
-                    <div key={reminder.id} className="flex items-center justify-between bg-white p-3 border border-gray-200 rounded-lg">
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">
-                          {formatReminderDateTime(reminder.date)}
-                        </p>
-                        <p className="text-sm text-gray-600">{reminder.note}</p>
+                {/* Add Reminder Button */}
+                <div className="flex justify-end">
+                  <Button
+                    type="button"
+                    onClick={handleAddReminder}
+                    disabled={!newReminder.date || !newReminder.time || !newReminder.note}
+                    size="sm"
+                  >
+                    Add Reminder
+                  </Button>
+                </div>
+
+                {/* Existing Reminders */}
+                {formData.reminders.length > 0 && (
+                  <div className="space-y-2">
+                    <h5 className="text-sm font-medium text-gray-900">Existing Reminders</h5>
+                    {formData.reminders.map((reminder) => (
+                      <div key={reminder.id} className="flex items-center justify-between bg-white p-3 border border-gray-200 rounded-lg">
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">
+                            {formatReminderDateTime(reminder.date)}
+                          </p>
+                          <p className="text-sm text-gray-600">{reminder.note}</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveReminder(reminder.id)}
+                          className="text-red-500 hover:text-red-700 transition-colors"
+                        >
+                          <HiTrash className="h-4 w-4" />
+                        </button>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveReminder(reminder.id)}
-                        className="text-red-500 hover:text-red-700 transition-colors"
-                      >
-                        <HiTrash className="h-4 w-4" />
-                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Existing Reminders - Show even when fields are hidden */}
+            {!showReminderFields && formData.reminders.length > 0 && (
+              <div className="space-y-2">
+                <h5 className="text-sm font-medium text-gray-900">Existing Reminders</h5>
+                {formData.reminders.map((reminder) => (
+                  <div key={reminder.id} className="flex items-center justify-between bg-white p-3 border border-gray-200 rounded-lg">
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">
+                        {formatReminderDateTime(reminder.date)}
+                      </p>
+                      <p className="text-sm text-gray-600">{reminder.note}</p>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveReminder(reminder.id)}
+                      className="text-red-500 hover:text-red-700 transition-colors"
+                    >
+                      <HiTrash className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
 
             {/* Health Issues and Products - Side by Side - Only in edit mode */}
             {mode === 'edit' && (
@@ -969,7 +1020,11 @@ const LeadFormSingle = ({
                   />
                   
                   {showHealthIssueDropdown && (
-                    <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                    <div 
+                      className="absolute z-[100] w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto"
+                      onClick={(e) => e.stopPropagation()}
+                      onMouseDown={(e) => e.preventDefault()}
+                    >
                       {filteredHealthIssues.length > 0 ? (
                         filteredHealthIssues.map((issue) => (
                           <button
@@ -979,6 +1034,10 @@ const LeadFormSingle = ({
                               e.preventDefault();
                               e.stopPropagation();
                               handleAddHealthIssue(issue);
+                            }}
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
                             }}
                             className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 focus:outline-none focus:bg-gray-100 transition-colors"
                           >
@@ -1045,7 +1104,11 @@ const LeadFormSingle = ({
                   />
                   
                   {showProductDropdown && (
-                    <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                    <div 
+                      className="absolute z-[100] w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto"
+                      onClick={(e) => e.stopPropagation()}
+                      onMouseDown={(e) => e.preventDefault()}
+                    >
                       {filteredProducts.length > 0 ? (
                         filteredProducts.map((product) => (
                           <button
@@ -1055,6 +1118,10 @@ const LeadFormSingle = ({
                               e.preventDefault();
                               e.stopPropagation();
                               handleAddProduct(product);
+                            }}
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
                             }}
                             className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 focus:outline-none focus:bg-gray-100 transition-colors"
                           >
@@ -1125,6 +1192,15 @@ const LeadFormSingle = ({
               disabled={loading}
             >
               Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleToggleReminderFields}
+              icon={HiPlus}
+              disabled={loading}
+            >
+              {showReminderFields ? 'Hide Reminders' : 'Add Reminders'}
             </Button>
             <Button
               type="submit"

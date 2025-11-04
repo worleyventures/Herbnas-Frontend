@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { HiUserGroup, HiEye, HiPencil, HiTrash } from 'react-icons/hi2';
 import { StatCard, Table, Button, ActionButton, Input, Select, Loading, EmptyState, UserDetailsModal, SearchInput } from '../../components/common';
 import { getAllUsers, deleteUser } from '../../redux/actions/userActions';
@@ -9,6 +9,7 @@ import { addNotification } from '../../redux/slices/uiSlice';
 
 const UsersPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useDispatch();
 
   // Redux state
@@ -70,6 +71,23 @@ const UsersPage = () => {
       status: filterStatus === 'all' ? '' : filterStatus
     }));
   }, [dispatch, currentPage, itemsPerPage, searchTerm, filterRole, filterBranch, filterStatus]);
+
+  // Refresh users when navigating to this page (e.g., returning from edit form)
+  useEffect(() => {
+    if (location.pathname === '/users') {
+      // Refresh filtered users
+      dispatch(getAllUsers({
+        page: currentPage,
+        limit: itemsPerPage,
+        search: searchTerm,
+        role: filterRole === 'all' ? '' : filterRole,
+        branch: filterBranch === 'all' ? '' : filterBranch,
+        status: filterStatus === 'all' ? '' : filterStatus
+      }));
+      // Also refresh all users for stats
+      refreshAllUsers();
+    }
+  }, [location.pathname, dispatch]);
 
   // Update allUsers when users change (for stats calculation)
   useEffect(() => {
@@ -460,7 +478,7 @@ const UsersPage = () => {
           <div className="w-full sm:w-48">
             <Select
               value={filterRole}
-              onChange={(value) => handleFilterChange('role', value)}
+              onChange={(e) => handleFilterChange('role', e.target.value)}
               options={availableRoles}
             />
           </div>
@@ -468,7 +486,7 @@ const UsersPage = () => {
           <div className="w-full sm:w-48">
             <Select
               value={filterBranch}
-              onChange={(value) => handleFilterChange('branch', value)}
+              onChange={(e) => handleFilterChange('branch', e.target.value)}
               options={availableBranches}
             />
           </div>
@@ -476,7 +494,7 @@ const UsersPage = () => {
           <div className="w-full sm:w-48">
             <Select
               value={filterStatus}
-              onChange={(value) => handleFilterChange('status', value)}
+              onChange={(e) => handleFilterChange('status', e.target.value)}
               options={[
                 { value: 'all', label: 'All Status' },
                 { value: 'active', label: 'Active' },

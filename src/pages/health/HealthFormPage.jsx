@@ -3,7 +3,7 @@ import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { HiArrowLeft, HiHeart, HiUser, HiCalendar, HiExclamationTriangle, HiCheckCircle, HiPlus, HiXCircle, HiTag, HiXMark } from 'react-icons/hi2';
 import { Button, Input, Select } from '../../components/common';
-import { createHealthIssue, updateHealthIssue, getHealthIssueById } from '../../redux/actions/healthActions';
+import { createHealthIssue, updateHealthIssue, getHealthIssueById, getAllHealthIssues } from '../../redux/actions/healthActions';
 import { clearError, clearSuccess } from '../../redux/slices/healthSlice';
 
 const HealthFormPage = () => {
@@ -73,6 +73,8 @@ const HealthFormPage = () => {
   useEffect(() => {
     if (createSuccess) {
       dispatch(clearSuccess());
+      // Refresh health issues list after creation
+      dispatch(getAllHealthIssues({ page: 1, limit: 1000 }));
       navigate('/health-issues');
     }
   }, [createSuccess, navigate, dispatch]);
@@ -80,6 +82,8 @@ const HealthFormPage = () => {
   useEffect(() => {
     if (updateSuccess) {
       dispatch(clearSuccess());
+      // Refresh health issues list after update
+      dispatch(getAllHealthIssues({ page: 1, limit: 1000 }));
       navigate('/health-issues');
     }
   }, [updateSuccess, navigate, dispatch]);

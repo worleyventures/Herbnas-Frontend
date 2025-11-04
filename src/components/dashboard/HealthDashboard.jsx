@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   HiDocumentText,
   HiCheckCircle,
@@ -23,6 +23,7 @@ import {
 
 const HealthDashboard = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useDispatch();
 
   // Redux state
@@ -44,6 +45,14 @@ const HealthDashboard = () => {
     dispatch(getAllHealthIssues({ page: 1, limit: 1000 }));
     dispatch(getHealthIssueStats());
   }, [dispatch]);
+
+  // Refresh health issues when navigating to this page (e.g., returning from edit form)
+  useEffect(() => {
+    if (location.pathname === '/health-issues') {
+      dispatch(getAllHealthIssues({ page: 1, limit: 1000 }));
+      dispatch(getHealthIssueStats());
+    }
+  }, [location.pathname, dispatch]);
 
   // Filter health issues based on search and filters
   const filteredHealthIssues = healthIssues.filter(issue => {
@@ -284,7 +293,7 @@ const HealthDashboard = () => {
           <div className="w-full sm:w-48">
             <Select
               value={filterGender}
-              onChange={(value) => handleFilterChange('gender', value)}
+              onChange={(e) => handleFilterChange('gender', e.target.value)}
               options={genderOptions}
               placeholder="Filter by gender"
             />
@@ -292,7 +301,7 @@ const HealthDashboard = () => {
           <div className="w-full sm:w-48">
             <Select
               value={filterMaritalStatus}
-              onChange={(value) => handleFilterChange('maritalStatus', value)}
+              onChange={(e) => handleFilterChange('maritalStatus', e.target.value)}
               options={maritalStatusOptions}
               placeholder="Filter by marital status"
             />

@@ -3,7 +3,7 @@ import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { HiArrowLeft, HiBuildingOffice2, HiMapPin, HiCog6Tooth, HiExclamationTriangle, HiCheckCircle, HiXMark } from 'react-icons/hi2';
 import { Button, Input, Select } from '../../components/common';
-import { createBranch, updateBranch, getBranchById, getAllBranches } from '../../redux/actions/branchActions';
+import { createBranch, updateBranch, getBranchById, getAllBranches, getBranchStats } from '../../redux/actions/branchActions';
 import { clearError, clearBranchSuccess } from '../../redux/slices/branchSlice';
 
 const BranchFormPage = () => {
@@ -347,10 +347,16 @@ const BranchFormPage = () => {
     try {
       if (mode === 'create') {
         await dispatch(createBranch(branchData)).unwrap();
+        // Refresh the branch list to show newly created branch
+        await dispatch(getAllBranches({ page: 1, limit: 1000 }));
+        // Also refresh stats
+        dispatch(getBranchStats());
       } else {
         const result = await dispatch(updateBranch({ branchId, branchData })).unwrap();
         // Refresh the branch list to show updated data
-        dispatch(getAllBranches({}));
+        await dispatch(getAllBranches({ page: 1, limit: 1000 }));
+        // Also refresh stats
+        dispatch(getBranchStats());
       }
       // Navigate back on success
       navigate('/branches');

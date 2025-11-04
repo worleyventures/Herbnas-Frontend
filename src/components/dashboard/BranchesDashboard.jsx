@@ -80,12 +80,23 @@ const BranchesDashboard = ({ propActiveView = 'table' }) => {
   // Refresh branches when navigating to this page (e.g., returning from edit form)
   useEffect(() => {
     if (isAuthenticated && user && location.pathname === '/branches') {
+      // Refresh filtered branches
       dispatch(getAllBranches({
         page: currentPage,
         limit: itemsPerPage,
         search: searchTerm,
         status: filterStatus === 'all' ? '' : filterStatus
       }));
+      // Also refresh unfiltered branches and stats
+      dispatch(getBranchStats());
+      dispatch(getAllBranches({ page: 1, limit: 1000 })).then((result) => {
+        if (result.payload && result.payload.data) {
+          const branchesData = Array.isArray(result.payload.data) 
+            ? result.payload.data 
+            : (result.payload.data.branches || []);
+          setUnfilteredBranches(branchesData);
+        }
+      });
     }
   }, [location.pathname, dispatch, isAuthenticated, user]);
 
@@ -460,7 +471,7 @@ const BranchesDashboard = ({ propActiveView = 'table' }) => {
             <div className="w-full sm:w-48">
               <Select
                 value={filterStatus}
-                onChange={(value) => setFilterStatus(value)}
+                onChange={(e) => setFilterStatus(e.target.value)}
                 options={[
                   { value: 'all', label: 'All Status' },
                   { value: 'active', label: 'Active' },

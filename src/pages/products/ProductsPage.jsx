@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { HiShoppingBag, HiPlus, HiCube, HiCheckCircle, HiTag, HiCurrencyRupee } from 'react-icons/hi2';
 import { StatCard, Button, Input, Select, Loading, EmptyState, SearchInput } from '../../components/common';
 import ProductCRUD from '../../components/dashboard/products/ProductCRUD';
@@ -9,6 +9,7 @@ import { addNotification } from '../../redux/slices/uiSlice';
 
 const ProductsPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useDispatch();
 
   // Redux state
@@ -41,6 +42,19 @@ const ProductsPage = () => {
     }));
     dispatch(getProductStats());
   }, [dispatch, currentPage, itemsPerPage, searchTerm, filterCategory]);
+
+  // Refresh products when navigating to this page (e.g., returning from edit form)
+  useEffect(() => {
+    if (location.pathname === '/products') {
+      dispatch(getAllProducts({
+        page: currentPage,
+        limit: itemsPerPage,
+        search: searchTerm,
+        category: filterCategory !== 'all' ? filterCategory : undefined
+      }));
+      dispatch(getProductStats());
+    }
+  }, [location.pathname, dispatch]);
 
   // Filter products based on search and category
   const filteredProducts = products.filter(product => {
@@ -277,7 +291,7 @@ const ProductsPage = () => {
             <div className="w-full sm:w-48">
               <Select
                 value={filterCategory}
-                onChange={(value) => handleFilterChange('category', value)}
+                onChange={(e) => handleFilterChange('category', e.target.value)}
                 options={[
                   { value: 'all', label: 'All Categories' },
                   ...categories.map(category => ({

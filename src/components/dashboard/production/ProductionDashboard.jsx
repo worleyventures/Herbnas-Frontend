@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   HiCog6Tooth,
   HiClock,
@@ -33,6 +33,7 @@ import ProductionCRUD from './ProductionCRUD';
 
 const ProductionDashboard = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useDispatch();
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -94,6 +95,21 @@ const ProductionDashboard = () => {
     }
   }, [dispatch, isAuthenticated, currentPage, itemsPerPage, searchTerm, productionStatusFilter, QCstatusFilter, productFilter]);
 
+  // Refresh productions when navigating to this page (e.g., returning from edit form)
+  useEffect(() => {
+    if (location.pathname === '/production' && isAuthenticated) {
+      dispatch(getActiveProducts());
+      dispatch(getAllProductions({
+        page: currentPage,
+        limit: itemsPerPage,
+        search: searchTerm,
+        productionStatus: productionStatusFilter !== 'all' ? productionStatusFilter : undefined,
+        QCstatus: QCstatusFilter !== 'all' ? QCstatusFilter : undefined,
+        productId: productFilter !== 'all' ? productFilter : undefined
+      }));
+      dispatch(getProductionStats());
+    }
+  }, [location.pathname, dispatch, isAuthenticated]);
 
   // Calculate stats from productions data
   const calculateStats = () => {
@@ -308,21 +324,21 @@ const ProductionDashboard = () => {
           <div className="w-full sm:w-48">
             <Select
               value={productionStatusFilter}
-              onChange={(value) => setProductionStatusFilter(value)}
+              onChange={(e) => setProductionStatusFilter(e.target.value)}
               options={productionStatusOptions}
             />
           </div>
           <div className="w-full sm:w-48">
             <Select
               value={QCstatusFilter}
-              onChange={(value) => setQCstatusFilter(value)}
+              onChange={(e) => setQCstatusFilter(e.target.value)}
               options={QCstatusOptions}
             />
           </div>
           <div className="w-full sm:w-48">
             <Select
               value={productFilter}
-              onChange={(value) => setProductFilter(value)}
+              onChange={(e) => setProductFilter(e.target.value)}
               options={productOptions}
             />
           </div>
