@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { HiChevronLeft, HiChevronRight, HiCalendar, HiUsers, HiCheckCircle, HiXMark } from 'react-icons/hi2';
+import { HiChevronLeft, HiChevronRight, HiCalendar, HiCheckCircle, HiXMark } from 'react-icons/hi2';
 
 const AttendanceCalendar = ({ attendance, onDateClick, loading }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -24,6 +24,9 @@ const AttendanceCalendar = ({ attendance, onDateClick, loading }) => {
             halfDay: 0,
             late: 0,
             leave: 0,
+            pending: 0,
+            approved: 0,
+            rejected: 0,
             total: 0,
             records: []
           };
@@ -31,6 +34,15 @@ const AttendanceCalendar = ({ attendance, onDateClick, loading }) => {
         
         data[dateKey].records.push(record);
         data[dateKey].total++;
+        
+        // Count approval status
+        if (record.approvalStatus === 'pending') {
+          data[dateKey].pending++;
+        } else if (record.approvalStatus === 'approved') {
+          data[dateKey].approved++;
+        } else if (record.approvalStatus === 'rejected') {
+          data[dateKey].rejected++;
+        }
         
         // Categorize attendance status
         if (record.status === 'present' || record.status === 'approved') {
@@ -92,7 +104,7 @@ const AttendanceCalendar = ({ attendance, onDateClick, loading }) => {
       const month = String(date.getMonth() + 1).padStart(2, '0');
       const dayStr = String(date.getDate()).padStart(2, '0');
       const dateKey = `${year}-${month}-${dayStr}`;
-      const dayData = calendarData[dateKey] || { present: 0, absent: 0, halfDay: 0, late: 0, leave: 0, total: 0, records: [] };
+      const dayData = calendarData[dateKey] || { present: 0, absent: 0, halfDay: 0, late: 0, leave: 0, pending: 0, approved: 0, rejected: 0, total: 0, records: [] };
       
       days.push({
         day,
@@ -183,31 +195,6 @@ const AttendanceCalendar = ({ attendance, onDateClick, loading }) => {
         </div>
       </div>
 
-      {/* Legend */}
-      <div className="px-6 py-3 border-b border-gray-200">
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 rounded-full bg-green-500"></div>
-            <span className="text-sm text-gray-600">Present</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 rounded-full bg-orange-500"></div>
-            <span className="text-sm text-gray-600">Half Day</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 rounded-full bg-red-500"></div>
-            <span className="text-sm text-gray-600">Absent</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-            <span className="text-sm text-gray-600">Leave</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 rounded-full bg-gray-300"></div>
-            <span className="text-sm text-gray-600">No Data</span>
-          </div>
-        </div>
-      </div>
 
       {/* Calendar Grid */}
       <div className="p-6">
@@ -255,6 +242,18 @@ const AttendanceCalendar = ({ attendance, onDateClick, loading }) => {
                   {hasData && (
                     <div className="flex-1 flex flex-col justify-center space-y-1">
                       <div className="grid grid-cols-2 gap-1 text-xs">
+                        {dayData.pending > 0 && (
+                          <div className="flex items-center space-x-1" title="Pending Approval">
+                            <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
+                            <span className="font-medium text-yellow-700">{dayData.pending}</span>
+                          </div>
+                        )}
+                        {dayData.approved > 0 && (
+                          <div className="flex items-center space-x-1" title="Approved">
+                            <HiCheckCircle className="h-3 w-3 text-green-600" />
+                            <span className="font-medium text-green-700">{dayData.approved}</span>
+                          </div>
+                        )}
                         {dayData.present > 0 && (
                           <div className="flex items-center space-x-1">
                             <HiCheckCircle className="h-3 w-3 text-green-600" />
@@ -285,6 +284,12 @@ const AttendanceCalendar = ({ attendance, onDateClick, loading }) => {
                             <span className="font-medium">{dayData.absent}</span>
                           </div>
                         )}
+                        {dayData.rejected > 0 && (
+                          <div className="flex items-center space-x-1" title="Rejected">
+                            <HiXMark className="h-3 w-3 text-red-600" />
+                            <span className="font-medium text-red-700">{dayData.rejected}</span>
+                          </div>
+                        )}
                       </div>
                       <div className="text-xs text-center font-medium">
                         {dayData.total} total
@@ -298,47 +303,6 @@ const AttendanceCalendar = ({ attendance, onDateClick, loading }) => {
         </div>
       </div>
 
-      {/* Summary Stats */}
-      <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="flex items-center space-x-2">
-            <HiUsers className="h-5 w-5 text-blue-600" />
-            <span className="text-sm font-medium text-gray-700">
-              Total: {Object.values(calendarData).reduce((sum, day) => sum + day.total, 0)}
-            </span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <HiCheckCircle className="h-5 w-5 text-green-600" />
-            <span className="text-sm font-medium text-gray-700">
-              Present: {Object.values(calendarData).reduce((sum, day) => sum + day.present, 0)}
-            </span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-4 h-4 rounded-full bg-orange-500"></div>
-            <span className="text-sm font-medium text-gray-700">
-              Half Day: {Object.values(calendarData).reduce((sum, day) => sum + day.halfDay, 0)}
-            </span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-4 h-4 rounded-full bg-yellow-500"></div>
-            <span className="text-sm font-medium text-gray-700">
-              Late: {Object.values(calendarData).reduce((sum, day) => sum + day.late, 0)}
-            </span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-4 h-4 rounded-full bg-blue-500"></div>
-            <span className="text-sm font-medium text-gray-700">
-              Leave: {Object.values(calendarData).reduce((sum, day) => sum + day.leave, 0)}
-            </span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <HiXMark className="h-5 w-5 text-red-600" />
-            <span className="text-sm font-medium text-gray-700">
-              Absent: {Object.values(calendarData).reduce((sum, day) => sum + day.absent, 0)}
-            </span>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };

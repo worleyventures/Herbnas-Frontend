@@ -57,7 +57,7 @@ const PayrollTab = ({ showUsers = true, isPayrollTab = false }) => {
   // Local state
   const [searchTerm, setSearchTerm] = useState('');
   const [branchFilter, setBranchFilter] = useState('all');
-  const [monthFilter, setMonthFilter] = useState('all');
+  const [monthFilter, setMonthFilter] = useState(String(new Date().getMonth() + 1)); // Default to current month
   const [yearFilter, setYearFilter] = useState(new Date().getFullYear().toString());
   const [currentPage, setCurrentPage] = useState(1);
   const [showDeleteModal, setShowDeleteModal] = useState(false);

@@ -175,8 +175,8 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
       );
     }
 
-    // Add supervisor attendance navigation
-    if (stableUserRole === 'supervisor') {
+    // Add admin attendance navigation
+    if (stableUserRole === 'admin') {
       adminNavigation.push(
         {
           name: 'Attendance',

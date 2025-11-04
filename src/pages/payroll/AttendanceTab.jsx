@@ -43,8 +43,8 @@ const AttendanceTab = () => {
   const [viewMode, setViewMode] = useState('calendar'); // 'calendar' or 'table'
   const [searchTerm, setSearchTerm] = useState('');
   const [branchFilter, setBranchFilter] = useState('all');
-  const [employeeFilter, setEmployeeFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [approvalStatusFilter, setApprovalStatusFilter] = useState('all'); // Filter by approval status
   const [monthFilter, setMonthFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -52,7 +52,6 @@ const AttendanceTab = () => {
   const [attendanceToDelete, setAttendanceToDelete] = useState(null);
   const [attendanceToView, setAttendanceToView] = useState(null);
   const [branches, setBranches] = useState([]);
-  const [employees, setEmployees] = useState([]);
 
   // Load branches and employees data
   const loadBranches = async () => {
@@ -66,17 +65,6 @@ const AttendanceTab = () => {
     }
   };
 
-  const loadEmployees = async () => {
-    try {
-      const response = await api.get('/users');
-      if (response.data.success) {
-        setEmployees(response.data.data.users || []);
-      }
-    } catch (error) {
-      console.error('Failed to load employees:', error);
-    }
-  };
-
   // Load attendance data
   const loadAttendance = async () => {
     const params = {
@@ -84,10 +72,9 @@ const AttendanceTab = () => {
       limit: '10',
       ...(searchTerm && { search: searchTerm }),
       ...(branchFilter !== 'all' && { branchId: branchFilter }),
-      ...(employeeFilter !== 'all' && { employeeId: employeeFilter }),
       ...(statusFilter !== 'all' && { status: statusFilter }),
       ...(monthFilter !== 'all' && { month: monthFilter }),
-      approvalStatus: 'approved' // Only show approved attendance for superadmin
+      ...(approvalStatusFilter !== 'all' && { approvalStatus: approvalStatusFilter })
     };
 
     dispatch(getAllAttendance(params));
@@ -97,7 +84,7 @@ const AttendanceTab = () => {
   const loadStats = async () => {
     const params = {
       ...(branchFilter !== 'all' && { branchId: branchFilter }),
-      approvalStatus: 'approved' // Only show approved attendance stats for superadmin
+      ...(approvalStatusFilter !== 'all' && { approvalStatus: approvalStatusFilter })
     };
 
     dispatch(getAttendanceStats(params));
@@ -108,8 +95,7 @@ const AttendanceTab = () => {
     loadAttendance();
     loadStats();
     loadBranches();
-    loadEmployees();
-  }, [currentPage, searchTerm, branchFilter, employeeFilter, statusFilter, monthFilter]);
+  }, [currentPage, searchTerm, branchFilter, statusFilter, approvalStatusFilter, monthFilter]);
 
 
   // Handle search
@@ -124,11 +110,11 @@ const AttendanceTab = () => {
       case 'branch':
         setBranchFilter(value);
         break;
-      case 'employee':
-        setEmployeeFilter(value);
-        break;
       case 'status':
         setStatusFilter(value);
+        break;
+      case 'approvalStatus':
+        setApprovalStatusFilter(value);
         break;
       case 'month':
         setMonthFilter(value);
@@ -280,6 +266,23 @@ const AttendanceTab = () => {
       )
     },
     {
+      key: 'approvalStatus',
+      label: 'Approval Status',
+      render: (attendance) => {
+        const status = attendance.approvalStatus || 'pending';
+        const statusColors = {
+          pending: 'bg-yellow-100 text-yellow-800',
+          approved: 'bg-green-100 text-green-800',
+          rejected: 'bg-red-100 text-red-800'
+        };
+        return (
+          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${statusColors[status] || 'bg-gray-100 text-gray-800'}`}>
+            {status.charAt(0).toUpperCase() + status.slice(1)}
+          </span>
+        );
+      }
+    },
+    {
       key: 'actions',
       label: 'Actions',
       render: (attendance) => (
@@ -312,14 +315,6 @@ const AttendanceTab = () => {
     }))
   ];
 
-  const employeeOptions = [
-    { value: 'all', label: 'All Employees' },
-    ...employees.map(employee => ({
-      value: employee._id,
-      label: `${employee.firstName} ${employee.lastName} (${employee.employeeId})`
-    }))
-  ];
-
   const statusOptions = [
     { value: 'all', label: 'All Status' },
     { value: 'present', label: 'Present' },
@@ -345,6 +340,13 @@ const AttendanceTab = () => {
     { value: '10', label: 'October' },
     { value: '11', label: 'November' },
     { value: '12', label: 'December' }
+  ];
+
+  const approvalStatusOptions = [
+    { value: 'all', label: 'All Approval Status' },
+    { value: 'pending', label: 'Pending' },
+    { value: 'approved', label: 'Approved' },
+    { value: 'rejected', label: 'Rejected' }
   ];
 
 
@@ -390,32 +392,40 @@ const AttendanceTab = () => {
 
       {/* Calendar or Table View */}
       {viewMode === 'calendar' ? (
-        <AttendanceCalendar
-          attendance={attendance}
-          onDateClick={handleDateClick}
-          loading={loading}
-        />
+        <div className="space-y-4">
+          {/* Filters for Calendar View */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Select
+                value={branchFilter}
+                onChange={(value) => handleFilterChange('branch', value)}
+                options={branchOptions}
+                className="w-full sm:w-40"
+              />
+              <Select
+                value={approvalStatusFilter}
+                onChange={(value) => handleFilterChange('approvalStatus', value)}
+                options={approvalStatusOptions}
+                className="w-full sm:w-48"
+              />
+              <Select
+                value={monthFilter}
+                onChange={(value) => handleFilterChange('month', value)}
+                options={monthOptions}
+                className="w-full sm:w-32"
+              />
+            </div>
+          </div>
+          <AttendanceCalendar
+            attendance={attendance}
+            onDateClick={handleDateClick}
+            loading={loading}
+          />
+        </div>
       ) : (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200">
           <div className="px-6 py-4 border-b border-gray-200">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <button
-                  onClick={() => {
-                    setViewMode('calendar');
-                    setSelectedDate(null);
-                  }}
-                  className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-                >
-                  <HiCalendar className="h-4 w-4" />
-                  Back to Calendar
-                </button>
-                {selectedDate && (
-                  <div className="text-sm text-gray-600">
-                    Showing attendance for: <span className="font-medium">{selectedDate.dateKey}</span>
-                  </div>
-                )}
-              </div>
               <div className="flex flex-col sm:flex-row gap-3">
                 <Input
                   value={searchTerm}
@@ -431,16 +441,16 @@ const AttendanceTab = () => {
                   className="w-full sm:w-40"
                 />
                 <Select
-                  value={employeeFilter}
-                  onChange={(value) => handleFilterChange('employee', value)}
-                  options={employeeOptions}
-                  className="w-full sm:w-48"
-                />
-                <Select
                   value={monthFilter}
                   onChange={(value) => handleFilterChange('month', value)}
                   options={monthOptions}
                   className="w-full sm:w-32"
+                />
+                <Select
+                  value={approvalStatusFilter}
+                  onChange={(value) => handleFilterChange('approvalStatus', value)}
+                  options={approvalStatusOptions}
+                  className="w-full sm:w-48"
                 />
               </div>
             </div>
