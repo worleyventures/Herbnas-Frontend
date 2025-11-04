@@ -138,6 +138,19 @@ const OrderFormPage = () => {
     };
     fetchCourierPartners();
   }, [dispatch, showAddCourierModal]);
+  
+  // Refresh courier partners when payment method changes to COD to get updated deposit amounts
+  useEffect(() => {
+    if (formData.paymentMethod === 'cod') {
+      dispatch(getAllCourierPartners({ isActive: true })).then((result) => {
+        if (result.payload?.data?.courierPartners) {
+          setCourierPartners(result.payload.data.courierPartners);
+        }
+      }).catch((error) => {
+        console.error('Error refreshing courier partners:', error);
+      });
+    }
+  }, [formData.paymentMethod, dispatch]);
 
   // Update form data when order is loaded
   useEffect(() => {
@@ -640,9 +653,11 @@ const OrderFormPage = () => {
       newErrors.returnReason = 'Reason for cancellation is required when order status is returned';
     }
     
-    // Validate courier partner if status is picked
-    if (formData.status === 'picked' && !formData.courierPartnerId) {
-      newErrors.courierPartnerId = 'Courier partner is required when order status is picked';
+    // Validate courier partner if status is picked or payment method is COD
+    if ((formData.status === 'picked' || formData.paymentMethod === 'cod') && !formData.courierPartnerId) {
+      newErrors.courierPartnerId = formData.paymentMethod === 'cod' 
+        ? 'Courier partner is required for Cash on Delivery orders'
+        : 'Courier partner is required when order status is picked';
     }
     
     // Validate received amount cannot exceed total amount
@@ -1500,7 +1515,8 @@ const OrderFormPage = () => {
                     </div>
                   </div>
                 )}
-                {isEdit && (
+                {/* Order Status - Show in edit mode or when payment method is COD */}
+                {(isEdit || formData.paymentMethod === 'cod') && (
                   <div className="w-full flex flex-col">
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Order Status</label>
                     <Select
@@ -1508,20 +1524,20 @@ const OrderFormPage = () => {
                       value={formData.status || orderStatusOptions[0].value}
                       onChange={handleSelectChange('status')}
                       error={errors.status}
-                      disabled={!canEditOrderStatus}
-                      className={`w-full ${!canEditOrderStatus ? 'opacity-60 cursor-not-allowed' : ''}`}
+                      disabled={isEdit && !canEditOrderStatus}
+                      className={`w-full ${(isEdit && !canEditOrderStatus) ? 'opacity-60 cursor-not-allowed' : ''}`}
                     />
                     <div className="text-xs text-gray-400 mt-1">
-                      {canEditOrderStatus
-                        ? (formData.paymentMethod === 'cod' && Number(formData.amountReceived) === 0
-                            ? 'Order status is editable for Cash on Delivery orders.'
-                            : 'Order status is now editable.')
-                        : "Order status can be changed after receiving any payment amount or if payment method is Cash on Delivery."}
+                      {isEdit && !canEditOrderStatus
+                        ? "Order status can be changed after receiving any payment amount or if payment method is Cash on Delivery."
+                        : (formData.paymentMethod === 'cod' 
+                            ? 'Order status can be set for Cash on Delivery orders. Select courier partner when status is "Picked".'
+                            : 'Order status is now editable.')}
                     </div>
                   </div>
                 )}
-                {/* Courier Partner - Show only when status is 'picked' */}
-                {formData.status === 'picked' && (
+                {/* Courier Partner - Show when payment method is COD or when status is 'picked' */}
+                {(formData.paymentMethod === 'cod' || formData.status === 'picked') && (
                   <div className="w-full flex flex-col space-y-4">
                     <div className="w-full flex flex-col">
                       <div className="flex items-center justify-between mb-1.5">
@@ -1541,7 +1557,8 @@ const OrderFormPage = () => {
                           label: partner.name
                         }))}
                         value={formData.courierPartnerId}
-                        onChange={(value) => {
+                        onChange={(e) => {
+                          const value = e.target.value;
                           if (value) {
                             handleInputChange('courierPartnerId', value);
                           }
@@ -1550,6 +1567,45 @@ const OrderFormPage = () => {
                         className="w-full"
                         placeholder="Select courier partner"
                       />
+                      {/* Show courier partner deposit amount and branch COD amount */}
+                      {formData.courierPartnerId && formData.paymentMethod === 'cod' && (
+                        <div className="w-full mt-2 space-y-2">
+                          {/* Courier Partner Deposit Amount */}
+                          {(() => {
+                            const selectedPartner = courierPartners.find(p => p._id === formData.courierPartnerId);
+                            return selectedPartner && (
+                              <div className="text-sm text-gray-900 p-2 bg-purple-50 rounded border border-purple-200">
+                                <div className="font-medium text-purple-800">
+                                  Courier Partner Deposit Amount: ₹{selectedPartner.depositAmount 
+                                    ? parseFloat(selectedPartner.depositAmount).toLocaleString() 
+                                    : '0.00'}
+                                </div>
+                                <div className="text-xs text-purple-600 mt-1">
+                                  Total COD amount collected by this courier partner
+                                </div>
+                              </div>
+                            );
+                          })()}
+                          
+                          {/* Branch COD Amount for this Courier Partner */}
+                          {formData.branchId && selectedBranchDetails && (
+                            <div className="text-sm text-gray-900 p-2 bg-blue-50 rounded border border-blue-200">
+                              <div className="font-medium text-blue-800">
+                                Branch COD Amount: ₹{(() => {
+                                  const courierCod = selectedBranchDetails.courierCodAmounts?.find(
+                                    cod => cod.courierPartnerId?._id?.toString() === formData.courierPartnerId ||
+                                           cod.courierPartnerId?.toString() === formData.courierPartnerId
+                                  );
+                                  return courierCod ? parseFloat(courierCod.amount || 0).toLocaleString() : '0.00';
+                                })()}
+                              </div>
+                              <div className="text-xs text-blue-600 mt-1">
+                                COD amount collected by this courier partner for this branch
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
                       <button
                         type="button"
                         onClick={() => setShowAddCourierModal(true)}
