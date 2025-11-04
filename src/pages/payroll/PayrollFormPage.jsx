@@ -441,7 +441,7 @@ const PayrollFormPage = () => {
 
       if (isEdit && currentPayroll) {
         console.log('📝 Updating payroll:', currentPayroll._id);
-        await dispatch(updatePayroll({ payrollId: currentPayroll._id, payrollData })).unwrap();
+        await dispatch(updatePayroll({ id: currentPayroll._id, payrollData })).unwrap();
         console.log('✅ Payroll updated successfully');
       } else {
         console.log('➕ Creating new payroll:', payrollData.employeeName);

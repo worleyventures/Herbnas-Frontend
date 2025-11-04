@@ -12,7 +12,7 @@ import {
   HiXMark,
   HiEye
 } from 'react-icons/hi2';
-import { Button, Input, Select, Table, StatusBadge, Loading, StatCard, CommonModal, DetailsView } from '../../components/common';
+import { Button, Input, Select, Table, StatusBadge, Loading, StatCard, CommonModal, DetailsView, TextArea } from '../../components/common';
 import AttendanceCalendar from '../../components/attendance/AttendanceCalendar';
 import { addNotification } from '../../redux/slices/uiSlice';
 import { 
@@ -24,7 +24,8 @@ import {
 import { 
   getAllAttendance, 
   deleteAttendance, 
-  getAttendanceStats 
+  getAttendanceStats,
+  approveAttendance
 } from '../../redux/actions/attendanceActions';
 import api from '../../lib/axiosInstance';
 
@@ -51,6 +52,11 @@ const AttendanceTab = () => {
   const [showViewModal, setShowViewModal] = useState(false);
   const [attendanceToDelete, setAttendanceToDelete] = useState(null);
   const [attendanceToView, setAttendanceToView] = useState(null);
+  const [showApprovalModal, setShowApprovalModal] = useState(false);
+  const [selectedAttendanceForApproval, setSelectedAttendanceForApproval] = useState(null);
+  const [approvalAction, setApprovalAction] = useState(''); // 'approve' or 'reject'
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [approving, setApproving] = useState(false);
   const [branches, setBranches] = useState([]);
 
   // Load branches and employees data
@@ -199,6 +205,57 @@ const AttendanceTab = () => {
     setAttendanceToView(null);
   };
 
+  // Handle approval action
+  const handleApprovalAction = (attendance, action) => {
+    setSelectedAttendanceForApproval(attendance);
+    setApprovalAction(action);
+    setRejectionReason('');
+    setShowApprovalModal(true);
+  };
+
+  // Confirm approval/rejection
+  const confirmApproval = async () => {
+    if (!selectedAttendanceForApproval) return;
+
+    setApproving(true);
+    try {
+      const result = await dispatch(approveAttendance({
+        attendanceId: selectedAttendanceForApproval._id,
+        action: approvalAction,
+        rejectionReason: approvalAction === 'reject' ? rejectionReason : undefined
+      })).unwrap();
+
+      if (result.success) {
+        dispatch(addNotification({
+          type: 'success',
+          message: `Attendance ${approvalAction}d successfully`
+        }));
+        
+        // Refresh the attendance data
+        loadAttendance();
+        
+        setShowApprovalModal(false);
+        setSelectedAttendanceForApproval(null);
+        setApprovalAction('');
+        setRejectionReason('');
+      }
+    } catch (error) {
+      dispatch(addNotification({
+        type: 'error',
+        message: error || `Failed to ${approvalAction} attendance`
+      }));
+    } finally {
+      setApproving(false);
+    }
+  };
+
+  const cancelApproval = () => {
+    setShowApprovalModal(false);
+    setSelectedAttendanceForApproval(null);
+    setApprovalAction('');
+    setRejectionReason('');
+  };
+
 
   // Get status color
   const getStatusColor = (status) => {
@@ -250,34 +307,68 @@ const AttendanceTab = () => {
     {
       key: 'presentDays',
       label: 'Present Days',
-      render: (attendance) => (
-        <div className="font-medium text-gray-900">
-          {attendance.summaryData?.presentDays || 0}
-        </div>
-      )
+      render: (attendance) => {
+        // If it's a summary record, use summaryData
+        if (attendance.summaryData?.presentDays !== undefined) {
+          return (
+            <div className="font-medium text-gray-900">
+              {attendance.summaryData.presentDays}
+            </div>
+          );
+        }
+        // For individual records, calculate based on approval status
+        const approvalStatus = attendance.approvalStatus || 'pending';
+        const presentDays = approvalStatus === 'approved' ? 1 : 0;
+        return (
+          <div className="font-medium text-gray-900">
+            {presentDays}
+          </div>
+        );
+      }
     },
     {
       key: 'lop',
       label: 'LOP',
-      render: (attendance) => (
-        <div className="font-medium text-gray-900">
-          {attendance.summaryData?.lop || 0}
-        </div>
-      )
+      render: (attendance) => {
+        // If it's a summary record, use summaryData
+        if (attendance.summaryData?.lop !== undefined) {
+          return (
+            <div className="font-medium text-gray-900">
+              {attendance.summaryData.lop}
+            </div>
+          );
+        }
+        // For individual records, calculate based on approval status
+        const approvalStatus = attendance.approvalStatus || 'pending';
+        const lop = approvalStatus === 'rejected' ? 1 : 0;
+        return (
+          <div className="font-medium text-gray-900">
+            {lop}
+          </div>
+        );
+      }
     },
     {
       key: 'approvalStatus',
-      label: 'Approval Status',
+      label: "Today's Attendance",
       render: (attendance) => {
-        const status = attendance.approvalStatus || 'pending';
-        const statusColors = {
-          pending: 'bg-yellow-100 text-yellow-800',
-          approved: 'bg-green-100 text-green-800',
-          rejected: 'bg-red-100 text-red-800'
-        };
+        const approvalStatus = attendance.approvalStatus || 'pending';
+        let displayStatus, statusColors;
+        
+        if (approvalStatus === 'approved') {
+          displayStatus = 'Present';
+          statusColors = 'bg-green-100 text-green-800';
+        } else if (approvalStatus === 'rejected') {
+          displayStatus = 'Absent';
+          statusColors = 'bg-red-100 text-red-800';
+        } else {
+          displayStatus = 'Pending';
+          statusColors = 'bg-yellow-100 text-yellow-800';
+        }
+        
         return (
-          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${statusColors[status] || 'bg-gray-100 text-gray-800'}`}>
-            {status.charAt(0).toUpperCase() + status.slice(1)}
+          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${statusColors}`}>
+            {displayStatus}
           </span>
         );
       }
@@ -285,24 +376,50 @@ const AttendanceTab = () => {
     {
       key: 'actions',
       label: 'Actions',
-      render: (attendance) => (
-        <div className="flex space-x-3">
-          <button
-            onClick={() => handleViewAttendance(attendance._id)}
-            className="text-gray-500 hover:text-gray-700 transition-colors"
-            title="View Attendance Details"
-          >
-            <HiEye className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => handleDeleteAttendance(attendance._id)}
-            className="text-gray-500 hover:text-gray-700 transition-colors"
-            title="Delete Attendance"
-          >
-            <HiTrash className="w-4 h-4" />
-          </button>
-        </div>
-      )
+      render: (attendance) => {
+        const isPending = attendance.approvalStatus === 'pending';
+        return (
+          <div className="flex space-x-2 items-center">
+            {isPending ? (
+              <>
+                <button
+                  onClick={() => handleApprovalAction(attendance, 'approve')}
+                  className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
+                  title="Approve Attendance"
+                >
+                  <HiCheckCircle className="w-4 h-4 mr-1" />
+                  Approve
+                </button>
+                <button
+                  onClick={() => handleApprovalAction(attendance, 'reject')}
+                  className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
+                  title="Reject Attendance"
+                >
+                  <HiXMark className="w-4 h-4 mr-1" />
+                  Reject
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => handleViewAttendance(attendance._id)}
+                  className="text-gray-500 hover:text-gray-700 transition-colors"
+                  title="View Attendance Details"
+                >
+                  <HiEye className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => handleDeleteAttendance(attendance._id)}
+                  className="text-gray-500 hover:text-gray-700 transition-colors"
+                  title="Delete Attendance"
+                >
+                  <HiTrash className="w-4 h-4" />
+                </button>
+              </>
+            )}
+          </div>
+        );
+      }
     }
   ];
 
@@ -343,10 +460,10 @@ const AttendanceTab = () => {
   ];
 
   const approvalStatusOptions = [
-    { value: 'all', label: 'All Approval Status' },
+    { value: 'all', label: 'All Status' },
     { value: 'pending', label: 'Pending' },
-    { value: 'approved', label: 'Approved' },
-    { value: 'rejected', label: 'Rejected' }
+    { value: 'approved', label: 'Present' },
+    { value: 'rejected', label: 'Absent' }
   ];
 
 
@@ -532,6 +649,119 @@ const AttendanceTab = () => {
           <p className="text-sm text-gray-500">
             This action cannot be undone. The attendance record will be permanently removed from the system.
           </p>
+        </div>
+      </CommonModal>
+
+      {/* Approval Modal */}
+      <CommonModal
+        isOpen={showApprovalModal}
+        onClose={cancelApproval}
+        title={approvalAction === 'approve' ? 'Approve Attendance' : 'Reject Attendance'}
+        subtitle={selectedAttendanceForApproval ? `${selectedAttendanceForApproval.employeeId?.firstName} ${selectedAttendanceForApproval.employeeId?.lastName} - ${new Date(selectedAttendanceForApproval.date).toLocaleDateString()}` : 'Attendance Approval'}
+        icon={approvalAction === 'approve' ? HiCheckCircle : HiXMark}
+        iconColor={approvalAction === 'approve' ? 'from-green-500 to-green-600' : 'from-red-500 to-red-600'}
+        size="md"
+        showFooter={true}
+        footerContent={
+          <div className="flex space-x-2">
+            <Button
+              variant="outline"
+              onClick={cancelApproval}
+              size="sm"
+              disabled={approving}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmApproval}
+              disabled={approving || (approvalAction === 'reject' && !rejectionReason.trim())}
+              className={approvalAction === 'approve' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}
+              size="sm"
+            >
+              {approving ? 'Processing...' : (approvalAction === 'approve' ? 'Approve' : 'Reject')}
+            </Button>
+          </div>
+        }
+      >
+        <div className="py-4">
+          {selectedAttendanceForApproval && (
+            <div className="space-y-4">
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h4 className="text-sm font-medium text-gray-900 mb-3">Attendance Information</h4>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-gray-600">Employee:</span>
+                    <span className="ml-2 font-medium text-gray-900">
+                      {selectedAttendanceForApproval.employeeId?.firstName} {selectedAttendanceForApproval.employeeId?.lastName}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Employee ID:</span>
+                    <span className="ml-2 font-medium text-gray-900">
+                      {selectedAttendanceForApproval.employeeId?.employeeId}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Date:</span>
+                    <span className="ml-2 font-medium text-gray-900">
+                      {new Date(selectedAttendanceForApproval.date).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Status:</span>
+                    <span className="ml-2 font-medium text-gray-900">
+                      {selectedAttendanceForApproval.status?.charAt(0).toUpperCase() + selectedAttendanceForApproval.status?.slice(1).replace('_', ' ')}
+                    </span>
+                  </div>
+                  {selectedAttendanceForApproval.checkIn?.time && (
+                    <div>
+                      <span className="text-gray-600">Check In:</span>
+                      <span className="ml-2 font-medium text-gray-900">
+                        {new Date(selectedAttendanceForApproval.checkIn.time).toLocaleTimeString('en-IN', {
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </span>
+                    </div>
+                  )}
+                  {selectedAttendanceForApproval.checkOut?.time && (
+                    <div>
+                      <span className="text-gray-600">Check Out:</span>
+                      <span className="ml-2 font-medium text-gray-900">
+                        {new Date(selectedAttendanceForApproval.checkOut.time).toLocaleTimeString('en-IN', {
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {approvalAction === 'reject' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Rejection Reason *
+                  </label>
+                  <TextArea
+                    value={rejectionReason}
+                    onChange={(e) => setRejectionReason(e.target.value)}
+                    placeholder="Please provide a reason for rejection..."
+                    rows={3}
+                    className="w-full"
+                  />
+                </div>
+              )}
+
+              {approvalAction === 'approve' && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                  <p className="text-sm text-green-800">
+                    This will mark the attendance as approved and the employee will be marked as present.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </CommonModal>
 
