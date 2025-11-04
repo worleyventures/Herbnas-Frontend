@@ -39,7 +39,6 @@ import AccountsPage from './pages/accounts/AccountsPage';
 import AccountFormPage from './pages/accounts/AccountFormPage';
 import PayrollPage from './pages/payroll/PayrollPage';
 import PayrollFormPage from './pages/payroll/PayrollFormPage';
-import PayrollDetailsPage from './pages/payroll/PayrollDetailsPage';
 import SupervisorAttendancePage from './pages/attendance/SupervisorAttendancePage';
 
 function App() {
@@ -121,7 +120,6 @@ function App() {
             <Route path="/payrolls" element={<PayrollPage />} />
             <Route path="/payrolls/new" element={<PayrollFormPage />} />
             <Route path="/payrolls/edit/:id" element={<PayrollFormPage />} />
-            <Route path="/payrolls/view/:id" element={<PayrollDetailsPage />} />
             <Route path="/attendance" element={<SupervisorAttendancePage />} />
             <Route path="/settings" element={<div>Settings Page</div>} />
             <Route path="/profile" element={<div>Profile Page</div>} />
