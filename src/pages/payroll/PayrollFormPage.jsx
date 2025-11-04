@@ -39,7 +39,8 @@ const PayrollFormPage = () => {
   const { 
     createLoading: payrollLoading, 
     updateLoading, 
-    selectedPayroll: reduxPayroll, 
+    currentPayroll: reduxPayroll,
+    selectedPayroll: reduxSelectedPayroll,
     loading: payrollDataLoading,
     createSuccess,
     updateSuccess,
@@ -50,7 +51,7 @@ const PayrollFormPage = () => {
   const { branches = [], loading: branchesLoading = false } = useSelector(state => state.branches || {});
   
   // Use the payroll from Redux if we don't have one from location state
-  const currentPayroll = selectedPayroll || reduxPayroll;
+  const currentPayroll = selectedPayroll || reduxPayroll || reduxSelectedPayroll;
   const isEdit = mode === 'edit';
   
   // Load payroll data if editing and we have an ID
@@ -184,26 +185,64 @@ const PayrollFormPage = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const isSubmittingRef = useRef(false);
 
+  // Helper function to format date for input field
+  const formatDateForInput = (dateValue) => {
+    if (!dateValue) return '';
+    try {
+      const date = new Date(dateValue);
+      if (isNaN(date.getTime())) return '';
+      // Format as YYYY-MM-DD for date input
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return '';
+    }
+  };
+
   // Initialize form data when editing
   useEffect(() => {
     if (isEdit && currentPayroll) {
+      console.log('📝 Initializing form with payroll data:', currentPayroll);
+      
+      // Handle address - could be string or object
+      let addressData = {
+        street: '',
+        city: '',
+        state: '',
+        pinCode: '',
+        country: 'India'
+      };
+      
+      if (currentPayroll.address) {
+        if (typeof currentPayroll.address === 'string') {
+          // If address is a string, try to parse it or use it as street
+          addressData.street = currentPayroll.address;
+        } else {
+          // If it's an object, extract all fields
+          addressData = {
+            street: currentPayroll.address.street || '',
+            city: currentPayroll.address.city || '',
+            state: currentPayroll.address.state || '',
+            pinCode: currentPayroll.address.pinCode || '',
+            country: currentPayroll.address.country || 'India'
+          };
+        }
+      }
+      
       setFormData({
         employeeName: currentPayroll.employeeName || '',
         employeeId: currentPayroll.employeeId || '',
         designation: currentPayroll.designation || '',
         email: currentPayroll.email || '',
-        password: '',
-        confirmPassword: '',
+        password: '', // Password should be empty for edit mode
+        confirmPassword: '', // Confirm password should be empty for edit mode
         branchId: currentPayroll.branchId?._id || currentPayroll.branchId || '',
-        dateOfBirth: currentPayroll.dateOfBirth || '',
-        address: {
-          street: currentPayroll.address?.street || '',
-          city: currentPayroll.address?.city || '',
-          state: currentPayroll.address?.state || '',
-          pinCode: currentPayroll.address?.pinCode || '',
-          country: currentPayroll.address?.country || 'India'
-        },
-        basicSalary: currentPayroll.basicSalary || '',
+        dateOfBirth: formatDateForInput(currentPayroll.dateOfBirth),
+        address: addressData,
+        basicSalary: currentPayroll.basicSalary || currentPayroll.basicSalary === 0 ? currentPayroll.basicSalary : '',
         deductions: {
           providentFund: currentPayroll.deductions?.providentFund || 0,
           professionalTax: currentPayroll.deductions?.professionalTax || 0,
@@ -218,7 +257,7 @@ const PayrollFormPage = () => {
         },
         pfDetails: {
           pfNumber: currentPayroll.pfDetails?.pfNumber || '',
-          uanNumber: currentPayroll.pfDetails?.uanNumber || '',
+          uanNumber: currentPayroll.pfDetails?.uanNumber || currentPayroll.pfDetails?.uan || '',
           pfAccountNumber: currentPayroll.pfDetails?.pfAccountNumber || ''
         },
         panDetails: {
@@ -272,15 +311,28 @@ const PayrollFormPage = () => {
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = 'Email is invalid';
     }
-    if (!formData.password?.trim()) {
-      newErrors.password = 'Password is required';
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
-    }
-    if (!formData.confirmPassword?.trim()) {
-      newErrors.confirmPassword = 'Confirm password is required';
-    } else if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
+    // Password validation - only required for new employees, optional for edits
+    if (!isEdit) {
+      if (!formData.password?.trim()) {
+        newErrors.password = 'Password is required';
+      } else if (formData.password.length < 6) {
+        newErrors.password = 'Password must be at least 6 characters';
+      }
+      if (!formData.confirmPassword?.trim()) {
+        newErrors.confirmPassword = 'Confirm password is required';
+      } else if (formData.password !== formData.confirmPassword) {
+        newErrors.confirmPassword = 'Passwords do not match';
+      }
+    } else {
+      // For edit mode, only validate if password is provided (optional update)
+      if (formData.password && formData.password.trim()) {
+        if (formData.password.length < 6) {
+          newErrors.password = 'Password must be at least 6 characters';
+        }
+        if (formData.password !== formData.confirmPassword) {
+          newErrors.confirmPassword = 'Passwords do not match';
+        }
+      }
     }
     if (!formData.branchId) {
       newErrors.branchId = 'Branch is required';
@@ -352,7 +404,8 @@ const PayrollFormPage = () => {
         employeeId: formData.employeeId.trim(),
         designation: formData.designation.trim(),
         email: formData.email.trim(),
-        password: formData.password,
+        ...(isEdit && formData.password ? { password: formData.password } : {}),
+        ...(!isEdit ? { password: formData.password } : {}),
         branchId: formData.branchId,
         dateOfBirth: formData.dateOfBirth,
         address: {
@@ -388,7 +441,7 @@ const PayrollFormPage = () => {
 
       if (isEdit && currentPayroll) {
         console.log('📝 Updating payroll:', currentPayroll._id);
-        await dispatch(updatePayroll({ payrollId: currentPayroll._id, payrollData })).unwrap();
+        await dispatch(updatePayroll({ id: currentPayroll._id, payrollData })).unwrap();
         console.log('✅ Payroll updated successfully');
       } else {
         console.log('➕ Creating new payroll:', payrollData.employeeName);
@@ -555,7 +608,8 @@ const PayrollFormPage = () => {
                   
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Password *
+                      Password {!isEdit && '*'}
+                      {isEdit && <span className="text-gray-500 text-xs ml-1">(Leave blank to keep current password)</span>}
                     </label>
                     <div className="relative">
                       <input
@@ -563,7 +617,7 @@ const PayrollFormPage = () => {
                         name="password"
                         value={formData.password}
                         onChange={(e) => handleInputChange('password', e.target.value)}
-                        placeholder="Enter password"
+                        placeholder={isEdit ? "Enter new password (optional)" : "Enter password"}
                         className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white shadow-sm hover:shadow-md"
                       />
                       <button
@@ -585,7 +639,8 @@ const PayrollFormPage = () => {
                   
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Confirm Password *
+                      Confirm Password {!isEdit && '*'}
+                      {isEdit && <span className="text-gray-500 text-xs ml-1">(Required if password is provided)</span>}
                     </label>
                     <div className="relative">
                       <input
@@ -593,7 +648,7 @@ const PayrollFormPage = () => {
                         name="confirmPassword"
                         value={formData.confirmPassword}
                         onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
-                        placeholder="Confirm password"
+                        placeholder={isEdit ? "Confirm new password (optional)" : "Confirm password"}
                         className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white shadow-sm hover:shadow-md"
                       />
                       <button

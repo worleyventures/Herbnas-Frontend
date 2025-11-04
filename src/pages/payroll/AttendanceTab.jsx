@@ -12,7 +12,7 @@ import {
   HiXMark,
   HiEye
 } from 'react-icons/hi2';
-import { Button, Input, Select, Table, StatusBadge, Loading, StatCard, CommonModal, DetailsView } from '../../components/common';
+import { Button, Input, Select, Table, StatusBadge, Loading, StatCard, CommonModal, DetailsView, TextArea } from '../../components/common';
 import AttendanceCalendar from '../../components/attendance/AttendanceCalendar';
 import { addNotification } from '../../redux/slices/uiSlice';
 import { 
@@ -24,7 +24,8 @@ import {
 import { 
   getAllAttendance, 
   deleteAttendance, 
-  getAttendanceStats 
+  getAttendanceStats,
+  approveAttendance
 } from '../../redux/actions/attendanceActions';
 import api from '../../lib/axiosInstance';
 
@@ -43,16 +44,20 @@ const AttendanceTab = () => {
   const [viewMode, setViewMode] = useState('calendar'); // 'calendar' or 'table'
   const [searchTerm, setSearchTerm] = useState('');
   const [branchFilter, setBranchFilter] = useState('all');
-  const [employeeFilter, setEmployeeFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [approvalStatusFilter, setApprovalStatusFilter] = useState('all'); // Filter by approval status
   const [monthFilter, setMonthFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [attendanceToDelete, setAttendanceToDelete] = useState(null);
   const [attendanceToView, setAttendanceToView] = useState(null);
+  const [showApprovalModal, setShowApprovalModal] = useState(false);
+  const [selectedAttendanceForApproval, setSelectedAttendanceForApproval] = useState(null);
+  const [approvalAction, setApprovalAction] = useState(''); // 'approve' or 'reject'
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [approving, setApproving] = useState(false);
   const [branches, setBranches] = useState([]);
-  const [employees, setEmployees] = useState([]);
 
   // Load branches and employees data
   const loadBranches = async () => {
@@ -66,17 +71,6 @@ const AttendanceTab = () => {
     }
   };
 
-  const loadEmployees = async () => {
-    try {
-      const response = await api.get('/users');
-      if (response.data.success) {
-        setEmployees(response.data.data.users || []);
-      }
-    } catch (error) {
-      console.error('Failed to load employees:', error);
-    }
-  };
-
   // Load attendance data
   const loadAttendance = async () => {
     const params = {
@@ -84,10 +78,9 @@ const AttendanceTab = () => {
       limit: '10',
       ...(searchTerm && { search: searchTerm }),
       ...(branchFilter !== 'all' && { branchId: branchFilter }),
-      ...(employeeFilter !== 'all' && { employeeId: employeeFilter }),
       ...(statusFilter !== 'all' && { status: statusFilter }),
       ...(monthFilter !== 'all' && { month: monthFilter }),
-      approvalStatus: 'approved' // Only show approved attendance for superadmin
+      ...(approvalStatusFilter !== 'all' && { approvalStatus: approvalStatusFilter })
     };
 
     dispatch(getAllAttendance(params));
@@ -97,7 +90,7 @@ const AttendanceTab = () => {
   const loadStats = async () => {
     const params = {
       ...(branchFilter !== 'all' && { branchId: branchFilter }),
-      approvalStatus: 'approved' // Only show approved attendance stats for superadmin
+      ...(approvalStatusFilter !== 'all' && { approvalStatus: approvalStatusFilter })
     };
 
     dispatch(getAttendanceStats(params));
@@ -108,8 +101,7 @@ const AttendanceTab = () => {
     loadAttendance();
     loadStats();
     loadBranches();
-    loadEmployees();
-  }, [currentPage, searchTerm, branchFilter, employeeFilter, statusFilter, monthFilter]);
+  }, [currentPage, searchTerm, branchFilter, statusFilter, approvalStatusFilter, monthFilter]);
 
 
   // Handle search
@@ -124,11 +116,11 @@ const AttendanceTab = () => {
       case 'branch':
         setBranchFilter(value);
         break;
-      case 'employee':
-        setEmployeeFilter(value);
-        break;
       case 'status':
         setStatusFilter(value);
+        break;
+      case 'approvalStatus':
+        setApprovalStatusFilter(value);
         break;
       case 'month':
         setMonthFilter(value);
@@ -213,6 +205,57 @@ const AttendanceTab = () => {
     setAttendanceToView(null);
   };
 
+  // Handle approval action
+  const handleApprovalAction = (attendance, action) => {
+    setSelectedAttendanceForApproval(attendance);
+    setApprovalAction(action);
+    setRejectionReason('');
+    setShowApprovalModal(true);
+  };
+
+  // Confirm approval/rejection
+  const confirmApproval = async () => {
+    if (!selectedAttendanceForApproval) return;
+
+    setApproving(true);
+    try {
+      const result = await dispatch(approveAttendance({
+        attendanceId: selectedAttendanceForApproval._id,
+        action: approvalAction,
+        rejectionReason: approvalAction === 'reject' ? rejectionReason : undefined
+      })).unwrap();
+
+      if (result.success) {
+        dispatch(addNotification({
+          type: 'success',
+          message: `Attendance ${approvalAction}d successfully`
+        }));
+        
+        // Refresh the attendance data
+        loadAttendance();
+        
+        setShowApprovalModal(false);
+        setSelectedAttendanceForApproval(null);
+        setApprovalAction('');
+        setRejectionReason('');
+      }
+    } catch (error) {
+      dispatch(addNotification({
+        type: 'error',
+        message: error || `Failed to ${approvalAction} attendance`
+      }));
+    } finally {
+      setApproving(false);
+    }
+  };
+
+  const cancelApproval = () => {
+    setShowApprovalModal(false);
+    setSelectedAttendanceForApproval(null);
+    setApprovalAction('');
+    setRejectionReason('');
+  };
+
 
   // Get status color
   const getStatusColor = (status) => {
@@ -264,42 +307,119 @@ const AttendanceTab = () => {
     {
       key: 'presentDays',
       label: 'Present Days',
-      render: (attendance) => (
-        <div className="font-medium text-gray-900">
-          {attendance.summaryData?.presentDays || 0}
-        </div>
-      )
+      render: (attendance) => {
+        // If it's a summary record, use summaryData
+        if (attendance.summaryData?.presentDays !== undefined) {
+          return (
+            <div className="font-medium text-gray-900">
+              {attendance.summaryData.presentDays}
+            </div>
+          );
+        }
+        // For individual records, calculate based on approval status
+        const approvalStatus = attendance.approvalStatus || 'pending';
+        const presentDays = approvalStatus === 'approved' ? 1 : 0;
+        return (
+          <div className="font-medium text-gray-900">
+            {presentDays}
+          </div>
+        );
+      }
     },
     {
       key: 'lop',
       label: 'LOP',
-      render: (attendance) => (
-        <div className="font-medium text-gray-900">
-          {attendance.summaryData?.lop || 0}
-        </div>
-      )
+      render: (attendance) => {
+        // If it's a summary record, use summaryData
+        if (attendance.summaryData?.lop !== undefined) {
+          return (
+            <div className="font-medium text-gray-900">
+              {attendance.summaryData.lop}
+            </div>
+          );
+        }
+        // For individual records, calculate based on approval status
+        const approvalStatus = attendance.approvalStatus || 'pending';
+        const lop = approvalStatus === 'rejected' ? 1 : 0;
+        return (
+          <div className="font-medium text-gray-900">
+            {lop}
+          </div>
+        );
+      }
+    },
+    {
+      key: 'approvalStatus',
+      label: "Today's Attendance",
+      render: (attendance) => {
+        const approvalStatus = attendance.approvalStatus || 'pending';
+        let displayStatus, statusColors;
+        
+        if (approvalStatus === 'approved') {
+          displayStatus = 'Present';
+          statusColors = 'bg-green-100 text-green-800';
+        } else if (approvalStatus === 'rejected') {
+          displayStatus = 'Absent';
+          statusColors = 'bg-red-100 text-red-800';
+        } else {
+          displayStatus = 'Pending';
+          statusColors = 'bg-yellow-100 text-yellow-800';
+        }
+        
+        return (
+          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${statusColors}`}>
+            {displayStatus}
+          </span>
+        );
+      }
     },
     {
       key: 'actions',
       label: 'Actions',
-      render: (attendance) => (
-        <div className="flex space-x-3">
-          <button
-            onClick={() => handleViewAttendance(attendance._id)}
-            className="text-gray-500 hover:text-gray-700 transition-colors"
-            title="View Attendance Details"
-          >
-            <HiEye className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => handleDeleteAttendance(attendance._id)}
-            className="text-gray-500 hover:text-gray-700 transition-colors"
-            title="Delete Attendance"
-          >
-            <HiTrash className="w-4 h-4" />
-          </button>
-        </div>
-      )
+      render: (attendance) => {
+        const isPending = attendance.approvalStatus === 'pending';
+        return (
+          <div className="flex space-x-2 items-center">
+            {isPending ? (
+              <>
+                <button
+                  onClick={() => handleApprovalAction(attendance, 'approve')}
+                  className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
+                  title="Approve Attendance"
+                >
+                  <HiCheckCircle className="w-4 h-4 mr-1" />
+                  Approve
+                </button>
+                <button
+                  onClick={() => handleApprovalAction(attendance, 'reject')}
+                  className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
+                  title="Reject Attendance"
+                >
+                  <HiXMark className="w-4 h-4 mr-1" />
+                  Reject
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => handleViewAttendance(attendance._id)}
+                  className="text-gray-500 hover:text-gray-700 transition-colors"
+                  title="View Attendance Details"
+                >
+                  <HiEye className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => handleDeleteAttendance(attendance._id)}
+                  className="text-gray-500 hover:text-gray-700 transition-colors"
+                  title="Delete Attendance"
+                >
+                  <HiTrash className="w-4 h-4" />
+                </button>
+              </>
+            )}
+          </div>
+        );
+      }
     }
   ];
 
@@ -309,14 +429,6 @@ const AttendanceTab = () => {
     ...branches.map(branch => ({
       value: branch._id,
       label: `${branch.branchName} (${branch.branchCode})`
-    }))
-  ];
-
-  const employeeOptions = [
-    { value: 'all', label: 'All Employees' },
-    ...employees.map(employee => ({
-      value: employee._id,
-      label: `${employee.firstName} ${employee.lastName} (${employee.employeeId})`
     }))
   ];
 
@@ -345,6 +457,13 @@ const AttendanceTab = () => {
     { value: '10', label: 'October' },
     { value: '11', label: 'November' },
     { value: '12', label: 'December' }
+  ];
+
+  const approvalStatusOptions = [
+    { value: 'all', label: 'All Status' },
+    { value: 'pending', label: 'Pending' },
+    { value: 'approved', label: 'Present' },
+    { value: 'rejected', label: 'Absent' }
   ];
 
 
@@ -390,32 +509,40 @@ const AttendanceTab = () => {
 
       {/* Calendar or Table View */}
       {viewMode === 'calendar' ? (
-        <AttendanceCalendar
-          attendance={attendance}
-          onDateClick={handleDateClick}
-          loading={loading}
-        />
+        <div className="space-y-4">
+          {/* Filters for Calendar View */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Select
+                value={branchFilter}
+                onChange={(value) => handleFilterChange('branch', value)}
+                options={branchOptions}
+                className="w-full sm:w-40"
+              />
+              <Select
+                value={approvalStatusFilter}
+                onChange={(value) => handleFilterChange('approvalStatus', value)}
+                options={approvalStatusOptions}
+                className="w-full sm:w-48"
+              />
+              <Select
+                value={monthFilter}
+                onChange={(value) => handleFilterChange('month', value)}
+                options={monthOptions}
+                className="w-full sm:w-32"
+              />
+            </div>
+          </div>
+          <AttendanceCalendar
+            attendance={attendance}
+            onDateClick={handleDateClick}
+            loading={loading}
+          />
+        </div>
       ) : (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200">
           <div className="px-6 py-4 border-b border-gray-200">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <button
-                  onClick={() => {
-                    setViewMode('calendar');
-                    setSelectedDate(null);
-                  }}
-                  className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-                >
-                  <HiCalendar className="h-4 w-4" />
-                  Back to Calendar
-                </button>
-                {selectedDate && (
-                  <div className="text-sm text-gray-600">
-                    Showing attendance for: <span className="font-medium">{selectedDate.dateKey}</span>
-                  </div>
-                )}
-              </div>
               <div className="flex flex-col sm:flex-row gap-3">
                 <Input
                   value={searchTerm}
@@ -431,16 +558,16 @@ const AttendanceTab = () => {
                   className="w-full sm:w-40"
                 />
                 <Select
-                  value={employeeFilter}
-                  onChange={(value) => handleFilterChange('employee', value)}
-                  options={employeeOptions}
-                  className="w-full sm:w-48"
-                />
-                <Select
                   value={monthFilter}
                   onChange={(value) => handleFilterChange('month', value)}
                   options={monthOptions}
                   className="w-full sm:w-32"
+                />
+                <Select
+                  value={approvalStatusFilter}
+                  onChange={(value) => handleFilterChange('approvalStatus', value)}
+                  options={approvalStatusOptions}
+                  className="w-full sm:w-48"
                 />
               </div>
             </div>
@@ -522,6 +649,119 @@ const AttendanceTab = () => {
           <p className="text-sm text-gray-500">
             This action cannot be undone. The attendance record will be permanently removed from the system.
           </p>
+        </div>
+      </CommonModal>
+
+      {/* Approval Modal */}
+      <CommonModal
+        isOpen={showApprovalModal}
+        onClose={cancelApproval}
+        title={approvalAction === 'approve' ? 'Approve Attendance' : 'Reject Attendance'}
+        subtitle={selectedAttendanceForApproval ? `${selectedAttendanceForApproval.employeeId?.firstName} ${selectedAttendanceForApproval.employeeId?.lastName} - ${new Date(selectedAttendanceForApproval.date).toLocaleDateString()}` : 'Attendance Approval'}
+        icon={approvalAction === 'approve' ? HiCheckCircle : HiXMark}
+        iconColor={approvalAction === 'approve' ? 'from-green-500 to-green-600' : 'from-red-500 to-red-600'}
+        size="md"
+        showFooter={true}
+        footerContent={
+          <div className="flex space-x-2">
+            <Button
+              variant="outline"
+              onClick={cancelApproval}
+              size="sm"
+              disabled={approving}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmApproval}
+              disabled={approving || (approvalAction === 'reject' && !rejectionReason.trim())}
+              className={approvalAction === 'approve' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}
+              size="sm"
+            >
+              {approving ? 'Processing...' : (approvalAction === 'approve' ? 'Approve' : 'Reject')}
+            </Button>
+          </div>
+        }
+      >
+        <div className="py-4">
+          {selectedAttendanceForApproval && (
+            <div className="space-y-4">
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h4 className="text-sm font-medium text-gray-900 mb-3">Attendance Information</h4>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-gray-600">Employee:</span>
+                    <span className="ml-2 font-medium text-gray-900">
+                      {selectedAttendanceForApproval.employeeId?.firstName} {selectedAttendanceForApproval.employeeId?.lastName}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Employee ID:</span>
+                    <span className="ml-2 font-medium text-gray-900">
+                      {selectedAttendanceForApproval.employeeId?.employeeId}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Date:</span>
+                    <span className="ml-2 font-medium text-gray-900">
+                      {new Date(selectedAttendanceForApproval.date).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Status:</span>
+                    <span className="ml-2 font-medium text-gray-900">
+                      {selectedAttendanceForApproval.status?.charAt(0).toUpperCase() + selectedAttendanceForApproval.status?.slice(1).replace('_', ' ')}
+                    </span>
+                  </div>
+                  {selectedAttendanceForApproval.checkIn?.time && (
+                    <div>
+                      <span className="text-gray-600">Check In:</span>
+                      <span className="ml-2 font-medium text-gray-900">
+                        {new Date(selectedAttendanceForApproval.checkIn.time).toLocaleTimeString('en-IN', {
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </span>
+                    </div>
+                  )}
+                  {selectedAttendanceForApproval.checkOut?.time && (
+                    <div>
+                      <span className="text-gray-600">Check Out:</span>
+                      <span className="ml-2 font-medium text-gray-900">
+                        {new Date(selectedAttendanceForApproval.checkOut.time).toLocaleTimeString('en-IN', {
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {approvalAction === 'reject' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Rejection Reason *
+                  </label>
+                  <TextArea
+                    value={rejectionReason}
+                    onChange={(e) => setRejectionReason(e.target.value)}
+                    placeholder="Please provide a reason for rejection..."
+                    rows={3}
+                    className="w-full"
+                  />
+                </div>
+              )}
+
+              {approvalAction === 'approve' && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                  <p className="text-sm text-green-800">
+                    This will mark the attendance as approved and the employee will be marked as present.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </CommonModal>
 

@@ -18,13 +18,13 @@ const PayrollPage = () => {
       id: 'employees',
       name: 'Employees',
       icon: HiBanknotes,
-      component: <PayrollTab showUsers={true} />
+      component: <PayrollTab showUsers={true} isPayrollTab={false} />
     },
     {
       id: 'payroll',
       name: 'Payroll',
       icon: HiCurrencyDollar,
-      component: <PayrollTab />
+      component: <PayrollTab isPayrollTab={true} />
     },
     {
       id: 'attendance',

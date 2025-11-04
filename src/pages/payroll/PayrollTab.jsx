@@ -2,27 +2,21 @@ import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import {
-  HiPlus,
   HiMagnifyingGlass,
   HiCurrencyDollar,
-  HiEye,
   HiPencil,
   HiTrash,
   HiCheckCircle,
   HiXMark,
   HiClock,
   HiUser,
-  HiBuildingOffice,
-  HiCalendar,
-  HiDocument
+  HiDocument,
+  HiEye
 } from 'react-icons/hi2';
-import { Button, Input, Select, Table, StatusBadge, Loading, StatCard, CommonModal, PayrollDetailsModal } from '../../components/common';
+import { Button, Input, Select, Table, StatusBadge, Loading, StatCard, CommonModal, PayslipModal, EmployeeDetailsModal, ActionButton } from '../../components/common';
 import {
-  getAllPayrolls,
-  deletePayroll,
-  approvePayroll,
-  rejectPayroll,
-  getPayrollStats
+  getPayrollStats,
+  getPayrollById
 } from '../../redux/actions/payrollActions';
 import {
   getAllUsers,
@@ -32,32 +26,22 @@ import {
   getAllAttendance
 } from '../../redux/actions/attendanceActions';
 import {
-  selectPayrolls,
-  selectPayrollLoading,
-  selectPayrollError,
-  selectPayrollStats,
-  selectPayrollPagination,
-  clearPayrollError
+  selectPayrollStats
 } from '../../redux/slices/payrollSlice';
 import {
   selectUsers,
   selectUserLoading,
-  selectUserError,
-  clearError as clearUserError
+  selectUserError
 } from '../../redux/slices/userSlice';
 import { addNotification } from '../../redux/slices/uiSlice';
 import api from '../../lib/axiosInstance';
 
-const PayrollTab = ({ showUsers = true }) => {
+const PayrollTab = ({ showUsers = true, isPayrollTab = false }) => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   
   // Redux state
-  const payrolls = useSelector(selectPayrolls);
-  const loading = useSelector(selectPayrollLoading);
-  const error = useSelector(selectPayrollError);
   const stats = useSelector(selectPayrollStats);
-  const pagination = useSelector(selectPayrollPagination);
   
   // User state (when showing users)
   const users = useSelector(selectUsers);
@@ -73,12 +57,18 @@ const PayrollTab = ({ showUsers = true }) => {
   // Local state
   const [searchTerm, setSearchTerm] = useState('');
   const [branchFilter, setBranchFilter] = useState('all');
+  const [monthFilter, setMonthFilter] = useState(String(new Date().getMonth() + 1)); // Default to current month
+  const [yearFilter, setYearFilter] = useState(new Date().getFullYear().toString());
   const [currentPage, setCurrentPage] = useState(1);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [payrollToDelete, setPayrollToDelete] = useState(null);
   const [branches, setBranches] = useState([]);
-  const [showPayrollModal, setShowPayrollModal] = useState(false);
-  const [selectedPayrollId, setSelectedPayrollId] = useState(null);
+  const [showPayslipModal, setShowPayslipModal] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState(null);
+  const [selectedUserAttendanceData, setSelectedUserAttendanceData] = useState(null);
+  const [selectedUserPayrollData, setSelectedUserPayrollData] = useState(null);
+  const [showEmployeeDetailsModal, setShowEmployeeDetailsModal] = useState(false);
+  const [selectedEmployee, setSelectedEmployee] = useState(null);
 
   // Load branches data
   const loadBranches = async () => {
@@ -104,18 +94,22 @@ const PayrollTab = ({ showUsers = true }) => {
     
     // Also load payroll stats for the summary cards
     dispatch(getPayrollStats({
-      branchId: branchFilter !== 'all' ? branchFilter : undefined
+      branchId: branchFilter !== 'all' ? branchFilter : undefined,
+      year: yearFilter,
+      month: monthFilter !== 'all' ? monthFilter : undefined
     }));
     
     // Fetch attendance data for all employees
     dispatch(getAllAttendance({
       page: 1,
       limit: 1000, // Get all attendance records
-      branchId: branchFilter !== 'all' ? branchFilter : undefined
+      branchId: branchFilter !== 'all' ? branchFilter : undefined,
+      month: monthFilter !== 'all' ? monthFilter : undefined,
+      year: yearFilter
     }));
     
     loadBranches();
-  }, [currentPage, searchTerm, branchFilter, dispatch]);
+  }, [currentPage, searchTerm, branchFilter, monthFilter, yearFilter, dispatch]);
 
   // Handle search
   const handleSearch = (e) => {
@@ -128,6 +122,12 @@ const PayrollTab = ({ showUsers = true }) => {
     switch (filterType) {
       case 'branch':
         setBranchFilter(value);
+        break;
+      case 'month':
+        setMonthFilter(value);
+        break;
+      case 'year':
+        setYearFilter(value);
         break;
       default:
         break;
@@ -147,28 +147,83 @@ const PayrollTab = ({ showUsers = true }) => {
     setShowDeleteModal(true);
   };
 
-  const handleViewPayroll = (payrollId) => {
-    setSelectedPayrollId(payrollId);
-    setShowPayrollModal(true);
-  };
 
-  const handleEditPayroll = (payrollId) => {
-    navigate(`/payrolls/edit/${payrollId}`);
-  };
-
-  const handleViewPayslip = (user) => {
-    // Navigate to payroll details page to view employee payslip information
-    navigate(`/payrolls/view/${user._id}`, {
-      state: {
-        attendanceData: getEmployeeAttendanceData(user._id)
+  const handleViewPayslip = async (user) => {
+    // Show payslip modal instead of navigating
+    const attendanceData = getEmployeeAttendanceData(user._id);
+    setSelectedUserId(user._id);
+    setSelectedUserAttendanceData(attendanceData);
+    
+    // Ensure we have payroll data - fetch if not available
+    let payrollData = user.payrollData;
+    
+    if (!payrollData && user._id) {
+      try {
+        // Try to fetch payroll data
+        const result = await dispatch(getPayrollById(user._id)).unwrap();
+        if (result?.data?.payroll) {
+          payrollData = result.data.payroll;
+        }
+      } catch (error) {
+        console.error('Failed to fetch payroll data:', error);
       }
-    });
+    }
+    
+    setSelectedUserPayrollData(payrollData);
+    setShowPayslipModal(true);
   };
 
-  const handleClosePayrollModal = () => {
-    setShowPayrollModal(false);
-    setSelectedPayrollId(null);
+  const handleViewEmployee = async (user) => {
+    // If user doesn't have payrollData, try to fetch it
+    let employeeData = { ...user };
+    
+    if (!user.payrollData && user._id) {
+      try {
+        // Try to fetch payroll data by user ID
+        const result = await dispatch(getPayrollById(user._id)).unwrap();
+        if (result?.data?.payroll) {
+          const payroll = result.data.payroll;
+          // Transform payroll to match the expected structure
+          employeeData.payrollData = {
+            _id: payroll._id,
+            payrollId: payroll.payrollId,
+            basicSalary: payroll.basicSalary,
+            calculations: payroll.calculations,
+            deductions: payroll.deductions,
+            bankDetails: payroll.bankDetails,
+            pfDetails: payroll.pfDetails,
+            panDetails: payroll.panDetails,
+            address: payroll.address,
+            dateOfBirth: payroll.dateOfBirth,
+            payment: payroll.payment,
+            status: payroll.status,
+            payPeriod: payroll.payPeriod,
+            attendance: payroll.attendance,
+            employeeName: payroll.employeeName,
+            employeeId: payroll.employeeId,
+            email: payroll.email,
+            designation: payroll.designation
+          };
+        }
+      } catch (error) {
+        console.error('Failed to fetch payroll data:', error);
+        // Continue with user data even if payroll fetch fails
+      }
+    }
+    
+    setSelectedEmployee(employeeData);
+    setShowEmployeeDetailsModal(true);
   };
+
+  const handleEditEmployee = (user) => {
+    navigate(`/payrolls/edit/${user._id}`);
+  };
+
+  const handleDeleteEmployee = (user) => {
+    setPayrollToDelete(user);
+    setShowDeleteModal(true);
+  };
+
 
   const confirmDeletePayroll = async () => {
     if (payrollToDelete) {
@@ -195,6 +250,7 @@ const PayrollTab = ({ showUsers = true }) => {
   };
 
   // Helper function to get attendance data for an employee
+  // Filters attendance based on selected month and year
   const getEmployeeAttendanceData = (employeeId) => {
     if (!attendance || !Array.isArray(attendance)) {
       // Return zero data when attendance is not loaded
@@ -210,11 +266,39 @@ const PayrollTab = ({ showUsers = true }) => {
       };
     }
     
-    const employeeAttendance = attendance.filter(record => 
+    // Get selected month and year for filtering
+    const selectedMonth = monthFilter !== 'all' ? parseInt(monthFilter) : null;
+    const selectedYear = parseInt(yearFilter);
+    
+    // Filter attendance records for this employee
+    let employeeAttendance = attendance.filter(record => 
       record.employeeId?._id === employeeId || record.employeeId === employeeId
     );
     
-    // Calculate summary data
+    // Filter by selected month and year if filters are set
+    // This is a client-side double-check since backend already filters, but ensures data consistency
+    if (selectedMonth && selectedYear) {
+      employeeAttendance = employeeAttendance.filter(record => {
+        if (!record.date) return false;
+        const recordDate = new Date(record.date);
+        // Check if date is valid
+        if (isNaN(recordDate.getTime())) return false;
+        const recordMonth = recordDate.getMonth() + 1; // getMonth() returns 0-11
+        const recordYear = recordDate.getFullYear();
+        return recordMonth === selectedMonth && recordYear === selectedYear;
+      });
+    } else if (selectedYear) {
+      // If only year is selected, filter by year
+      employeeAttendance = employeeAttendance.filter(record => {
+        if (!record.date) return false;
+        const recordDate = new Date(record.date);
+        // Check if date is valid
+        if (isNaN(recordDate.getTime())) return false;
+        return recordDate.getFullYear() === selectedYear;
+      });
+    }
+    
+    // Calculate summary data for filtered attendance
     const totalDays = employeeAttendance.length;
     const presentDays = employeeAttendance.filter(record => 
       record.status === 'present' || record.status === 'approved'
@@ -229,12 +313,17 @@ const PayrollTab = ({ showUsers = true }) => {
       record.status === 'half_day'
     ).length;
     
-    // Get latest attendance record for current month
-    const currentMonth = new Date().getMonth() + 1;
-    const currentYear = new Date().getFullYear();
-    const currentMonthAttendance = employeeAttendance.filter(record => {
+    // For "This Month" column, use the filtered data (selected month/year)
+    // If month filter is set, use that; otherwise use current month
+    let filteredMonth = selectedMonth || new Date().getMonth() + 1;
+    let filteredYear = selectedYear || new Date().getFullYear();
+    
+    const filteredMonthAttendance = employeeAttendance.filter(record => {
+      if (!record.date) return false;
       const recordDate = new Date(record.date);
-      return recordDate.getMonth() + 1 === currentMonth && recordDate.getFullYear() === currentYear;
+      // Check if date is valid
+      if (isNaN(recordDate.getTime())) return false;
+      return recordDate.getMonth() + 1 === filteredMonth && recordDate.getFullYear() === filteredYear;
     });
     
     return {
@@ -243,49 +332,13 @@ const PayrollTab = ({ showUsers = true }) => {
       absentDays,
       lateDays,
       halfDays,
-      currentMonthAttendance: currentMonthAttendance.length,
-      currentMonthPresent: currentMonthAttendance.filter(record => 
+      currentMonthAttendance: filteredMonthAttendance.length,
+      currentMonthPresent: filteredMonthAttendance.filter(record => 
         record.status === 'present' || record.status === 'approved'
       ).length,
       attendancePercentage: totalDays > 0 ? Math.round((presentDays / totalDays) * 100) : 0
     };
   };
-
-  // Handle approve
-  const handleApprovePayroll = async (payrollId) => {
-    try {
-      await dispatch(approvePayroll(payrollId)).unwrap();
-      dispatch(addNotification({
-        type: 'success',
-        message: 'Payroll approved successfully'
-      }));
-    } catch (error) {
-      dispatch(addNotification({
-        type: 'error',
-        message: error || 'Failed to approve payroll'
-      }));
-    }
-  };
-
-  // Handle reject
-  const handleRejectPayroll = async (payrollId) => {
-    const reason = prompt('Please enter rejection reason:');
-    if (reason) {
-      try {
-        await dispatch(rejectPayroll({ id: payrollId, rejectionReason: reason })).unwrap();
-        dispatch(addNotification({
-          type: 'success',
-          message: 'Payroll rejected successfully'
-        }));
-      } catch (error) {
-        dispatch(addNotification({
-          type: 'error',
-          message: error || 'Failed to reject payroll'
-        }));
-      }
-    }
-  };
-
 
   // Table columns - now both data sources use user format
   const columns = [
@@ -328,16 +381,6 @@ const PayrollTab = ({ showUsers = true }) => {
         <div className="text-sm text-gray-900">
           {user.branch?.branchName || 'N/A'}
         </div>
-      )
-    },
-    {
-      key: 'status',
-      label: 'Status',
-      render: (user) => (
-        <StatusBadge
-          status={user.isActive ? 'active' : 'inactive'}
-          variant={user.isActive ? 'success' : 'danger'}
-        />
       )
     },
     {
@@ -385,7 +428,9 @@ const PayrollTab = ({ showUsers = true }) => {
     },
     {
       key: 'currentMonth',
-      label: 'This Month',
+      label: monthFilter !== 'all' ? 
+        new Date(parseInt(yearFilter), parseInt(monthFilter) - 1, 1).toLocaleDateString('en-US', { month: 'long' }) : 
+        'This Month',
       render: (user) => {
         if (isAttendanceLoading) {
           return (
@@ -462,15 +507,43 @@ const PayrollTab = ({ showUsers = true }) => {
       label: 'Actions',
       render: (user) => (
         <div className="flex items-center space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handleViewPayslip(user)}
-            className="flex items-center space-x-1"
-          >
-            <HiDocument className="h-4 w-4" />
-            <span>View Payslip</span>
-          </Button>
+          {isPayrollTab ? (
+            // Payroll tab: Show View Payslip button
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleViewPayslip(user)}
+              className="flex items-center space-x-1"
+            >
+              <HiDocument className="h-4 w-4" />
+              <span>View Payslip</span>
+            </Button>
+          ) : (
+            // Employees tab: Show view, edit, delete icons
+            <>
+              <ActionButton
+                icon={HiEye}
+                onClick={() => handleViewEmployee(user)}
+                variant="view"
+                size="sm"
+                title="View Employee Details"
+              />
+              <ActionButton
+                icon={HiPencil}
+                onClick={() => handleEditEmployee(user)}
+                variant="edit"
+                size="sm"
+                title="Edit Employee"
+              />
+              <ActionButton
+                icon={HiTrash}
+                onClick={() => handleDeleteEmployee(user)}
+                variant="delete"
+                size="sm"
+                title="Delete Employee"
+              />
+            </>
+          )}
         </div>
       )
     }
@@ -483,6 +556,32 @@ const PayrollTab = ({ showUsers = true }) => {
       value: branch._id,
       label: `${branch.branchName} (${branch.branchCode})`
     }))
+  ];
+
+  // Month options
+  const monthOptions = [
+    { value: 'all', label: 'All Months' },
+    { value: '1', label: 'January' },
+    { value: '2', label: 'February' },
+    { value: '3', label: 'March' },
+    { value: '4', label: 'April' },
+    { value: '5', label: 'May' },
+    { value: '6', label: 'June' },
+    { value: '7', label: 'July' },
+    { value: '8', label: 'August' },
+    { value: '9', label: 'September' },
+    { value: '10', label: 'October' },
+    { value: '11', label: 'November' },
+    { value: '12', label: 'December' }
+  ];
+
+  // Year options (current year and 2 years before)
+  const currentYear = new Date().getFullYear();
+  const yearOptions = [
+    { value: (currentYear - 2).toString(), label: (currentYear - 2).toString() },
+    { value: (currentYear - 1).toString(), label: (currentYear - 1).toString() },
+    { value: currentYear.toString(), label: currentYear.toString() },
+    { value: (currentYear + 1).toString(), label: (currentYear + 1).toString() }
   ];
 
 
@@ -602,10 +701,22 @@ const PayrollTab = ({ showUsers = true }) => {
                 options={branchOptions}
                 className="w-full sm:w-40"
               />
+              <Select
+                value={monthFilter}
+                onChange={(value) => handleFilterChange('month', value)}
+                options={monthOptions}
+                className="w-full sm:w-40"
+              />
+              <Select
+                value={yearFilter}
+                onChange={(value) => handleFilterChange('year', value)}
+                options={yearOptions}
+                className="w-full sm:w-32"
+              />
             </div>
           </div>
         </div>
-        <div className="overflow-x-auto">
+        <div className="overflow-hidden">
           <Table
             data={currentData || []}
             columns={columns}
@@ -672,24 +783,30 @@ const PayrollTab = ({ showUsers = true }) => {
         </div>
       </CommonModal>
 
-      {/* Payroll Details Modal */}
-      <PayrollDetailsModal
-        isOpen={showPayrollModal}
-        onClose={handleClosePayrollModal}
-        payrollId={selectedPayrollId}
-        onEdit={handleEditPayroll}
-        onDelete={() => {
-          handleClosePayrollModal();
-          // Refresh the payroll list after deletion
-          dispatch(getAllPayrolls({
-            page: currentPage,
-            limit: 10,
-            search: searchTerm,
-            branchId: branchFilter !== 'all' ? branchFilter : undefined,
-            year: yearFilter,
-            month: monthFilter !== 'all' ? monthFilter : undefined,
-          }));
+      {/* Payslip Modal */}
+      <PayslipModal
+        isOpen={showPayslipModal}
+        onClose={() => {
+          setShowPayslipModal(false);
+          setSelectedUserId(null);
+          setSelectedUserAttendanceData(null);
+          setSelectedUserPayrollData(null);
         }}
+        userId={selectedUserId}
+        attendanceData={selectedUserAttendanceData}
+        initialPayrollData={selectedUserPayrollData}
+      />
+
+      {/* Employee Details Modal */}
+      <EmployeeDetailsModal
+        isOpen={showEmployeeDetailsModal}
+        onClose={() => {
+          setShowEmployeeDetailsModal(false);
+          setSelectedEmployee(null);
+        }}
+        employee={selectedEmployee}
+        onEdit={handleEditEmployee}
+        onDelete={handleDeleteEmployee}
       />
     </div>
   );

@@ -113,7 +113,7 @@ const AttendanceModal = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999] overflow-y-auto">
+    <div className="fixed inset-0 z-[9999] overflow-hidden">
       <div className="flex min-h-full items-center justify-center p-4 text-center sm:p-0 sm:items-center">
         {/* Backdrop */}
         <div
@@ -122,11 +122,11 @@ const AttendanceModal = ({ isOpen, onClose }) => {
         ></div>
 
         {/* Modal Content */}
-        <div className="relative transform overflow-hidden rounded-2xl bg-white text-left shadow-2xl transition-all w-full max-w-md z-[9999] mx-auto my-8">
+        <div className="relative transform overflow-y-auto max-h-[90vh] rounded-2xl bg-white text-left shadow-2xl transition-all w-full max-w-md z-[9999] mx-auto">
           {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+          <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gradient-to-r from-green-50 to-green-100">
             <div className="flex items-center space-x-3">
-              <div className="h-12 w-12 bg-blue-500 rounded-xl flex items-center justify-center shadow-lg">
+              <div className="h-12 w-12 bg-green-600 rounded-xl flex items-center justify-center shadow-lg">
                 <HiClock className="h-6 w-6 text-white" />
               </div>
               <div>
@@ -143,87 +143,78 @@ const AttendanceModal = ({ isOpen, onClose }) => {
           </div>
 
           {/* Content */}
-          <div className="p-6">
+          <div className="p-4">
             {loading && <Loading />}
             
             {error && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-sm text-red-600">{error}</p>
+              <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-xs text-red-600">{error}</p>
               </div>
             )}
 
             {success && (
-              <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-                <p className="text-sm text-green-600">{success}</p>
+              <div className="mb-3 p-2 bg-green-50 border border-green-200 rounded-lg">
+                <p className="text-xs text-green-600">{success}</p>
               </div>
             )}
 
-            {/* Current Status */}
-            <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-              <h3 className="text-sm font-medium text-gray-900 mb-3">Today's Status</h3>
-              <div className="space-y-2 text-sm">
-                {todayAttendance?.checkIn?.time ? (
-                  <>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Check In:</span>
-                      <span className="font-medium">
-                        {new Date(todayAttendance.checkIn.time).toLocaleTimeString('en-IN', {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                          hour12: true
-                        })}
-                      </span>
-                    </div>
-                    {todayAttendance.checkOut?.time && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Check Out:</span>
-                        <span className="font-medium">
-                          {new Date(todayAttendance.checkOut.time).toLocaleTimeString('en-IN', {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                            hour12: true
-                          })}
-                        </span>
-                      </div>
-                    )}
-                    {todayAttendance.breakTime?.start?.time && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Break Start:</span>
-                        <span className="font-medium">
-                          {new Date(todayAttendance.breakTime.start.time).toLocaleTimeString('en-IN', {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                            hour12: true
-                          })}
-                        </span>
-                      </div>
-                    )}
-                    {todayAttendance.breakTime?.end?.time && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Break End:</span>
-                        <span className="font-medium">
-                          {new Date(todayAttendance.breakTime.end.time).toLocaleTimeString('en-IN', {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                            hour12: true
-                          })}
-                        </span>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <div className="text-center py-2">
-                    <span className="text-gray-500">No attendance recorded today</span>
+            {/* Today's Status - Inline display without box */}
+            {todayAttendance?.checkIn?.time && (
+              <div className="mb-4 text-sm">
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600">Check In:</span>
+                  <span className="font-medium text-gray-900">
+                    {new Date(todayAttendance.checkIn.time).toLocaleTimeString('en-IN', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      hour12: true
+                    })}
+                  </span>
+                </div>
+                {todayAttendance.checkOut?.time && (
+                  <div className="flex justify-between items-center mt-2">
+                    <span className="text-gray-600">Check Out:</span>
+                    <span className="font-medium text-gray-900">
+                      {new Date(todayAttendance.checkOut.time).toLocaleTimeString('en-IN', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: true
+                      })}
+                    </span>
+                  </div>
+                )}
+                {todayAttendance.breakTime?.start?.time && (
+                  <div className="flex justify-between items-center mt-2">
+                    <span className="text-gray-600">Break Start:</span>
+                    <span className="font-medium text-gray-900">
+                      {new Date(todayAttendance.breakTime.start.time).toLocaleTimeString('en-IN', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: true
+                      })}
+                    </span>
+                  </div>
+                )}
+                {todayAttendance.breakTime?.end?.time && (
+                  <div className="flex justify-between items-center mt-2">
+                    <span className="text-gray-600">Break End:</span>
+                    <span className="font-medium text-gray-900">
+                      {new Date(todayAttendance.breakTime.end.time).toLocaleTimeString('en-IN', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: true
+                      })}
+                    </span>
                   </div>
                 )}
               </div>
-            </div>
+            )}
 
             {/* Form Fields - Only show for check-in */}
             {status === 'not_checked_in' && (
-              <div className="space-y-5">
+              <div className="space-y-3">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                  <label className="block text-sm font-semibold text-gray-800 mb-2 flex items-center">
                     <span className="w-2 h-2 bg-red-500 rounded-full mr-2"></span>
                     Work Type *
                   </label>
@@ -242,7 +233,7 @@ const AttendanceModal = ({ isOpen, onClose }) => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                  <label className="block text-sm font-semibold text-gray-800 mb-2 flex items-center">
                     <span className="w-2 h-2 bg-red-500 rounded-full mr-2"></span>
                     Location *
                   </label>
@@ -251,12 +242,12 @@ const AttendanceModal = ({ isOpen, onClose }) => {
                     onChange={(e) => setLocation(e.target.value)}
                     placeholder="Enter your current location"
                     icon={HiMapPin}
-                    className="px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                    className="px-3 py-2 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                  <label className="block text-sm font-semibold text-gray-800 mb-2 flex items-center">
                     <span className="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
                     Time
                   </label>
@@ -265,7 +256,7 @@ const AttendanceModal = ({ isOpen, onClose }) => {
                     value={manualTime}
                     onChange={(e) => setManualTime(e.target.value)}
                     placeholder="HH:MM AM/PM"
-                    className="px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                    className="px-3 py-2 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                   />
                   <p className="text-xs text-gray-500 mt-1">Current time is automatically set, but you can adjust it manually (e.g., 09:30 AM)</p>
                 </div>
@@ -274,9 +265,9 @@ const AttendanceModal = ({ isOpen, onClose }) => {
 
             {/* Show location and time fields for break actions */}
             {(status === 'checked_in' || status === 'on_break') && (
-              <div className="space-y-5">
+              <div className="space-y-3">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                  <label className="block text-sm font-semibold text-gray-800 mb-2 flex items-center">
                     <span className="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
                     Current Location
                   </label>
@@ -285,12 +276,12 @@ const AttendanceModal = ({ isOpen, onClose }) => {
                     onChange={(e) => setLocation(e.target.value)}
                     placeholder="Enter your current location"
                     icon={HiMapPin}
-                    className="px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                    className="px-3 py-2 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                  <label className="block text-sm font-semibold text-gray-800 mb-2 flex items-center">
                     <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
                     Time
                   </label>
@@ -299,7 +290,7 @@ const AttendanceModal = ({ isOpen, onClose }) => {
                     value={manualTime}
                     onChange={(e) => setManualTime(e.target.value)}
                     placeholder="HH:MM AM/PM"
-                    className="px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                    className="px-3 py-2 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                   />
                   <p className="text-xs text-gray-500 mt-1">Current time is automatically set, but you can adjust it manually (e.g., 09:30 AM)</p>
                 </div>
@@ -308,8 +299,8 @@ const AttendanceModal = ({ isOpen, onClose }) => {
 
             {/* Remarks field - show for all statuses except checked out */}
             {status !== 'checked_out' && (
-              <div>
-                <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center">
+              <div className="mt-3">
+                <label className="block text-sm font-semibold text-gray-800 mb-2 flex items-center">
                   <span className="w-2 h-2 bg-gray-400 rounded-full mr-2"></span>
                   Remarks
                 </label>
@@ -323,28 +314,28 @@ const AttendanceModal = ({ isOpen, onClose }) => {
                       ? "Break notes or comments..."
                       : "Checkout notes or comments..."
                   }
-                  rows={3}
-                  className="px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 resize-none"
+                  rows={2}
+                  className="px-3 py-2 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 resize-none"
                 />
               </div>
             )}
 
             {/* Action Buttons */}
-            <div className="mt-8 space-y-3">
+            <div className="mt-4 space-y-2">
               {status === 'not_checked_in' && (
                 <Button
                   onClick={handleCheckIn}
                   disabled={loading || !workType.trim() || !location.trim()}
-                  className="w-full bg-green-600 hover:bg-green-700 text-white py-4 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
+                  className="w-full bg-green-600 hover:bg-green-700 text-white py-2.5 text-sm font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
                 >
                   {loading ? 'Processing...' : '✅ Check In'}
                 </Button>
               )}
 
               {status === 'checked_in' && (
-                <div className="space-y-3">
-                  <div className="text-center mb-4">
-                    <div className="inline-flex items-center px-4 py-2 bg-green-100 text-green-800 rounded-full text-sm font-medium">
+                <div className="space-y-2">
+                  <div className="text-center mb-2">
+                    <div className="inline-flex items-center px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
                       ✅ Checked In - {todayAttendance?.checkIn?.time ? new Date(todayAttendance.checkIn.time).toLocaleTimeString('en-IN', {
                         hour: '2-digit',
                         minute: '2-digit',
@@ -355,14 +346,14 @@ const AttendanceModal = ({ isOpen, onClose }) => {
                   <Button
                     onClick={handleStartBreak}
                     disabled={loading || !location.trim()}
-                    className="w-full bg-yellow-500 hover:bg-yellow-600 text-white py-3 text-base font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
+                    className="w-full bg-yellow-500 hover:bg-yellow-600 text-white py-2.5 text-sm font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
                   >
                     ⏸️ Start Break
                   </Button>
                   <Button
                     onClick={handleCheckOut}
                     disabled={loading}
-                    className="w-full bg-red-600 hover:bg-red-700 text-white py-3 text-base font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
+                    className="w-full bg-red-600 hover:bg-red-700 text-white py-2.5 text-sm font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
                   >
                     🏁 Check Out
                   </Button>
@@ -370,9 +361,9 @@ const AttendanceModal = ({ isOpen, onClose }) => {
               )}
 
               {status === 'on_break' && (
-                <div className="space-y-3">
-                  <div className="text-center mb-4">
-                    <div className="inline-flex items-center px-4 py-2 bg-yellow-100 text-yellow-800 rounded-full text-sm font-medium">
+                <div className="space-y-2">
+                  <div className="text-center mb-2">
+                    <div className="inline-flex items-center px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-medium">
                       ⏸️ On Break - {todayAttendance?.breakTime?.start?.time ? new Date(todayAttendance.breakTime.start.time).toLocaleTimeString('en-IN', {
                         hour: '2-digit',
                         minute: '2-digit',
@@ -383,7 +374,7 @@ const AttendanceModal = ({ isOpen, onClose }) => {
                   <Button
                     onClick={handleEndBreak}
                     disabled={loading}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 text-sm font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
                   >
                     {loading ? 'Processing...' : '▶️ End Break'}
                   </Button>
