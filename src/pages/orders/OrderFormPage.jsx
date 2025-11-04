@@ -337,6 +337,43 @@ const OrderFormPage = () => {
         codCharges: value === 'cod' ? prev.codCharges : 0,
         bankAccountId: ['card', 'netbanking'].includes(value) ? prev.bankAccountId : ''
       }));
+      // Trigger branch details refresh when payment method changes (if branch is already selected)
+      // The useEffect will handle the actual fetch, but we need to ensure it triggers
+      if (formData.branchId && selectedBranchDetails) {
+        // Branch details are already loaded, just ensure they're available
+        // The conditional rendering will show bank account or ready cash based on payment method
+        // If payment method requires bank account and only one exists, auto-select it
+        if (['card', 'netbanking'].includes(value)) {
+          const bankAccounts = Array.isArray(selectedBranchDetails.bankAccounts) && selectedBranchDetails.bankAccounts.length > 0
+            ? selectedBranchDetails.bankAccounts
+            : (selectedBranchDetails.bankName || selectedBranchDetails.bankAccountNumber)
+              ? [{
+                  _id: 'single',
+                  bankName: selectedBranchDetails.bankName,
+                  bankAccountHolder: selectedBranchDetails.bankAccountHolder,
+                  bankAccountNumber: selectedBranchDetails.bankAccountNumber,
+                  bankIfsc: selectedBranchDetails.bankIfsc,
+                  bankBranch: selectedBranchDetails.bankBranch
+                }]
+              : [];
+          if (bankAccounts.length === 1 && !formData.bankAccountId) {
+            setFormData(prev => ({
+              ...prev,
+              bankAccountId: bankAccounts[0]._id || 'single'
+            }));
+          }
+        }
+      } else if (formData.branchId && !selectedBranchDetails) {
+        // Branch is selected but details not loaded yet - trigger fetch
+        dispatch(getBranchById(formData.branchId)).then((result) => {
+          const branchData = result.payload?.data?.branch || result.payload?.data;
+          if (branchData) {
+            setSelectedBranchDetails(branchData);
+          }
+        }).catch((error) => {
+          console.error('Error fetching branch details:', error);
+        });
+      }
     } else if (field === 'branchId') {
       // When branch changes, reset bank account selection
       setFormData(prev => ({
@@ -1368,7 +1405,7 @@ const OrderFormPage = () => {
                     className="w-full"
                   />
                 </div>
-                {/* Bank Account Selection - Show only for Card or Net Banking (Cash goes to Ready Cash) */}
+                {/* Bank Account Selection - Show only for Card or Net Banking */}
                 {['card', 'netbanking'].includes(formData.paymentMethod) && formData.branchId && selectedBranchDetails && (
                   <div className="w-full flex flex-col">
                     {(() => {
@@ -1414,7 +1451,7 @@ const OrderFormPage = () => {
                                 Holder: {account.bankAccountHolder || 'N/A'}
                               </div>
                             </div>
-                            <input type="hidden" value={account._id || 'single'} />
+                            <input type="hidden" value={account._id || 'single'} name="bankAccountId" />
                           </div>
                         );
                       }
@@ -1428,7 +1465,7 @@ const OrderFormPage = () => {
                       return (
                         <div className="w-full flex flex-col">
                           <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                            Bank Account
+                            Bank Account *
                           </label>
                           <Select
                             options={bankAccountOptions}
@@ -1441,6 +1478,26 @@ const OrderFormPage = () => {
                         </div>
                       );
                     })()}
+                  </div>
+                )}
+                
+                {/* Ready Cash Display - Show for Cash, UPI, and COD */}
+                {['cash', 'upi', 'cod'].includes(formData.paymentMethod) && formData.branchId && selectedBranchDetails && (
+                  <div className="w-full flex flex-col">
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      Ready Cash
+                    </label>
+                    <div className="text-sm text-gray-900 p-2 bg-green-50 rounded border border-green-200">
+                      <div className="font-medium text-green-800">
+                        {selectedBranchDetails.readyCashAmount !== undefined && selectedBranchDetails.readyCashAmount !== null
+                          ? `₹${parseFloat(selectedBranchDetails.readyCashAmount).toLocaleString()}`
+                          : '₹0.00'
+                        }
+                      </div>
+                      <div className="text-xs text-green-600 mt-1">
+                        Payment will be added to branch's ready cash
+                      </div>
+                    </div>
                   </div>
                 )}
                 {isEdit && (
