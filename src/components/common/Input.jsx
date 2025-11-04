@@ -131,15 +131,11 @@ export const Select = ({
   name,
   ...props
 }) => {
-  // Handle the onChange to extract value from event and pass it directly
+  // Handle the onChange - pass the synthetic event object directly to maintain compatibility
   const handleChange = (syntheticEvent) => {
     if (onChange) {
-      // Extract value from synthetic event object
-      const value = syntheticEvent?.target?.value !== undefined 
-        ? syntheticEvent.target.value 
-        : syntheticEvent;
-      // Pass the direct value to onChange (most components expect direct value)
-      onChange(value);
+      // Pass the synthetic event object directly so handleInputChange can access e.target.name and e.target.value
+      onChange(syntheticEvent);
     }
   };
 
