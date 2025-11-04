@@ -228,6 +228,9 @@ const AccountFormPage = () => {
         }));
       }
 
+      // Refresh accounts list after create/update
+      // Note: AccountsPage will refresh on navigation, but we refresh here too for immediate update
+      
       navigate('/accounts');
     } catch (error) {
       dispatch(addNotification({

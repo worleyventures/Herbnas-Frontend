@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   HiPlus,
   HiMagnifyingGlass,
@@ -38,6 +38,7 @@ import {
 
 const OrdersPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useDispatch();
   
   // Redux state
@@ -69,6 +70,19 @@ const OrdersPage = () => {
     dispatch(getOrderStats());
   }, [dispatch, currentPage, searchTerm, paymentStatusFilter]);
 
+  // Refresh orders when navigating to this page (e.g., returning from edit form)
+  useEffect(() => {
+    if (location.pathname === '/orders') {
+      dispatch(getAllOrders({
+        page: currentPage,
+        limit: 10,
+        search: searchTerm,
+        paymentStatus: paymentStatusFilter
+      }));
+      dispatch(getOrderStats());
+    }
+  }, [location.pathname, dispatch]);
+
   // Handle search
   const handleSearch = (e) => {
     setSearchTerm(e.target.value);
@@ -76,8 +90,8 @@ const OrdersPage = () => {
   };
 
   // Handle payment status filter
-  const handlePaymentStatusFilter = (value) => {
-    setPaymentStatusFilter(value);
+  const handlePaymentStatusFilter = (e) => {
+    setPaymentStatusFilter(e.target.value);
     setCurrentPage(1);
   };
 

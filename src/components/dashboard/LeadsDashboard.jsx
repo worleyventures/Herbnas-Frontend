@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   HiPlus,
   HiUser,
@@ -40,6 +40,7 @@ import LeadOwnership from './leads/LeadOwnership';
 
 const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [activeView, setActiveView] = useState(propActiveView || 'table');
   const [selectedLead, setSelectedLead] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -108,6 +109,20 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
       dispatch(getLeadStats());
     }
   }, [dispatch, isAuthenticated, user]);
+
+  // Refresh leads when navigating to this page (e.g., returning from edit form)
+  useEffect(() => {
+    if ((location.pathname === '/leads' || location.pathname === '/leads/table' || location.pathname === '/leads/pipeline') && isAuthenticated && user) {
+      dispatch(getAllLeads({
+        page: currentPage,
+        limit: itemsPerPage,
+        search: searchTerm,
+        leadStatus: filterStatus === 'all' ? '' : filterStatus,
+        dispatchedFrom: filterBranch === 'all' ? '' : filterBranch
+      }));
+      dispatch(getLeadStats());
+    }
+  }, [location.pathname, dispatch, isAuthenticated, user]);
 
   // Clear success/error messages after a delay and close modals on success
   useEffect(() => {
@@ -528,7 +543,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
             <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0">
               <Select
                 value={filterStatus}
-                onChange={(value) => setFilterStatus(value)}
+                onChange={(e) => setFilterStatus(e.target.value)}
                 options={[
                   { value: 'all', label: 'All Status' },
                   { value: 'qualified', label: 'Qualified' },
@@ -539,7 +554,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
               />
               <Select
                 value={filterBranch}
-                onChange={(value) => setFilterBranch(value)}
+                onChange={(e) => setFilterBranch(e.target.value)}
                 options={[
                   { value: 'all', label: 'All Branches' },
                   ...(branches?.map(branch => ({
@@ -782,7 +797,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
             <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0">
               <Select
                 value={filterStatus}
-                onChange={(value) => setFilterStatus(value)}
+                onChange={(e) => setFilterStatus(e.target.value)}
                 options={[
                   { value: 'all', label: 'All Status' },
                   { value: 'qualified', label: 'Qualified' },
@@ -796,7 +811,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
               />
               <Select
                   value={filterBranch}
-                  onChange={(value) => setFilterBranch(value)}
+                  onChange={(e) => setFilterBranch(e.target.value)}
                 options={[
                   { value: 'all', label: 'All Branches' },
                   ...(branches?.map(branch => ({

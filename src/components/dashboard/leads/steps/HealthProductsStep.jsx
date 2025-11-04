@@ -56,10 +56,13 @@ const HealthProductsStep = ({
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
+    if (showProductDropdown || showHealthIssueDropdown) {
+      // Use click event with capture phase to allow button clicks to complete first
+      document.addEventListener('click', handleClickOutside, true);
+      return () => {
+        document.removeEventListener('click', handleClickOutside, true);
+      };
+    }
   }, [showProductDropdown, showHealthIssueDropdown, setShowProductDropdown, setShowHealthIssueDropdown]);
 
   // Close product dropdown when pressing Escape

@@ -44,12 +44,12 @@ const ReceivedGoodsCRUD = ({
     };
 
     if (openStatusDropdown) {
-      document.addEventListener('mousedown', handleClickOutside);
+      // Use click event with capture phase to allow button clicks to complete first
+      document.addEventListener('click', handleClickOutside, true);
+      return () => {
+        document.removeEventListener('click', handleClickOutside, true);
+      };
     }
-    
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
   }, [openStatusDropdown]);
 
 
@@ -213,6 +213,10 @@ const ReceivedGoodsCRUD = ({
                       e.stopPropagation();
                       handleStatusUpdate(goods._id, option.value);
                       setOpenStatusDropdown(null);
+                    }}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
                     }}
                     className="block w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-blue-600 transition-colors"
                   >

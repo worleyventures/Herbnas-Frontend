@@ -119,6 +119,31 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
     }
   }, [dispatch, isAuthenticated, currentPage, itemsPerPage, searchTerm, filterProduct, filterStockStatus]);
 
+  // Refresh inventory when navigating to this page (e.g., returning from edit form)
+  useEffect(() => {
+    if (location.pathname === '/inventory' && isAuthenticated) {
+      dispatch(getAllRawMaterials({
+        page: currentPage,
+        limit: itemsPerPage,
+        search: searchTerm,
+        stockStatus: filterStockStatus === 'all' ? '' : filterStockStatus
+      }));
+      dispatch(getAllFinishedGoods({
+        page: currentPage,
+        limit: itemsPerPage,
+        search: searchTerm,
+        productId: filterProduct === 'all' ? '' : filterProduct,
+        stockStatus: filterStockStatus === 'all' ? '' : filterStockStatus
+      }));
+      dispatch(getInventoryStats());
+      if (isProductionManager) {
+        dispatch(getReceivedGoods({ page: 1, limit: 1000 }));
+      } else {
+        dispatch(getAllSentGoods({ page: 1, limit: 1000 }));
+      }
+    }
+  }, [location.pathname, dispatch, isAuthenticated]);
+
   // Handle success notifications
   useEffect(() => {
     if (success) {

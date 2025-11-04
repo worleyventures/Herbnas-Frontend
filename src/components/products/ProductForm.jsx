@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { HiShoppingBag, HiXMark, HiCheck, HiArrowLeft } from 'react-icons/hi2';
 import { Button, Input, Select, TextArea, InputWithDropdown } from '../common';
-import { createProduct, updateProduct } from '../../redux/actions/productActions';
+import { createProduct, updateProduct, getAllProducts } from '../../redux/actions/productActions';
 import { addNotification } from '../../redux/slices/uiSlice';
 
 const ProductForm = () => {
@@ -159,6 +159,8 @@ const ProductForm = () => {
           message: 'Product has been updated successfully',
           duration: 3000
         }));
+        // Refresh products list after update
+        await dispatch(getAllProducts({ isActive: true }));
       } else {
         await dispatch(createProduct(productData)).unwrap();
         dispatch(addNotification({
@@ -167,6 +169,8 @@ const ProductForm = () => {
           message: 'Product has been created successfully',
           duration: 3000
         }));
+        // Refresh products list after creation
+        await dispatch(getAllProducts({ isActive: true }));
       }
 
       navigate(returnTo);

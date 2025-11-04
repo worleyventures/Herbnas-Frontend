@@ -19,6 +19,7 @@ import {
   createOrder,
   updateOrder,
   getOrderById,
+  getAllOrders,
 } from '../../redux/actions/orderActions';
 import { getAllProducts } from '../../redux/actions/productActions';
 import { getAllBranches, getBranchById } from '../../redux/actions/branchActions';
@@ -748,6 +749,15 @@ const OrderFormPage = () => {
         }
       }
       
+      // Refresh orders list after create/update
+      await dispatch(getAllOrders({
+        page: 1,
+        limit: 10,
+        search: '',
+        paymentStatus: ''
+      }));
+      dispatch(getOrderStats());
+      
       navigate('/orders');
     } catch (error) {
       dispatch(addNotification({
@@ -1000,7 +1010,7 @@ const OrderFormPage = () => {
                       <Select
                         options={productOptions}
                         value={item.productId}
-                        onChange={(value) => handleItemChange(index, 'productId', value)}
+                        onChange={(e) => handleItemChange(index, 'productId', e)}
                         placeholder="Select product"
                         error={errors[`items.${index}.productId`]}
                         loading={productsLoading}

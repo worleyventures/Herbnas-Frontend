@@ -3,7 +3,7 @@ import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { HiArrowLeft, HiUser, HiEnvelope, HiPhone, HiKey, HiBuildingOffice2, HiExclamationTriangle, HiCheckCircle, HiEye, HiEyeSlash, HiXMark } from 'react-icons/hi2';
 import { Button, Input, Select } from '../../components/common';
-import { createUser, updateUser, getUserById, changeUserPassword } from '../../redux/actions/userActions';
+import { createUser, updateUser, getUserById, changeUserPassword, getAllUsers } from '../../redux/actions/userActions';
 import { getAllBranches } from '../../redux/actions/branchActions';
 import { clearError } from '../../redux/slices/userSlice';
 import { addNotification } from '../../redux/slices/uiSlice';
@@ -146,6 +146,8 @@ const UserFormPage = () => {
     try {
       if (mode === 'create') {
         await dispatch(createUser(userData)).unwrap();
+        // Refresh users list after creation
+        await dispatch(getAllUsers({ page: 1, limit: 1000 }));
       } else {
         // If password is provided, update password separately
         if (formData.password.trim()) {
@@ -155,6 +157,8 @@ const UserFormPage = () => {
           })).unwrap();
         }
         await dispatch(updateUser({ userId, userData })).unwrap();
+        // Refresh users list after update
+        await dispatch(getAllUsers({ page: 1, limit: 1000 }));
       }
       navigate('/users');
     } catch (error) {
