@@ -9,8 +9,9 @@ import {
 import { Button, Loading, CommonModal } from './index';
 import { getUserById } from '../../redux/actions/userActions';
 import { getAllAttendance } from '../../redux/actions/attendanceActions';
-import { getPayrollById } from '../../redux/actions/payrollActions';
+import { getPayrollById, getAllPayrolls } from '../../redux/actions/payrollActions';
 import { selectCurrentUser } from '../../redux/slices/userSlice';
+import api from '../../lib/axiosInstance';
 
 const PayslipModal = ({ isOpen, onClose, userId, attendanceData: initialAttendanceData, initialPayrollData }) => {
   const dispatch = useDispatch();
@@ -23,14 +24,222 @@ const PayslipModal = ({ isOpen, onClose, userId, attendanceData: initialAttendan
   const [attendanceData, setAttendanceData] = useState(initialAttendanceData || null);
   const [payrollData, setPayrollData] = useState(initialPayrollData || null);
 
+  // Calculate previous month from current date
+  const getPreviousMonth = () => {
+    const now = new Date();
+    let prevMonth = now.getMonth(); // 0-11 (current month)
+    let prevYear = now.getFullYear();
+    
+    // Calculate previous month
+    if (prevMonth === 0) {
+      // If current month is January (0), previous month is December (11) of previous year
+      prevMonth = 11;
+      prevYear -= 1;
+    } else {
+      prevMonth -= 1; // Otherwise, just subtract 1
+    }
+    
+    return {
+      month: prevMonth, // 0-11 format for Date constructor
+      year: prevYear,
+      monthNumber: prevMonth + 1 // 1-12 format for API
+    };
+  };
+
   // Load user and payroll data when modal opens
   useEffect(() => {
     if (isOpen && userId) {
       dispatch(getUserById(userId));
-      // Only fetch payroll if not already provided
-      if (!initialPayrollData) {
-        dispatch(getPayrollById(userId));
-      }
+      
+      // Always fetch and recalculate payroll for previous month based on attendance
+      const previousMonth = getPreviousMonth();
+      
+      const fetchAndRecalculatePayroll = async () => {
+        try {
+          // Get user info first to get employeeId
+          const userInfo = await api.get(`/users/${userId}`).catch(() => null);
+          const userEmployeeId = userInfo?.data?.data?.user?.employeeId || userId;
+          const userEmail = userInfo?.data?.data?.user?.email;
+          
+          // Calculate total days in month first
+          const date = new Date(previousMonth.year, previousMonth.monthNumber, 0);
+          let totalDaysInMonth = date.getDate();
+          
+          // Fetch attendance for previous month - try both userId and employeeId
+          let attendanceResponse = null;
+          let presentDays = 0;
+          
+          // Try fetching with userId first
+          try {
+            attendanceResponse = await api.get('/attendance', {
+              params: {
+                page: 1,
+                limit: 1000,
+                employeeId: userId,
+                month: previousMonth.monthNumber,
+                year: previousMonth.year
+              }
+            });
+          } catch (error) {
+            // If that fails, try with employeeId string
+            try {
+              attendanceResponse = await api.get('/attendance', {
+                params: {
+                  page: 1,
+                  limit: 1000,
+                  employeeId: userEmployeeId,
+                  month: previousMonth.monthNumber,
+                  year: previousMonth.year
+                }
+              });
+            } catch (err) {
+              console.error('Failed to fetch attendance:', err);
+            }
+          }
+          
+          // Calculate presentDays from attendance
+          if (attendanceResponse?.data?.success && attendanceResponse.data.data?.attendance) {
+            const monthAttendance = attendanceResponse.data.data.attendance;
+            // Filter for present/approved status
+            presentDays = monthAttendance.filter(record => {
+              const status = record.status?.toLowerCase();
+              return status === 'present' || status === 'approved';
+            }).length;
+            
+            console.log('Attendance data:', {
+              totalRecords: monthAttendance.length,
+              presentDays,
+              month: previousMonth.monthNumber,
+              year: previousMonth.year,
+              totalDaysInMonth,
+              records: monthAttendance.map(r => ({
+                date: r.date,
+                status: r.status,
+                employeeId: r.employeeId?._id || r.employeeId
+              }))
+            });
+          } else {
+            console.log('No attendance data found:', {
+              success: attendanceResponse?.data?.success,
+              hasData: !!attendanceResponse?.data?.data,
+              hasAttendance: !!attendanceResponse?.data?.data?.attendance,
+              response: attendanceResponse?.data
+            });
+          }
+          
+          // Fetch payroll for previous month (or use initial data if provided)
+          let payrollToUse = null;
+          
+          if (initialPayrollData) {
+            payrollToUse = { ...initialPayrollData };
+          } else {
+            // Fetch payroll for previous month
+            const response = await api.get('/payrolls', {
+              params: {
+                page: 1,
+                limit: 1000,
+                month: previousMonth.monthNumber,
+                year: previousMonth.year
+              }
+            });
+            
+            if (response.data?.success && response.data?.data?.users) {
+              // Find payroll for this employee
+              const employeePayroll = response.data.data.users.find(user => {
+                return user._id === userId || 
+                       user.employeeId === userEmployeeId ||
+                       user.employeeId === userId ||
+                       user.email === userEmail ||
+                       user.email === userId;
+              });
+              
+              if (employeePayroll?.payrollData) {
+                payrollToUse = { ...employeePayroll.payrollData };
+              }
+            }
+          }
+          
+          // If no payroll found, try getPayrollById
+          if (!payrollToUse) {
+            try {
+              const payrollResponse = await dispatch(getPayrollById(userId)).unwrap();
+              if (payrollResponse?.data?.payroll) {
+                payrollToUse = payrollResponse.data.payroll;
+              }
+            } catch (error) {
+              console.error('Failed to fetch payroll:', error);
+            }
+          }
+          
+          // Always recalculate based on attendance if we have payroll data
+          if (payrollToUse) {
+            const basicSalary = payrollToUse.basicSalary || 0;
+            
+            // Calculate prorated salary based on presentDays
+            let proratedBasicSalary = 0;
+            if (presentDays > 0 && totalDaysInMonth > 0 && basicSalary > 0) {
+              proratedBasicSalary = (presentDays / totalDaysInMonth) * basicSalary;
+            } else if (presentDays === 0) {
+              proratedBasicSalary = 0;
+            } else {
+              // If no attendance data, use existing grossSalary or basicSalary
+              proratedBasicSalary = payrollToUse.calculations?.grossSalary || basicSalary;
+            }
+            
+            // Calculate prorated deductions
+            const deductionPercentage = basicSalary > 0 ? proratedBasicSalary / basicSalary : 0;
+            const deductions = payrollToUse.deductions || {};
+            const totalDeductions = 
+              (deductions.providentFund || 0) * deductionPercentage +
+              (deductions.professionalTax || 0) * deductionPercentage +
+              (deductions.incomeTax || 0) * deductionPercentage +
+              (deductions.otherDeductions || 0) * deductionPercentage;
+            
+            // Update payroll with recalculated values
+            payrollToUse.attendance = {
+              ...payrollToUse.attendance,
+              presentDays: presentDays,
+              totalDays: totalDaysInMonth
+            };
+            
+            payrollToUse.calculations = {
+              ...payrollToUse.calculations,
+              grossSalary: proratedBasicSalary,
+              totalDeductions: totalDeductions,
+              netSalary: Math.max(0, proratedBasicSalary - totalDeductions)
+            };
+            
+            console.log('Recalculated payroll:', {
+              basicSalary,
+              presentDays,
+              totalDaysInMonth,
+              proratedBasicSalary,
+              totalDeductions,
+              netSalary: payrollToUse.calculations.netSalary
+            });
+            
+            // Update the payroll record in the database if it exists
+            if (payrollToUse._id) {
+              try {
+                await api.put(`/payrolls/${payrollToUse._id}`, {
+                  attendance: payrollToUse.attendance
+                });
+              } catch (error) {
+                console.error('Failed to update payroll attendance:', error);
+              }
+            }
+            
+            setPayrollData(payrollToUse);
+          } else {
+            console.log('No payroll data found for user:', userId);
+          }
+        } catch (error) {
+          console.error('Failed to fetch and recalculate payroll:', error);
+        }
+      };
+      
+      fetchAndRecalculatePayroll();
+      
       if (!initialAttendanceData) {
         dispatch(getAllAttendance({
           page: 1,
@@ -59,15 +268,21 @@ const PayslipModal = ({ isOpen, onClose, userId, attendanceData: initialAttendan
     }
   }, [userId, users, currentUser, payrollData]);
 
-  // Update payroll data when loaded
+  // Update payroll data when loaded - but don't override if we've already recalculated
   useEffect(() => {
-    // Use initial payroll data if provided, otherwise use currentPayroll from Redux
-    if (initialPayrollData) {
-      setPayrollData(initialPayrollData);
-    } else if (currentPayroll) {
-      setPayrollData(currentPayroll);
+    // Only update if payrollData is null/undefined (not already set by recalculation)
+    if (!payrollData) {
+      if (initialPayrollData) {
+        setPayrollData(initialPayrollData);
+      } else if (currentPayroll) {
+        // currentPayroll from Redux is the raw payroll object from getPayrollById
+        // It should have all fields directly: basicSalary, deductions, calculations, payment, etc.
+        setPayrollData(currentPayroll);
+      } else if (user && user.payrollData) {
+        setPayrollData(user.payrollData);
+      }
     }
-  }, [currentPayroll, initialPayrollData]);
+  }, [currentPayroll, initialPayrollData, user, payrollData]);
 
   // Calculate attendance data if not provided
   useEffect(() => {
@@ -134,43 +349,63 @@ const PayslipModal = ({ isOpen, onClose, userId, attendanceData: initialAttendan
     return labels[role] || role?.replace('_', ' ').toUpperCase() || 'N/A';
   };
 
-  // Get pay period from payroll data or use current month
+  // Helper function to get payroll data - handles both direct and nested structures
+  const getPayrollValue = (path) => {
+    if (!payrollData) return null;
+    // Try direct path first
+    let value = payrollData;
+    for (const key of path.split('.')) {
+      value = value?.[key];
+      if (value === undefined || value === null) break;
+    }
+    // If not found, try nested payrollData path
+    if ((value === undefined || value === null) && payrollData.payrollData) {
+      value = payrollData.payrollData;
+      for (const key of path.split('.')) {
+        value = value?.[key];
+        if (value === undefined || value === null) break;
+      }
+    }
+    return value;
+  };
+
+  // Get pay period from payroll data or use previous month
   const getPayPeriod = () => {
-    if (payrollData?.payPeriod?.month && payrollData?.payPeriod?.year) {
-      const month = payrollData.payPeriod.month;
-      const year = payrollData.payPeriod.year;
+    const payPeriod = payrollData?.payPeriod || payrollData?.payrollData?.payPeriod;
+    if (payPeriod?.month && payPeriod?.year) {
+      const month = payPeriod.month;
+      const year = payPeriod.year;
       const date = new Date(year, month - 1, 1); // month is 1-indexed, Date uses 0-indexed
       return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
     }
-    // Fallback to current month
-    return new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    // Fallback to previous month
+    const previousMonth = getPreviousMonth();
+    const date = new Date(previousMonth.year, previousMonth.month, 1);
+    return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   };
 
   // Calculate pay date as 5th of next month after pay period
   const getPayDate = () => {
     let payPeriodMonth, payPeriodYear;
     
-    if (payrollData?.payPeriod?.month && payrollData?.payPeriod?.year) {
-      payPeriodMonth = payrollData.payPeriod.month;
-      payPeriodYear = payrollData.payPeriod.year;
+    const payPeriod = payrollData?.payPeriod || payrollData?.payrollData?.payPeriod;
+    if (payPeriod?.month && payPeriod?.year) {
+      payPeriodMonth = payPeriod.month;
+      payPeriodYear = payPeriod.year;
     } else {
-      // Fallback to current month
-      const now = new Date();
-      payPeriodMonth = now.getMonth() + 1; // getMonth() returns 0-11
-      payPeriodYear = now.getFullYear();
+      // Fallback to previous month (current month - 1)
+      const previousMonth = getPreviousMonth();
+      payPeriodMonth = previousMonth.monthNumber;
+      payPeriodYear = previousMonth.year;
     }
     
-    // Calculate next month
-    let nextMonth = payPeriodMonth + 1;
-    let nextYear = payPeriodYear;
+    // Calculate pay date: 5th of current month (since pay period is previous month)
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1; // 1-12
+    const currentYear = now.getFullYear();
     
-    if (nextMonth > 12) {
-      nextMonth = 1;
-      nextYear += 1;
-    }
-    
-    // Return 5th of next month
-    const payDate = new Date(nextYear, nextMonth - 1, 5);
+    // Pay date is always 5th of current month for previous month's payslip
+    const payDate = new Date(currentYear, currentMonth - 1, 5);
     return payDate.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
   };
 
@@ -218,7 +453,7 @@ const PayslipModal = ({ isOpen, onClose, userId, attendanceData: initialAttendan
             </div>
 
             {/* Payslip Document */}
-            <div className="bg-white print:shadow-none print:border-0">
+            <div className="print:shadow-none print:border-0">
               {/* Payslip Header */}
               <div className="px-8 py-6 border-b-2 border-gray-200">
                 <div className="flex justify-between items-start">
@@ -292,108 +527,92 @@ const PayslipModal = ({ isOpen, onClose, userId, attendanceData: initialAttendan
                     <h4 className="text-md font-semibold text-gray-800 mb-3 text-green-600">Earnings</h4>
                     <div className="space-y-2">
                       <div className="flex justify-between">
-                        <span className="text-sm text-gray-600">Basic Salary</span>
+                        <span className="text-sm text-gray-600">Basic Salary (Monthly)</span>
                         <span className="text-sm font-medium text-gray-900">
-                          ₹{payrollData?.basicSalary?.toLocaleString('en-IN', { minimumFractionDigits: 2 }) || '0.00'}
+                          ₹{(getPayrollValue('basicSalary') || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-xs text-gray-500">
+                        <span>
+                          {(() => {
+                            const presentDays = getPayrollValue('attendance.presentDays') || 0;
+                            const totalDays = getPayrollValue('attendance.totalDays') || 
+                              (payrollData?.payPeriod?.month && payrollData?.payPeriod?.year ? 
+                                new Date(payrollData.payPeriod.year, payrollData.payPeriod.month, 0).getDate() : 31);
+                            return presentDays > 0 ? `Based on ${presentDays} days worked out of ${totalDays} days` : '';
+                          })()}
                         </span>
                       </div>
                       <div className="border-t border-gray-200 pt-2">
                         <div className="flex justify-between">
-                          <span className="text-sm font-semibold text-gray-800">Total Earnings</span>
+                          <span className="text-sm font-semibold text-gray-800">Total Earnings (Prorated)</span>
                           <span className="text-sm font-semibold text-gray-900">
-                            ₹{payrollData?.calculations?.grossSalary?.toLocaleString('en-IN', { minimumFractionDigits: 2 }) || payrollData?.basicSalary?.toLocaleString('en-IN', { minimumFractionDigits: 2 }) || '0.00'}
+                            ₹{(getPayrollValue('calculations.grossSalary') || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                           </span>
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  {/* Deductions - Only show if there are any deductions */}
-                  {(payrollData?.deductions?.providentFund > 0 || 
-                    payrollData?.deductions?.professionalTax > 0 || 
-                    payrollData?.deductions?.incomeTax > 0 || 
-                    payrollData?.deductions?.otherDeductions > 0 ||
-                    (payrollData?.calculations?.totalDeductions > 0)) && (
-                    <div>
-                      <h4 className="text-md font-semibold text-gray-800 mb-3 text-red-600">Deductions</h4>
-                      <div className="space-y-2">
-                        {payrollData?.deductions?.providentFund > 0 && (
-                          <div className="flex justify-between">
-                            <span className="text-sm text-gray-600">Provident Fund (PF)</span>
-                            <span className="text-sm font-medium text-gray-900">
-                              ₹{payrollData.deductions.providentFund.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                            </span>
-                          </div>
-                        )}
-                        {payrollData?.deductions?.professionalTax > 0 && (
-                          <div className="flex justify-between">
-                            <span className="text-sm text-gray-600">Professional Tax</span>
-                            <span className="text-sm font-medium text-gray-900">
-                              ₹{payrollData.deductions.professionalTax.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                            </span>
-                          </div>
-                        )}
-                        {payrollData?.deductions?.incomeTax > 0 && (
-                          <div className="flex justify-between">
-                            <span className="text-sm text-gray-600">Income Tax (TDS)</span>
-                            <span className="text-sm font-medium text-gray-900">
-                              ₹{payrollData.deductions.incomeTax.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                            </span>
-                          </div>
-                        )}
-                        {payrollData?.deductions?.otherDeductions > 0 && (
-                          <div className="flex justify-between">
-                            <span className="text-sm text-gray-600">Other Deductions</span>
-                            <span className="text-sm font-medium text-gray-900">
-                              ₹{payrollData.deductions.otherDeductions.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                            </span>
-                          </div>
-                        )}
-                        <div className="border-t border-gray-200 pt-2">
-                          <div className="flex justify-between">
-                            <span className="text-sm font-semibold text-gray-800">Total Deductions</span>
-                            <span className="text-sm font-semibold text-gray-900">
-                              ₹{payrollData?.calculations?.totalDeductions?.toLocaleString('en-IN', { minimumFractionDigits: 2 }) || '0.00'}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Bank Details */}
-              {payrollData?.bankDetails && (
-                <div className="px-8 py-6 border-t border-gray-200 bg-gray-50">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Bank Details</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">Bank Name</label>
-                      <p className="text-sm text-gray-900">{payrollData.bankDetails.bankName || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">Account Number</label>
-                      <p className="text-sm text-gray-900">
-                        {payrollData.bankDetails.accountNumber ? 
-                          `****${payrollData.bankDetails.accountNumber.slice(-4)}` : 'N/A'
-                        }
-                      </p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">IFSC Code</label>
-                      <p className="text-sm text-gray-900">{payrollData.bankDetails.ifscCode || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">Account Holder Name</label>
-                      <p className="text-sm text-gray-900">{payrollData.bankDetails.accountHolderName || 'N/A'}</p>
+                  {/* Deductions - Always show */}
+                  <div>
+                    <h4 className="text-md font-semibold text-gray-800 mb-3 text-red-600">Deductions</h4>
+                    <div className="space-y-2">
+                      {(() => {
+                        // Calculate prorated deductions
+                        const basicSalary = getPayrollValue('basicSalary') || 0;
+                        const grossSalary = getPayrollValue('calculations.grossSalary') || 0;
+                        const deductionPercentage = basicSalary > 0 ? grossSalary / basicSalary : 0;
+                        const deductions = {
+                          providentFund: (getPayrollValue('deductions.providentFund') || 0) * deductionPercentage,
+                          professionalTax: (getPayrollValue('deductions.professionalTax') || 0) * deductionPercentage,
+                          incomeTax: (getPayrollValue('deductions.incomeTax') || 0) * deductionPercentage,
+                          otherDeductions: (getPayrollValue('deductions.otherDeductions') || 0) * deductionPercentage
+                        };
+                        return (
+                          <>
+                            <div className="flex justify-between">
+                              <span className="text-sm text-gray-600">Provident Fund (PF)</span>
+                              <span className="text-sm font-medium text-gray-900">
+                                ₹{deductions.providentFund.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-sm text-gray-600">Professional Tax</span>
+                              <span className="text-sm font-medium text-gray-900">
+                                ₹{deductions.professionalTax.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-sm text-gray-600">Income Tax (TDS)</span>
+                              <span className="text-sm font-medium text-gray-900">
+                                ₹{deductions.incomeTax.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-sm text-gray-600">Other Deductions</span>
+                              <span className="text-sm font-medium text-gray-900">
+                                ₹{deductions.otherDeductions.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                              </span>
+                            </div>
+                            <div className="border-t border-gray-200 pt-2">
+                              <div className="flex justify-between">
+                                <span className="text-sm font-semibold text-gray-800">Total Deductions</span>
+                                <span className="text-sm font-semibold text-gray-900">
+                                  ₹{(getPayrollValue('calculations.totalDeductions') || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                </span>
+                              </div>
+                            </div>
+                          </>
+                        );
+                      })()}
                     </div>
                   </div>
                 </div>
-              )}
+              </div>
 
               {/* Net Pay */}
-              <div className="px-8 py-6 border-t-2 border-gray-200 bg-blue-50">
+              <div className="px-8 py-6 border-t-2 border-gray-200">
                 <div className="flex justify-between items-center">
                   <div>
                     <h3 className="text-xl font-bold text-gray-900">Net Pay</h3>
@@ -401,7 +620,7 @@ const PayslipModal = ({ isOpen, onClose, userId, attendanceData: initialAttendan
                   </div>
                   <div className="text-right">
                     <div className="text-3xl font-bold text-blue-600">
-                      ₹{payrollData?.calculations?.netSalary?.toLocaleString('en-IN', { minimumFractionDigits: 2 }) || '0.00'}
+                      ₹{(getPayrollValue('calculations.netSalary') || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                     </div>
                     <p className="text-sm text-gray-600">
                       After all deductions

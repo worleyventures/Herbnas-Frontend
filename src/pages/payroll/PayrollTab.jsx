@@ -148,12 +148,28 @@ const PayrollTab = ({ showUsers = true, isPayrollTab = false }) => {
   };
 
 
-  const handleViewPayslip = (user) => {
+  const handleViewPayslip = async (user) => {
     // Show payslip modal instead of navigating
     const attendanceData = getEmployeeAttendanceData(user._id);
     setSelectedUserId(user._id);
     setSelectedUserAttendanceData(attendanceData);
-    setSelectedUserPayrollData(user.payrollData); // Pass payroll data if available
+    
+    // Ensure we have payroll data - fetch if not available
+    let payrollData = user.payrollData;
+    
+    if (!payrollData && user._id) {
+      try {
+        // Try to fetch payroll data
+        const result = await dispatch(getPayrollById(user._id)).unwrap();
+        if (result?.data?.payroll) {
+          payrollData = result.data.payroll;
+        }
+      } catch (error) {
+        console.error('Failed to fetch payroll data:', error);
+      }
+    }
+    
+    setSelectedUserPayrollData(payrollData);
     setShowPayslipModal(true);
   };
 
