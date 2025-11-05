@@ -265,9 +265,6 @@ const OrdersPage = () => {
           <div className="text-sm text-gray-500">
               {customerEmail || customerPhone || 'No contact info'}
             </div>
-            <div className="text-xs text-gray-400">
-              {order.customerType === 'lead' ? 'Lead' : 'User'}
-          </div>
         </div>
         );
       }

@@ -144,6 +144,31 @@ export const getBranchSummary = createAsyncThunk(
   }
 );
 
+// Get Head Office supplier expenses
+export const getHeadOfficeSupplierExpenses = createAsyncThunk(
+  'accounts/getHeadOfficeSupplierExpenses',
+  async (params = {}, { rejectWithValue }) => {
+    try {
+      const response = await api.get('/accounts/head-office/supplier-expenses', { params });
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch Head Office supplier expenses');
+    }
+  }
+);
+
+export const backfillUnrecordedRawMaterials = createAsyncThunk(
+  'accounts/backfillUnrecordedRawMaterials',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await api.post('/accounts/head-office/backfill-unrecorded');
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to create account entries');
+    }
+  }
+);
+
 // Get comprehensive financial reports
 export const getFinancialReports = createAsyncThunk(
   'accounts/getFinancialReports',

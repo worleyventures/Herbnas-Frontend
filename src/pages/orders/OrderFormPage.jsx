@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
@@ -20,6 +20,7 @@ import {
   updateOrder,
   getOrderById,
   getAllOrders,
+  getOrderStats,
 } from '../../redux/actions/orderActions';
 import { getAllProducts } from '../../redux/actions/productActions';
 import { getAllBranches, getBranchById } from '../../redux/actions/branchActions';
@@ -103,6 +104,7 @@ const OrderFormPage = () => {
   
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  const isSubmittingRef = useRef(false);
   const [isBranchDisabled, setIsBranchDisabled] = useState(false);
   const [selectedBranchDetails, setSelectedBranchDetails] = useState(null);
   const [pincodeLoading, setPincodeLoading] = useState(false);
@@ -686,8 +688,8 @@ const OrderFormPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Prevent duplicate submissions
-    if (submitting) {
+    // Prevent duplicate submissions using ref for immediate check
+    if (isSubmittingRef.current || submitting) {
       return;
     }
     
@@ -695,6 +697,8 @@ const OrderFormPage = () => {
       return;
     }
     
+    // Set both state and ref to prevent race conditions
+    isSubmittingRef.current = true;
     setSubmitting(true);
     
     try {
@@ -814,9 +818,10 @@ const OrderFormPage = () => {
     } catch (error) {
       dispatch(addNotification({
         type: 'error',
-        message: error || `Failed to ${isEdit ? 'update' : 'create'} order`
+        message: error?.message || error?.toString() || `Failed to ${isEdit ? 'update' : 'create'} order`
       }));
     } finally {
+      isSubmittingRef.current = false;
       setSubmitting(false);
     }
   };
@@ -1717,7 +1722,7 @@ const OrderFormPage = () => {
                               } catch (error) {
                                 dispatch(addNotification({
                                   type: 'error',
-                                  message: error || 'Failed to create courier partner'
+                                  message: error?.message || error?.toString() || 'Failed to create courier partner'
                                 }));
                               }
                             }}
@@ -1738,6 +1743,7 @@ const OrderFormPage = () => {
                 type="submit"
                 variant="primary"
                 loading={submitting}
+                disabled={submitting}
                 className="w-full"
                 icon={HiShoppingBag}
               >

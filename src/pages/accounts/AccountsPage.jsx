@@ -21,7 +21,9 @@ import {
   getAccountStats,
   getBranchSummary,
   deleteAccount,
-  getAccountById
+  getAccountById,
+  getHeadOfficeSupplierExpenses,
+  backfillUnrecordedRawMaterials
 } from '../../redux/actions/accountActions';
 import { getOrderById } from '../../redux/actions/orderActions';
 import { getBranchById } from '../../redux/actions/branchActions';
@@ -34,6 +36,8 @@ import {
   selectBranchSummary,
   selectBranchSummaryLoading,
   selectAccountPagination,
+  selectHeadOfficeSupplierExpenses,
+  selectHeadOfficeSupplierExpensesLoading,
   clearAccountError
 } from '../../redux/slices/accountSlice';
 import { addNotification } from '../../redux/slices/uiSlice';
@@ -56,6 +60,8 @@ const AccountsPage = () => {
   const statsLoading = useSelector(selectAccountStatsLoading);
   const branchSummary = useSelector(selectBranchSummary);
   const branchSummaryLoading = useSelector(selectBranchSummaryLoading);
+  const headOfficeSupplierExpenses = useSelector(selectHeadOfficeSupplierExpenses);
+  const headOfficeSupplierExpensesLoading = useSelector(selectHeadOfficeSupplierExpensesLoading);
   const pagination = useSelector(selectAccountPagination);
   
   // Local state
@@ -80,6 +86,9 @@ const AccountsPage = () => {
   // Drill-down state for Super Admin
   const [selectedBranch, setSelectedBranch] = useState(null);
   const [showBranchDetails, setShowBranchDetails] = useState(false);
+  const [isHeadOffice, setIsHeadOffice] = useState(false);
+  const [supplierFilter, setSupplierFilter] = useState('all');
+  const [backfilling, setBackfilling] = useState(false);
 
   // Role-based access
   const isSuperAdmin = user?.role === 'super_admin';
@@ -138,6 +147,12 @@ const AccountsPage = () => {
       const branchId = isAccountsManager ? (user?.branch?._id || user?.branch) : (branchFilter !== 'all' ? branchFilter : undefined);
       const dateRange = getDateRange();
       
+      // For custom date range, only fetch if both dates are provided
+      if (dateRangeFilter === 'custom' && (!fromDate || !toDate)) {
+        // Don't fetch if custom is selected but dates are not provided
+        return;
+      }
+      
       dispatch(getAllAccounts({
         page: currentPage,
         limit: 10,
@@ -162,11 +177,17 @@ const AccountsPage = () => {
         }));
       }
     }
-  }, [activeTab, currentPage, searchTerm, getDateRange, branchFilter, paymentStatusFilter, transactionTypeFilter, dispatch, isSuperAdmin, isAccountsManager, user?.branch?._id, user?.branch]);
+  }, [activeTab, currentPage, searchTerm, dateRangeFilter, fromDate, toDate, branchFilter, paymentStatusFilter, transactionTypeFilter, dispatch, isSuperAdmin, isAccountsManager, user?.branch?._id, user?.branch, getDateRange]);
 
   // Separate effect to reload branch summary when date range changes (for super admin)
   useEffect(() => {
     if (isSuperAdmin && (activeTab === 'overview' || !showBranchDetails)) {
+      // For custom date range, only fetch if both dates are provided
+      if (dateRangeFilter === 'custom' && (!fromDate || !toDate)) {
+        // Don't fetch if custom is selected but dates are not provided
+        return;
+      }
+      
       const dateRange = getDateRange();
       dispatch(getBranchSummary({
         startDate: dateRange?.startDate,
@@ -175,27 +196,44 @@ const AccountsPage = () => {
     }
   }, [dateRangeFilter, fromDate, toDate, isSuperAdmin, activeTab, showBranchDetails, getDateRange, dispatch]);
 
-  // Load accounts for selected branch drill-down
+  // Load accounts for selected branch drill-down (or Head Office supplier expenses)
   useEffect(() => {
     if (showBranchDetails && selectedBranch) {
+      // For custom date range, only fetch if both dates are provided
+      if (dateRangeFilter === 'custom' && (!fromDate || !toDate)) {
+        // Don't fetch if custom is selected but dates are not provided
+        return;
+      }
+      
       const dateRange = getDateRange();
-      dispatch(getAllAccounts({
-        page: currentPage,
-        limit: 10,
-        search: searchTerm,
-        startDate: dateRange?.startDate,
-        endDate: dateRange?.endDate,
-        branchId: selectedBranch.branchId,
-        paymentStatus: paymentStatusFilter !== 'all' ? paymentStatusFilter : undefined,
-        transactionType: transactionTypeFilter !== 'all' ? transactionTypeFilter : undefined
-      }));
-      dispatch(getAccountStats({
-        startDate: dateRange?.startDate,
-        endDate: dateRange?.endDate,
-        branchId: selectedBranch.branchId
-      }));
+      
+      if (isHeadOffice) {
+        // Load Head Office supplier expenses
+        dispatch(getHeadOfficeSupplierExpenses({
+          startDate: dateRange?.startDate,
+          endDate: dateRange?.endDate,
+          supplierId: supplierFilter !== 'all' ? supplierFilter : undefined
+        }));
+      } else {
+        // Load regular accounts for other branches
+        dispatch(getAllAccounts({
+          page: currentPage,
+          limit: 10,
+          search: searchTerm,
+          startDate: dateRange?.startDate,
+          endDate: dateRange?.endDate,
+          branchId: selectedBranch.branchId,
+          paymentStatus: paymentStatusFilter !== 'all' ? paymentStatusFilter : undefined,
+          transactionType: transactionTypeFilter !== 'all' ? transactionTypeFilter : undefined
+        }));
+        dispatch(getAccountStats({
+          startDate: dateRange?.startDate,
+          endDate: dateRange?.endDate,
+          branchId: selectedBranch.branchId
+        }));
+      }
     }
-  }, [showBranchDetails, selectedBranch, currentPage, searchTerm, getDateRange, paymentStatusFilter, transactionTypeFilter, dispatch]);
+  }, [showBranchDetails, selectedBranch, isHeadOffice, currentPage, searchTerm, getDateRange, paymentStatusFilter, transactionTypeFilter, supplierFilter, dispatch]);
 
   // Handle branch row click for drill-down
   const handleBranchClick = (branch) => {
@@ -205,6 +243,11 @@ const AccountsPage = () => {
     setTransactionTypeFilter('all'); // Reset transaction type filter to show all types
     setPaymentStatusFilter('all'); // Reset payment status filter to show all statuses
     setSearchTerm(''); // Reset search term
+    setSupplierFilter('all'); // Reset supplier filter
+    
+    // Check if it's Head Office branch
+    const isHeadOfficeBranch = branch.branchName.toLowerCase() === 'head office';
+    setIsHeadOffice(isHeadOfficeBranch);
   };
 
   // Handle back to branch summary
@@ -212,10 +255,12 @@ const AccountsPage = () => {
     setShowBranchDetails(false);
     setSelectedBranch(null);
     setCurrentPage(1);
+    setIsHeadOffice(false);
+    setSupplierFilter('all');
   };
 
-  // Handle filters
-  const handleDateRangeFilter = (e) => {
+  // Handle filters with useCallback to prevent unnecessary re-renders
+  const handleDateRangeFilter = useCallback((e) => {
     const value = e.target.value;
     setDateRangeFilter(value);
     setCurrentPage(1);
@@ -224,32 +269,37 @@ const AccountsPage = () => {
       setFromDate('');
       setToDate('');
     }
-  };
+  }, []);
 
-  const handleFromDateChange = (value) => {
+  const handleFromDateChange = useCallback((value) => {
     setFromDate(value);
     setCurrentPage(1);
-  };
+  }, []);
 
-  const handleToDateChange = (value) => {
+  const handleToDateChange = useCallback((value) => {
     setToDate(value);
     setCurrentPage(1);
-  };
+  }, []);
 
-  const handleBranchFilter = (e) => {
+  const handleSupplierFilter = useCallback((e) => {
+    setSupplierFilter(e.target.value);
+    // Don't reset page or fetch immediately - let useEffect handle it
+  }, []);
+
+  const handleBranchFilter = useCallback((e) => {
     setBranchFilter(e.target.value);
     setCurrentPage(1);
-  };
+  }, []);
 
-  const handlePaymentStatusFilter = (e) => {
+  const handlePaymentStatusFilter = useCallback((e) => {
     setPaymentStatusFilter(e.target.value);
     setCurrentPage(1);
-  };
+  }, []);
 
-  const handleTransactionTypeFilter = (e) => {
+  const handleTransactionTypeFilter = useCallback((e) => {
     setTransactionTypeFilter(e.target.value);
     setCurrentPage(1);
-  };
+  }, []);
 
   // Handle pagination
   const handlePageChange = (page) => {
@@ -684,7 +734,11 @@ const AccountsPage = () => {
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
                         {branchSummary.summary?.map((branch) => (
-                          <tr key={branch.branchId} className="hover:bg-gray-50">
+                          <tr 
+                            key={branch.branchId} 
+                            className="hover:bg-gray-50 cursor-pointer"
+                            onClick={() => handleBranchClick(branch)}
+                          >
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div>
                                 <div className="text-sm font-medium text-gray-900">
@@ -922,7 +976,10 @@ const AccountsPage = () => {
                   {selectedBranch?.branchName} ({selectedBranch?.branchCode})
                 </h2>
                 <p className="text-sm text-gray-600">
-                  Account details for selected branch
+                  {isHeadOffice 
+                    ? 'Centralized Raw Material Expenses - Supplier Wise'
+                    : 'Account details for selected branch'
+                  }
                   {dateRangeFilter === 'custom' && fromDate && toDate
                     ? ` - ${fromDate} to ${toDate}`
                     : dateRangeFilter !== 'custom'
@@ -933,107 +990,316 @@ const AccountsPage = () => {
               </div>
             </div>
 
-            {/* Statistics Cards for Selected Branch */}
-            {stats && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
-                <StatCard
-                  title="Total Income"
-                  value={`₹${stats.summary?.totalIncome?.toLocaleString() || 0}`}
-                  icon={HiArrowUp}
-                  gradient="green"
-                  loading={statsLoading}
-                />
-                <StatCard
-                  title="Total Expense"
-                  value={`₹${stats.summary?.totalExpense?.toLocaleString() || 0}`}
-                  icon={HiArrowDown}
-                  gradient="red"
-                  loading={statsLoading}
-                />
-                <StatCard
-                  title="Net Profit"
-                  value={`₹${stats.summary?.netProfit?.toLocaleString() || 0}`}
-                  icon={HiCurrencyDollar}
-                  gradient="purple"
-                  loading={statsLoading}
-                />
-                <StatCard
-                  title="Total Transactions"
-                  value={stats.summary?.totalTransactions || 0}
-                  icon={HiClipboardDocumentList}
-                  gradient="blue"
-                  loading={statsLoading}
-                />
-              </div>
-            )}
-
-            {/* Search and Filter Section */}
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-              <div className="w-full sm:w-80">
-                <SearchInput
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Search accounts..."
-                  icon={HiMagnifyingGlass}
-                />
-              </div>
-              <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0 sm:items-center">
-                <Select
-                  value={dateRangeFilter}
-                  onChange={handleDateRangeFilter}
-                  options={dateRangeOptions}
-                  className="w-full sm:w-48"
-                />
-                {dateRangeFilter === 'custom' && (
-                  <>
-                    <div className="w-full sm:w-auto sm:flex sm:items-center sm:gap-2">
-                      <label className="text-sm font-medium text-gray-700 whitespace-nowrap mb-2 sm:mb-0">From</label>
-                      <Input
-                        type="date"
-                        value={fromDate}
-                        onChange={(e) => handleFromDateChange(e.target.value)}
-                        className="w-full sm:w-40"
-                      />
-                    </div>
-                    <div className="w-full sm:w-auto sm:flex sm:items-center sm:gap-2">
-                      <label className="text-sm font-medium text-gray-700 whitespace-nowrap mb-2 sm:mb-0">To</label>
-                      <Input
-                        type="date"
-                        value={toDate}
-                        onChange={(e) => handleToDateChange(e.target.value)}
-                        className="w-full sm:w-40"
-                      />
-                    </div>
-                  </>
+            {isHeadOffice ? (
+              // Head Office Supplier Expenses View
+              <>
+                {/* Statistics Cards for Head Office */}
+                {headOfficeSupplierExpenses?.summary && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
+                    <StatCard
+                      title="Total Amount"
+                      value={`₹${headOfficeSupplierExpenses.summary.totalAmount?.toLocaleString() || 0}`}
+                      icon={HiCurrencyDollar}
+                      gradient="blue"
+                      loading={headOfficeSupplierExpensesLoading}
+                    />
+                    <StatCard
+                      title="Total Expenses"
+                      value={`₹${headOfficeSupplierExpenses.summary.totalExpense?.toLocaleString() || 0}`}
+                      icon={HiArrowDown}
+                      gradient="red"
+                      loading={headOfficeSupplierExpensesLoading}
+                    />
+                    <StatCard
+                      title="Total Purchases"
+                      value={`₹${headOfficeSupplierExpenses.summary.totalPurchase?.toLocaleString() || 0}`}
+                      icon={HiShoppingCart}
+                      gradient="green"
+                      loading={headOfficeSupplierExpensesLoading}
+                    />
+                    <StatCard
+                      title="Total Transactions"
+                      value={headOfficeSupplierExpenses.summary.totalTransactions || 0}
+                      icon={HiClipboardDocumentList}
+                      gradient="purple"
+                      loading={headOfficeSupplierExpensesLoading}
+                    />
+                  </div>
                 )}
-                <Select
-                  value={paymentStatusFilter}
-                  onChange={handlePaymentStatusFilter}
-                  options={paymentStatusOptions}
-                  className="w-full sm:w-48"
-                />
-                <Select
-                  value={transactionTypeFilter}
-                  onChange={setTransactionTypeFilter}
-                  options={transactionTypeOptions}
-                  className="w-full sm:w-48"
-                />
-              </div>
-            </div>
 
-            {/* Accounts Table */}
-            <div className="bg-white">
-              <Table
-                data={accounts}
-                columns={columns}
-                loading={loading}
-                error={error}
-                pagination={pagination}
-                onPageChange={handlePageChange}
-                emptyMessage="No accounts found"
-                emptyIcon={HiClipboardDocumentList}
-              />
-            </div>
+                {/* Supplier Filter */}
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                  <div className="w-full sm:w-80">
+                    <Select
+                      value={supplierFilter}
+                      onChange={handleSupplierFilter}
+                      options={[
+                        { value: 'all', label: 'All Suppliers' },
+                        ...(headOfficeSupplierExpenses?.suppliers || []).map(supplier => ({
+                          value: supplier.supplierId || supplier.supplierName,
+                          label: supplier.supplierName || 'Unknown Supplier'
+                        }))
+                      ]}
+                      className="w-full"
+                      placeholder="Filter by Supplier"
+                    />
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0 sm:items-center">
+                    <Select
+                      value={dateRangeFilter}
+                      onChange={handleDateRangeFilter}
+                      options={dateRangeOptions}
+                      className="w-full sm:w-48"
+                    />
+                    {dateRangeFilter === 'custom' && (
+                      <>
+                        <div className="w-full sm:w-auto sm:flex sm:items-center sm:gap-2">
+                          <label className="text-sm font-medium text-gray-700 whitespace-nowrap mb-2 sm:mb-0">From</label>
+                          <Input
+                            type="date"
+                            value={fromDate}
+                            onChange={(e) => handleFromDateChange(e.target.value)}
+                            className="w-full sm:w-40"
+                          />
+                        </div>
+                        <div className="w-full sm:w-auto sm:flex sm:items-center sm:gap-2">
+                          <label className="text-sm font-medium text-gray-700 whitespace-nowrap mb-2 sm:mb-0">To</label>
+                          <Input
+                            type="date"
+                            value={toDate}
+                            onChange={(e) => handleToDateChange(e.target.value)}
+                            className="w-full sm:w-40"
+                          />
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Supplier Expenses Table */}
+                <div className="bg-white shadow-sm rounded-lg overflow-hidden">
+                  {/* Show empty state if custom date is selected but dates are not provided */}
+                  {dateRangeFilter === 'custom' && (!fromDate || !toDate) ? (
+                    <div className="flex flex-col items-center justify-center py-12 px-4">
+                      <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                        <HiClipboardDocumentList className="w-8 h-8 text-gray-400" />
+                      </div>
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">Please select date range</h3>
+                      <p className="text-sm text-gray-500 text-center max-w-md">
+                        To view supplier expenses, please select both "From" and "To" dates in the custom date range filter.
+                      </p>
+                    </div>
+                  ) : headOfficeSupplierExpensesLoading ? (
+                    <div className="flex justify-center py-8">
+                      <Loading />
+                    </div>
+                  ) : headOfficeSupplierExpenses?.suppliers && headOfficeSupplierExpenses.suppliers.length > 0 ? (
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Supplier
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Expense Amount
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Purchase Amount
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Total Amount
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Transactions
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {headOfficeSupplierExpenses.suppliers
+                            .filter(supplier => !supplierFilter || supplierFilter === 'all' || 
+                              (supplier.supplierId && supplier.supplierId === supplierFilter) ||
+                              (supplier.supplierName && supplier.supplierName === supplierFilter))
+                            .map((supplier, index) => (
+                            <tr key={supplier.supplierId || index} className="hover:bg-gray-50">
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div>
+                                  <div className="text-sm font-medium text-gray-900">
+                                    {supplier.supplierName || 'Unknown Supplier'}
+                                  </div>
+                                  {supplier.supplierId && (
+                                    <div className="text-xs text-gray-500">
+                                      ID: {supplier.supplierId}
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="text-sm font-medium text-red-600">
+                                  ₹{supplier.expenseAmount?.toLocaleString() || 0}
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  {supplier.expenseCount || 0} transactions
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="text-sm font-medium text-blue-600">
+                                  ₹{supplier.purchaseAmount?.toLocaleString() || 0}
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  {supplier.purchaseCount || 0} transactions
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="text-sm font-semibold text-gray-900">
+                                  ₹{supplier.totalAmount?.toLocaleString() || 0}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="text-sm text-gray-900">
+                                  {supplier.transactionCount || 0}
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        {headOfficeSupplierExpenses.summary && (
+                          <tfoot className="bg-gray-50">
+                            <tr>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
+                                Total
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-red-600">
+                                ₹{headOfficeSupplierExpenses.summary.totalExpense?.toLocaleString() || 0}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-blue-600">
+                                ₹{headOfficeSupplierExpenses.summary.totalPurchase?.toLocaleString() || 0}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
+                                ₹{headOfficeSupplierExpenses.summary.totalAmount?.toLocaleString() || 0}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
+                                {headOfficeSupplierExpenses.summary.totalTransactions || 0}
+                              </td>
+                            </tr>
+                          </tfoot>
+                        )}
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="text-center py-12">
+                      <HiClipboardDocumentList className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                      <p className="text-gray-600">No supplier expenses found for the selected period</p>
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              // Regular Branch Accounts View
+              <>
+                {/* Statistics Cards for Selected Branch */}
+                {stats && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
+                    <StatCard
+                      title="Total Income"
+                      value={`₹${stats.summary?.totalIncome?.toLocaleString() || 0}`}
+                      icon={HiArrowUp}
+                      gradient="green"
+                      loading={statsLoading}
+                    />
+                    <StatCard
+                      title="Total Expense"
+                      value={`₹${stats.summary?.totalExpense?.toLocaleString() || 0}`}
+                      icon={HiArrowDown}
+                      gradient="red"
+                      loading={statsLoading}
+                    />
+                    <StatCard
+                      title="Net Profit"
+                      value={`₹${stats.summary?.netProfit?.toLocaleString() || 0}`}
+                      icon={HiCurrencyDollar}
+                      gradient="purple"
+                      loading={statsLoading}
+                    />
+                    <StatCard
+                      title="Total Transactions"
+                      value={stats.summary?.totalTransactions || 0}
+                      icon={HiClipboardDocumentList}
+                      gradient="blue"
+                      loading={statsLoading}
+                    />
+                  </div>
+                )}
+
+                {/* Search and Filter Section */}
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                  <div className="w-full sm:w-80">
+                    <SearchInput
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      placeholder="Search accounts..."
+                      icon={HiMagnifyingGlass}
+                    />
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0 sm:items-center">
+                    <Select
+                      value={dateRangeFilter}
+                      onChange={handleDateRangeFilter}
+                      options={dateRangeOptions}
+                      className="w-full sm:w-48"
+                    />
+                    {dateRangeFilter === 'custom' && (
+                      <>
+                        <div className="w-full sm:w-auto sm:flex sm:items-center sm:gap-2">
+                          <label className="text-sm font-medium text-gray-700 whitespace-nowrap mb-2 sm:mb-0">From</label>
+                          <Input
+                            type="date"
+                            value={fromDate}
+                            onChange={(e) => handleFromDateChange(e.target.value)}
+                            className="w-full sm:w-40"
+                          />
+                        </div>
+                        <div className="w-full sm:w-auto sm:flex sm:items-center sm:gap-2">
+                          <label className="text-sm font-medium text-gray-700 whitespace-nowrap mb-2 sm:mb-0">To</label>
+                          <Input
+                            type="date"
+                            value={toDate}
+                            onChange={(e) => handleToDateChange(e.target.value)}
+                            className="w-full sm:w-40"
+                          />
+                        </div>
+                      </>
+                    )}
+                    <Select
+                      value={paymentStatusFilter}
+                      onChange={handlePaymentStatusFilter}
+                      options={paymentStatusOptions}
+                      className="w-full sm:w-48"
+                    />
+                    <Select
+                      value={transactionTypeFilter}
+                      onChange={setTransactionTypeFilter}
+                      options={transactionTypeOptions}
+                      className="w-full sm:w-48"
+                    />
+                  </div>
+                </div>
+
+                {/* Accounts Table */}
+                <div className="bg-white">
+                  <Table
+                    data={accounts}
+                    columns={columns}
+                    loading={loading}
+                    error={error}
+                    pagination={pagination}
+                    onPageChange={handlePageChange}
+                    emptyMessage="No accounts found"
+                    emptyIcon={HiClipboardDocumentList}
+                  />
+                </div>
+              </>
+            )}
           </div>
         ) : (
         // Super Admin: Branch Summary Dashboard

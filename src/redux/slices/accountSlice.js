@@ -11,7 +11,8 @@ import {
   createSalesAccount,
   createRawMaterialPurchaseAccount,
   createBranchItemPurchaseAccount,
-  getFinancialReports
+  getFinancialReports,
+  getHeadOfficeSupplierExpenses
 } from '../actions/accountActions';
 
 const initialState = {
@@ -21,11 +22,13 @@ const initialState = {
   summary: null,
   branchSummary: null,
   reports: null,
+  headOfficeSupplierExpenses: null,
   loading: false,
   statsLoading: false,
   summaryLoading: false,
   branchSummaryLoading: false,
   reportsLoading: false,
+  headOfficeSupplierExpensesLoading: false,
   createLoading: false,
   updateLoading: false,
   deleteLoading: false,
@@ -249,6 +252,21 @@ const accountSlice = createSlice({
       .addCase(getBranchSummary.rejected, (state, action) => {
         state.branchSummaryLoading = false;
         state.error = action.payload;
+      })
+
+      // Get Head Office supplier expenses
+      .addCase(getHeadOfficeSupplierExpenses.pending, (state) => {
+        state.headOfficeSupplierExpensesLoading = true;
+        state.error = null;
+      })
+      .addCase(getHeadOfficeSupplierExpenses.fulfilled, (state, action) => {
+        state.headOfficeSupplierExpensesLoading = false;
+        state.headOfficeSupplierExpenses = action.payload.data;
+        state.error = null;
+      })
+      .addCase(getHeadOfficeSupplierExpenses.rejected, (state, action) => {
+        state.headOfficeSupplierExpensesLoading = false;
+        state.error = action.payload;
       });
   }
 });
@@ -274,6 +292,8 @@ export const selectBranchSummaryLoading = (state) => state.accounts.branchSummar
 export const selectAccountPagination = (state) => state.accounts.pagination;
 export const selectAccountReports = (state) => state.accounts.reports;
 export const selectAccountReportsLoading = (state) => state.accounts.reportsLoading;
+export const selectHeadOfficeSupplierExpenses = (state) => state.accounts.headOfficeSupplierExpenses;
+export const selectHeadOfficeSupplierExpensesLoading = (state) => state.accounts.headOfficeSupplierExpensesLoading;
 export const selectAccountCreateLoading = (state) => state.accounts.createLoading;
 export const selectAccountUpdateLoading = (state) => state.accounts.updateLoading;
 export const selectAccountDeleteLoading = (state) => state.accounts.deleteLoading;
