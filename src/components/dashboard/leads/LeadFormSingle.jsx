@@ -1164,18 +1164,24 @@ const LeadFormSingle = ({
                 {/* Selected Products */}
                 {formData.products.length > 0 && (
                   <div className="flex flex-wrap gap-2">
-                    {formData.products.map((product) => (
-                      <div key={product._id} className="flex items-center space-x-2 bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm">
-                        <span>{product.productName}</span>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveProduct(product._id)}
-                          className="text-indigo-600 hover:text-indigo-800"
-                        >
-                          <HiXCircle className="h-4 w-4" />
-                        </button>
-                      </div>
-                    ))}
+                    {formData.products.map((productId) => {
+                      // Find the product object from validProducts using the ID
+                      const product = validProducts.find(p => p._id === productId);
+                      if (!product) return null; // Skip if product not found
+                      
+                      return (
+                        <div key={productId} className="flex items-center space-x-2 bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm">
+                          <span>{product.productName}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveProduct(productId)}
+                            className="text-indigo-600 hover:text-indigo-800"
+                          >
+                            <HiXCircle className="h-4 w-4" />
+                          </button>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
