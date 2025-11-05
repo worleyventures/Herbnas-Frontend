@@ -11,7 +11,8 @@ import {
   HiCheckCircle,
   HiInformationCircle,
   HiTruck,
-  HiCreditCard
+  HiCreditCard,
+  HiDocumentArrowDown
 } from 'react-icons/hi2';
 import { Table, ActionButton, StatusBadge, ConfirmationModal, InventoryDetailsModal, CommonModal, Select, Button } from '../../common';
 import { updateSentGoodsStatus } from '../../../redux/actions/sentGoodsActions';
@@ -42,6 +43,8 @@ const InventoryCRUD = ({
   const [showPaymentStatusModal, setShowPaymentStatusModal] = useState(false);
   const [selectedRawMaterial, setSelectedRawMaterial] = useState(null);
   const [rawMaterialAccount, setRawMaterialAccount] = useState(null);
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [invoiceAccount, setInvoiceAccount] = useState(null);
 
   // Get current user for permission checks
   const { user } = useSelector((state) => state.auth || {});
@@ -394,21 +397,30 @@ const InventoryCRUD = ({
             <div className="flex items-center space-x-2">
               <ActionButton
                 icon={HiEye}
-                onClick={() => handleViewInventory(inventoryItem)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleViewInvoice(inventoryItem);
+                }}
                 variant="view"
                 size="sm"
-                title="View Details"
+                title="View Invoice"
               />
               <ActionButton
                 icon={HiPencil}
-                onClick={() => onEditInventory(inventoryItem)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEditInventory(inventoryItem);
+                }}
                 variant="edit"
                 size="sm"
                 title="Edit Inventory"
               />
               <ActionButton
                 icon={HiCreditCard}
-                onClick={() => handlePaymentStatusClick(inventoryItem)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handlePaymentStatusClick(inventoryItem);
+                }}
                 variant="secondary"
                 size="sm"
                 title="Update Payment Status"
@@ -416,7 +428,10 @@ const InventoryCRUD = ({
               {canDeleteRawMaterials() && inventoryType === 'rawMaterials' && (
                 <ActionButton
                   icon={HiTrash}
-                  onClick={() => onDeleteInventory(inventoryItem)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDeleteInventory(inventoryItem);
+                  }}
                   variant="danger"
                   size="sm"
                   title="Delete Inventory"
@@ -628,11 +643,41 @@ const InventoryCRUD = ({
       setRawMaterialAccount(accountData);
       setShowPaymentStatusModal(true);
     } catch (error) {
+      const errorMessage = error?.message || 'Failed to fetch account details';
       dispatch(addNotification({
         type: 'error',
-        message: error?.message || 'Failed to fetch account details'
+        message: errorMessage.includes('Account entry not found') 
+          ? 'No account entry found for this raw material. Please create a purchase entry first from the Purchase Management page.'
+          : errorMessage
+      }));
+      // Don't open modal if account doesn't exist
+      setSelectedRawMaterial(null);
+      setRawMaterialAccount(null);
+    }
+  };
+
+  const handleViewInvoice = async (inventoryItem) => {
+    try {
+      // Fetch account entry for this raw material
+      const result = await dispatch(getAccountByRawMaterialId(inventoryItem._id)).unwrap();
+      // Handle both nested and direct account data
+      const accountData = result.data?.account || result.data || result.account || result;
+      setInvoiceAccount(accountData);
+      setShowInvoiceModal(true);
+    } catch (error) {
+      const errorMessage = error?.message || 'Failed to fetch invoice details';
+      dispatch(addNotification({
+        type: 'error',
+        message: errorMessage.includes('Account entry not found') 
+          ? 'No invoice available for this raw material. Please create a purchase entry first from the Purchase Management page.'
+          : errorMessage
       }));
     }
+  };
+
+  const handleRowClick = (inventoryItem) => {
+    // Open inventory details modal when clicking on row data (not actions)
+    handleViewInventory(inventoryItem);
   };
 
 
@@ -659,6 +704,7 @@ const InventoryCRUD = ({
         data={inventory}
         columns={columns}
         loading={loading}
+        onRowClick={inventoryType === 'rawMaterials' ? handleRowClick : undefined}
         emptyMessage={
           inventoryType === 'rawMaterials' 
             ? "No raw materials found" 
@@ -767,12 +813,383 @@ const InventoryCRUD = ({
           }}
         />
       )}
+
+      {/* Invoice Modal */}
+      {showInvoiceModal && invoiceAccount && (
+        <InvoiceModal
+          isOpen={showInvoiceModal}
+          onClose={() => {
+            setShowInvoiceModal(false);
+            setInvoiceAccount(null);
+          }}
+          account={invoiceAccount}
+        />
+      )}
     </div>
+  );
+};
+
+// Invoice Modal Component
+const InvoiceModal = ({ isOpen, onClose, account }) => {
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleDateString('en-IN', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  const formatCurrency = (amount) => {
+    if (!amount && amount !== 0) return '₹0';
+    return `₹${amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
+
+  const generateInvoice = () => {
+    if (!account) return;
+
+    const rawMaterial = account.rawMaterialId || {};
+    const branch = account.branchId || {};
+    
+    // Create invoice data
+    const invoiceData = {
+      invoiceNumber: account.invoiceNumber || account.accountId || `INV-${account._id}`,
+      date: formatDate(account.transactionDate),
+      accountId: account.accountId || 'N/A',
+      item: {
+        id: rawMaterial.materialId || rawMaterial._id || 'N/A',
+        name: rawMaterial.materialName || 'N/A',
+        category: rawMaterial.category || 'N/A',
+        quantity: account.quantity || 0,
+        unitPrice: account.unitPrice || 0,
+        gstPercentage: account.gstPercentage || 0,
+        totalPrice: account.totalAmount || 0
+      },
+      supplier: {
+        name: account.vendorName || 'N/A',
+        id: account.supplierId || 'N/A'
+      },
+      company: {
+        name: 'HerbNas Ayurveda',
+        address: branch.branchName === 'Head Office' ? 'Head Office Address' : (branch.branchAddress || '123 Ayurveda Street, Health City, India - 123456'),
+        gstNumber: '29ABCDE1234F1Z5',
+        phone: '+91 9876543210',
+        email: 'info@herbnas.com'
+      },
+      payment: {
+        method: account.paymentMethod || 'N/A',
+        status: account.paymentStatus || 'N/A',
+        date: formatDate(account.transactionDate)
+      }
+    };
+
+    // Calculate totals
+    const subtotal = invoiceData.item.quantity * invoiceData.item.unitPrice;
+    const gstAmount = account.gstAmount || (subtotal * invoiceData.item.gstPercentage) / 100;
+    const total = account.amount || (subtotal + gstAmount);
+
+    // Create invoice HTML
+    const invoiceHTML = `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Purchase Invoice - ${invoiceData.invoiceNumber}</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f5f5f5; }
+          .invoice-container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 0 20px rgba(0,0,0,0.1); }
+          .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #e5e7eb; padding-bottom: 20px; }
+          .company-name { font-size: 28px; font-weight: bold; color: #1f2937; margin-bottom: 5px; }
+          .company-details { color: #6b7280; font-size: 14px; }
+          .invoice-title { font-size: 24px; font-weight: bold; color: #1f2937; margin-bottom: 20px; text-align: center; }
+          .invoice-info { display: flex; justify-content: space-between; margin-bottom: 30px; }
+          .invoice-details, .supplier-details { flex: 1; }
+          .section-title { font-size: 16px; font-weight: bold; color: #374151; margin-bottom: 10px; }
+          .detail-row { margin-bottom: 5px; color: #6b7280; }
+          .items-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+          .items-table th, .items-table td { padding: 12px; text-align: left; border-bottom: 1px solid #e5e7eb; }
+          .items-table th { background-color: #f9fafb; font-weight: bold; color: #374151; }
+          .items-table td { color: #6b7280; }
+          .items-table td.text-right { text-align: right; }
+          .totals { text-align: right; }
+          .total-row { display: flex; justify-content: space-between; margin-bottom: 10px; padding: 5px 0; }
+          .total-label { font-weight: bold; color: #374151; }
+          .total-amount { font-weight: bold; color: #1f2937; }
+          .grand-total { border-top: 2px solid #e5e7eb; padding-top: 10px; font-size: 18px; }
+          .footer { text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 12px; }
+          .payment-info { margin-top: 20px; padding: 15px; background-color: #f9fafb; border-radius: 5px; }
+        </style>
+      </head>
+      <body>
+        <div class="invoice-container">
+          <div class="header">
+            <div class="company-name">${invoiceData.company.name}</div>
+            <div class="company-details">
+              ${invoiceData.company.address}<br>
+              GST: ${invoiceData.company.gstNumber} | Phone: ${invoiceData.company.phone} | Email: ${invoiceData.company.email}
+            </div>
+          </div>
+          
+          <div class="invoice-title">Raw Material Purchase Invoice</div>
+          
+          <div class="invoice-info">
+            <div class="invoice-details">
+              <div class="section-title">Invoice Details</div>
+              <div class="detail-row"><strong>Invoice Number:</strong> ${invoiceData.invoiceNumber}</div>
+              <div class="detail-row"><strong>Account ID:</strong> ${invoiceData.accountId}</div>
+              <div class="detail-row"><strong>Date:</strong> ${invoiceData.date}</div>
+            </div>
+            <div class="supplier-details">
+              <div class="section-title">Supplier Details</div>
+              <div class="detail-row"><strong>Name:</strong> ${invoiceData.supplier.name}</div>
+              <div class="detail-row"><strong>ID:</strong> ${invoiceData.supplier.id}</div>
+            </div>
+          </div>
+          
+          <table class="items-table">
+            <thead>
+              <tr>
+                <th>Item ID</th>
+                <th>Description</th>
+                <th>Category</th>
+                <th>Quantity</th>
+                <th class="text-right">Unit Price</th>
+                <th class="text-right">Subtotal</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>${invoiceData.item.id}</td>
+                <td>${invoiceData.item.name}</td>
+                <td>${invoiceData.item.category}</td>
+                <td>${invoiceData.item.quantity}</td>
+                <td class="text-right">${formatCurrency(invoiceData.item.unitPrice)}</td>
+                <td class="text-right">${formatCurrency(subtotal)}</td>
+              </tr>
+            </tbody>
+          </table>
+          
+          <div class="totals">
+            <div class="total-row">
+              <span class="total-label">Subtotal:</span>
+              <span class="total-amount">${formatCurrency(subtotal)}</span>
+            </div>
+            <div class="total-row">
+              <span class="total-label">GST (${invoiceData.item.gstPercentage}%):</span>
+              <span class="total-amount">${formatCurrency(gstAmount)}</span>
+            </div>
+            <div class="total-row grand-total">
+              <span class="total-label">Total Amount:</span>
+              <span class="total-amount">${formatCurrency(total)}</span>
+            </div>
+          </div>
+          
+          <div class="payment-info">
+            <div class="section-title">Payment Information</div>
+            <div class="detail-row"><strong>Payment Method:</strong> ${invoiceData.payment.method}</div>
+            <div class="detail-row"><strong>Payment Status:</strong> ${invoiceData.payment.status}</div>
+            <div class="detail-row"><strong>Transaction Date:</strong> ${invoiceData.payment.date}</div>
+          </div>
+          
+          <div class="footer">
+            <p>Thank you for your business!</p>
+            <p>This is a computer-generated invoice.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    // Open invoice in new window
+    const invoiceWindow = window.open('', '_blank', 'width=900,height=700,scrollbars=yes,resizable=yes');
+    invoiceWindow.document.write(invoiceHTML);
+    invoiceWindow.document.close();
+    
+    // Focus the new window
+    invoiceWindow.focus();
+  };
+
+  if (!account) return null;
+
+  const rawMaterial = account.rawMaterialId || {};
+  const branch = account.branchId || {};
+
+  return (
+    <CommonModal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Purchase Invoice"
+      subtitle={`Raw Material: ${rawMaterial.materialName || 'N/A'}`}
+      icon={HiDocumentArrowDown}
+      iconColor="from-blue-500 to-blue-600"
+      size="lg"
+      showFooter={true}
+      footerContent={
+        <div className="flex space-x-2">
+          <Button
+            variant="outline"
+            onClick={onClose}
+            size="sm"
+          >
+            Close
+          </Button>
+          <Button
+            variant="primary"
+            onClick={generateInvoice}
+            size="sm"
+            icon={HiDocumentArrowDown}
+          >
+            Generate Invoice PDF
+          </Button>
+        </div>
+      }
+    >
+      <div className="space-y-6">
+        {/* Invoice Details */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-b pb-4">
+          <div>
+            <h3 className="text-sm font-semibold text-gray-900 mb-3">Invoice Information</h3>
+            <div className="space-y-2">
+              <div>
+                <label className="text-xs text-gray-500">Invoice Number</label>
+                <p className="text-sm font-medium text-gray-900">
+                  {account.invoiceNumber || account.accountId || 'N/A'}
+                </p>
+              </div>
+              <div>
+                <label className="text-xs text-gray-500">Account ID</label>
+                <p className="text-sm font-medium text-gray-900">
+                  {account.accountId || 'N/A'}
+                </p>
+              </div>
+              <div>
+                <label className="text-xs text-gray-500">Date</label>
+                <p className="text-sm font-medium text-gray-900">
+                  {formatDate(account.transactionDate)}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-sm font-semibold text-gray-900 mb-3">Supplier Information</h3>
+            <div className="space-y-2">
+              <div>
+                <label className="text-xs text-gray-500">Supplier Name</label>
+                <p className="text-sm font-medium text-gray-900">
+                  {account.vendorName || 'N/A'}
+                </p>
+              </div>
+              <div>
+                <label className="text-xs text-gray-500">Supplier ID</label>
+                <p className="text-sm font-medium text-gray-900">
+                  {account.supplierId || 'N/A'}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Item Details */}
+        <div className="border-b pb-4">
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">Item Details</h3>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div>
+              <label className="text-xs text-gray-500">Material Name</label>
+              <p className="text-sm font-medium text-gray-900">
+                {rawMaterial.materialName || 'N/A'}
+              </p>
+            </div>
+            <div>
+              <label className="text-xs text-gray-500">Category</label>
+              <p className="text-sm font-medium text-gray-900">
+                {rawMaterial.category || 'N/A'}
+              </p>
+            </div>
+            <div>
+              <label className="text-xs text-gray-500">Quantity</label>
+              <p className="text-sm font-medium text-gray-900">
+                {account.quantity || 0}
+              </p>
+            </div>
+            <div>
+              <label className="text-xs text-gray-500">Unit Price</label>
+              <p className="text-sm font-medium text-gray-900">
+                ₹{(account.unitPrice || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </p>
+            </div>
+            <div>
+              <label className="text-xs text-gray-500">GST %</label>
+              <p className="text-sm font-medium text-gray-900">
+                {account.gstPercentage || 0}%
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Amount Details */}
+        <div className="border-b pb-4">
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">Amount Details</h3>
+          <div className="space-y-2">
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-600">Subtotal:</span>
+              <span className="text-sm font-medium text-gray-900">
+                ₹{(account.totalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-600">GST Amount:</span>
+              <span className="text-sm font-medium text-gray-900">
+                ₹{(account.gstAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+            </div>
+            <div className="flex justify-between items-center pt-2 border-t">
+              <span className="text-base font-semibold text-gray-900">Total Amount:</span>
+              <span className="text-base font-bold text-gray-900">
+                ₹{(account.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Payment Information */}
+        <div>
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">Payment Information</h3>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div>
+              <label className="text-xs text-gray-500">Payment Method</label>
+              <p className="text-sm font-medium text-gray-900">
+                {account.paymentMethod || 'N/A'}
+              </p>
+            </div>
+            <div>
+              <label className="text-xs text-gray-500">Payment Status</label>
+              <StatusBadge
+                status={account.paymentStatus || 'N/A'}
+                color={
+                  account.paymentStatus === 'completed' ? 'green' :
+                  account.paymentStatus === 'pending' ? 'yellow' :
+                  account.paymentStatus === 'failed' ? 'red' : 'gray'
+                }
+              />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500">Transaction Date</label>
+              <p className="text-sm font-medium text-gray-900">
+                {formatDate(account.transactionDate)}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </CommonModal>
   );
 };
 
 // Payment Status Modal Component
 const PaymentStatusModal = ({ isOpen, onClose, rawMaterial, account, onUpdate }) => {
+  const dispatch = useDispatch();
   const [paymentStatus, setPaymentStatus] = React.useState(account?.paymentStatus || 'pending');
   const [paymentSource, setPaymentSource] = React.useState('ready_cash');
   const [bankAccountIndex, setBankAccountIndex] = React.useState('');
@@ -809,13 +1226,31 @@ const PaymentStatusModal = ({ isOpen, onClose, rawMaterial, account, onUpdate })
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Validate bank account selection if payment source is bank account
     if (paymentStatus === 'completed' && paymentSource === 'bank_account' && !bankAccountIndex) {
+      dispatch(addNotification({
+        type: 'error',
+        message: 'Please select a bank account'
+      }));
       return;
     }
+    
+    // Validate payment source is provided for Head Office when status is completed
+    if (paymentStatus === 'completed' && isHeadOffice && !paymentSource) {
+      dispatch(addNotification({
+        type: 'error',
+        message: 'Please select a payment source'
+      }));
+      return;
+    }
+    
     setLoading(true);
     await onUpdate(paymentStatus, paymentSource, bankAccountIndex);
     setLoading(false);
   };
+
+  const isAlreadyCompleted = account?.paymentStatus === 'completed';
 
   return (
     <CommonModal
@@ -836,14 +1271,26 @@ const PaymentStatusModal = ({ isOpen, onClose, rawMaterial, account, onUpdate })
           >
             Cancel
           </Button>
-          <Button
-            variant="primary"
-            onClick={handleSubmit}
-            size="sm"
-            loading={loading}
-          >
-            Update Status
-          </Button>
+          {isAlreadyCompleted && paymentStatus === 'completed' ? (
+            <Button
+              variant="primary"
+              size="sm"
+              disabled={true}
+              className="bg-green-600 hover:bg-green-600 cursor-not-allowed"
+            >
+              Payment Completed
+            </Button>
+          ) : (
+            <Button
+              variant="primary"
+              onClick={handleSubmit}
+              size="sm"
+              loading={loading}
+              disabled={paymentStatus === 'completed' && !paymentSource && isHeadOffice}
+            >
+              Update Status
+            </Button>
+          )}
         </div>
       }
     >
@@ -856,6 +1303,7 @@ const PaymentStatusModal = ({ isOpen, onClose, rawMaterial, account, onUpdate })
           <Select
             value={paymentStatus}
             onChange={(e) => setPaymentStatus(e.target.value)}
+            disabled={isAlreadyCompleted && paymentStatus === 'completed'}
             options={[
               { value: 'pending', label: 'Pending' },
               { value: 'completed', label: 'Completed' },
@@ -865,8 +1313,8 @@ const PaymentStatusModal = ({ isOpen, onClose, rawMaterial, account, onUpdate })
           />
         </div>
 
-        {/* Payment Source (only for Head Office and when status is completed) */}
-        {isHeadOffice && paymentStatus === 'completed' && (
+        {/* Payment Source (only for Head Office and when status is completed, but not if already paid) */}
+        {isHeadOffice && paymentStatus === 'completed' && !isAlreadyCompleted && (
           <div className="space-y-4 border-t pt-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
