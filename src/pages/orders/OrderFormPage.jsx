@@ -87,7 +87,7 @@ const OrderFormPage = () => {
     },
     notes: '',
     internalNotes: '',
-    taxPercentage: 0,
+    taxPercentage: 5, // Standard 5% tax included in price
     discountPercentage: 0,
     shippingAmount: 0,
     codCharges: 0,
@@ -195,7 +195,7 @@ const OrderFormPage = () => {
           }, 0) || 0;
           return order.taxAmount && orderSubtotal > 0 
             ? parseFloat(((order.taxAmount / orderSubtotal) * 100).toFixed(2))
-            : 0;
+            : 5; // Default to 5% for new orders
         })(),
         discountPercentage: (() => {
           // Calculate discount percentage from stored discountAmount and subtotal
@@ -428,14 +428,23 @@ const OrderFormPage = () => {
       }, 0);
       
       // Calculate tax and discount from percentages
-      const taxPercentage = parseFloat(updatedFormData.taxPercentage) || 0;
+      const taxPercentage = parseFloat(updatedFormData.taxPercentage) || 5;
       const discountPercentage = parseFloat(updatedFormData.discountPercentage) || 0;
-      const taxAmount = (subtotal * taxPercentage) / 100;
-      const discountAmount = (subtotal * discountPercentage) / 100;
+      
+      // Calculate subtotal from prices that include tax
+      const calculatedSubtotal = updatedFormData.items.reduce((sum, item) => {
+        const quantity = parseInt(item.quantity) || 0;
+        const priceIncludingTax = parseFloat(item.unitPrice) || 0;
+        const basePrice = priceIncludingTax / (1 + taxPercentage / 100);
+        return sum + (quantity * basePrice);
+      }, 0);
+      
+      const taxAmount = (calculatedSubtotal * taxPercentage) / 100;
+      const discountAmount = (calculatedSubtotal * discountPercentage) / 100;
       
       const shippingAmount = parseFloat(updatedFormData.shippingAmount) || 0;
       const codCharges = updatedFormData.paymentMethod === 'cod' ? (parseFloat(updatedFormData.codCharges) || 0) : 0;
-      const totalAmount = subtotal + taxAmount + shippingAmount + codCharges - discountAmount;
+      const totalAmount = calculatedSubtotal + taxAmount + shippingAmount + codCharges - discountAmount;
       
       const amountReceived = parseFloat(value) || 0;
       
@@ -560,15 +569,21 @@ const OrderFormPage = () => {
   };
 
   // Calculate totals
+  // Note: Price entered by user includes tax (e.g., 599 includes 5% tax)
+  // We need to extract base price and calculate tax from it
   const calculateTotals = () => {
+    const taxPercentage = parseFloat(formData.taxPercentage) || 5;
+    
+    // Calculate subtotal: prices entered include tax, so extract base prices
     const subtotal = formData.items.reduce((sum, item) => {
       const quantity = parseInt(item.quantity) || 0;
-      const unitPrice = parseFloat(item.unitPrice) || 0;
-      return sum + (quantity * unitPrice);
+      const priceIncludingTax = parseFloat(item.unitPrice) || 0;
+      // Extract base price: priceIncludingTax / (1 + taxPercentage/100)
+      const basePrice = priceIncludingTax / (1 + taxPercentage / 100);
+      return sum + (quantity * basePrice);
     }, 0);
     
-    // Calculate tax and discount from percentages
-    const taxPercentage = parseFloat(formData.taxPercentage) || 0;
+    // Calculate tax from base price
     const discountPercentage = parseFloat(formData.discountPercentage) || 0;
     const taxAmount = (subtotal * taxPercentage) / 100;
     const discountAmount = (subtotal * discountPercentage) / 100;
@@ -1090,18 +1105,21 @@ const OrderFormPage = () => {
                     </div>
                     <div className="md:col-span-3 w-full flex flex-col">
                       <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                        Price *
+                        Price (Tax Included) *
                       </label>
                       <Input
                         type="number"
                         value={item.unitPrice || ''}
                         onChange={(e) => handleItemChange(index, 'unitPrice', e.target.value)}
-                        placeholder="Price"
+                        placeholder="Price (includes 5% tax)"
                         error={errors[`items.${index}.unitPrice`]}
                         min="0"
                         step="0.01"
                         className="w-full"
                       />
+                      <span className="text-xs text-gray-500 mt-1">
+                        Price includes 5% tax
+                      </span>
                     </div>
                     <div className="md:col-span-1 flex items-end">
                       <Button
@@ -1261,17 +1279,20 @@ const OrderFormPage = () => {
                     {taxAmount > 0 && (
                       <span className="text-xs text-gray-500">₹{taxAmount.toFixed(2)}</span>
                     )}
+                    <span className="text-xs text-gray-400 mt-0.5">(Included in price)</span>
                   </div>
                   <div className="w-24">
                     <Input
                       type="number"
                       value={formData.taxPercentage}
                       onChange={(e) => handleInputChange('taxPercentage', e.target.value)}
-                      placeholder="0"
+                      placeholder="5"
                       min="0"
                       max="100"
                       step="0.01"
                       size="sm"
+                      disabled={true}
+                      className="bg-gray-100 cursor-not-allowed opacity-60"
                     />
                   </div>
                 </div>

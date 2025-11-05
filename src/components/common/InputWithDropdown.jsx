@@ -40,7 +40,8 @@ const InputWithDropdown = ({
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsOpen(false);
-        setSearchTerm('');
+        // Don't clear searchTerm here - let the useEffect sync it with value prop
+        // This preserves user-typed values that don't match options
       }
     };
 
@@ -54,12 +55,15 @@ const InputWithDropdown = ({
   }, [isOpen]);
 
   // Update search term when value changes - convert both to strings for comparison
+  // This ensures the input always shows the current value, even if it doesn't match options
   useEffect(() => {
     if (value !== undefined && value !== null && value !== '') {
       const selectedOption = options.find(option => String(option.value) === String(value));
       if (selectedOption) {
+        // If value matches an option, show the option label
         setSearchTerm(selectedOption.label);
       } else {
+        // If value doesn't match any option (new/custom value), show the value itself
         setSearchTerm(String(value));
       }
     } else {
@@ -175,8 +179,29 @@ const InputWithDropdown = ({
                   )}
                 </button>
               ))
-            ) : (
+            ) : searchTerm ? (
               <div className="px-3 py-2 text-sm text-gray-500">No options found</div>
+            ) : options.length > 0 ? (
+              // Show all options when no search term
+              options.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={(e) => handleOptionSelect(option, e)}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 focus:outline-none focus:bg-gray-100"
+                >
+                  <div className="font-medium text-gray-900">{option.label}</div>
+                  {option.description && (
+                    <div className="text-xs text-gray-500">{option.description}</div>
+                  )}
+                </button>
+              ))
+            ) : (
+              <div className="px-3 py-2 text-sm text-gray-500">No options available</div>
             )}
           </div>
         )}

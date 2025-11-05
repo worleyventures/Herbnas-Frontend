@@ -91,7 +91,8 @@ const inventorySlice = createSlice({
       })
       .addCase(getUniqueSuppliers.fulfilled, (state, action) => {
         state.loading = false;
-        state.suppliers = action.payload.data.suppliers || [];
+        // Backend returns data directly as array, not nested in suppliers property
+        state.suppliers = action.payload.data || [];
         state.error = null;
       })
       .addCase(getUniqueSuppliers.rejected, (state, action) => {

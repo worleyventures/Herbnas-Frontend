@@ -10,11 +10,13 @@ import {
   HiExclamationTriangle,
   HiCheckCircle,
   HiInformationCircle,
-  HiTruck
+  HiTruck,
+  HiCreditCard
 } from 'react-icons/hi2';
-import { Table, ActionButton, StatusBadge, ConfirmationModal, InventoryDetailsModal } from '../../common';
+import { Table, ActionButton, StatusBadge, ConfirmationModal, InventoryDetailsModal, CommonModal, Select, Button } from '../../common';
 import { updateSentGoodsStatus } from '../../../redux/actions/sentGoodsActions';
 import { addNotification } from '../../../redux/slices/uiSlice';
+import { getAccountByRawMaterialId, updateAccountPaymentStatus } from '../../../redux/actions/accountActions';
 
 const InventoryCRUD = ({ 
   inventory, 
@@ -37,6 +39,9 @@ const InventoryCRUD = ({
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const [showInventoryModal, setShowInventoryModal] = useState(false);
+  const [showPaymentStatusModal, setShowPaymentStatusModal] = useState(false);
+  const [selectedRawMaterial, setSelectedRawMaterial] = useState(null);
+  const [rawMaterialAccount, setRawMaterialAccount] = useState(null);
 
   // Get current user for permission checks
   const { user } = useSelector((state) => state.auth || {});
@@ -363,6 +368,26 @@ const InventoryCRUD = ({
           )
         },
         {
+          key: 'paymentStatus',
+          label: 'Payment Status',
+          sortable: true,
+          render: (inventoryItem) => {
+            const paymentStatus = inventoryItem.paymentStatus || 'N/A';
+            const statusColors = {
+              'pending': 'yellow',
+              'completed': 'green',
+              'failed': 'red',
+              'refunded': 'gray'
+            };
+            return (
+              <StatusBadge
+                status={paymentStatus}
+                color={statusColors[paymentStatus] || 'gray'}
+              />
+            );
+          }
+        },
+        {
           key: 'actions',
           label: 'Actions',
           render: (inventoryItem) => (
@@ -370,21 +395,31 @@ const InventoryCRUD = ({
               <ActionButton
                 icon={HiEye}
                 onClick={() => handleViewInventory(inventoryItem)}
-                tooltip="View Details"
-                className="text-blue-600 hover:text-blue-900"
+                variant="view"
+                size="sm"
+                title="View Details"
               />
               <ActionButton
                 icon={HiPencil}
                 onClick={() => onEditInventory(inventoryItem)}
-                tooltip="Edit Inventory"
-                className="text-indigo-600 hover:text-indigo-900"
+                variant="edit"
+                size="sm"
+                title="Edit Inventory"
+              />
+              <ActionButton
+                icon={HiCreditCard}
+                onClick={() => handlePaymentStatusClick(inventoryItem)}
+                variant="secondary"
+                size="sm"
+                title="Update Payment Status"
               />
               {canDeleteRawMaterials() && inventoryType === 'rawMaterials' && (
                 <ActionButton
                   icon={HiTrash}
                   onClick={() => onDeleteInventory(inventoryItem)}
-                  tooltip="Delete Inventory"
-                  className="text-red-600 hover:text-red-900"
+                  variant="danger"
+                  size="sm"
+                  title="Delete Inventory"
                 />
               )}
             </div>
@@ -583,6 +618,23 @@ const InventoryCRUD = ({
     setShowDeleteModal(true);
   };
 
+  const handlePaymentStatusClick = async (inventoryItem) => {
+    try {
+      setSelectedRawMaterial(inventoryItem);
+      // Fetch account entry for this raw material
+      const result = await dispatch(getAccountByRawMaterialId(inventoryItem._id)).unwrap();
+      // Handle both nested and direct account data
+      const accountData = result.data?.account || result.data || result.account || result;
+      setRawMaterialAccount(accountData);
+      setShowPaymentStatusModal(true);
+    } catch (error) {
+      dispatch(addNotification({
+        type: 'error',
+        message: error?.message || 'Failed to fetch account details'
+      }));
+    }
+  };
+
 
   // Loading state
   if (loading) {
@@ -675,7 +727,260 @@ const InventoryCRUD = ({
         onDelete={!isFinishedProduction ? handleDeleteInventory : null}
         isFinishedProduction={isFinishedProduction}
       />
+
+      {/* Payment Status Modal */}
+      {showPaymentStatusModal && rawMaterialAccount && (
+        <PaymentStatusModal
+          isOpen={showPaymentStatusModal}
+          onClose={() => {
+            setShowPaymentStatusModal(false);
+            setSelectedRawMaterial(null);
+            setRawMaterialAccount(null);
+          }}
+          rawMaterial={selectedRawMaterial}
+          account={rawMaterialAccount}
+          onUpdate={async (paymentStatus, paymentSource, bankAccountIndex) => {
+            try {
+              await dispatch(updateAccountPaymentStatus({
+                accountId: rawMaterialAccount._id,
+                paymentStatus,
+                paymentSource,
+                bankAccountIndex
+              })).unwrap();
+              dispatch(addNotification({
+                type: 'success',
+                message: 'Payment status updated successfully'
+              }));
+              setShowPaymentStatusModal(false);
+              setSelectedRawMaterial(null);
+              setRawMaterialAccount(null);
+              // Refresh inventory to show updated payment status
+              if (onUpdateInventory) {
+                onUpdateInventory();
+              }
+            } catch (error) {
+              dispatch(addNotification({
+                type: 'error',
+                message: error?.message || 'Failed to update payment status'
+              }));
+            }
+          }}
+        />
+      )}
     </div>
+  );
+};
+
+// Payment Status Modal Component
+const PaymentStatusModal = ({ isOpen, onClose, rawMaterial, account, onUpdate }) => {
+  const [paymentStatus, setPaymentStatus] = React.useState(account?.paymentStatus || 'pending');
+  const [paymentSource, setPaymentSource] = React.useState('ready_cash');
+  const [bankAccountIndex, setBankAccountIndex] = React.useState('');
+  const [loading, setLoading] = React.useState(false);
+
+  React.useEffect(() => {
+    if (account) {
+      setPaymentStatus(account.paymentStatus || 'pending');
+    }
+  }, [account]);
+
+  // Get branch data - handle both populated object and ID
+  const branch = account?.branchId;
+  const branchName = typeof branch === 'object' ? branch?.branchName : null;
+  const branchIdValue = typeof branch === 'object' ? branch?._id : branch;
+  
+  // Check if it's Head Office
+  const isHeadOffice = branchName && branchName.toLowerCase() === 'head office';
+  
+  // Get bank accounts - handle both populated object and array
+  const bankAccounts = isHeadOffice && branch && typeof branch === 'object' && Array.isArray(branch.bankAccounts) 
+    ? branch.bankAccounts 
+    : [];
+
+  const bankAccountOptions = bankAccounts.map((acc, index) => ({
+    value: String(index),
+    label: `${acc.bankName || 'Bank'} - ${acc.bankAccountNumber || 'N/A'} (Balance: ₹${(acc.accountBalance || 0).toLocaleString()})`
+  }));
+
+  // Get ready cash amount
+  const readyCashAmount = isHeadOffice && branch && typeof branch === 'object' 
+    ? (branch.readyCashAmount || 0) 
+    : 0;
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (paymentStatus === 'completed' && paymentSource === 'bank_account' && !bankAccountIndex) {
+      return;
+    }
+    setLoading(true);
+    await onUpdate(paymentStatus, paymentSource, bankAccountIndex);
+    setLoading(false);
+  };
+
+  return (
+    <CommonModal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Update Payment Status"
+      subtitle={`Raw Material: ${rawMaterial?.set || rawMaterial?.materialName || 'N/A'}`}
+      icon={HiCreditCard}
+      iconColor="from-blue-500 to-blue-600"
+      size="lg"
+      showFooter={true}
+      footerContent={
+        <div className="flex space-x-2">
+          <Button
+            variant="outline"
+            onClick={onClose}
+            size="sm"
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            onClick={handleSubmit}
+            size="sm"
+            loading={loading}
+          >
+            Update Status
+          </Button>
+        </div>
+      }
+    >
+      <div className="space-y-6">
+        {/* Payment Status */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Payment Status *
+          </label>
+          <Select
+            value={paymentStatus}
+            onChange={(e) => setPaymentStatus(e.target.value)}
+            options={[
+              { value: 'pending', label: 'Pending' },
+              { value: 'completed', label: 'Completed' },
+              { value: 'failed', label: 'Failed' },
+              { value: 'refunded', label: 'Refunded' }
+            ]}
+          />
+        </div>
+
+        {/* Payment Source (only for Head Office and when status is completed) */}
+        {isHeadOffice && paymentStatus === 'completed' && (
+          <div className="space-y-4 border-t pt-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Payment Source *
+              </label>
+              <Select
+                value={paymentSource}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setPaymentSource(value);
+                  if (value !== 'bank_account') {
+                    setBankAccountIndex('');
+                  }
+                }}
+                options={[
+                  { value: 'ready_cash', label: `Ready Cash (Balance: ₹${readyCashAmount.toLocaleString()})` },
+                  ...(bankAccountOptions.length > 0 ? [{ value: 'bank_account', label: 'Bank Account' }] : [])
+                ]}
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                Select from which account the amount should be deducted
+              </p>
+            </div>
+
+            {paymentSource === 'bank_account' && bankAccountOptions.length > 0 && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Select Bank Account *
+                </label>
+                <Select
+                  value={bankAccountIndex}
+                  onChange={(e) => setBankAccountIndex(e.target.value)}
+                  options={bankAccountOptions}
+                  placeholder="Select Bank Account"
+                />
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Account Details */}
+        <div className="border-t pt-4 space-y-4">
+          <h3 className="text-sm font-semibold text-gray-900">Account Details</h3>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs text-gray-500">Amount</label>
+              <p className="text-sm font-medium text-gray-900">
+                ₹{account?.amount?.toLocaleString() || 'N/A'}
+              </p>
+            </div>
+            <div>
+              <label className="text-xs text-gray-500">Payment Method</label>
+              <p className="text-sm font-medium text-gray-900">
+                {account?.paymentMethod || 'N/A'}
+              </p>
+            </div>
+            <div>
+              <label className="text-xs text-gray-500">Invoice Number</label>
+              <p className="text-sm font-medium text-gray-900">
+                {account?.invoiceNumber || 'N/A'}
+              </p>
+            </div>
+            <div>
+              <label className="text-xs text-gray-500">Supplier</label>
+              <p className="text-sm font-medium text-gray-900">
+                {account?.vendorName || 'N/A'}
+              </p>
+            </div>
+          </div>
+
+          {/* Branch Details */}
+          {isHeadOffice && (
+            <div className="mt-4 pt-4 border-t">
+              <h4 className="text-sm font-semibold text-gray-900 mb-2">Head Office Accounts</h4>
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Ready Cash:</span>
+                  <span className="text-sm font-medium text-gray-900">
+                    ₹{readyCashAmount.toLocaleString()}
+                  </span>
+                </div>
+                {bankAccounts.length > 0 && (
+                  <div className="mt-2">
+                    <span className="text-sm text-gray-600">Bank Accounts:</span>
+                    <div className="mt-1 space-y-1">
+                      {bankAccounts.map((acc, index) => (
+                        <div key={index} className="flex justify-between items-center text-sm">
+                          <span className="text-gray-600">
+                            {acc.bankName || 'Bank'} - {acc.bankAccountNumber || 'N/A'}
+                          </span>
+                          <span className="font-medium text-gray-900">
+                            ₹{(acc.accountBalance || 0).toLocaleString()}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Debug info - show if not Head Office but payment status is completed */}
+          {paymentStatus === 'completed' && !isHeadOffice && (
+            <div className="mt-4 pt-4 border-t">
+              <p className="text-xs text-gray-500 italic">
+                Note: Payment source selection is only available for Head Office raw material purchases.
+                {branchName && ` Current branch: ${branchName}`}
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    </CommonModal>
   );
 };
 

@@ -31,9 +31,14 @@ const BranchDetailsModal = ({
   const inventoryLoading = useSelector(selectInventoryLoading);
   const inventoryError = useSelector(selectInventoryError);
 
-  // Load branch inventory when modal opens
+  // Load branch inventory when modal opens (skip for Head Office)
   useEffect(() => {
     if (isOpen && branch) {
+      // Skip loading inventory for Head Office
+      if (branch.branchName && branch.branchName.toLowerCase() === 'head office') {
+        return;
+      }
+      
       const branchId = branch._id || branch.id;
       
       if (branchId) {
@@ -457,32 +462,34 @@ const BranchDetailsModal = ({
           </div>
         )}
 
-        {/* Branch Inventory Section */}
-        <div className="border-t border-gray-200 pt-6">
-          <div className="flex items-center space-x-2 mb-4">
-            <HiCube className="h-5 w-5 text-gray-600" />
-            <h3 className="text-lg font-medium text-gray-900">Branch Inventory</h3>
-            <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-sm">
-              {branchInventory.length} items
-            </span>
-          </div>
+        {/* Branch Inventory Section - Hide for Head Office */}
+        {branch.branchName && branch.branchName.toLowerCase() !== 'head office' && (
+          <div className="border-t border-gray-200 pt-6">
+            <div className="flex items-center space-x-2 mb-4">
+              <HiCube className="h-5 w-5 text-gray-600" />
+              <h3 className="text-lg font-medium text-gray-900">Branch Inventory</h3>
+              <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-sm">
+                {branchInventory.length} items
+              </span>
+            </div>
 
-          {inventoryLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-              <span className="ml-2 text-gray-600">Loading inventory...</span>
-            </div>
-          ) : inventoryError ? (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-              <div className="flex items-center">
-                <HiExclamationTriangle className="h-5 w-5 text-red-500 mr-2" />
-                <span className="text-red-700">Failed to load inventory: {inventoryError}</span>
+            {inventoryLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <span className="ml-2 text-gray-600">Loading inventory...</span>
               </div>
-            </div>
-          ) : (
-            renderInventoryTable()
-          )}
-        </div>
+            ) : inventoryError ? (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <div className="flex items-center">
+                  <HiExclamationTriangle className="h-5 w-5 text-red-500 mr-2" />
+                  <span className="text-red-700">Failed to load inventory: {inventoryError}</span>
+                </div>
+              </div>
+            ) : (
+              renderInventoryTable()
+            )}
+          </div>
+        )}
       </div>
     </CommonModal>
   );

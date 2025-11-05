@@ -678,45 +678,49 @@ const RawMaterialForm = () => {
           {/* Pricing Information */}
           <div id="pricing-section" className="space-y-4">
             <h3 className="text-lg font-medium text-gray-900">Pricing Information</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {isBuySetsMode ? (
-                <Input
-                  label="Unit Price"
-                  name="unitPrice"
-                  type="number"
-                  step="0.01"
-                  value={formData.unitPrice}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+              <div className="flex flex-col">
+                {isBuySetsMode ? (
+                  <Input
+                    label="Unit Price"
+                    name="unitPrice"
+                    type="number"
+                    step="0.01"
+                    value={formData.unitPrice}
+                    onChange={handleChange}
+                    placeholder="0.00"
+                    error={!!errors.unitPrice}
+                    errorMessage={errors.unitPrice}
+                    required
+                  />
+                ) : (
+                  <Input
+                    label="Price per Unit"
+                    name="price"
+                    type="number"
+                    step="0.01"
+                    value={formData.price}
+                    onChange={handleChange}
+                    placeholder="0.00"
+                    error={!!errors.price}
+                    errorMessage={errors.price}
+                    required
+                  />
+                )}
+              </div>
+              <div className="flex flex-col">
+                <Select
+                  label="GST Percentage"
+                  name="gstPercentage"
+                  value={formData.gstPercentage}
                   onChange={handleChange}
-                  placeholder="0.00"
-                  error={!!errors.unitPrice}
-                  errorMessage={errors.unitPrice}
+                  options={gstPercentageOptions}
+                  placeholder="Select GST percentage"
+                  error={!!errors.gstPercentage}
+                  errorMessage={errors.gstPercentage}
                   required
                 />
-              ) : (
-                <Input
-                  label="Price per Unit"
-                  name="price"
-                  type="number"
-                  step="0.01"
-                  value={formData.price}
-                  onChange={handleChange}
-                  placeholder="0.00"
-                  error={!!errors.price}
-                  errorMessage={errors.price}
-                  required
-                />
-              )}
-              <Select
-                label="GST Percentage"
-                name="gstPercentage"
-                value={formData.gstPercentage}
-                onChange={handleChange}
-                options={gstPercentageOptions}
-                placeholder="Select GST percentage"
-                error={!!errors.gstPercentage}
-                errorMessage={errors.gstPercentage}
-                required
-              />
+              </div>
             </div>
             
             {/* Total calculation for sets mode */}
@@ -790,26 +794,30 @@ const RawMaterialForm = () => {
           {/* Supplier Information */}
           <div className="space-y-4">
             <h3 className="text-lg font-medium text-gray-900">Supplier Information</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <InputWithDropdown
-                label="Supplier ID"
-                name="supplierId"
-                value={formData.supplierId}
-                onChange={handleSupplierChange}
-                placeholder="Search or select supplier ID"
-                options={supplierOptions}
-                helperText="Select from existing suppliers or type a new ID"
-              />
-              <Input
-                label="Supplier Name"
-                name="supplierName"
-                value={formData.supplierName}
-                onChange={handleChange}
-                placeholder="Enter supplier name"
-                error={!!errors.supplierName}
-                errorMessage={errors.supplierName}
-                required
-              />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+              <div className="flex flex-col">
+                <InputWithDropdown
+                  label="Supplier ID"
+                  name="supplierId"
+                  value={formData.supplierId}
+                  onChange={handleSupplierChange}
+                  placeholder="Search or select supplier ID"
+                  options={supplierOptions}
+                  helperText="Select from existing suppliers or type a new ID"
+                />
+              </div>
+              <div className="flex flex-col">
+                <Input
+                  label="Supplier Name"
+                  name="supplierName"
+                  value={formData.supplierName}
+                  onChange={handleChange}
+                  placeholder="Enter supplier name"
+                  error={!!errors.supplierName}
+                  errorMessage={errors.supplierName}
+                  required
+                />
+              </div>
               <Input
                 label="GST Number"
                 name="gstNumber"
