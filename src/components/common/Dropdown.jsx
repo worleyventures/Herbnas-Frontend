@@ -92,6 +92,15 @@ const Dropdown = ({
     const optionValueStr = String(option.value || '');
     return optionValueStr === safeValue;
   }) : null;
+  
+  // Debug: Log if value doesn't match any option (only in development)
+  if (safeValue && !selectedOption && process.env.NODE_ENV === 'development') {
+    console.warn('Dropdown: Value does not match any option', {
+      value: safeValue,
+      availableOptions: options.map(opt => String(opt.value)),
+      optionsCount: options.length
+    });
+  }
 
   return (
     <div className={`space-y-1 ${className}`} ref={dropdownRef}>

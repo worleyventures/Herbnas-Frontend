@@ -119,15 +119,18 @@ const PayrollTab = ({ showUsers = true, isPayrollTab = false }) => {
 
   // Handle filter changes
   const handleFilterChange = (filterType, value) => {
+    // Ensure value is always a string for consistency
+    const stringValue = value !== undefined && value !== null ? String(value) : '';
+    
     switch (filterType) {
       case 'branch':
-        setBranchFilter(value);
+        setBranchFilter(stringValue);
         break;
       case 'month':
-        setMonthFilter(value);
+        setMonthFilter(stringValue);
         break;
       case 'year':
-        setYearFilter(value);
+        setYearFilter(stringValue);
         break;
       default:
         break;

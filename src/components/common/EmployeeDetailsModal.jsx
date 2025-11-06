@@ -110,6 +110,12 @@ const EmployeeDetailsModal = ({
           'N/A'
       },
       {
+        label: 'Allowances',
+        value: employee.payrollData?.allowances !== undefined && employee.payrollData?.allowances !== null ? 
+          `₹${employee.payrollData.allowances.toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : 
+          '₹0.00'
+      },
+      {
         label: 'Gross Salary',
         value: employee.payrollData?.calculations?.grossSalary ? 
           `₹${employee.payrollData.calculations.grossSalary.toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : 
@@ -144,15 +150,9 @@ const EmployeeDetailsModal = ({
           '₹0.00'
       },
       {
-        label: 'Professional Tax',
-        value: employee.payrollData.deductions?.professionalTax !== undefined && employee.payrollData.deductions?.professionalTax !== null ?
-          `₹${employee.payrollData.deductions.professionalTax.toLocaleString('en-IN', { minimumFractionDigits: 2 })}` :
-          '₹0.00'
-      },
-      {
-        label: 'Income Tax (TDS)',
-        value: employee.payrollData.deductions?.incomeTax !== undefined && employee.payrollData.deductions?.incomeTax !== null ?
-          `₹${employee.payrollData.deductions.incomeTax.toLocaleString('en-IN', { minimumFractionDigits: 2 })}` :
+        label: 'ESI',
+        value: employee.payrollData.deductions?.esi !== undefined && employee.payrollData.deductions?.esi !== null ?
+          `₹${employee.payrollData.deductions.esi.toLocaleString('en-IN', { minimumFractionDigits: 2 })}` :
           '₹0.00'
       },
       {

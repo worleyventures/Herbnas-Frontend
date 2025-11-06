@@ -191,9 +191,42 @@ const PayslipModal = ({ isOpen, onClose, userId, attendanceData: initialAttendan
             const deductions = payrollToUse.deductions || {};
             const totalDeductions = 
               (deductions.providentFund || 0) * deductionPercentage +
-              (deductions.professionalTax || 0) * deductionPercentage +
-              (deductions.incomeTax || 0) * deductionPercentage +
+              (deductions.esi || 0) * deductionPercentage +
               (deductions.otherDeductions || 0) * deductionPercentage;
+            
+            // Calculate gross salary (basic + allowances)
+            const allowances = payrollToUse.allowances || 0;
+            let grossSalary = proratedBasicSalary + allowances;
+            
+            // Calculate incentive from branch incentiveType
+            let incentiveAmount = 0;
+            const branch = payrollToUse.branchId;
+            if (branch && (typeof branch === 'object' || typeof branch === 'string')) {
+              let incentiveType = 0;
+              
+              // Get incentiveType from branch
+              if (typeof branch === 'object' && branch.incentiveType !== undefined) {
+                incentiveType = branch.incentiveType || 0;
+              } else if (typeof branch === 'string') {
+                // If branchId is a string, try to fetch branch data
+                try {
+                  const branchResponse = await api.get(`/branches/${branch}`).catch(() => null);
+                  if (branchResponse?.data?.success && branchResponse.data.data?.branch) {
+                    incentiveType = branchResponse.data.data.branch.incentiveType || 0;
+                  }
+                } catch (error) {
+                  console.error('Error fetching branch for incentive:', error);
+                }
+              }
+              
+              // Calculate incentive amount (percentage of gross salary)
+              if (incentiveType > 0 && grossSalary > 0) {
+                incentiveAmount = (grossSalary * incentiveType) / 100;
+              }
+            }
+            
+            // Add incentive to gross salary
+            grossSalary = grossSalary + incentiveAmount;
             
             // Update payroll with recalculated values
             payrollToUse.attendance = {
@@ -204,16 +237,20 @@ const PayslipModal = ({ isOpen, onClose, userId, attendanceData: initialAttendan
             
             payrollToUse.calculations = {
               ...payrollToUse.calculations,
-              grossSalary: proratedBasicSalary,
+              grossSalary: grossSalary,
+              incentiveAmount: incentiveAmount,
               totalDeductions: totalDeductions,
-              netSalary: Math.max(0, proratedBasicSalary - totalDeductions)
+              netSalary: Math.max(0, grossSalary - totalDeductions)
             };
             
             console.log('Recalculated payroll:', {
               basicSalary,
+              allowances,
               presentDays,
               totalDaysInMonth,
               proratedBasicSalary,
+              incentiveAmount,
+              grossSalary,
               totalDeductions,
               netSalary: payrollToUse.calculations.netSalary
             });
@@ -532,6 +569,31 @@ const PayslipModal = ({ isOpen, onClose, userId, attendanceData: initialAttendan
                           ₹{(getPayrollValue('basicSalary') || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                         </span>
                       </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-gray-600">Allowances</span>
+                        <span className="text-sm font-medium text-gray-900">
+                          ₹{(getPayrollValue('allowances') || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                      {(() => {
+                        const incentiveAmount = getPayrollValue('calculations.incentiveAmount') || 0;
+                        const branch = payrollData?.branchId;
+                        const incentiveType = typeof branch === 'object' ? (branch?.incentiveType || 0) : 0;
+                        
+                        if (incentiveAmount > 0 && incentiveType > 0) {
+                          return (
+                            <div className="flex justify-between">
+                              <span className="text-sm text-gray-600">
+                                Incentive ({incentiveType}%)
+                              </span>
+                              <span className="text-sm font-medium text-gray-900">
+                                ₹{incentiveAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                              </span>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
                       <div className="flex justify-between text-xs text-gray-500">
                         <span>
                           {(() => {
@@ -565,8 +627,7 @@ const PayslipModal = ({ isOpen, onClose, userId, attendanceData: initialAttendan
                         const deductionPercentage = basicSalary > 0 ? grossSalary / basicSalary : 0;
                         const deductions = {
                           providentFund: (getPayrollValue('deductions.providentFund') || 0) * deductionPercentage,
-                          professionalTax: (getPayrollValue('deductions.professionalTax') || 0) * deductionPercentage,
-                          incomeTax: (getPayrollValue('deductions.incomeTax') || 0) * deductionPercentage,
+                          esi: (getPayrollValue('deductions.esi') || 0) * deductionPercentage,
                           otherDeductions: (getPayrollValue('deductions.otherDeductions') || 0) * deductionPercentage
                         };
                         return (
@@ -578,15 +639,9 @@ const PayslipModal = ({ isOpen, onClose, userId, attendanceData: initialAttendan
                               </span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-sm text-gray-600">Professional Tax</span>
+                              <span className="text-sm text-gray-600">ESI</span>
                               <span className="text-sm font-medium text-gray-900">
-                                ₹{deductions.professionalTax.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                              </span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-sm text-gray-600">Income Tax (TDS)</span>
-                              <span className="text-sm font-medium text-gray-900">
-                                ₹{deductions.incomeTax.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                ₹{deductions.esi.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                               </span>
                             </div>
                             <div className="flex justify-between">
