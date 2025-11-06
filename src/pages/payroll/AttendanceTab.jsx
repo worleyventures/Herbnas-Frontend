@@ -111,7 +111,11 @@ const AttendanceTab = () => {
   };
 
   // Handle filter changes
-  const handleFilterChange = (filterType, value) => {
+  // Handle filter changes - support both event object and direct value
+  const handleFilterChange = (filterType, eventOrValue) => {
+    // Extract value from event object or use direct value
+    const value = eventOrValue?.target?.value !== undefined ? eventOrValue.target.value : eventOrValue;
+    
     switch (filterType) {
       case 'branch':
         setBranchFilter(value);
@@ -515,19 +519,19 @@ const AttendanceTab = () => {
             <div className="flex flex-col sm:flex-row gap-3">
               <Select
                 value={branchFilter}
-                onChange={(value) => handleFilterChange('branch', value)}
+                onChange={(e) => handleFilterChange('branch', e)}
                 options={branchOptions}
                 className="w-full sm:w-40"
               />
               <Select
                 value={approvalStatusFilter}
-                onChange={(value) => handleFilterChange('approvalStatus', value)}
+                onChange={(e) => handleFilterChange('approvalStatus', e)}
                 options={approvalStatusOptions}
                 className="w-full sm:w-48"
               />
               <Select
                 value={monthFilter}
-                onChange={(value) => handleFilterChange('month', value)}
+                onChange={(e) => handleFilterChange('month', e)}
                 options={monthOptions}
                 className="w-full sm:w-32"
               />
@@ -553,19 +557,19 @@ const AttendanceTab = () => {
                 />
                 <Select
                   value={branchFilter}
-                  onChange={(value) => handleFilterChange('branch', value)}
+                  onChange={(e) => handleFilterChange('branch', e)}
                   options={branchOptions}
                   className="w-full sm:w-40"
                 />
                 <Select
                   value={monthFilter}
-                  onChange={(value) => handleFilterChange('month', value)}
+                  onChange={(e) => handleFilterChange('month', e)}
                   options={monthOptions}
                   className="w-full sm:w-32"
                 />
                 <Select
                   value={approvalStatusFilter}
-                  onChange={(value) => handleFilterChange('approvalStatus', value)}
+                  onChange={(e) => handleFilterChange('approvalStatus', e)}
                   options={approvalStatusOptions}
                   className="w-full sm:w-48"
                 />

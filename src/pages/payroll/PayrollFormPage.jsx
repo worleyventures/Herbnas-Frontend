@@ -585,7 +585,7 @@ const PayrollFormPage = () => {
                     <Select
                       options={designationOptions}
                       value={formData.designation}
-                      onChange={(value) => handleInputChange('designation', value)}
+                      onChange={(e) => handleInputChange('designation', e.target.value)}
                       placeholder="Select designation"
                       error={errors.designation}
                     />
@@ -677,7 +677,7 @@ const PayrollFormPage = () => {
                     <Select
                       options={branchOptions}
                       value={formData.branchId}
-                      onChange={(value) => handleInputChange('branchId', value)}
+                      onChange={(e) => handleInputChange('branchId', e.target.value)}
                       placeholder={branchesLoading ? "Loading branches..." : "Select a branch"}
                       disabled={branchesLoading || branchOptions.length === 0}
                       error={errors.branchId}

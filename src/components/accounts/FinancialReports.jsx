@@ -399,7 +399,7 @@ const FinancialReports = () => {
             </label>
             <Select
               value={selectedBranch}
-              onChange={setSelectedBranch}
+              onChange={(e) => setSelectedBranch(e.target.value)}
               options={branchOptions}
             />
           </div>
