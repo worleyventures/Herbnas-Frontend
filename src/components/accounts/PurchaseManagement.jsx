@@ -94,7 +94,9 @@ const PurchaseManagement = () => {
     paymentMethod: 'cash',
     paymentStatus: 'completed',
     description: '',
-    notes: ''
+    notes: '',
+    paymentSource: 'ready_cash', // 'bank_account' or 'ready_cash'
+    bankAccountIndex: '' // Index of bank account if paymentSource is 'bank_account'
   });
 
   // Load data on component mount
@@ -131,6 +133,23 @@ const PurchaseManagement = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    // Validate payment source for Head Office centralized purchases
+    if (activeTab === 'raw-materials' && formData.purchaseType === 'centralized') {
+      const selectedBranch = branches.find(b => b._id === formData.branchId);
+      const isHeadOffice = selectedBranch && selectedBranch.branchName && 
+                          selectedBranch.branchName.toLowerCase() === 'head office';
+      
+      if (isHeadOffice) {
+        if (formData.paymentSource === 'bank_account' && (!formData.bankAccountIndex || formData.bankAccountIndex === '')) {
+          dispatch(addNotification({
+            type: 'error',
+            message: 'Please select a bank account'
+          }));
+          return;
+        }
+      }
+    }
+    
     try {
       if (activeTab === 'raw-materials') {
         await dispatch(createRawMaterialPurchaseAccount(formData)).unwrap();
@@ -161,15 +180,18 @@ const PurchaseManagement = () => {
         paymentMethod: 'cash',
         paymentStatus: 'completed',
         description: '',
-        notes: ''
+        notes: '',
+        paymentSource: 'ready_cash',
+        bankAccountIndex: ''
       });
       
-      // Refresh accounts list
+      // Refresh accounts list and branches (to update balances)
       dispatch(getAllAccounts({
         page: currentPage,
         limit: 10,
         transactionType: 'purchase'
       }));
+      dispatch(getAllBranches());
     } catch (error) {
       dispatch(addNotification({
         type: 'error',
@@ -710,6 +732,66 @@ const PurchaseManagement = () => {
               />
             </div>
           </div>
+
+          {/* Payment Source Selection - Only for centralized raw material purchases from Head Office */}
+          {activeTab === 'raw-materials' && formData.purchaseType === 'centralized' && (() => {
+            const selectedBranch = branches.find(b => b._id === formData.branchId);
+            const isHeadOffice = selectedBranch && selectedBranch.branchName && 
+                                selectedBranch.branchName.toLowerCase() === 'head office';
+            
+            if (!isHeadOffice) return null;
+
+            const headOfficeBranch = selectedBranch;
+            const bankAccounts = Array.isArray(headOfficeBranch.bankAccounts) && headOfficeBranch.bankAccounts.length > 0
+              ? headOfficeBranch.bankAccounts
+              : [];
+
+            const bankAccountOptions = bankAccounts.map((acc, index) => ({
+              value: String(index),
+              label: `${acc.bankName || 'Bank'} - ${acc.bankAccountNumber || 'N/A'} (Balance: ₹${(acc.accountBalance || 0).toLocaleString()})`
+            }));
+
+            return (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Payment Source *
+                  </label>
+                  <Select
+                    value={formData.paymentSource}
+                    onChange={(value) => {
+                      setFormData({ 
+                        ...formData, 
+                        paymentSource: value,
+                        bankAccountIndex: value === 'bank_account' ? formData.bankAccountIndex : ''
+                      });
+                    }}
+                    options={[
+                      { value: 'ready_cash', label: `Ready Cash (Balance: ₹${(headOfficeBranch.readyCashAmount || 0).toLocaleString()})` },
+                      ...(bankAccountOptions.length > 0 ? [{ value: 'bank_account', label: 'Bank Account' }] : [])
+                    ]}
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Select from which account the amount should be deducted
+                  </p>
+                </div>
+
+                {formData.paymentSource === 'bank_account' && bankAccountOptions.length > 0 && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Select Bank Account *
+                    </label>
+                    <Select
+                      value={formData.bankAccountIndex}
+                      onChange={(value) => setFormData({ ...formData, bankAccountIndex: value })}
+                      options={bankAccountOptions}
+                      placeholder="Select Bank Account"
+                    />
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">

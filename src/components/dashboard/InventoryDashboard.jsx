@@ -284,13 +284,29 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
     }
   };
 
-  const handleUpdateInventory = async (formData) => {
+  const handleUpdateInventory = async () => {
     try {
-      // This function is not used in the current implementation
-      // Inventory updates are handled through the form pages
-      console.log('Update inventory function called but not implemented in dashboard');
+      // Refresh the current inventory tab when payment status or other details are updated
+      if (activeTab === 'rawMaterials') {
+        dispatch(getAllRawMaterials({
+          page: currentPage,
+          limit: itemsPerPage,
+          search: searchTerm,
+          stockStatus: filterStockStatus === 'all' ? '' : filterStockStatus
+        }));
+      } else if (activeTab === 'finishedGoods') {
+        dispatch(getAllFinishedGoods({
+          page: currentPage,
+          limit: itemsPerPage,
+          search: searchTerm,
+          productId: filterProduct === 'all' ? '' : filterProduct,
+          stockStatus: filterStockStatus === 'all' ? '' : filterStockStatus
+        }));
+      }
+      // Also refresh stats
+      dispatch(getInventoryStats());
     } catch (error) {
-      console.error('Error updating inventory:', error);
+      console.error('Error refreshing inventory:', error);
     }
   };
 

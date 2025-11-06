@@ -135,9 +135,8 @@ const Dropdown = ({
         {/* Dropdown Menu */}
         {isOpen && (
           <div 
-            className="absolute z-[100] w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-80 overflow-y-auto"
+            className="absolute z-[9999] w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-80 overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
-            onMouseDown={(e) => e.preventDefault()}
           >
             {/* Search Input */}
             {searchable && (

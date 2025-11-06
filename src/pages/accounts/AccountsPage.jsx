@@ -21,7 +21,9 @@ import {
   getAccountStats,
   getBranchSummary,
   deleteAccount,
-  getAccountById
+  getAccountById,
+  getHeadOfficeSupplierExpenses,
+  backfillUnrecordedRawMaterials
 } from '../../redux/actions/accountActions';
 import { getOrderById } from '../../redux/actions/orderActions';
 import { getBranchById } from '../../redux/actions/branchActions';
@@ -34,6 +36,8 @@ import {
   selectBranchSummary,
   selectBranchSummaryLoading,
   selectAccountPagination,
+  selectHeadOfficeSupplierExpenses,
+  selectHeadOfficeSupplierExpensesLoading,
   clearAccountError
 } from '../../redux/slices/accountSlice';
 import { addNotification } from '../../redux/slices/uiSlice';
@@ -56,6 +60,8 @@ const AccountsPage = () => {
   const statsLoading = useSelector(selectAccountStatsLoading);
   const branchSummary = useSelector(selectBranchSummary);
   const branchSummaryLoading = useSelector(selectBranchSummaryLoading);
+  const headOfficeSupplierExpenses = useSelector(selectHeadOfficeSupplierExpenses);
+  const headOfficeSupplierExpensesLoading = useSelector(selectHeadOfficeSupplierExpensesLoading);
   const pagination = useSelector(selectAccountPagination);
   
   // Local state
@@ -80,6 +86,11 @@ const AccountsPage = () => {
   // Drill-down state for Super Admin
   const [selectedBranch, setSelectedBranch] = useState(null);
   const [showBranchDetails, setShowBranchDetails] = useState(false);
+  const [isHeadOffice, setIsHeadOffice] = useState(false);
+  const [supplierFilter, setSupplierFilter] = useState('all');
+  const [backfilling, setBackfilling] = useState(false);
+  const [showSupplierDetailsModal, setShowSupplierDetailsModal] = useState(false);
+  const [selectedSupplier, setSelectedSupplier] = useState(null);
 
   // Role-based access
   const isSuperAdmin = user?.role === 'super_admin';
@@ -138,6 +149,12 @@ const AccountsPage = () => {
       const branchId = isAccountsManager ? (user?.branch?._id || user?.branch) : (branchFilter !== 'all' ? branchFilter : undefined);
       const dateRange = getDateRange();
       
+      // For custom date range, only fetch if both dates are provided
+      if (dateRangeFilter === 'custom' && (!fromDate || !toDate)) {
+        // Don't fetch if custom is selected but dates are not provided
+        return;
+      }
+      
       dispatch(getAllAccounts({
         page: currentPage,
         limit: 10,
@@ -162,11 +179,17 @@ const AccountsPage = () => {
         }));
       }
     }
-  }, [activeTab, currentPage, searchTerm, getDateRange, branchFilter, paymentStatusFilter, transactionTypeFilter, dispatch, isSuperAdmin, isAccountsManager, user?.branch?._id, user?.branch]);
+  }, [activeTab, currentPage, searchTerm, dateRangeFilter, fromDate, toDate, branchFilter, paymentStatusFilter, transactionTypeFilter, dispatch, isSuperAdmin, isAccountsManager, user?.branch?._id, user?.branch, getDateRange]);
 
   // Separate effect to reload branch summary when date range changes (for super admin)
   useEffect(() => {
     if (isSuperAdmin && (activeTab === 'overview' || !showBranchDetails)) {
+      // For custom date range, only fetch if both dates are provided
+      if (dateRangeFilter === 'custom' && (!fromDate || !toDate)) {
+        // Don't fetch if custom is selected but dates are not provided
+        return;
+      }
+      
       const dateRange = getDateRange();
       dispatch(getBranchSummary({
         startDate: dateRange?.startDate,
@@ -175,27 +198,44 @@ const AccountsPage = () => {
     }
   }, [dateRangeFilter, fromDate, toDate, isSuperAdmin, activeTab, showBranchDetails, getDateRange, dispatch]);
 
-  // Load accounts for selected branch drill-down
+  // Load accounts for selected branch drill-down (or Head Office supplier expenses)
   useEffect(() => {
     if (showBranchDetails && selectedBranch) {
+      // For custom date range, only fetch if both dates are provided
+      if (dateRangeFilter === 'custom' && (!fromDate || !toDate)) {
+        // Don't fetch if custom is selected but dates are not provided
+        return;
+      }
+      
       const dateRange = getDateRange();
-      dispatch(getAllAccounts({
-        page: currentPage,
-        limit: 10,
-        search: searchTerm,
-        startDate: dateRange?.startDate,
-        endDate: dateRange?.endDate,
-        branchId: selectedBranch.branchId,
-        paymentStatus: paymentStatusFilter !== 'all' ? paymentStatusFilter : undefined,
-        transactionType: transactionTypeFilter !== 'all' ? transactionTypeFilter : undefined
-      }));
-      dispatch(getAccountStats({
-        startDate: dateRange?.startDate,
-        endDate: dateRange?.endDate,
-        branchId: selectedBranch.branchId
-      }));
+      
+      if (isHeadOffice) {
+        // Load Head Office supplier expenses
+        dispatch(getHeadOfficeSupplierExpenses({
+          startDate: dateRange?.startDate,
+          endDate: dateRange?.endDate,
+          supplierId: supplierFilter !== 'all' ? supplierFilter : undefined
+        }));
+      } else {
+        // Load regular accounts for other branches
+        dispatch(getAllAccounts({
+          page: currentPage,
+          limit: 10,
+          search: searchTerm,
+          startDate: dateRange?.startDate,
+          endDate: dateRange?.endDate,
+          branchId: selectedBranch.branchId,
+          paymentStatus: paymentStatusFilter !== 'all' ? paymentStatusFilter : undefined,
+          transactionType: transactionTypeFilter !== 'all' ? transactionTypeFilter : undefined
+        }));
+        dispatch(getAccountStats({
+          startDate: dateRange?.startDate,
+          endDate: dateRange?.endDate,
+          branchId: selectedBranch.branchId
+        }));
+      }
     }
-  }, [showBranchDetails, selectedBranch, currentPage, searchTerm, getDateRange, paymentStatusFilter, transactionTypeFilter, dispatch]);
+  }, [showBranchDetails, selectedBranch, isHeadOffice, currentPage, searchTerm, getDateRange, paymentStatusFilter, transactionTypeFilter, supplierFilter, dispatch]);
 
   // Handle branch row click for drill-down
   const handleBranchClick = (branch) => {
@@ -205,6 +245,11 @@ const AccountsPage = () => {
     setTransactionTypeFilter('all'); // Reset transaction type filter to show all types
     setPaymentStatusFilter('all'); // Reset payment status filter to show all statuses
     setSearchTerm(''); // Reset search term
+    setSupplierFilter('all'); // Reset supplier filter
+    
+    // Check if it's Head Office branch
+    const isHeadOfficeBranch = branch.branchName.toLowerCase() === 'head office';
+    setIsHeadOffice(isHeadOfficeBranch);
   };
 
   // Handle back to branch summary
@@ -212,10 +257,12 @@ const AccountsPage = () => {
     setShowBranchDetails(false);
     setSelectedBranch(null);
     setCurrentPage(1);
+    setIsHeadOffice(false);
+    setSupplierFilter('all');
   };
 
-  // Handle filters
-  const handleDateRangeFilter = (e) => {
+  // Handle filters with useCallback to prevent unnecessary re-renders
+  const handleDateRangeFilter = useCallback((e) => {
     const value = e.target.value;
     setDateRangeFilter(value);
     setCurrentPage(1);
@@ -224,32 +271,37 @@ const AccountsPage = () => {
       setFromDate('');
       setToDate('');
     }
-  };
+  }, []);
 
-  const handleFromDateChange = (value) => {
+  const handleFromDateChange = useCallback((value) => {
     setFromDate(value);
     setCurrentPage(1);
-  };
+  }, []);
 
-  const handleToDateChange = (value) => {
+  const handleToDateChange = useCallback((value) => {
     setToDate(value);
     setCurrentPage(1);
-  };
+  }, []);
 
-  const handleBranchFilter = (e) => {
+  const handleSupplierFilter = useCallback((e) => {
+    setSupplierFilter(e.target.value);
+    // Don't reset page or fetch immediately - let useEffect handle it
+  }, []);
+
+  const handleBranchFilter = useCallback((e) => {
     setBranchFilter(e.target.value);
     setCurrentPage(1);
-  };
+  }, []);
 
-  const handlePaymentStatusFilter = (e) => {
+  const handlePaymentStatusFilter = useCallback((e) => {
     setPaymentStatusFilter(e.target.value);
     setCurrentPage(1);
-  };
+  }, []);
 
-  const handleTransactionTypeFilter = (e) => {
+  const handleTransactionTypeFilter = useCallback((e) => {
     setTransactionTypeFilter(e.target.value);
     setCurrentPage(1);
-  };
+  }, []);
 
   // Handle pagination
   const handlePageChange = (page) => {
@@ -684,7 +736,11 @@ const AccountsPage = () => {
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
                         {branchSummary.summary?.map((branch) => (
-                          <tr key={branch.branchId} className="hover:bg-gray-50">
+                          <tr 
+                            key={branch.branchId} 
+                            className="hover:bg-gray-50 cursor-pointer"
+                            onClick={() => handleBranchClick(branch)}
+                          >
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div>
                                 <div className="text-sm font-medium text-gray-900">
@@ -922,7 +978,10 @@ const AccountsPage = () => {
                   {selectedBranch?.branchName} ({selectedBranch?.branchCode})
                 </h2>
                 <p className="text-sm text-gray-600">
-                  Account details for selected branch
+                  {isHeadOffice 
+                    ? 'Centralized Raw Material Expenses - Supplier Wise'
+                    : 'Account details for selected branch'
+                  }
                   {dateRangeFilter === 'custom' && fromDate && toDate
                     ? ` - ${fromDate} to ${toDate}`
                     : dateRangeFilter !== 'custom'
@@ -933,107 +992,333 @@ const AccountsPage = () => {
               </div>
             </div>
 
-            {/* Statistics Cards for Selected Branch */}
-            {stats && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
-                <StatCard
-                  title="Total Income"
-                  value={`₹${stats.summary?.totalIncome?.toLocaleString() || 0}`}
-                  icon={HiArrowUp}
-                  gradient="green"
-                  loading={statsLoading}
-                />
-                <StatCard
-                  title="Total Expense"
-                  value={`₹${stats.summary?.totalExpense?.toLocaleString() || 0}`}
-                  icon={HiArrowDown}
-                  gradient="red"
-                  loading={statsLoading}
-                />
-                <StatCard
-                  title="Net Profit"
-                  value={`₹${stats.summary?.netProfit?.toLocaleString() || 0}`}
-                  icon={HiCurrencyDollar}
-                  gradient="purple"
-                  loading={statsLoading}
-                />
-                <StatCard
-                  title="Total Transactions"
-                  value={stats.summary?.totalTransactions || 0}
-                  icon={HiClipboardDocumentList}
-                  gradient="blue"
-                  loading={statsLoading}
-                />
-              </div>
-            )}
-
-            {/* Search and Filter Section */}
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-              <div className="w-full sm:w-80">
-                <SearchInput
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Search accounts..."
-                  icon={HiMagnifyingGlass}
-                />
-              </div>
-              <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0 sm:items-center">
-                <Select
-                  value={dateRangeFilter}
-                  onChange={handleDateRangeFilter}
-                  options={dateRangeOptions}
-                  className="w-full sm:w-48"
-                />
-                {dateRangeFilter === 'custom' && (
-                  <>
-                    <div className="w-full sm:w-auto sm:flex sm:items-center sm:gap-2">
-                      <label className="text-sm font-medium text-gray-700 whitespace-nowrap mb-2 sm:mb-0">From</label>
-                      <Input
-                        type="date"
-                        value={fromDate}
-                        onChange={(e) => handleFromDateChange(e.target.value)}
-                        className="w-full sm:w-40"
-                      />
-                    </div>
-                    <div className="w-full sm:w-auto sm:flex sm:items-center sm:gap-2">
-                      <label className="text-sm font-medium text-gray-700 whitespace-nowrap mb-2 sm:mb-0">To</label>
-                      <Input
-                        type="date"
-                        value={toDate}
-                        onChange={(e) => handleToDateChange(e.target.value)}
-                        className="w-full sm:w-40"
-                      />
-                    </div>
-                  </>
+            {isHeadOffice ? (
+              // Head Office Supplier Expenses View
+              <>
+                {/* Statistics Cards for Head Office */}
+                {headOfficeSupplierExpenses?.summary && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
+                    <StatCard
+                      title="Total Amount"
+                      value={`₹${headOfficeSupplierExpenses.summary.totalAmount?.toLocaleString() || 0}`}
+                      icon={HiCurrencyDollar}
+                      gradient="blue"
+                      loading={headOfficeSupplierExpensesLoading}
+                    />
+                    <StatCard
+                      title="Total Expenses"
+                      value={`₹${headOfficeSupplierExpenses.summary.totalExpense?.toLocaleString() || 0}`}
+                      icon={HiArrowDown}
+                      gradient="red"
+                      loading={headOfficeSupplierExpensesLoading}
+                    />
+                    <StatCard
+                      title="Total Purchases"
+                      value={`₹${headOfficeSupplierExpenses.summary.totalPurchase?.toLocaleString() || 0}`}
+                      icon={HiShoppingCart}
+                      gradient="green"
+                      loading={headOfficeSupplierExpensesLoading}
+                    />
+                    <StatCard
+                      title="Total Transactions"
+                      value={headOfficeSupplierExpenses.summary.totalTransactions || 0}
+                      icon={HiClipboardDocumentList}
+                      gradient="purple"
+                      loading={headOfficeSupplierExpensesLoading}
+                    />
+                  </div>
                 )}
-                <Select
-                  value={paymentStatusFilter}
-                  onChange={handlePaymentStatusFilter}
-                  options={paymentStatusOptions}
-                  className="w-full sm:w-48"
-                />
-                <Select
-                  value={transactionTypeFilter}
-                  onChange={setTransactionTypeFilter}
-                  options={transactionTypeOptions}
-                  className="w-full sm:w-48"
-                />
-              </div>
-            </div>
 
-            {/* Accounts Table */}
-            <div className="bg-white">
-              <Table
-                data={accounts}
-                columns={columns}
-                loading={loading}
-                error={error}
-                pagination={pagination}
-                onPageChange={handlePageChange}
-                emptyMessage="No accounts found"
-                emptyIcon={HiClipboardDocumentList}
-              />
-            </div>
+                {/* Supplier Filter */}
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                  <div className="w-full sm:w-80">
+                    <Select
+                      value={supplierFilter}
+                      onChange={handleSupplierFilter}
+                      options={[
+                        { value: 'all', label: 'All Suppliers' },
+                        ...(headOfficeSupplierExpenses?.suppliers || []).map(supplier => ({
+                          value: supplier.supplierId || supplier.supplierName,
+                          label: supplier.supplierName || 'Unknown Supplier'
+                        }))
+                      ]}
+                      className="w-full"
+                      placeholder="Filter by Supplier"
+                    />
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0 sm:items-center">
+                    <Select
+                      value={dateRangeFilter}
+                      onChange={handleDateRangeFilter}
+                      options={dateRangeOptions}
+                      className="w-full sm:w-48"
+                    />
+                    {dateRangeFilter === 'custom' && (
+                      <>
+                        <div className="w-full sm:w-auto sm:flex sm:items-center sm:gap-2">
+                          <label className="text-sm font-medium text-gray-700 whitespace-nowrap mb-2 sm:mb-0">From</label>
+                          <Input
+                            type="date"
+                            value={fromDate}
+                            onChange={(e) => handleFromDateChange(e.target.value)}
+                            className="w-full sm:w-40"
+                          />
+                        </div>
+                        <div className="w-full sm:w-auto sm:flex sm:items-center sm:gap-2">
+                          <label className="text-sm font-medium text-gray-700 whitespace-nowrap mb-2 sm:mb-0">To</label>
+                          <Input
+                            type="date"
+                            value={toDate}
+                            onChange={(e) => handleToDateChange(e.target.value)}
+                            className="w-full sm:w-40"
+                          />
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Supplier Expenses Table */}
+                <div className="bg-white shadow-sm rounded-lg overflow-hidden">
+                  {/* Show empty state if custom date is selected but dates are not provided */}
+                  {dateRangeFilter === 'custom' && (!fromDate || !toDate) ? (
+                    <div className="flex flex-col items-center justify-center py-12 px-4">
+                      <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                        <HiClipboardDocumentList className="w-8 h-8 text-gray-400" />
+                      </div>
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">Please select date range</h3>
+                      <p className="text-sm text-gray-500 text-center max-w-md">
+                        To view supplier expenses, please select both "From" and "To" dates in the custom date range filter.
+                      </p>
+                    </div>
+                  ) : headOfficeSupplierExpensesLoading ? (
+                    <div className="flex justify-center py-8">
+                      <Loading />
+                    </div>
+                  ) : headOfficeSupplierExpenses?.suppliers && headOfficeSupplierExpenses.suppliers.length > 0 ? (
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Supplier
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Raw Material Name
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Purchase Amount
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Transactions
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Actions
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {headOfficeSupplierExpenses.suppliers
+                            .filter(supplier => !supplierFilter || supplierFilter === 'all' || 
+                              (supplier.supplierId && supplier.supplierId === supplierFilter) ||
+                              (supplier.supplierName && supplier.supplierName === supplierFilter))
+                            .map((supplier, index) => (
+                            <tr key={supplier.supplierId || index} className="hover:bg-gray-50">
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div>
+                                  <div className="text-sm font-medium text-gray-900">
+                                    {supplier.supplierName || 'Unknown Supplier'}
+                                  </div>
+                                  {supplier.supplierId && (
+                                    <div className="text-xs text-gray-500">
+                                      ID: {supplier.supplierId}
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4">
+                                <div className="text-sm text-gray-900">
+                                  {(() => {
+                                    // Get unique raw material names from transactions
+                                    const rawMaterials = [];
+                                    if (supplier.transactions && supplier.transactions.length > 0) {
+                                      supplier.transactions.forEach(t => {
+                                        if (t.rawMaterialName && !rawMaterials.includes(t.rawMaterialName)) {
+                                          rawMaterials.push(t.rawMaterialName);
+                                        }
+                                      });
+                                    }
+                                    return rawMaterials.length > 0 
+                                      ? rawMaterials.join(', ')
+                                      : 'N/A';
+                                  })()}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="text-sm font-medium text-blue-600">
+                                  ₹{supplier.purchaseAmount?.toLocaleString() || 0}
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  {supplier.purchaseCount || 0} purchase(s)
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="text-sm text-gray-900">
+                                  {supplier.transactionCount || 0}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <button
+                                  onClick={() => {
+                                    setSelectedSupplier(supplier);
+                                    setShowSupplierDetailsModal(true);
+                                  }}
+                                  className="text-blue-600 hover:text-blue-800 transition-colors"
+                                  title="View Supplier Details"
+                                >
+                                  <HiEye className="w-5 h-5" />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        {headOfficeSupplierExpenses.summary && (
+                          <tfoot className="bg-gray-50">
+                            <tr>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
+                                Total
+                              </td>
+                              <td className="px-6 py-4 text-sm text-gray-500">
+                                {/* Empty cell for raw material column */}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-blue-600">
+                                ₹{headOfficeSupplierExpenses.summary.totalPurchase?.toLocaleString() || 0}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
+                                {headOfficeSupplierExpenses.summary.totalTransactions || 0}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                {/* Empty cell for actions column */}
+                              </td>
+                            </tr>
+                          </tfoot>
+                        )}
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="text-center py-12">
+                      <HiClipboardDocumentList className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                      <p className="text-gray-600">No supplier expenses found for the selected period</p>
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              // Regular Branch Accounts View
+              <>
+                {/* Statistics Cards for Selected Branch */}
+                {stats && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
+                    <StatCard
+                      title="Total Income"
+                      value={`₹${stats.summary?.totalIncome?.toLocaleString() || 0}`}
+                      icon={HiArrowUp}
+                      gradient="green"
+                      loading={statsLoading}
+                    />
+                    <StatCard
+                      title="Total Expense"
+                      value={`₹${stats.summary?.totalExpense?.toLocaleString() || 0}`}
+                      icon={HiArrowDown}
+                      gradient="red"
+                      loading={statsLoading}
+                    />
+                    <StatCard
+                      title="Net Profit"
+                      value={`₹${stats.summary?.netProfit?.toLocaleString() || 0}`}
+                      icon={HiCurrencyDollar}
+                      gradient="purple"
+                      loading={statsLoading}
+                    />
+                    <StatCard
+                      title="Total Transactions"
+                      value={stats.summary?.totalTransactions || 0}
+                      icon={HiClipboardDocumentList}
+                      gradient="blue"
+                      loading={statsLoading}
+                    />
+                  </div>
+                )}
+
+                {/* Search and Filter Section */}
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                  <div className="w-full sm:w-80">
+                    <SearchInput
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      placeholder="Search accounts..."
+                      icon={HiMagnifyingGlass}
+                    />
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0 sm:items-center">
+                    <Select
+                      value={dateRangeFilter}
+                      onChange={handleDateRangeFilter}
+                      options={dateRangeOptions}
+                      className="w-full sm:w-48"
+                    />
+                    {dateRangeFilter === 'custom' && (
+                      <>
+                        <div className="w-full sm:w-auto sm:flex sm:items-center sm:gap-2">
+                          <label className="text-sm font-medium text-gray-700 whitespace-nowrap mb-2 sm:mb-0">From</label>
+                          <Input
+                            type="date"
+                            value={fromDate}
+                            onChange={(e) => handleFromDateChange(e.target.value)}
+                            className="w-full sm:w-40"
+                          />
+                        </div>
+                        <div className="w-full sm:w-auto sm:flex sm:items-center sm:gap-2">
+                          <label className="text-sm font-medium text-gray-700 whitespace-nowrap mb-2 sm:mb-0">To</label>
+                          <Input
+                            type="date"
+                            value={toDate}
+                            onChange={(e) => handleToDateChange(e.target.value)}
+                            className="w-full sm:w-40"
+                          />
+                        </div>
+                      </>
+                    )}
+                    <Select
+                      value={paymentStatusFilter}
+                      onChange={handlePaymentStatusFilter}
+                      options={paymentStatusOptions}
+                      className="w-full sm:w-48"
+                    />
+                    <Select
+                      value={transactionTypeFilter}
+                      onChange={setTransactionTypeFilter}
+                      options={transactionTypeOptions}
+                      className="w-full sm:w-48"
+                    />
+                  </div>
+                </div>
+
+                {/* Accounts Table */}
+                <div className="bg-white">
+                  <Table
+                    data={accounts}
+                    columns={columns}
+                    loading={loading}
+                    error={error}
+                    pagination={pagination}
+                    onPageChange={handlePageChange}
+                    emptyMessage="No accounts found"
+                    emptyIcon={HiClipboardDocumentList}
+                  />
+                </div>
+              </>
+            )}
           </div>
         ) : (
         // Super Admin: Branch Summary Dashboard
@@ -1618,6 +1903,191 @@ const AccountsPage = () => {
                 size="sm"
               >
                 Edit Account
+              </Button>
+            </div>
+          </div>
+        )}
+      </CommonModal>
+
+      {/* Supplier Details Modal */}
+      <CommonModal
+        isOpen={showSupplierDetailsModal}
+        onClose={() => {
+          setShowSupplierDetailsModal(false);
+          setSelectedSupplier(null);
+        }}
+        title="Supplier Details"
+        subtitle={selectedSupplier ? `Transaction details for ${selectedSupplier.supplierName || 'Unknown Supplier'}` : ''}
+        size="lg"
+        showCloseButton={true}
+      >
+        {selectedSupplier && (
+          <div className="space-y-6">
+            {/* Supplier Header */}
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    {selectedSupplier.supplierName || 'Unknown Supplier'}
+                  </h3>
+                  {selectedSupplier.supplierId && (
+                    <p className="text-sm text-gray-600">
+                      Supplier ID: {selectedSupplier.supplierId}
+                    </p>
+                  )}
+                </div>
+                <div className="text-right">
+                  <div className="text-sm text-gray-600">Total Amount</div>
+                  <div className="text-lg font-bold text-gray-900">
+                    ₹{selectedSupplier.totalAmount?.toLocaleString() || 0}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Supplier Summary Details */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Purchase Amount</label>
+                  <p className="text-lg font-semibold text-blue-600">
+                    ₹{selectedSupplier.purchaseAmount?.toLocaleString() || 0}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {selectedSupplier.purchaseCount || 0} purchase transaction(s)
+                  </p>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Total Transactions</label>
+                  <p className="text-lg font-semibold text-gray-900">
+                    {selectedSupplier.transactionCount || 0}
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Total Amount</label>
+                  <p className="text-lg font-semibold text-green-600">
+                    ₹{selectedSupplier.totalAmount?.toLocaleString() || 0}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Transaction Details */}
+            {selectedSupplier.transactions && selectedSupplier.transactions.length > 0 ? (
+              <div>
+                <h4 className="text-md font-semibold text-gray-900 mb-4">Transaction Details</h4>
+                <div className="space-y-4">
+                  {selectedSupplier.transactions.map((transaction, idx) => (
+                    <div key={idx} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-3">
+                          <div>
+                            <label className="text-sm font-medium text-gray-500">Date</label>
+                            <p className="text-sm text-gray-900">
+                              {transaction.transactionDate 
+                                ? new Date(transaction.transactionDate).toLocaleDateString('en-IN', {
+                                    year: 'numeric',
+                                    month: 'short',
+                                    day: 'numeric'
+                                  })
+                                : 'N/A'}
+                            </p>
+                          </div>
+                          
+                          <div>
+                            <label className="text-sm font-medium text-gray-500">Description</label>
+                            <p className="text-sm text-gray-900">
+                              {transaction.description || 'N/A'}
+                            </p>
+                          </div>
+
+                          <div>
+                            <label className="text-sm font-medium text-gray-500">Type</label>
+                            <p>
+                              <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                transaction.transactionType === 'purchase' 
+                                  ? 'bg-blue-100 text-blue-800'
+                                  : transaction.transactionType === 'expense'
+                                  ? 'bg-red-100 text-red-800'
+                                  : 'bg-gray-100 text-gray-800'
+                              }`}>
+                                {transaction.transactionType?.toUpperCase() || 'N/A'}
+                              </span>
+                            </p>
+                          </div>
+
+                          {transaction.rawMaterialName && (
+                            <div>
+                              <label className="text-sm font-medium text-gray-500">Raw Material</label>
+                              <p className="text-sm text-gray-900">
+                                {transaction.rawMaterialName}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="space-y-3">
+                          {transaction.quantity && (
+                            <div>
+                              <label className="text-sm font-medium text-gray-500">Quantity</label>
+                              <p className="text-sm text-gray-900">
+                                {transaction.quantity}
+                              </p>
+                            </div>
+                          )}
+
+                          {transaction.unitPrice && (
+                            <div>
+                              <label className="text-sm font-medium text-gray-500">Unit Price</label>
+                              <p className="text-sm text-gray-900">
+                                ₹{parseFloat(transaction.unitPrice).toLocaleString()}
+                              </p>
+                            </div>
+                          )}
+
+                          <div>
+                            <label className="text-sm font-medium text-gray-500">Amount</label>
+                            <p className="text-lg font-semibold text-gray-900">
+                              ₹{transaction.amount?.toLocaleString() || '0'}
+                            </p>
+                          </div>
+
+                          {transaction.invoiceNumber && (
+                            <div>
+                              <label className="text-sm font-medium text-gray-500">Invoice Number</label>
+                              <p className="text-sm text-gray-900">
+                                {transaction.invoiceNumber}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <HiClipboardDocumentList className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-600">No transaction details available</p>
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex justify-end space-x-3 pt-4 border-t">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowSupplierDetailsModal(false);
+                  setSelectedSupplier(null);
+                }}
+                size="sm"
+              >
+                Close
               </Button>
             </div>
           </div>
