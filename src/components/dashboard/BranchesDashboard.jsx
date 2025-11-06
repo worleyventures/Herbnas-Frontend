@@ -80,11 +80,21 @@ const BranchesDashboard = ({ propActiveView = 'table' }) => {
   // Refresh branches when navigating to this page (e.g., returning from edit form)
   useEffect(() => {
     if (isAuthenticated && user && location.pathname === '/branches') {
-      // Refresh filtered branches
+      // If returning from branch creation/update, reset to page 1 and clear search to show new branch
+      const refreshRequested = location.state?.refresh;
+      if (refreshRequested) {
+        setCurrentPage(1);
+        setSearchTerm('');
+        // Clear the location state to prevent re-triggering on subsequent renders
+        window.history.replaceState({}, document.title, location.pathname);
+      }
+      
+      // Refresh filtered branches - use page 1 if refresh was requested
+      const pageToFetch = refreshRequested ? 1 : currentPage;
       dispatch(getAllBranches({
-        page: currentPage,
+        page: pageToFetch,
         limit: itemsPerPage,
-        search: searchTerm,
+        search: refreshRequested ? '' : searchTerm,
         status: filterStatus === 'all' ? '' : filterStatus
       }));
       // Also refresh unfiltered branches and stats
@@ -98,7 +108,7 @@ const BranchesDashboard = ({ propActiveView = 'table' }) => {
         }
       });
     }
-  }, [location.pathname, dispatch, isAuthenticated, user]);
+  }, [location.pathname, location.state, dispatch, isAuthenticated, user]);
 
   // Fetch unfiltered branches and stats for cards and performance
   useEffect(() => {

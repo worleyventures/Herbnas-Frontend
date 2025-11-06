@@ -347,19 +347,18 @@ const BranchFormPage = () => {
     try {
       if (mode === 'create') {
         await dispatch(createBranch(branchData)).unwrap();
-        // Refresh the branch list to show newly created branch
-        await dispatch(getAllBranches({ page: 1, limit: 1000 }));
-        // Also refresh stats
+        // Refresh stats
         dispatch(getBranchStats());
+        // Navigate back - the dashboard will automatically refresh with current filters
+        // The newly created branch will appear on page 1 since it's sorted by createdAt desc
+        navigate('/branches', { state: { refresh: true } });
       } else {
         const result = await dispatch(updateBranch({ branchId, branchData })).unwrap();
-        // Refresh the branch list to show updated data
-        await dispatch(getAllBranches({ page: 1, limit: 1000 }));
-        // Also refresh stats
+        // Refresh stats
         dispatch(getBranchStats());
+        // Navigate back - the dashboard will automatically refresh
+        navigate('/branches', { state: { refresh: true } });
       }
-      // Navigate back on success
-      navigate('/branches');
     } catch (error) {
       // Error will be handled by Redux state
       console.error('Error saving branch:', error);

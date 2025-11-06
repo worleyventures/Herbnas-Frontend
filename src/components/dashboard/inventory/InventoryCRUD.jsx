@@ -1271,7 +1271,7 @@ const PaymentStatusModal = ({ isOpen, onClose, rawMaterial, account, onUpdate })
           >
             Cancel
           </Button>
-          {isAlreadyCompleted && paymentStatus === 'completed' ? (
+          {isAlreadyCompleted ? (
             <Button
               variant="primary"
               size="sm"
@@ -1288,7 +1288,7 @@ const PaymentStatusModal = ({ isOpen, onClose, rawMaterial, account, onUpdate })
               loading={loading}
               disabled={paymentStatus === 'completed' && !paymentSource && isHeadOffice}
             >
-              Update Status
+              {paymentStatus === 'completed' ? 'Payment Completed' : 'Update Status'}
             </Button>
           )}
         </div>
@@ -1302,8 +1302,12 @@ const PaymentStatusModal = ({ isOpen, onClose, rawMaterial, account, onUpdate })
           </label>
           <Select
             value={paymentStatus}
-            onChange={(e) => setPaymentStatus(e.target.value)}
-            disabled={isAlreadyCompleted && paymentStatus === 'completed'}
+            onChange={(e) => {
+              if (!isAlreadyCompleted) {
+                setPaymentStatus(e.target.value);
+              }
+            }}
+            disabled={isAlreadyCompleted}
             options={[
               { value: 'pending', label: 'Pending' },
               { value: 'completed', label: 'Completed' },
@@ -1311,6 +1315,11 @@ const PaymentStatusModal = ({ isOpen, onClose, rawMaterial, account, onUpdate })
               { value: 'refunded', label: 'Refunded' }
             ]}
           />
+          {isAlreadyCompleted && (
+            <p className="mt-1 text-xs text-gray-500 italic">
+              Payment is already completed and cannot be modified.
+            </p>
+          )}
         </div>
 
         {/* Payment Source (only for Head Office and when status is completed, but not if already paid) */}
