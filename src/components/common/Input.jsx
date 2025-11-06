@@ -131,10 +131,16 @@ export const Select = ({
   name,
   ...props
 }) => {
-  // Handle the onChange - pass the synthetic event object directly to maintain compatibility
+  // Handle the onChange - support both patterns by always passing the event object
+  // Components that need direct value should extract it: (e) => handler(e.target.value)
+  // Components using handleSelectChange already handle both patterns
   const handleChange = (syntheticEvent) => {
     if (onChange) {
-      // Pass the synthetic event object directly so handleInputChange can access e.target.name and e.target.value
+      // Always pass the synthetic event object for maximum compatibility
+      // This works for:
+      // 1. Event handlers: (e) => setValue(e.target.value)
+      // 2. handleSelectChange pattern: handleSelectChange(field)(e) - already handles both
+      // 3. Direct value handlers need to be updated to extract: (value) => handler(value) becomes (e) => handler(e.target.value)
       onChange(syntheticEvent);
     }
   };

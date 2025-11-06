@@ -138,7 +138,7 @@ const ImportModal = ({ isOpen, onClose, onImportSuccess }) => {
                 <div className="flex-1">
                   <h4 className="font-medium text-blue-900 mb-1">Download Template</h4>
                   <p className="text-sm text-blue-700 mb-3">
-                    Download our Excel template with only the required fields: Customer Name, Mobile, Branch, and Lead Status.
+                    Download our Excel template with all Lead form fields. Required fields: Customer Mobile, Branch Name, and Lead Status. All other fields are optional.
                   </p>
                   <Button
                     onClick={handleDownloadTemplate}

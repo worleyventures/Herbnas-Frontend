@@ -117,17 +117,22 @@ const PayrollTab = ({ showUsers = true, isPayrollTab = false }) => {
     setCurrentPage(1);
   };
 
-  // Handle filter changes
-  const handleFilterChange = (filterType, value) => {
+  // Handle filter changes - support both event object and direct value
+  const handleFilterChange = (filterType, eventOrValue) => {
+    // Extract value from event object or use direct value
+    const value = eventOrValue?.target?.value !== undefined ? eventOrValue.target.value : eventOrValue;
+    // Ensure value is always a string for consistency
+    const stringValue = value !== undefined && value !== null ? String(value) : '';
+    
     switch (filterType) {
       case 'branch':
-        setBranchFilter(value);
+        setBranchFilter(stringValue);
         break;
       case 'month':
-        setMonthFilter(value);
+        setMonthFilter(stringValue);
         break;
       case 'year':
-        setYearFilter(value);
+        setYearFilter(stringValue);
         break;
       default:
         break;
@@ -697,19 +702,19 @@ const PayrollTab = ({ showUsers = true, isPayrollTab = false }) => {
               />
               <Select
                 value={branchFilter}
-                onChange={(value) => handleFilterChange('branch', value)}
+                onChange={(e) => handleFilterChange('branch', e)}
                 options={branchOptions}
                 className="w-full sm:w-40"
               />
               <Select
                 value={monthFilter}
-                onChange={(value) => handleFilterChange('month', value)}
+                onChange={(e) => handleFilterChange('month', e)}
                 options={monthOptions}
                 className="w-full sm:w-40"
               />
               <Select
                 value={yearFilter}
-                onChange={(value) => handleFilterChange('year', value)}
+                onChange={(e) => handleFilterChange('year', e)}
                 options={yearOptions}
                 className="w-full sm:w-32"
               />

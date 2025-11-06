@@ -155,10 +155,10 @@ const PayrollFormPage = () => {
       country: 'India'
     },
     basicSalary: '',
+    allowances: 0,
     deductions: {
       providentFund: 0,
-      professionalTax: 0,
-      incomeTax: 0,
+      esi: 0,
       otherDeductions: 0
     },
     bankDetails: {
@@ -243,10 +243,10 @@ const PayrollFormPage = () => {
         dateOfBirth: formatDateForInput(currentPayroll.dateOfBirth),
         address: addressData,
         basicSalary: currentPayroll.basicSalary || currentPayroll.basicSalary === 0 ? currentPayroll.basicSalary : '',
+        allowances: currentPayroll.allowances || 0,
         deductions: {
           providentFund: currentPayroll.deductions?.providentFund || 0,
-          professionalTax: currentPayroll.deductions?.professionalTax || 0,
-          incomeTax: currentPayroll.deductions?.incomeTax || 0,
+          esi: currentPayroll.deductions?.esi || 0,
           otherDeductions: currentPayroll.deductions?.otherDeductions || 0
         },
         bankDetails: {
@@ -416,10 +416,10 @@ const PayrollFormPage = () => {
           country: formData.address.country.trim()
         },
         basicSalary: parseFloat(formData.basicSalary),
+        allowances: parseFloat(formData.allowances) || 0,
         deductions: {
           providentFund: parseFloat(formData.deductions.providentFund) || 0,
-          professionalTax: parseFloat(formData.deductions.professionalTax) || 0,
-          incomeTax: parseFloat(formData.deductions.incomeTax) || 0,
+          esi: parseFloat(formData.deductions.esi) || 0,
           otherDeductions: parseFloat(formData.deductions.otherDeductions) || 0
         },
         bankDetails: {
@@ -461,12 +461,14 @@ const PayrollFormPage = () => {
   // Calculate totals
   const calculateTotals = () => {
     const basicSalary = parseFloat(formData.basicSalary) || 0;
+    const allowances = parseFloat(formData.allowances) || 0;
     const totalDeductions = Object.values(formData.deductions).reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
-    const grossSalary = basicSalary; // No allowances, so gross = basic
+    const grossSalary = basicSalary + allowances; // Gross = basic + allowances
     const netSalary = grossSalary - totalDeductions;
 
     return {
       basicSalary,
+      allowances,
       totalDeductions,
       grossSalary,
       netSalary
@@ -583,7 +585,7 @@ const PayrollFormPage = () => {
                     <Select
                       options={designationOptions}
                       value={formData.designation}
-                      onChange={(value) => handleInputChange('designation', value)}
+                      onChange={(e) => handleInputChange('designation', e.target.value)}
                       placeholder="Select designation"
                       error={errors.designation}
                     />
@@ -675,7 +677,7 @@ const PayrollFormPage = () => {
                     <Select
                       options={branchOptions}
                       value={formData.branchId}
-                      onChange={(value) => handleInputChange('branchId', value)}
+                      onChange={(e) => handleInputChange('branchId', e.target.value)}
                       placeholder={branchesLoading ? "Loading branches..." : "Select a branch"}
                       disabled={branchesLoading || branchOptions.length === 0}
                       error={errors.branchId}
@@ -825,6 +827,22 @@ const PayrollFormPage = () => {
                   
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Allowances
+                    </label>
+                    <input
+                      type="number"
+                      name="allowances"
+                      value={formData.allowances}
+                      onChange={(e) => handleInputChange('allowances', e.target.value)}
+                      placeholder="0"
+                      min="0"
+                      step="0.01"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
                       Provident Fund
                     </label>
                     <input
@@ -841,29 +859,13 @@ const PayrollFormPage = () => {
                   
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Professional Tax
+                      ESI
                     </label>
                     <input
                       type="number"
-                      name="deductions.professionalTax"
-                      value={formData.deductions.professionalTax}
-                      onChange={(e) => handleInputChange('deductions.professionalTax', e.target.value)}
-                      placeholder="0"
-                      min="0"
-                      step="0.01"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white shadow-sm hover:shadow-md"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Income Tax
-                    </label>
-                    <input
-                      type="number"
-                      name="deductions.incomeTax"
-                      value={formData.deductions.incomeTax}
-                      onChange={(e) => handleInputChange('deductions.incomeTax', e.target.value)}
+                      name="deductions.esi"
+                      value={formData.deductions.esi}
+                      onChange={(e) => handleInputChange('deductions.esi', e.target.value)}
                       placeholder="0"
                       min="0"
                       step="0.01"
@@ -893,6 +895,10 @@ const PayrollFormPage = () => {
                     <div className="flex justify-between">
                       <span className="text-gray-600">Basic Salary:</span>
                       <span className="font-medium text-gray-900">₹{totals.basicSalary?.toLocaleString() || 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Allowances:</span>
+                      <span className="font-medium text-gray-900">₹{totals.allowances?.toLocaleString() || 0}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Total Deductions:</span>
