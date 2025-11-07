@@ -85,7 +85,8 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
         hoverColor: 'group-hover:text-green-600',
         hoverBgColor: 'group-hover:bg-gray-50'
       },
-      {
+      // Production - hidden for accounts_manager
+      ...(stableUserRole !== 'accounts_manager' ? [{
         name: 'Production',
         href: '/productions',
         icon: HiDocumentText,
@@ -94,7 +95,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
         bgColor: 'bg-gray-100',
         hoverColor: 'group-hover:text-gray-600',
         hoverBgColor: 'group-hover:bg-gray-50'
-      },
+      }] : []),
       {
         name: 'Inventory',
         href: '/inventory',
@@ -161,18 +162,22 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
           bgColor: 'bg-gray-100',
           hoverColor: 'group-hover:text-cyan-600',
           hoverBgColor: 'group-hover:bg-gray-50'
-        },
-        {
-          name: 'Payroll',
-          href: '/payrolls',
-          icon: HiBanknotes,
-          current: isActiveRoute('/payrolls'),
-          color: 'text-purple-600',
-          bgColor: 'bg-gray-100',
-          hoverColor: 'group-hover:text-purple-600',
-          hoverBgColor: 'group-hover:bg-gray-50'
         }
       );
+    }
+    
+    // Payroll - available for admin, super_admin, and accounts_manager
+    if (stableUserRole === 'admin' || stableUserRole === 'super_admin' || stableUserRole === 'accounts_manager') {
+      adminNavigation.push({
+        name: 'Payroll',
+        href: '/payrolls',
+        icon: HiBanknotes,
+        current: isActiveRoute('/payrolls'),
+        color: 'text-purple-600',
+        bgColor: 'bg-gray-100',
+        hoverColor: 'group-hover:text-purple-600',
+        hoverBgColor: 'group-hover:bg-gray-50'
+      });
     }
 
     // Add admin attendance navigation

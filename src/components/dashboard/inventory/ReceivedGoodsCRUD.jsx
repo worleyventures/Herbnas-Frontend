@@ -8,7 +8,8 @@ import {
   HiClock,
   HiXCircle,
   HiExclamationTriangle,
-  HiChevronDown
+  HiChevronDown,
+  HiTruck
 } from 'react-icons/hi2';
 import { Table, StatusBadge, ConfirmationModal, ActionButton } from '../../common';
 import CommonModal from '../../common/CommonModal';

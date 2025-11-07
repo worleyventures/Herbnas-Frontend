@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { HiBanknotes, HiClock, HiPlus, HiCurrencyDollar } from 'react-icons/hi2';
 import { Button } from '../../components/common';
 import PayrollTab from './PayrollTab';
@@ -11,9 +11,12 @@ const PayrollPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useDispatch();
+  const { user } = useSelector((state) => state.auth);
+  const isAccountsManager = user?.role === 'accounts_manager';
   const [activeTab, setActiveTab] = useState(location.state?.activeTab || 'employees'); // Default to employees tab
 
-  const tabs = [
+  // Filter tabs based on role - accounts_manager only sees Employees and Payslip
+  const allTabs = [
     {
       id: 'employees',
       name: 'Employees',
@@ -22,7 +25,7 @@ const PayrollPage = () => {
     },
     {
       id: 'payroll',
-      name: 'Payroll',
+      name: isAccountsManager ? 'Payslip' : 'Payroll',
       icon: HiCurrencyDollar,
       component: <PayrollTab isPayrollTab={true} />
     },
@@ -33,6 +36,10 @@ const PayrollPage = () => {
       component: <AttendanceTab />
     }
   ];
+
+  const tabs = isAccountsManager 
+    ? allTabs.filter(tab => tab.id !== 'attendance')
+    : allTabs;
 
 
   return (

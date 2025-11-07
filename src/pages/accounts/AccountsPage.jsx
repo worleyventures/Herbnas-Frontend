@@ -67,7 +67,10 @@ const AccountsPage = () => {
   // Local state
   const [activeTab, setActiveTab] = useState('overview');
   const [searchTerm, setSearchTerm] = useState('');
-  const [dateRangeFilter, setDateRangeFilter] = useState('today');
+  // For accounts_manager, default to 'thisMonth' to show more data
+  const [dateRangeFilter, setDateRangeFilter] = useState(
+    user?.role === 'accounts_manager' ? 'thisMonth' : 'today'
+  );
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [branchFilter, setBranchFilter] = useState('all');
