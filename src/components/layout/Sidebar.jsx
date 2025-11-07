@@ -135,8 +135,8 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
         hoverColor: 'group-hover:text-teal-600',
         hoverBgColor: 'group-hover:bg-gray-50'
       },
-      // Accounts - hidden for production managers
-      ...(stableUserRole !== 'production_manager' ? [{
+      // Accounts - hidden for production managers and sales executives
+      ...(stableUserRole !== 'production_manager' && stableUserRole !== 'sales_executive' ? [{
         name: 'Accounts',
         href: '/accounts',
         icon: HiCurrencyDollar,
