@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { HiArrowLeft, HiUser, HiEnvelope, HiPhone, HiPencilSquare, HiCheckCircle, HiXMark, HiKey, HiEye, HiEyeSlash, HiPhoto } from 'react-icons/hi2';
 import { Button, Input } from '../../components/common';
-import { getProfile, updateProfile, changePassword } from '../../redux/actions/authActions';
+import { getProfile, updateProfile, changePassword, uploadAvatar, deleteAvatar } from '../../redux/actions/authActions';
 import { addNotification } from '../../redux/slices/uiSlice';
 
 const ProfilePage = () => {
@@ -30,6 +30,11 @@ const ProfilePage = () => {
   const [passwordErrors, setPasswordErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [isDeletingAvatar, setIsDeletingAvatar] = useState(false);
+  const [avatarPreview, setAvatarPreview] = useState(null);
+  const [showRemoveModal, setShowRemoveModal] = useState(false);
+  const fileInputRef = React.useRef(null);
 
   useEffect(() => {
     // Load user profile if not already loaded
@@ -46,12 +51,8 @@ const ProfilePage = () => {
         email: user.email || '',
         phone: user.phone || ''
       });
-      // If we're not editing, ensure form matches current user data
-      if (!isEditing) {
-        // This ensures form is in sync with user data
-      }
     }
-  }, [user, isEditing]);
+  }, [user]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -167,8 +168,24 @@ const ProfilePage = () => {
 
     if (!passwordData.newPassword.trim()) {
       newErrors.newPassword = 'New password is required';
-    } else if (passwordData.newPassword.length < 6) {
-      newErrors.newPassword = 'Password must be at least 6 characters';
+    } else {
+      // Check password length
+      if (passwordData.newPassword.length < 6) {
+        newErrors.newPassword = 'Password must be at least 6 characters';
+      } else if (passwordData.newPassword.length > 128) {
+        newErrors.newPassword = 'Password cannot exceed 128 characters';
+      } else {
+        // Check password requirements (matching backend validation)
+        const hasUpperCase = /[A-Z]/.test(passwordData.newPassword);
+        const hasLowerCase = /[a-z]/.test(passwordData.newPassword);
+        const hasNumbers = /\d/.test(passwordData.newPassword);
+        
+        if (!hasUpperCase || !hasLowerCase || !hasNumbers) {
+          newErrors.newPassword = 'Password must contain at least one uppercase letter, one lowercase letter, and one number';
+        } else if (passwordData.currentPassword && passwordData.currentPassword === passwordData.newPassword) {
+          newErrors.newPassword = 'New password must be different from current password';
+        }
+      }
     }
 
     setPasswordErrors(newErrors);
@@ -183,11 +200,12 @@ const ProfilePage = () => {
     }
 
     setIsChangingPassword(true);
+    setPasswordErrors({}); // Clear previous errors
 
     try {
-      await dispatch(changePassword({
-        currentPassword: passwordData.currentPassword,
-        newPassword: passwordData.newPassword
+      const result = await dispatch(changePassword({
+        currentPassword: passwordData.currentPassword.trim(),
+        newPassword: passwordData.newPassword.trim()
       })).unwrap();
       
       dispatch(addNotification({
@@ -195,14 +213,33 @@ const ProfilePage = () => {
         message: 'Password changed successfully!'
       }));
 
+      // Clear form data
       setPasswordData({
         currentPassword: '',
         newPassword: ''
       });
+      setPasswordErrors({});
+      setShowPasswords({
+        current: false,
+        new: false
+      });
     } catch (error) {
+      const errorMessage = error?.response?.data?.message || error?.message || error || 'Failed to change password. Please try again.';
+      
+      // Handle specific error cases
+      if (errorMessage.toLowerCase().includes('current password') || errorMessage.toLowerCase().includes('incorrect')) {
+        setPasswordErrors({
+          currentPassword: 'Current password is incorrect'
+        });
+      } else if (errorMessage.toLowerCase().includes('same') || errorMessage.toLowerCase().includes('different')) {
+        setPasswordErrors({
+          newPassword: 'New password must be different from current password'
+        });
+      }
+      
       dispatch(addNotification({
         type: 'error',
-        message: error || 'Failed to change password. Please try again.'
+        message: errorMessage
       }));
     } finally {
       setIsChangingPassword(false);
@@ -211,6 +248,102 @@ const ProfilePage = () => {
 
   const handleBack = () => {
     navigate('/dashboard');
+  };
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      dispatch(addNotification({
+        type: 'error',
+        message: 'Please select an image file'
+      }));
+      return;
+    }
+
+    // Validate file size (5MB limit)
+    if (file.size > 5 * 1024 * 1024) {
+      dispatch(addNotification({
+        type: 'error',
+        message: 'Image size must be less than 5MB'
+      }));
+      return;
+    }
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setAvatarPreview(reader.result);
+    };
+    reader.readAsDataURL(file);
+
+    // Upload the file
+    handleAvatarUpload(file);
+  };
+
+  const handleAvatarUpload = async (file) => {
+    setIsUploadingAvatar(true);
+
+    try {
+      const result = await dispatch(uploadAvatar(file)).unwrap();
+      
+      // Refresh user profile
+      await dispatch(getProfile());
+      
+      dispatch(addNotification({
+        type: 'success',
+        message: 'Profile photo uploaded successfully!'
+      }));
+
+      setAvatarPreview(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    } catch (error) {
+      console.error('❌ Avatar upload failed:', error);
+      const errorMessage = typeof error === 'string' ? error : (error?.message || 'Failed to upload photo. Please try again.');
+      dispatch(addNotification({
+        type: 'error',
+        message: errorMessage
+      }));
+      setAvatarPreview(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
+
+  const handleRemoveAvatarClick = () => {
+    if (!user?.avatar?.url) return;
+    setShowRemoveModal(true);
+  };
+
+  const handleRemoveAvatar = async () => {
+    setShowRemoveModal(false);
+    setIsDeletingAvatar(true);
+
+    try {
+      await dispatch(deleteAvatar()).unwrap();
+      
+      // Refresh user profile
+      await dispatch(getProfile());
+      
+      dispatch(addNotification({
+        type: 'success',
+        message: 'Profile photo removed successfully!'
+      }));
+    } catch (error) {
+      dispatch(addNotification({
+        type: 'error',
+        message: error || 'Failed to remove photo. Please try again.'
+      }));
+    } finally {
+      setIsDeletingAvatar(false);
+    }
   };
 
   if (loading && !user) {
@@ -229,10 +362,10 @@ const ProfilePage = () => {
           <div className="flex items-center space-x-4">
             <button
               onClick={handleBack}
-              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all duration-200"
+              className="p-1.5 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all duration-200"
               aria-label="Go back"
             >
-              <HiArrowLeft className="h-5 w-5" />
+              <HiArrowLeft className="h-4 w-4" />
             </button>
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Your Profile</h1>
@@ -244,9 +377,9 @@ const ProfilePage = () => {
           {!isEditing && (
             <button
               onClick={() => setIsEditing(true)}
-              className="inline-flex items-center space-x-2 px-5 py-2.5 bg-gradient-to-r from-[#8bc34a] to-[#558b2f] text-white font-medium rounded-lg shadow-sm hover:shadow-md hover:from-[#558b2f] hover:to-[#4a7c2a] transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#8bc34a] focus:ring-offset-2"
+              className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-gradient-to-r from-[#8bc34a] to-[#558b2f] text-white text-sm font-medium rounded-lg shadow-sm hover:shadow-md hover:from-[#558b2f] hover:to-[#4a7c2a] transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#8bc34a] focus:ring-offset-2"
             >
-              <HiPencilSquare className="h-4 w-4" />
+              <HiPencilSquare className="h-3.5 w-3.5" />
               <span>Edit Profile</span>
             </button>
           )}
@@ -260,34 +393,70 @@ const ProfilePage = () => {
           <div className="lg:col-span-1 space-y-6">
             {/* Profile Picture Card */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-              <div className="bg-gradient-to-br from-pink-50 to-purple-50 p-6 flex items-center justify-center">
-                <div className="relative">
-                  {user?.avatar?.url ? (
-                    <>
-                      <img
-                        className="w-40 h-40 rounded-lg object-cover border-4 border-white shadow-lg"
-                        src={user.avatar.url}
-                        alt={user.fullName || user.firstName}
-                      />
-                      <button
-                        className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors shadow-lg"
-                        onClick={() => {/* Handle remove photo */}}
-                      >
-                        <HiXMark className="h-4 w-4" />
-                      </button>
-                    </>
+              <div className="bg-white p-4 flex items-center justify-center">
+                <div className="relative w-full">
+                  {avatarPreview ? (
+                    <img
+                      className="w-full aspect-square rounded-lg object-cover border-2 border-gray-200 shadow-lg bg-white"
+                      src={avatarPreview}
+                      alt="Preview"
+                    />
+                  ) : user?.avatar?.url ? (
+                    <img
+                      className="w-full aspect-square rounded-lg object-cover border-2 border-gray-200 shadow-lg bg-white"
+                      src={user.avatar.url}
+                      alt={user.fullName || user.firstName}
+                    />
                   ) : (
-                    <div className="w-40 h-40 rounded-lg bg-white border-4 border-white shadow-lg flex items-center justify-center">
-                      <HiUser className="h-20 w-20 text-gray-300" />
+                    <div className="w-full aspect-square rounded-lg bg-white border-2 border-gray-200 shadow-lg flex items-center justify-center">
+                      <HiUser className="h-24 w-24 text-gray-300" />
                     </div>
                   )}
                 </div>
               </div>
-              <div className="p-4">
-                <button className="w-full px-4 py-2.5 bg-gradient-to-r from-[#8bc34a] to-[#558b2f] text-white font-medium rounded-lg hover:from-[#558b2f] hover:to-[#4a7c2a] transition-all duration-200 flex items-center justify-center space-x-2 shadow-sm hover:shadow-md">
-                  <HiPhoto className="h-4 w-4" />
-                  <span>Upload Photo</span>
-                </button>
+              <div className="p-4 space-y-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                  id="avatar-upload"
+                  disabled={isUploadingAvatar || isDeletingAvatar}
+                />
+                <div className="flex items-center justify-center gap-2">
+                  <label
+                    htmlFor="avatar-upload"
+                    className={`w-24 px-3 py-1.5 bg-gradient-to-r from-[#8bc34a] to-[#558b2f] text-white text-sm font-medium rounded-lg hover:from-[#558b2f] hover:to-[#4a7c2a] transition-all duration-200 flex items-center justify-center space-x-1.5 shadow-sm hover:shadow-md cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+                      isUploadingAvatar || isDeletingAvatar ? 'opacity-50 cursor-not-allowed' : ''
+                    }`}
+                  >
+                    {isUploadingAvatar ? (
+                      <>
+                        <div className="animate-spin rounded-full h-3.5 w-3.5 border-2 border-white border-t-transparent"></div>
+                        <span className="text-xs">Uploading...</span>
+                      </>
+                    ) : (
+                      <>
+                        <HiPhoto className="h-3.5 w-3.5" />
+                        <span className="text-xs">Upload</span>
+                      </>
+                    )}
+                  </label>
+                  {user?.avatar?.url && (
+                    <button
+                      onClick={handleRemoveAvatarClick}
+                      disabled={isDeletingAvatar}
+                      className="w-24 px-3 py-1.5 bg-red-500 text-white text-sm font-medium rounded-lg hover:bg-red-600 transition-all duration-200 flex items-center justify-center space-x-1.5 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <HiXMark className="h-3.5 w-3.5" />
+                      <span className="text-xs">Remove</span>
+                    </button>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500 text-center">
+                  Max size: 5MB. Supported: JPG, PNG, GIF
+                </p>
               </div>
             </div>
 
@@ -315,9 +484,9 @@ const ProfilePage = () => {
                       <button
                         type="button"
                         onClick={() => setShowPasswords(prev => ({ ...prev, current: !prev.current }))}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                       >
-                        {showPasswords.current ? <HiEyeSlash className="h-5 w-5" /> : <HiEye className="h-5 w-5" />}
+                        {showPasswords.current ? <HiEyeSlash className="h-4 w-4" /> : <HiEye className="h-4 w-4" />}
                       </button>
                     </div>
                     {passwordErrors.currentPassword && (
@@ -340,19 +509,38 @@ const ProfilePage = () => {
                       <button
                         type="button"
                         onClick={() => setShowPasswords(prev => ({ ...prev, new: !prev.new }))}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                       >
-                        {showPasswords.new ? <HiEyeSlash className="h-5 w-5" /> : <HiEye className="h-5 w-5" />}
+                        {showPasswords.new ? <HiEyeSlash className="h-4 w-4" /> : <HiEye className="h-4 w-4" />}
                       </button>
                     </div>
                     {passwordErrors.newPassword && (
                       <p className="text-sm text-red-600">{passwordErrors.newPassword}</p>
                     )}
+                    {!passwordErrors.newPassword && passwordData.newPassword && (
+                      <div className="text-xs text-gray-500 mt-1">
+                        <p>Password must contain:</p>
+                        <ul className="list-disc list-inside space-y-0.5 mt-1">
+                          <li className={/[A-Z]/.test(passwordData.newPassword) ? 'text-green-600' : ''}>
+                            At least one uppercase letter
+                          </li>
+                          <li className={/[a-z]/.test(passwordData.newPassword) ? 'text-green-600' : ''}>
+                            At least one lowercase letter
+                          </li>
+                          <li className={/\d/.test(passwordData.newPassword) ? 'text-green-600' : ''}>
+                            At least one number
+                          </li>
+                          <li className={passwordData.newPassword.length >= 6 ? 'text-green-600' : ''}>
+                            At least 6 characters
+                          </li>
+                        </ul>
+                      </div>
+                    )}
                   </div>
                   <button
                     type="submit"
                     disabled={isChangingPassword}
-                    className="w-full px-4 py-2.5 bg-gradient-to-r from-[#8bc34a] to-[#558b2f] text-white font-medium rounded-lg hover:from-[#558b2f] hover:to-[#4a7c2a] transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full px-3 py-1.5 bg-gradient-to-r from-[#8bc34a] to-[#558b2f] text-white text-sm font-medium rounded-lg hover:from-[#558b2f] hover:to-[#4a7c2a] transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isChangingPassword ? 'Changing...' : 'Change Password'}
                   </button>
@@ -381,6 +569,7 @@ const ProfilePage = () => {
                           type="text"
                           value={user?.employeeId || 'N/A'}
                           disabled
+                          autoComplete="off"
                           className="block w-full px-4 py-2.5 border border-gray-200 bg-gray-50 rounded-lg text-gray-600 cursor-not-allowed uppercase"
                         />
                       </div>
@@ -400,6 +589,7 @@ const ProfilePage = () => {
                             onChange={handleInputChange}
                             placeholder="Enter your first name"
                             disabled={!isEditing}
+                            autoComplete="given-name"
                             className={`block w-full pl-10 pr-4 py-2.5 border rounded-lg transition-all ${
                               errors.firstName 
                                 ? 'border-red-300 focus:border-red-500 focus:ring-red-500' 
@@ -426,6 +616,7 @@ const ProfilePage = () => {
                             type="email"
                             value={formData.email}
                             disabled
+                            autoComplete="email"
                             className="block w-full pl-10 pr-4 py-2.5 border border-gray-200 bg-gray-50 rounded-lg text-gray-600 cursor-not-allowed"
                           />
                         </div>
@@ -447,6 +638,7 @@ const ProfilePage = () => {
                             onChange={handleInputChange}
                             placeholder="Enter your phone number (e.g., +1234567890)"
                             disabled={!isEditing}
+                            autoComplete="tel"
                             className={`block w-full pl-10 pr-4 py-2.5 border rounded-lg transition-all ${
                               errors.phone 
                                 ? 'border-red-300 focus:border-red-500 focus:ring-red-500' 
@@ -512,6 +704,7 @@ const ProfilePage = () => {
                             onChange={handleInputChange}
                             placeholder="Enter your last name"
                             disabled={!isEditing}
+                            autoComplete="family-name"
                             className={`block w-full pl-10 pr-4 py-2.5 border rounded-lg transition-all ${
                               errors.lastName 
                                 ? 'border-red-300 focus:border-red-500 focus:ring-red-500' 
@@ -534,6 +727,7 @@ const ProfilePage = () => {
                           type="text"
                           value={user?.role?.replace('_', ' ') || 'User'}
                           disabled
+                          autoComplete="off"
                           className="block w-full px-4 py-2.5 border border-gray-200 bg-gray-50 rounded-lg text-gray-600 cursor-not-allowed capitalize"
                         />
                       </div>
@@ -546,6 +740,7 @@ const ProfilePage = () => {
                           type="text"
                           value={user?.fullName || (user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.firstName || 'User')}
                           disabled
+                          autoComplete="name"
                           className="block w-full px-4 py-2.5 border border-gray-200 bg-gray-50 rounded-lg text-gray-600 cursor-not-allowed"
                         />
                       </div>
@@ -559,6 +754,7 @@ const ProfilePage = () => {
                             type="text"
                             value={user.branch.branchName || user.branch}
                             disabled
+                            autoComplete="off"
                             className="block w-full px-4 py-2.5 border border-gray-200 bg-gray-50 rounded-lg text-gray-600 cursor-not-allowed"
                           />
                         </div>
@@ -588,6 +784,7 @@ const ProfilePage = () => {
                             type="text"
                             value={new Date(user.lastLoginAt).toLocaleString()}
                             disabled
+                            autoComplete="off"
                             className="block w-full px-4 py-2.5 border border-gray-200 bg-gray-50 rounded-lg text-gray-600 cursor-not-allowed"
                           />
                         </div>
@@ -602,6 +799,7 @@ const ProfilePage = () => {
                             type="text"
                             value={new Date(user.createdAt).toLocaleDateString()}
                             disabled
+                            autoComplete="off"
                             className="block w-full px-4 py-2.5 border border-gray-200 bg-gray-50 rounded-lg text-gray-600 cursor-not-allowed"
                           />
                         </div>
@@ -620,23 +818,23 @@ const ProfilePage = () => {
                           type="button"
                           onClick={handleCancel}
                           disabled={isSubmitting}
-                          className="px-6 py-2.5 text-gray-700 bg-white border border-gray-300 rounded-lg font-medium hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="px-4 py-1.5 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg font-medium hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           Cancel
                         </button>
                         <button
                           type="submit"
                           disabled={isSubmitting}
-                          className="inline-flex items-center space-x-2 px-6 py-2.5 bg-gradient-to-r from-[#8bc34a] to-[#558b2f] text-white font-medium rounded-lg shadow-sm hover:shadow-md hover:from-[#558b2f] hover:to-[#4a7c2a] transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#8bc34a] focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="inline-flex items-center space-x-1.5 px-4 py-1.5 bg-gradient-to-r from-[#8bc34a] to-[#558b2f] text-white text-sm font-medium rounded-lg shadow-sm hover:shadow-md hover:from-[#558b2f] hover:to-[#4a7c2a] transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#8bc34a] focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {isSubmitting ? (
                             <>
-                              <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                              <div className="animate-spin rounded-full h-3.5 w-3.5 border-2 border-white border-t-transparent"></div>
                               <span>Saving...</span>
                             </>
                           ) : (
                             <>
-                              <HiCheckCircle className="h-4 w-4" />
+                              <HiCheckCircle className="h-3.5 w-3.5" />
                               <span>Save Changes</span>
                             </>
                           )}
@@ -650,6 +848,67 @@ const ProfilePage = () => {
           </div>
         </div>
       </div>
+
+      {/* Remove Avatar Confirmation Modal */}
+      {showRemoveModal && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex min-h-full items-center justify-center p-4 text-center sm:p-0">
+            {/* Backdrop */}
+            <div
+              className="fixed inset-0 bg-black/20 backdrop-blur-sm transition-opacity"
+              onClick={() => setShowRemoveModal(false)}
+            ></div>
+
+            {/* Modal Content */}
+            <div className="relative transform overflow-hidden rounded-2xl bg-white/95 backdrop-blur-md text-left shadow-2xl transition-all w-full max-w-md">
+              {/* Header */}
+              <div className="px-6 py-4 border-b border-gray-200 bg-gray-50/50">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Remove Profile Photo
+                  </h3>
+                  <button
+                    onClick={() => setShowRemoveModal(false)}
+                    className="text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#22c55e] focus:ring-offset-2 rounded-md p-1"
+                  >
+                    <HiXMark className="h-6 w-6" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Body */}
+              <div className="px-6 py-4 sm:p-6">
+                <p className="text-sm text-gray-600 mb-6">
+                  Are you sure you want to remove your profile photo? This action cannot be undone.
+                </p>
+                <div className="flex items-center justify-end space-x-3">
+                  <button
+                    onClick={() => setShowRemoveModal(false)}
+                    disabled={isDeletingAvatar}
+                    className="px-4 py-1.5 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg font-medium hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleRemoveAvatar}
+                    disabled={isDeletingAvatar}
+                    className="px-4 py-1.5 text-sm bg-red-500 text-white rounded-lg font-medium hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1.5"
+                  >
+                    {isDeletingAvatar ? (
+                      <>
+                        <div className="animate-spin rounded-full h-3.5 w-3.5 border-2 border-white border-t-transparent"></div>
+                        <span>Removing...</span>
+                      </>
+                    ) : (
+                      <span>Remove Photo</span>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
