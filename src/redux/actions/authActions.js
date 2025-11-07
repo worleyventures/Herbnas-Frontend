@@ -112,13 +112,24 @@ export const getProfile = createAsyncThunk(
   'auth/getProfile',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await api.get('/auth/profile');
+      // Add cache-busting parameter to ensure fresh data
+      const timestamp = new Date().getTime();
+      const response = await api.get(`/auth/profile?t=${timestamp}`, {
+        // Ensure we bypass any browser cache
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
+      
       // Handle response structure: response.data.data.user or response.data.user
       const user = response.data?.data?.user || response.data?.user || response.data;
       
-      // Update localStorage
+      // Update localStorage cache with fresh data
       if (user) {
         localStorage.setItem('user', JSON.stringify(user));
+        // Note: Cookies have 4KB limit, so we only store essential data in cookies
+        // Full user data is stored in localStorage for caching
       }
       
       return { user };
@@ -146,9 +157,9 @@ export const updateProfile = createAsyncThunk(
       
       console.log('✅ Extracted user data:', user);
       
-      // Update stored user data in localStorage
+      // Update stored user data in localStorage (cache)
       localStorage.setItem('user', JSON.stringify(user));
-      console.log('✅ Updated localStorage with user data');
+      console.log('✅ Updated cache (localStorage) with user data');
       
       return { user };
     } catch (err) {
@@ -284,8 +295,9 @@ export const uploadAvatar = createAsyncThunk(
       
       console.log('✅ Extracted user data from avatar upload:', user);
       
-      // Update stored user data
+      // Update stored user data in cache
       localStorage.setItem('user', JSON.stringify(user));
+      console.log('✅ Updated cache (localStorage) with avatar upload data');
       
       return { user };
     } catch (err) {
@@ -310,8 +322,9 @@ export const deleteAvatar = createAsyncThunk(
         return rejectWithValue('No user data received from server');
       }
       
-      // Update stored user data
+      // Update stored user data in cache
       localStorage.setItem('user', JSON.stringify(user));
+      console.log('✅ Updated cache (localStorage) after avatar deletion');
       
       return { user };
     } catch (err) {

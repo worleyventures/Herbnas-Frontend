@@ -155,11 +155,19 @@ const UsersPage = () => {
       render: (user) => (
         <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
           <div className="flex items-center space-x-3">
-            <div className="flex-shrink-0 h-10 w-10 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center">
-              <span className="text-sm font-bold text-white">
-                {user.firstName?.charAt(0)}{user.lastName?.charAt(0)}
-              </span>
-            </div>
+            {user.avatar?.url ? (
+              <img
+                src={user.avatar.url}
+                alt={`${user.firstName} ${user.lastName}`}
+                className="flex-shrink-0 h-10 w-10 rounded-full object-cover ring-2 ring-gray-200"
+              />
+            ) : (
+              <div className="flex-shrink-0 h-10 w-10 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center">
+                <span className="text-sm font-bold text-white uppercase">
+                  {user.firstName?.charAt(0) || ''}{user.lastName?.charAt(0) || ''}
+                </span>
+              </div>
+            )}
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-900 truncate">
                 {user.firstName} {user.lastName}

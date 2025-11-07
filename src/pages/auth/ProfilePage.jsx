@@ -37,10 +37,9 @@ const ProfilePage = () => {
   const fileInputRef = React.useRef(null);
 
   useEffect(() => {
-    // Load user profile if not already loaded
-    if (!user || !user.firstName) {
-      dispatch(getProfile());
-    }
+    // Always fetch fresh profile data on mount to ensure we have latest data
+    // This ensures cache is updated with latest data from backend
+    dispatch(getProfile());
   }, [dispatch]);
 
   useEffect(() => {
@@ -287,9 +286,9 @@ const ProfilePage = () => {
     setIsUploadingAvatar(true);
 
     try {
-      const result = await dispatch(uploadAvatar(file)).unwrap();
+      await dispatch(uploadAvatar(file)).unwrap();
       
-      // Refresh user profile
+      // Refresh user profile to get latest data from backend and update cache
       await dispatch(getProfile());
       
       dispatch(addNotification({
@@ -329,7 +328,7 @@ const ProfilePage = () => {
     try {
       await dispatch(deleteAvatar()).unwrap();
       
-      // Refresh user profile
+      // Refresh user profile to get latest data from backend and update cache
       await dispatch(getProfile());
       
       dispatch(addNotification({

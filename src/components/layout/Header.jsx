@@ -440,15 +440,15 @@ const Header = ({ sidebarOpen, setSidebarOpen, showAttendanceModal, setShowAtten
               <div className="flex items-center space-x-3">
                 {user?.avatar?.url ? (
                   <img
-                    className="h-9 w-9 rounded-full ring-2 ring-gray-200"
+                    className="h-9 w-9 rounded-full ring-2 ring-gray-200 object-cover"
                     src={user.avatar.url}
                     alt={user.fullName || user.firstName}
                   />
                 ) : (
-                  <div className="h-9 w-9 rounded-full flex items-center justify-center bg-gray-100 border-2 border-gray-300">
-                    <svg className="h-6 w-6 text-gray-600" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-                    </svg>
+                  <div className="h-9 w-9 rounded-full flex items-center justify-center bg-gradient-to-br from-purple-500 to-purple-600 ring-2 ring-gray-200">
+                    <span className="text-xs font-bold text-white uppercase">
+                      {user?.firstName?.charAt(0) || ''}{user?.lastName?.charAt(0) || ''}
+                    </span>
                   </div>
                 )}
                 <div className="hidden md:block text-left">
