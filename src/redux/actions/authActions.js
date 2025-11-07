@@ -112,10 +112,29 @@ export const getProfile = createAsyncThunk(
   'auth/getProfile',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await api.get('/auth/profile');
-      return response.data;
+      // Add cache-busting parameter to ensure fresh data
+      const timestamp = new Date().getTime();
+      const response = await api.get(`/auth/profile?t=${timestamp}`, {
+        // Ensure we bypass any browser cache
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
+      
+      // Handle response structure: response.data.data.user or response.data.user
+      const user = response.data?.data?.user || response.data?.user || response.data;
+      
+      // Update localStorage cache with fresh data
+      if (user) {
+        localStorage.setItem('user', JSON.stringify(user));
+        // Note: Cookies have 4KB limit, so we only store essential data in cookies
+        // Full user data is stored in localStorage for caching
+      }
+      
+      return { user };
     } catch (err) {
-      return rejectWithValue(err.message);
+      return rejectWithValue(err.response?.data?.message || err.message);
     }
   }
 );
@@ -124,14 +143,29 @@ export const updateProfile = createAsyncThunk(
   'auth/updateProfile',
   async (profileData, { rejectWithValue }) => {
     try {
+      console.log('🔄 Updating profile with data:', profileData);
       const response = await api.put('/auth/profile', profileData);
+      console.log('✅ Profile update response:', response.data);
       
-      // Update stored user data
-      localStorage.setItem('user', JSON.stringify(response.data.user));
+      // Handle response structure: response.data.data.user or response.data.user
+      const user = response.data?.data?.user || response.data?.user || response.data;
       
-      return response.data;
+      if (!user) {
+        console.error('❌ No user data in response:', response.data);
+        return rejectWithValue('No user data received from server');
+      }
+      
+      console.log('✅ Extracted user data:', user);
+      
+      // Update stored user data in localStorage (cache)
+      localStorage.setItem('user', JSON.stringify(user));
+      console.log('✅ Updated cache (localStorage) with user data');
+      
+      return { user };
     } catch (err) {
-      return rejectWithValue(err.message);
+      console.error('❌ Profile update error:', err);
+      console.error('Error response:', err.response?.data);
+      return rejectWithValue(err.response?.data?.message || err.message);
     }
   }
 );
@@ -140,14 +174,21 @@ export const changePassword = createAsyncThunk(
   'auth/changePassword',
   async (passwordData, { rejectWithValue }) => {
     try {
+      console.log('🔄 Changing password...');
       const response = await api.put('/auth/change-password', passwordData);
       
-      // Update stored token
-      localStorage.setItem('token', response.data.token);
+      console.log('✅ Password changed successfully');
+      
+      // Update stored token if new token is provided
+      if (response.data?.token) {
+        localStorage.setItem('token', response.data.token);
+      }
       
       return response.data;
     } catch (err) {
-      return rejectWithValue(err.message);
+      console.error('❌ Password change error:', err);
+      const errorMessage = err.response?.data?.message || err.message || 'Failed to change password';
+      return rejectWithValue(errorMessage);
     }
   }
 );
@@ -232,6 +273,7 @@ export const uploadAvatar = createAsyncThunk(
   'auth/uploadAvatar',
   async (avatarFile, { rejectWithValue }) => {
     try {
+      console.log('🔄 Uploading avatar file:', avatarFile.name, avatarFile.size);
       const formData = new FormData();
       formData.append('avatar', avatarFile);
       
@@ -241,12 +283,28 @@ export const uploadAvatar = createAsyncThunk(
         },
       });
       
-      // Update stored user data
-      localStorage.setItem('user', JSON.stringify(response.data.user));
+      console.log('✅ Avatar upload response:', response.data);
       
-      return response.data;
+      // Handle response structure: response.data.data.user or response.data.user
+      const user = response.data?.data?.user || response.data?.user || response.data;
+      
+      if (!user) {
+        console.error('❌ No user data in response:', response.data);
+        return rejectWithValue('No user data received from server');
+      }
+      
+      console.log('✅ Extracted user data from avatar upload:', user);
+      
+      // Update stored user data in cache
+      localStorage.setItem('user', JSON.stringify(user));
+      console.log('✅ Updated cache (localStorage) with avatar upload data');
+      
+      return { user };
     } catch (err) {
-      return rejectWithValue(err.message);
+      console.error('❌ Avatar upload error:', err);
+      console.error('Error response:', err.response?.data);
+      const errorMessage = err.response?.data?.message || err.message || 'Failed to upload avatar';
+      return rejectWithValue(errorMessage);
     }
   }
 );
@@ -257,12 +315,20 @@ export const deleteAvatar = createAsyncThunk(
     try {
       const response = await api.delete('/auth/avatar');
       
-      // Update stored user data
-      localStorage.setItem('user', JSON.stringify(response.data.user));
+      // Handle response structure: response.data.data.user or response.data.user
+      const user = response.data?.data?.user || response.data?.user || response.data;
       
-      return response.data;
+      if (!user) {
+        return rejectWithValue('No user data received from server');
+      }
+      
+      // Update stored user data in cache
+      localStorage.setItem('user', JSON.stringify(user));
+      console.log('✅ Updated cache (localStorage) after avatar deletion');
+      
+      return { user };
     } catch (err) {
-      return rejectWithValue(err.message);
+      return rejectWithValue(err.response?.data?.message || err.message);
     }
   }
 ); 

@@ -85,7 +85,8 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
         hoverColor: 'group-hover:text-green-600',
         hoverBgColor: 'group-hover:bg-gray-50'
       },
-      {
+      // Production - hidden for accounts_manager and supervisor
+      ...(stableUserRole !== 'accounts_manager' && stableUserRole !== 'supervisor' ? [{
         name: 'Production',
         href: '/productions',
         icon: HiDocumentText,
@@ -94,7 +95,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
         bgColor: 'bg-gray-100',
         hoverColor: 'group-hover:text-gray-600',
         hoverBgColor: 'group-hover:bg-gray-50'
-      },
+      }] : []),
       {
         name: 'Inventory',
         href: '/inventory',
@@ -135,8 +136,8 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
         hoverColor: 'group-hover:text-teal-600',
         hoverBgColor: 'group-hover:bg-gray-50'
       },
-      // Accounts - hidden for production managers
-      ...(stableUserRole !== 'production_manager' ? [{
+      // Accounts - hidden for production managers and sales executives, visible for supervisor
+      ...(stableUserRole !== 'production_manager' && stableUserRole !== 'sales_executive' ? [{
         name: 'Accounts',
         href: '/accounts',
         icon: HiCurrencyDollar,
@@ -161,48 +162,52 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
           bgColor: 'bg-gray-100',
           hoverColor: 'group-hover:text-cyan-600',
           hoverBgColor: 'group-hover:bg-gray-50'
-        },
-        {
-          name: 'Payroll',
-          href: '/payrolls',
-          icon: HiBanknotes,
-          current: isActiveRoute('/payrolls'),
-          color: 'text-purple-600',
-          bgColor: 'bg-gray-100',
-          hoverColor: 'group-hover:text-purple-600',
-          hoverBgColor: 'group-hover:bg-gray-50'
         }
       );
     }
-
-    // Add admin attendance navigation
-    if (stableUserRole === 'admin') {
-      adminNavigation.push(
-        {
-          name: 'Attendance',
-          href: '/attendance',
-          icon: HiClock,
-          current: isActiveRoute('/attendance'),
-          color: 'text-blue-600',
-          bgColor: 'bg-gray-100',
-          hoverColor: 'group-hover:text-blue-600',
-          hoverBgColor: 'group-hover:bg-gray-50'
-        }
-      );
+    
+    // Payroll - available for admin, super_admin, accounts_manager, and supervisor
+    if (stableUserRole === 'admin' || stableUserRole === 'super_admin' || stableUserRole === 'accounts_manager' || stableUserRole === 'supervisor') {
+      adminNavigation.push({
+        name: 'Payroll',
+        href: '/payrolls',
+        icon: HiBanknotes,
+        current: isActiveRoute('/payrolls'),
+        color: 'text-purple-600',
+        bgColor: 'bg-gray-100',
+        hoverColor: 'group-hover:text-purple-600',
+        hoverBgColor: 'group-hover:bg-gray-50'
+      });
     }
 
-    const settingsNavigation = {
-      name: 'Settings',
-      href: '/settings',
-      icon: HiCog6Tooth,
-      current: isActiveRoute('/settings'),
-      color: 'text-gray-600',
-      bgColor: 'bg-gray-100',
-      hoverColor: 'group-hover:text-gray-600',
-      hoverBgColor: 'group-hover:bg-gray-50'
-    };
+    // Attendance is now part of Payroll dashboard, so removed from sidebar
+    // if (stableUserRole === 'admin') {
+    //   adminNavigation.push(
+    //     {
+    //       name: 'Attendance',
+    //       href: '/attendance',
+    //       icon: HiClock,
+    //       current: isActiveRoute('/attendance'),
+    //       color: 'text-blue-600',
+    //       bgColor: 'bg-gray-100',
+    //       hoverColor: 'group-hover:text-blue-600',
+    //       hoverBgColor: 'group-hover:bg-gray-50'
+    //     }
+    //   );
+    // }
 
-    return [...baseNavigation, ...adminNavigation, settingsNavigation];
+    // const settingsNavigation = {
+    //   name: 'Settings',
+    //   href: '/settings',
+    //   icon: HiCog6Tooth,
+    //   current: isActiveRoute('/settings'),
+    //   color: 'text-gray-600',
+    //   bgColor: 'bg-gray-100',
+    //   hoverColor: 'group-hover:text-gray-600',
+    //   hoverBgColor: 'group-hover:bg-gray-50'
+    // };
+
+    return [...baseNavigation, ...adminNavigation]; // , settingsNavigation];
   }, [stableUserRole, location.pathname]);
 
   const NavigationItem = ({ item }) => {

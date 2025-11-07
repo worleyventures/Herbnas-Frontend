@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -42,6 +42,10 @@ const PayrollTab = ({ showUsers = true, isPayrollTab = false }) => {
   
   // Redux state
   const stats = useSelector(selectPayrollStats);
+  const { user: loggedInUser } = useSelector((state) => state.auth);
+  const isAccountsManager = loggedInUser?.role === 'accounts_manager';
+  const isSupervisor = loggedInUser?.role === 'supervisor';
+  const isAdmin = loggedInUser?.role === 'admin';
   
   // User state (when showing users)
   const users = useSelector(selectUsers);
@@ -53,10 +57,20 @@ const PayrollTab = ({ showUsers = true, isPayrollTab = false }) => {
   const attendance = useSelector((state) => state.attendance.allAttendance);
   const attendanceLoading = useSelector((state) => state.attendance.loading);
 
+  // Extract branch ID - handle both populated object and ObjectId string
+  const userBranchId = useMemo(() => {
+    if (!loggedInUser?.branch) return null;
+    return loggedInUser.branch?._id || loggedInUser.branch;
+  }, [loggedInUser?.branch]);
 
   // Local state
   const [searchTerm, setSearchTerm] = useState('');
-  const [branchFilter, setBranchFilter] = useState('all');
+  // For accounts_manager, supervisor, and admin, automatically set branch filter to their branch
+  const [branchFilter, setBranchFilter] = useState(
+    (isAccountsManager || isSupervisor || isAdmin) && userBranchId
+      ? userBranchId
+      : 'all'
+  );
   const [monthFilter, setMonthFilter] = useState(String(new Date().getMonth() + 1)); // Default to current month
   const [yearFilter, setYearFilter] = useState(new Date().getFullYear().toString());
   const [currentPage, setCurrentPage] = useState(1);
@@ -81,6 +95,13 @@ const PayrollTab = ({ showUsers = true, isPayrollTab = false }) => {
       console.error('Failed to load branches:', error);
     }
   };
+
+  // Set branch filter for accounts_manager, supervisor, and admin on mount
+  useEffect(() => {
+    if ((isAccountsManager || isSupervisor || isAdmin) && userBranchId) {
+      setBranchFilter(userBranchId);
+    }
+  }, [isAccountsManager, isSupervisor, isAdmin, userBranchId]);
 
   // Load data on component mount
   useEffect(() => {
@@ -119,6 +140,11 @@ const PayrollTab = ({ showUsers = true, isPayrollTab = false }) => {
 
   // Handle filter changes - support both event object and direct value
   const handleFilterChange = (filterType, eventOrValue) => {
+    // Prevent accounts_manager, supervisor, and admin from changing branch filter
+    if (filterType === 'branch' && (isAccountsManager || isSupervisor || isAdmin)) {
+      return;
+    }
+    
     // Extract value from event object or use direct value
     const value = eventOrValue?.target?.value !== undefined ? eventOrValue.target.value : eventOrValue;
     // Ensure value is always a string for consistency
@@ -700,12 +726,15 @@ const PayrollTab = ({ showUsers = true, isPayrollTab = false }) => {
                 icon={HiMagnifyingGlass}
                 className="w-full sm:w-64"
               />
-              <Select
-                value={branchFilter}
-                onChange={(e) => handleFilterChange('branch', e)}
-                options={branchOptions}
-                className="w-full sm:w-40"
-              />
+              {/* Hide branch filter for accounts_manager, supervisor, and admin - they can only see their branch */}
+              {!isAccountsManager && !isSupervisor && !isAdmin && (
+                <Select
+                  value={branchFilter}
+                  onChange={(e) => handleFilterChange('branch', e)}
+                  options={branchOptions}
+                  className="w-full sm:w-40"
+                />
+              )}
               <Select
                 value={monthFilter}
                 onChange={(e) => handleFilterChange('month', e)}

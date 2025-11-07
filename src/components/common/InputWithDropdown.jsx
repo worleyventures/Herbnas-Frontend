@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { HiChevronDown, HiXMark } from 'react-icons/hi2';
 
 const InputWithDropdown = ({
@@ -18,21 +18,20 @@ const InputWithDropdown = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filteredOptions, setFilteredOptions] = useState(options);
   const dropdownRef = useRef(null);
   const inputRef = useRef(null);
+  const prevValueRef = useRef(value);
+  const prevOptionsRef = useRef(options);
 
-  // Filter options based on search term
-  useEffect(() => {
+  // Memoize filtered options to avoid unnecessary recalculations
+  const filteredOptions = useMemo(() => {
     if (searchTerm) {
-      const filtered = options.filter(option =>
+      return options.filter(option =>
         option.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
         option.value.toLowerCase().includes(searchTerm.toLowerCase())
       );
-      setFilteredOptions(filtered);
-    } else {
-      setFilteredOptions(options);
     }
+    return options;
   }, [searchTerm, options]);
 
   // Close dropdown when clicking outside
@@ -40,13 +39,10 @@ const InputWithDropdown = ({
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsOpen(false);
-        // Don't clear searchTerm here - let the useEffect sync it with value prop
-        // This preserves user-typed values that don't match options
       }
     };
 
     if (isOpen) {
-      // Use click event with capture phase to allow button clicks to complete first
       document.addEventListener('click', handleClickOutside, true);
       return () => {
         document.removeEventListener('click', handleClickOutside, true);
@@ -54,21 +50,29 @@ const InputWithDropdown = ({
     }
   }, [isOpen]);
 
-  // Update search term when value changes - convert both to strings for comparison
-  // This ensures the input always shows the current value, even if it doesn't match options
+  // Update search term when value changes - only if value actually changed
   useEffect(() => {
-    if (value !== undefined && value !== null && value !== '') {
-      const selectedOption = options.find(option => String(option.value) === String(value));
-      if (selectedOption) {
-        // If value matches an option, show the option label
-        setSearchTerm(selectedOption.label);
+    // Check if value or options actually changed
+    const valueChanged = prevValueRef.current !== value;
+    const optionsChanged = prevOptionsRef.current !== options;
+    
+    if (valueChanged || optionsChanged) {
+      if (value !== undefined && value !== null && value !== '') {
+        const selectedOption = options.find(option => String(option.value) === String(value));
+        if (selectedOption) {
+          setSearchTerm(selectedOption.label);
+        } else {
+          setSearchTerm(String(value));
+        }
       } else {
-        // If value doesn't match any option (new/custom value), show the value itself
-        setSearchTerm(String(value));
+        setSearchTerm('');
       }
-    } else {
-      setSearchTerm('');
+      
+      // Update refs
+      prevValueRef.current = value;
+      prevOptionsRef.current = options;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, options]);
 
   const handleInputChange = (e) => {

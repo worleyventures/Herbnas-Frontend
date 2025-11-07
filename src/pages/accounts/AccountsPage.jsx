@@ -67,7 +67,10 @@ const AccountsPage = () => {
   // Local state
   const [activeTab, setActiveTab] = useState('overview');
   const [searchTerm, setSearchTerm] = useState('');
-  const [dateRangeFilter, setDateRangeFilter] = useState('today');
+  // For accounts_manager, default to 'thisMonth' to show more data
+  const [dateRangeFilter, setDateRangeFilter] = useState(
+    user?.role === 'accounts_manager' ? 'thisMonth' : 'today'
+  );
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [branchFilter, setBranchFilter] = useState('all');
@@ -95,6 +98,7 @@ const AccountsPage = () => {
   // Role-based access
   const isSuperAdmin = user?.role === 'super_admin';
   const isAccountsManager = user?.role === 'accounts_manager';
+  const isAdmin = user?.role === 'admin';
 
   // Helper function to get date range based on filter selection
   const getDateRange = useCallback(() => {
@@ -144,9 +148,9 @@ const AccountsPage = () => {
 
   // Load data on component mount
   useEffect(() => {
-    if (activeTab === 'overview' || isAccountsManager) {
-      // For accounts managers, always filter by their branch
-      const branchId = isAccountsManager ? (user?.branch?._id || user?.branch) : (branchFilter !== 'all' ? branchFilter : undefined);
+    if (activeTab === 'overview' || isAccountsManager || isAdmin) {
+      // For accounts managers and admins, always filter by their branch
+      const branchId = (isAccountsManager || isAdmin) ? (user?.branch?._id || user?.branch) : (branchFilter !== 'all' ? branchFilter : undefined);
       const dateRange = getDateRange();
       
       // For custom date range, only fetch if both dates are provided
@@ -179,7 +183,7 @@ const AccountsPage = () => {
         }));
       }
     }
-  }, [activeTab, currentPage, searchTerm, dateRangeFilter, fromDate, toDate, branchFilter, paymentStatusFilter, transactionTypeFilter, dispatch, isSuperAdmin, isAccountsManager, user?.branch?._id, user?.branch, getDateRange]);
+  }, [activeTab, currentPage, searchTerm, dateRangeFilter, fromDate, toDate, branchFilter, paymentStatusFilter, transactionTypeFilter, dispatch, isSuperAdmin, isAccountsManager, isAdmin, user?.branch?._id, user?.branch, getDateRange]);
 
   // Separate effect to reload branch summary when date range changes (for super admin)
   useEffect(() => {
@@ -388,15 +392,17 @@ const AccountsPage = () => {
         setAccountToDelete(null);
         
          // Refresh the accounts list
-         const branchId = isAccountsManager ? (user?.branch?._id || user?.branch) : (branchFilter !== 'all' ? branchFilter : undefined);
+         const branchId = (isAccountsManager || isAdmin) ? (user?.branch?._id || user?.branch) : (branchFilter !== 'all' ? branchFilter : undefined);
+         const dateRange = getDateRange();
          dispatch(getAllAccounts({
            page: currentPage,
            limit: 10,
            search: searchTerm,
-           month: monthFilter !== 'all' ? monthFilter : undefined,
-           year: yearFilter !== 'all' ? yearFilter : undefined,
+           startDate: dateRange?.startDate,
+           endDate: dateRange?.endDate,
            branchId: branchId,
-           paymentStatus: paymentStatusFilter !== 'all' ? paymentStatusFilter : undefined
+           paymentStatus: paymentStatusFilter !== 'all' ? paymentStatusFilter : undefined,
+           transactionType: transactionTypeFilter !== 'all' ? transactionTypeFilter : undefined
          }));
     } catch (error) {
       dispatch(addNotification({
@@ -940,7 +946,7 @@ const AccountsPage = () => {
           <p className="mt-1 text-sm text-gray-500">
             {isSuperAdmin 
               ? 'Manage all branch accounts, expenses, and incomes across all branches' 
-              : isAccountsManager 
+              : (isAccountsManager || isAdmin)
               ? `Manage accounts, expenses, and incomes for ${user?.branch?.branchName || 'your branch'}`
               : 'Manage all branch accounts, expenses, and incomes'
             }
@@ -1546,8 +1552,8 @@ const AccountsPage = () => {
           )}
         </div>
         )
-      ) : isAccountsManager ? (
-        // Accounts Manager: Simplified view with only cards and table
+      ) : (isAccountsManager || isAdmin) ? (
+        // Accounts Manager and Admin: Simplified view with only cards and table (no tabs)
         <div className="space-y-6">
           {/* Statistics Cards */}
           {stats && (
@@ -1652,7 +1658,7 @@ const AccountsPage = () => {
           </div>
         </div>
       ) : (
-        // Other roles: Tabbed interface
+        // Other roles (supervisor, etc.): Tabbed interface
         <>
           {/* Tabs */}
           <div className="border-b border-gray-200">

@@ -64,32 +64,39 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
   const [filterStockStatus, setFilterStockStatus] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
-  const [activeTab, setActiveTab] = useState(location.state?.activeTab || 'rawMaterials'); // 'rawMaterials', 'finishedGoods', or 'sentGoods'
-  
   // Role-based access
   const isProductionManager = user?.role === 'production_manager';
+  const isAccountsManager = user?.role === 'accounts_manager';
+  const isAdmin = user?.role === 'admin';
+  
+  // Set default tab based on role
+  const defaultTab = (isAccountsManager || isAdmin) ? 'sentGoods' : (location.state?.activeTab || 'rawMaterials');
+  const [activeTab, setActiveTab] = useState(defaultTab); // 'rawMaterials', 'finishedGoods', or 'sentGoods'
 
 
 
   // Load data on component mount
   useEffect(() => {
     if (isAuthenticated) {
-      dispatch(getAllRawMaterials({
-        page: currentPage,
-        limit: itemsPerPage,
-        search: searchTerm,
-        stockStatus: filterStockStatus === 'all' ? '' : filterStockStatus
-      }));
-      dispatch(getAllFinishedGoods({
-        page: currentPage,
-        limit: itemsPerPage,
-        search: searchTerm,
-        productId: filterProduct === 'all' ? '' : filterProduct,
-        stockStatus: filterStockStatus === 'all' ? '' : filterStockStatus
-      }));
-      // Load sent goods for all users (production managers will see filtered results)
-      if (isProductionManager) {
-        console.log('🚀 Dispatching getReceivedGoods for production manager...');
+      // Don't load raw materials and finished goods for accounts_manager
+      if (!isAccountsManager) {
+        dispatch(getAllRawMaterials({
+          page: currentPage,
+          limit: itemsPerPage,
+          search: searchTerm,
+          stockStatus: filterStockStatus === 'all' ? '' : filterStockStatus
+        }));
+        dispatch(getAllFinishedGoods({
+          page: currentPage,
+          limit: itemsPerPage,
+          search: searchTerm,
+          productId: filterProduct === 'all' ? '' : filterProduct,
+          stockStatus: filterStockStatus === 'all' ? '' : filterStockStatus
+        }));
+      }
+      // Load sent goods for all users (production managers, accounts managers, and admins will see filtered results)
+      if (isProductionManager || isAccountsManager || isAdmin) {
+        console.log('🚀 Dispatching getReceivedGoods for production manager/accounts manager/admin...');
         dispatch(getReceivedGoods({ page: 1, limit: 1000 }));
       } else {
         console.log('🚀 Dispatching getAllSentGoods for other roles...');
@@ -98,11 +105,11 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
       dispatch(getInventoryStats());
       dispatch(getAllProducts({ page: 1, limit: 1000, isActive: true }));
     }
-  }, [dispatch, isAuthenticated, isProductionManager]);
+  }, [dispatch, isAuthenticated, isProductionManager, isAccountsManager]);
 
   // Load filtered inventory when filters change
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && !isAccountsManager && !isAdmin) {
       dispatch(getAllRawMaterials({
         page: currentPage,
         limit: itemsPerPage,
@@ -122,27 +129,30 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
   // Refresh inventory when navigating to this page (e.g., returning from edit form)
   useEffect(() => {
     if (location.pathname === '/inventory' && isAuthenticated) {
-      dispatch(getAllRawMaterials({
-        page: currentPage,
-        limit: itemsPerPage,
-        search: searchTerm,
-        stockStatus: filterStockStatus === 'all' ? '' : filterStockStatus
-      }));
-      dispatch(getAllFinishedGoods({
-        page: currentPage,
-        limit: itemsPerPage,
-        search: searchTerm,
-        productId: filterProduct === 'all' ? '' : filterProduct,
-        stockStatus: filterStockStatus === 'all' ? '' : filterStockStatus
-      }));
+      // Don't load raw materials and finished goods for accounts_manager
+      if (!isAccountsManager) {
+        dispatch(getAllRawMaterials({
+          page: currentPage,
+          limit: itemsPerPage,
+          search: searchTerm,
+          stockStatus: filterStockStatus === 'all' ? '' : filterStockStatus
+        }));
+        dispatch(getAllFinishedGoods({
+          page: currentPage,
+          limit: itemsPerPage,
+          search: searchTerm,
+          productId: filterProduct === 'all' ? '' : filterProduct,
+          stockStatus: filterStockStatus === 'all' ? '' : filterStockStatus
+        }));
+      }
       dispatch(getInventoryStats());
-      if (isProductionManager) {
+      if (isProductionManager || isAccountsManager || isAdmin) {
         dispatch(getReceivedGoods({ page: 1, limit: 1000 }));
       } else {
         dispatch(getAllSentGoods({ page: 1, limit: 1000 }));
       }
     }
-  }, [location.pathname, dispatch, isAuthenticated]);
+  }, [location.pathname, dispatch, isAuthenticated, isProductionManager, isAccountsManager, isAdmin]);
 
   // Handle success notifications
   useEffect(() => {
@@ -452,32 +462,37 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
       {/* Tabs */}
       <div className="border-b border-gray-200">
         <nav className="-mb-px flex space-x-8">
-          <button
-            onClick={() => setActiveTab('rawMaterials')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'rawMaterials'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-          >
-            <div className="flex items-center space-x-2">
-              <HiCube className="h-5 w-5" />
-              <span>Raw Materials</span>
-            </div>
-          </button>
-          <button
-            onClick={() => setActiveTab('finishedGoods')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'finishedGoods'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-          >
-            <div className="flex items-center space-x-2">
-              <HiCheckCircle className="h-5 w-5" />
-              <span>Finished Goods</span>
-            </div>
-          </button>
+          {/* Hide Raw Materials and Finished Goods tabs for accounts_manager and admin */}
+          {!isAccountsManager && !isAdmin && (
+            <>
+              <button
+                onClick={() => setActiveTab('rawMaterials')}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'rawMaterials'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <div className="flex items-center space-x-2">
+                  <HiCube className="h-5 w-5" />
+                  <span>Raw Materials</span>
+                </div>
+              </button>
+              <button
+                onClick={() => setActiveTab('finishedGoods')}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'finishedGoods'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <div className="flex items-center space-x-2">
+                  <HiCheckCircle className="h-5 w-5" />
+                  <span>Finished Goods</span>
+                </div>
+              </button>
+            </>
+          )}
           <button
             onClick={() => setActiveTab('sentGoods')}
             className={`py-2 px-1 border-b-2 font-medium text-sm ${
@@ -488,7 +503,7 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
           >
             <div className="flex items-center space-x-2">
               <HiTruck className="h-5 w-5" />
-              <span>{isProductionManager ? 'Received Goods' : 'Sent Goods'}</span>
+              <span>{(isProductionManager || isAccountsManager || isAdmin) ? 'Received Goods' : 'Sent Goods'}</span>
             </div>
           </button>
         </nav>
@@ -571,7 +586,7 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
       </div>
 
       {/* Inventory Table */}
-      {activeTab === 'sentGoods' && isProductionManager ? (
+      {activeTab === 'sentGoods' && (isProductionManager || isAccountsManager || isAdmin) ? (
         <>
           <ReceivedGoodsCRUD
             sentGoods={sentGoods}
