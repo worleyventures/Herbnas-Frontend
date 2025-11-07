@@ -44,6 +44,7 @@ const PayrollTab = ({ showUsers = true, isPayrollTab = false }) => {
   const stats = useSelector(selectPayrollStats);
   const { user: loggedInUser } = useSelector((state) => state.auth);
   const isAccountsManager = loggedInUser?.role === 'accounts_manager';
+  const isSupervisor = loggedInUser?.role === 'supervisor';
   
   // User state (when showing users)
   const users = useSelector(selectUsers);
@@ -63,9 +64,9 @@ const PayrollTab = ({ showUsers = true, isPayrollTab = false }) => {
 
   // Local state
   const [searchTerm, setSearchTerm] = useState('');
-  // For accounts_manager, automatically set branch filter to their branch
+  // For accounts_manager and supervisor, automatically set branch filter to their branch
   const [branchFilter, setBranchFilter] = useState(
-    isAccountsManager && userBranchId
+    (isAccountsManager || isSupervisor) && userBranchId
       ? userBranchId
       : 'all'
   );
@@ -94,12 +95,12 @@ const PayrollTab = ({ showUsers = true, isPayrollTab = false }) => {
     }
   };
 
-  // Set branch filter for accounts_manager on mount
+  // Set branch filter for accounts_manager and supervisor on mount
   useEffect(() => {
-    if (isAccountsManager && userBranchId) {
+    if ((isAccountsManager || isSupervisor) && userBranchId) {
       setBranchFilter(userBranchId);
     }
-  }, [isAccountsManager, userBranchId]);
+  }, [isAccountsManager, isSupervisor, userBranchId]);
 
   // Load data on component mount
   useEffect(() => {
@@ -138,8 +139,8 @@ const PayrollTab = ({ showUsers = true, isPayrollTab = false }) => {
 
   // Handle filter changes - support both event object and direct value
   const handleFilterChange = (filterType, eventOrValue) => {
-    // Prevent accounts_manager from changing branch filter
-    if (filterType === 'branch' && isAccountsManager) {
+    // Prevent accounts_manager and supervisor from changing branch filter
+    if (filterType === 'branch' && (isAccountsManager || isSupervisor)) {
       return;
     }
     
@@ -725,7 +726,7 @@ const PayrollTab = ({ showUsers = true, isPayrollTab = false }) => {
                 className="w-full sm:w-64"
               />
               {/* Hide branch filter for accounts_manager - they can only see their branch */}
-              {!isAccountsManager && (
+              {!isAccountsManager && !isSupervisor && (
                 <Select
                   value={branchFilter}
                   onChange={(e) => handleFilterChange('branch', e)}

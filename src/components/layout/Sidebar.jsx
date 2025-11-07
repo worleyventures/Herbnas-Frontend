@@ -85,8 +85,8 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
         hoverColor: 'group-hover:text-green-600',
         hoverBgColor: 'group-hover:bg-gray-50'
       },
-      // Production - hidden for accounts_manager
-      ...(stableUserRole !== 'accounts_manager' ? [{
+      // Production - hidden for accounts_manager and supervisor
+      ...(stableUserRole !== 'accounts_manager' && stableUserRole !== 'supervisor' ? [{
         name: 'Production',
         href: '/productions',
         icon: HiDocumentText,
@@ -136,7 +136,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
         hoverColor: 'group-hover:text-teal-600',
         hoverBgColor: 'group-hover:bg-gray-50'
       },
-      // Accounts - hidden for production managers and sales executives
+      // Accounts - hidden for production managers and sales executives, visible for supervisor
       ...(stableUserRole !== 'production_manager' && stableUserRole !== 'sales_executive' ? [{
         name: 'Accounts',
         href: '/accounts',
@@ -166,8 +166,8 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
       );
     }
     
-    // Payroll - available for admin, super_admin, and accounts_manager
-    if (stableUserRole === 'admin' || stableUserRole === 'super_admin' || stableUserRole === 'accounts_manager') {
+    // Payroll - available for admin, super_admin, accounts_manager, and supervisor
+    if (stableUserRole === 'admin' || stableUserRole === 'super_admin' || stableUserRole === 'accounts_manager' || stableUserRole === 'supervisor') {
       adminNavigation.push({
         name: 'Payroll',
         href: '/payrolls',

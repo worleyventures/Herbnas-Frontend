@@ -13,9 +13,10 @@ const PayrollPage = () => {
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
   const isAccountsManager = user?.role === 'accounts_manager';
+  const isSupervisor = user?.role === 'supervisor';
   const [activeTab, setActiveTab] = useState(location.state?.activeTab || 'employees'); // Default to employees tab
 
-  // Filter tabs based on role - accounts_manager only sees Employees and Payslip
+  // Filter tabs based on role - accounts_manager and supervisor only see Employees and Payslip
   const allTabs = [
     {
       id: 'employees',
@@ -25,7 +26,7 @@ const PayrollPage = () => {
     },
     {
       id: 'payroll',
-      name: isAccountsManager ? 'Payslip' : 'Payroll',
+      name: (isAccountsManager || isSupervisor) ? 'Payslip' : 'Payroll',
       icon: HiCurrencyDollar,
       component: <PayrollTab isPayrollTab={true} />
     },
@@ -37,7 +38,7 @@ const PayrollPage = () => {
     }
   ];
 
-  const tabs = isAccountsManager 
+  const tabs = (isAccountsManager || isSupervisor)
     ? allTabs.filter(tab => tab.id !== 'attendance')
     : allTabs;
 
