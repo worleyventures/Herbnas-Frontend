@@ -122,7 +122,7 @@ function App() {
             <Route path="/payrolls/new" element={<PayrollFormPage />} />
             <Route path="/payrolls/edit/:id" element={<PayrollFormPage />} />
             <Route path="/attendance" element={<SupervisorAttendancePage />} />
-            <Route path="/settings" element={<div>Settings Page</div>} />
+            {/* <Route path="/settings" element={<div>Settings Page</div>} /> */}
             <Route path="/profile" element={<ProfilePage />} />
           </Route>
         </Routes>

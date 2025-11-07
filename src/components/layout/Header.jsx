@@ -125,7 +125,7 @@ const Header = ({ sidebarOpen, setSidebarOpen, showAttendanceModal, setShowAtten
       branches: 'Branches',
       'health-issues': 'Health Issues',
       users: 'Users',
-      settings: 'Settings',
+      // settings: 'Settings',
       profile: 'Profile',
       create: 'Create',
       edit: 'Edit',
@@ -519,14 +519,14 @@ const Header = ({ sidebarOpen, setSidebarOpen, showAttendanceModal, setShowAtten
                     <HiUser className="h-4 w-4 mr-3 text-gray-400" />
                     Your Profile
                   </Link>
-                  <Link
+                  {/* <Link
                     to="/settings"
                     className="flex items-center px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-200"
                     onClick={() => setProfileDropdownOpen(false)}
                   >
                     <HiCog6Tooth className="h-4 w-4 mr-3 text-gray-400" />
                     Settings
-                  </Link>
+                  </Link> */}
                   <div className="border-t border-gray-100 my-1"></div>
                   <button
                     onClick={handleLogout}

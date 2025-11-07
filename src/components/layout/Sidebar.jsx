@@ -191,18 +191,18 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
       );
     }
 
-    const settingsNavigation = {
-      name: 'Settings',
-      href: '/settings',
-      icon: HiCog6Tooth,
-      current: isActiveRoute('/settings'),
-      color: 'text-gray-600',
-      bgColor: 'bg-gray-100',
-      hoverColor: 'group-hover:text-gray-600',
-      hoverBgColor: 'group-hover:bg-gray-50'
-    };
+    // const settingsNavigation = {
+    //   name: 'Settings',
+    //   href: '/settings',
+    //   icon: HiCog6Tooth,
+    //   current: isActiveRoute('/settings'),
+    //   color: 'text-gray-600',
+    //   bgColor: 'bg-gray-100',
+    //   hoverColor: 'group-hover:text-gray-600',
+    //   hoverBgColor: 'group-hover:bg-gray-50'
+    // };
 
-    return [...baseNavigation, ...adminNavigation, settingsNavigation];
+    return [...baseNavigation, ...adminNavigation]; // , settingsNavigation];
   }, [stableUserRole, location.pathname]);
 
   const NavigationItem = ({ item }) => {
