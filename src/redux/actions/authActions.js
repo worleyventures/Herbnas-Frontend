@@ -113,9 +113,17 @@ export const getProfile = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const response = await api.get('/auth/profile');
-      return response.data;
+      // Handle response structure: response.data.data.user or response.data.user
+      const user = response.data?.data?.user || response.data?.user || response.data;
+      
+      // Update localStorage
+      if (user) {
+        localStorage.setItem('user', JSON.stringify(user));
+      }
+      
+      return { user };
     } catch (err) {
-      return rejectWithValue(err.message);
+      return rejectWithValue(err.response?.data?.message || err.message);
     }
   }
 );
@@ -124,14 +132,29 @@ export const updateProfile = createAsyncThunk(
   'auth/updateProfile',
   async (profileData, { rejectWithValue }) => {
     try {
+      console.log('🔄 Updating profile with data:', profileData);
       const response = await api.put('/auth/profile', profileData);
+      console.log('✅ Profile update response:', response.data);
       
-      // Update stored user data
-      localStorage.setItem('user', JSON.stringify(response.data.user));
+      // Handle response structure: response.data.data.user or response.data.user
+      const user = response.data?.data?.user || response.data?.user || response.data;
       
-      return response.data;
+      if (!user) {
+        console.error('❌ No user data in response:', response.data);
+        return rejectWithValue('No user data received from server');
+      }
+      
+      console.log('✅ Extracted user data:', user);
+      
+      // Update stored user data in localStorage
+      localStorage.setItem('user', JSON.stringify(user));
+      console.log('✅ Updated localStorage with user data');
+      
+      return { user };
     } catch (err) {
-      return rejectWithValue(err.message);
+      console.error('❌ Profile update error:', err);
+      console.error('Error response:', err.response?.data);
+      return rejectWithValue(err.response?.data?.message || err.message);
     }
   }
 );

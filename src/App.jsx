@@ -40,6 +40,7 @@ import AccountFormPage from './pages/accounts/AccountFormPage';
 import PayrollPage from './pages/payroll/PayrollPage';
 import PayrollFormPage from './pages/payroll/PayrollFormPage';
 import SupervisorAttendancePage from './pages/attendance/SupervisorAttendancePage';
+import ProfilePage from './pages/auth/ProfilePage';
 
 function App() {
   return (
@@ -122,7 +123,7 @@ function App() {
             <Route path="/payrolls/edit/:id" element={<PayrollFormPage />} />
             <Route path="/attendance" element={<SupervisorAttendancePage />} />
             <Route path="/settings" element={<div>Settings Page</div>} />
-            <Route path="/profile" element={<div>Profile Page</div>} />
+            <Route path="/profile" element={<ProfilePage />} />
           </Route>
         </Routes>
       </AuthInitializer>

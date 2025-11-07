@@ -294,7 +294,16 @@ const authSlice = createSlice({
       })
       .addCase(getProfile.fulfilled, (state, action) => {
         state.profileLoading = false;
-        state.user = action.payload.user;
+        const user = action.payload?.user || action.payload;
+        if (user) {
+          state.user = user;
+          // Update localStorage to keep it in sync
+          try {
+            localStorage.setItem('user', JSON.stringify(user));
+          } catch (error) {
+            console.error('Error updating localStorage:', error);
+          }
+        }
       })
       .addCase(getProfile.rejected, (state, action) => {
         state.profileLoading = false;
@@ -307,7 +316,17 @@ const authSlice = createSlice({
       })
       .addCase(updateProfile.fulfilled, (state, action) => {
         state.profileLoading = false;
-        state.user = action.payload.user;
+        const user = action.payload?.user || action.payload;
+        if (user) {
+          state.user = user;
+          state.isAuthenticated = true;
+          // Update localStorage to keep it in sync
+          try {
+            localStorage.setItem('user', JSON.stringify(user));
+          } catch (error) {
+            console.error('Error updating localStorage:', error);
+          }
+        }
       })
       .addCase(updateProfile.rejected, (state, action) => {
         state.profileLoading = false;
