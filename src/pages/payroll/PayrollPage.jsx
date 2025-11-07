@@ -14,9 +14,10 @@ const PayrollPage = () => {
   const { user } = useSelector((state) => state.auth);
   const isAccountsManager = user?.role === 'accounts_manager';
   const isSupervisor = user?.role === 'supervisor';
+  const isAdmin = user?.role === 'admin';
   const [activeTab, setActiveTab] = useState(location.state?.activeTab || 'employees'); // Default to employees tab
 
-  // Filter tabs based on role - accounts_manager and supervisor only see Employees and Payslip
+  // Filter tabs based on role - accounts_manager and supervisor only see Employees and Payslip, admin sees all tabs
   const allTabs = [
     {
       id: 'employees',

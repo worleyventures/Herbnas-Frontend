@@ -67,9 +67,10 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
   // Role-based access
   const isProductionManager = user?.role === 'production_manager';
   const isAccountsManager = user?.role === 'accounts_manager';
+  const isAdmin = user?.role === 'admin';
   
   // Set default tab based on role
-  const defaultTab = isAccountsManager ? 'sentGoods' : (location.state?.activeTab || 'rawMaterials');
+  const defaultTab = (isAccountsManager || isAdmin) ? 'sentGoods' : (location.state?.activeTab || 'rawMaterials');
   const [activeTab, setActiveTab] = useState(defaultTab); // 'rawMaterials', 'finishedGoods', or 'sentGoods'
 
 
@@ -93,9 +94,9 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
           stockStatus: filterStockStatus === 'all' ? '' : filterStockStatus
         }));
       }
-      // Load sent goods for all users (production managers and accounts managers will see filtered results)
-      if (isProductionManager || isAccountsManager) {
-        console.log('🚀 Dispatching getReceivedGoods for production manager/accounts manager...');
+      // Load sent goods for all users (production managers, accounts managers, and admins will see filtered results)
+      if (isProductionManager || isAccountsManager || isAdmin) {
+        console.log('🚀 Dispatching getReceivedGoods for production manager/accounts manager/admin...');
         dispatch(getReceivedGoods({ page: 1, limit: 1000 }));
       } else {
         console.log('🚀 Dispatching getAllSentGoods for other roles...');
@@ -108,7 +109,7 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
 
   // Load filtered inventory when filters change
   useEffect(() => {
-    if (isAuthenticated && !isAccountsManager) {
+    if (isAuthenticated && !isAccountsManager && !isAdmin) {
       dispatch(getAllRawMaterials({
         page: currentPage,
         limit: itemsPerPage,
@@ -145,13 +146,13 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
         }));
       }
       dispatch(getInventoryStats());
-      if (isProductionManager || isAccountsManager) {
+      if (isProductionManager || isAccountsManager || isAdmin) {
         dispatch(getReceivedGoods({ page: 1, limit: 1000 }));
       } else {
         dispatch(getAllSentGoods({ page: 1, limit: 1000 }));
       }
     }
-  }, [location.pathname, dispatch, isAuthenticated, isProductionManager, isAccountsManager]);
+  }, [location.pathname, dispatch, isAuthenticated, isProductionManager, isAccountsManager, isAdmin]);
 
   // Handle success notifications
   useEffect(() => {
@@ -461,8 +462,8 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
       {/* Tabs */}
       <div className="border-b border-gray-200">
         <nav className="-mb-px flex space-x-8">
-          {/* Hide Raw Materials and Finished Goods tabs for accounts_manager */}
-          {!isAccountsManager && (
+          {/* Hide Raw Materials and Finished Goods tabs for accounts_manager and admin */}
+          {!isAccountsManager && !isAdmin && (
             <>
               <button
                 onClick={() => setActiveTab('rawMaterials')}
@@ -502,7 +503,7 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
           >
             <div className="flex items-center space-x-2">
               <HiTruck className="h-5 w-5" />
-              <span>{(isProductionManager || isAccountsManager) ? 'Received Goods' : 'Sent Goods'}</span>
+              <span>{(isProductionManager || isAccountsManager || isAdmin) ? 'Received Goods' : 'Sent Goods'}</span>
             </div>
           </button>
         </nav>
@@ -585,7 +586,7 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
       </div>
 
       {/* Inventory Table */}
-      {activeTab === 'sentGoods' && (isProductionManager || isAccountsManager) ? (
+      {activeTab === 'sentGoods' && (isProductionManager || isAccountsManager || isAdmin) ? (
         <>
           <ReceivedGoodsCRUD
             sentGoods={sentGoods}

@@ -45,6 +45,7 @@ const PayrollTab = ({ showUsers = true, isPayrollTab = false }) => {
   const { user: loggedInUser } = useSelector((state) => state.auth);
   const isAccountsManager = loggedInUser?.role === 'accounts_manager';
   const isSupervisor = loggedInUser?.role === 'supervisor';
+  const isAdmin = loggedInUser?.role === 'admin';
   
   // User state (when showing users)
   const users = useSelector(selectUsers);
@@ -64,9 +65,9 @@ const PayrollTab = ({ showUsers = true, isPayrollTab = false }) => {
 
   // Local state
   const [searchTerm, setSearchTerm] = useState('');
-  // For accounts_manager and supervisor, automatically set branch filter to their branch
+  // For accounts_manager, supervisor, and admin, automatically set branch filter to their branch
   const [branchFilter, setBranchFilter] = useState(
-    (isAccountsManager || isSupervisor) && userBranchId
+    (isAccountsManager || isSupervisor || isAdmin) && userBranchId
       ? userBranchId
       : 'all'
   );
@@ -95,12 +96,12 @@ const PayrollTab = ({ showUsers = true, isPayrollTab = false }) => {
     }
   };
 
-  // Set branch filter for accounts_manager and supervisor on mount
+  // Set branch filter for accounts_manager, supervisor, and admin on mount
   useEffect(() => {
-    if ((isAccountsManager || isSupervisor) && userBranchId) {
+    if ((isAccountsManager || isSupervisor || isAdmin) && userBranchId) {
       setBranchFilter(userBranchId);
     }
-  }, [isAccountsManager, isSupervisor, userBranchId]);
+  }, [isAccountsManager, isSupervisor, isAdmin, userBranchId]);
 
   // Load data on component mount
   useEffect(() => {
@@ -139,8 +140,8 @@ const PayrollTab = ({ showUsers = true, isPayrollTab = false }) => {
 
   // Handle filter changes - support both event object and direct value
   const handleFilterChange = (filterType, eventOrValue) => {
-    // Prevent accounts_manager and supervisor from changing branch filter
-    if (filterType === 'branch' && (isAccountsManager || isSupervisor)) {
+    // Prevent accounts_manager, supervisor, and admin from changing branch filter
+    if (filterType === 'branch' && (isAccountsManager || isSupervisor || isAdmin)) {
       return;
     }
     
@@ -725,8 +726,8 @@ const PayrollTab = ({ showUsers = true, isPayrollTab = false }) => {
                 icon={HiMagnifyingGlass}
                 className="w-full sm:w-64"
               />
-              {/* Hide branch filter for accounts_manager - they can only see their branch */}
-              {!isAccountsManager && !isSupervisor && (
+              {/* Hide branch filter for accounts_manager, supervisor, and admin - they can only see their branch */}
+              {!isAccountsManager && !isSupervisor && !isAdmin && (
                 <Select
                   value={branchFilter}
                   onChange={(e) => handleFilterChange('branch', e)}

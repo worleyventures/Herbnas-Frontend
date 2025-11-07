@@ -180,21 +180,21 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
       });
     }
 
-    // Add admin attendance navigation
-    if (stableUserRole === 'admin') {
-      adminNavigation.push(
-        {
-          name: 'Attendance',
-          href: '/attendance',
-          icon: HiClock,
-          current: isActiveRoute('/attendance'),
-          color: 'text-blue-600',
-          bgColor: 'bg-gray-100',
-          hoverColor: 'group-hover:text-blue-600',
-          hoverBgColor: 'group-hover:bg-gray-50'
-        }
-      );
-    }
+    // Attendance is now part of Payroll dashboard, so removed from sidebar
+    // if (stableUserRole === 'admin') {
+    //   adminNavigation.push(
+    //     {
+    //       name: 'Attendance',
+    //       href: '/attendance',
+    //       icon: HiClock,
+    //       current: isActiveRoute('/attendance'),
+    //       color: 'text-blue-600',
+    //       bgColor: 'bg-gray-100',
+    //       hoverColor: 'group-hover:text-blue-600',
+    //       hoverBgColor: 'group-hover:bg-gray-50'
+    //     }
+    //   );
+    // }
 
     // const settingsNavigation = {
     //   name: 'Settings',
