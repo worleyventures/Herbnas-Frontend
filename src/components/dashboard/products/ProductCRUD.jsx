@@ -45,6 +45,7 @@ const ProductCRUD = ({
   
   // Get user from auth state
   const { user } = useSelector((state) => state.auth);
+  const isAccountsManager = user?.role === 'accounts_manager';
   
   // Find user names by ID
   const findUserName = (userId) => {
@@ -128,24 +129,28 @@ const ProductCRUD = ({
             variant="view"
             title="View Product"
           />
-          <ActionButton
-            icon={HiPencil}
-            onClick={() => handleEditProduct(product)}
-            variant="edit"
-            title="Edit Product"
-          />
-          <ActionButton
-            icon={product.isActive ? HiXCircle : HiCheckCircle}
-            onClick={() => handleToggleStatus(product)}
-            variant={product.isActive ? "warning" : "success"}
-            title={product.isActive ? "Deactivate Product" : "Activate Product"}
-          />
-          <ActionButton
-            icon={HiTrash}
-            onClick={() => handleDeleteProduct(product)}
-            variant="delete"
-            title="Delete Product"
-          />
+          {!isAccountsManager && (
+            <>
+              <ActionButton
+                icon={HiPencil}
+                onClick={() => handleEditProduct(product)}
+                variant="edit"
+                title="Edit Product"
+              />
+              <ActionButton
+                icon={product.isActive ? HiXCircle : HiCheckCircle}
+                onClick={() => handleToggleStatus(product)}
+                variant={product.isActive ? "warning" : "success"}
+                title={product.isActive ? "Deactivate Product" : "Activate Product"}
+              />
+              <ActionButton
+                icon={HiTrash}
+                onClick={() => handleDeleteProduct(product)}
+                variant="delete"
+                title="Delete Product"
+              />
+            </>
+          )}
         </div>
       )
     }

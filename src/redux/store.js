@@ -9,6 +9,7 @@ import productionReducer from './slices/productionSlice';
 import healthReducer from './slices/healthSlice';
 import inventoryReducer from './slices/inventorySlice';
 import sentGoodsReducer from './slices/sentGoodsSlice';
+import goodsRequestReducer from './slices/goodsRequestSlice';
 import orderReducer from './slices/orderSlice';
 import accountReducer from './slices/accountSlice';
 import payrollReducer from './slices/payrollSlice';
@@ -26,6 +27,7 @@ export const store = configureStore({
     health: healthReducer,
     inventory: inventoryReducer,
     sentGoods: sentGoodsReducer,
+    goodsRequests: goodsRequestReducer,
     orders: orderReducer,
     accounts: accountReducer,
     payrolls: payrollReducer,

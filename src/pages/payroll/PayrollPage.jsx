@@ -55,7 +55,7 @@ const PayrollPage = () => {
           </p>
         </div>
         <div className="mt-4 sm:mt-0">
-          {activeTab === 'employees' && (
+          {activeTab === 'employees' && !isAccountsManager && (
             <Button
               onClick={() => navigate('/payrolls/new')}
               className="bg-blue-600 hover:bg-blue-700 text-white"

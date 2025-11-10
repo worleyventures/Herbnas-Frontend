@@ -85,8 +85,8 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
         hoverColor: 'group-hover:text-green-600',
         hoverBgColor: 'group-hover:bg-gray-50'
       },
-      // Production - hidden for accounts_manager and supervisor
-      ...(stableUserRole !== 'accounts_manager' && stableUserRole !== 'supervisor' ? [{
+      // Production - hidden for accounts_manager, supervisor, and sales_executive
+      ...(stableUserRole !== 'accounts_manager' && stableUserRole !== 'supervisor' && stableUserRole !== 'sales_executive' ? [{
         name: 'Production',
         href: '/productions',
         icon: HiDocumentText,
@@ -96,7 +96,8 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
         hoverColor: 'group-hover:text-gray-600',
         hoverBgColor: 'group-hover:bg-gray-50'
       }] : []),
-      {
+      // Inventory - hidden for sales_executive
+      ...(stableUserRole !== 'sales_executive' ? [{
         name: 'Inventory',
         href: '/inventory',
         icon: HiCube,
@@ -105,7 +106,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
         bgColor: 'bg-gray-100',
         hoverColor: 'group-hover:text-orange-600',
         hoverBgColor: 'group-hover:bg-gray-50'
-      },
+      }] : []),
       {
         name: 'Branches',
         href: '/branches',

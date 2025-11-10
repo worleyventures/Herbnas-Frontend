@@ -55,6 +55,8 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
 
   const { user, isAuthenticated } = useSelector((state) => state.auth);
   const { branches = [] } = useSelector((state) => state.branches);
+  const isAccountsManager = user?.role === 'accounts_manager';
+  const isProductionManager = user?.role === 'production_manager';
 
   const {
     leads = [],
@@ -113,16 +115,21 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
   // Refresh leads when navigating to this page (e.g., returning from edit form)
   useEffect(() => {
     if ((location.pathname === '/leads' || location.pathname === '/leads/table' || location.pathname === '/leads/pipeline') && isAuthenticated && user) {
-      dispatch(getAllLeads({
-        page: currentPage,
-        limit: itemsPerPage,
-        search: searchTerm,
-        leadStatus: filterStatus === 'all' ? '' : filterStatus,
-        dispatchedFrom: filterBranch === 'all' ? '' : filterBranch
-      }));
-      dispatch(getLeadStats());
+      // Use a small delay to ensure state is ready after navigation
+      const timeoutId = setTimeout(() => {
+        dispatch(getAllLeads({
+          page: currentPage,
+          limit: itemsPerPage,
+          search: searchTerm,
+          leadStatus: filterStatus === 'all' ? '' : filterStatus,
+          dispatchedFrom: filterBranch === 'all' ? '' : filterBranch
+        }));
+        dispatch(getLeadStats());
+      }, 100);
+      
+      return () => clearTimeout(timeoutId);
     }
-  }, [location.pathname, dispatch, isAuthenticated, user]);
+  }, [location.pathname, dispatch, isAuthenticated, user, currentPage, itemsPerPage, searchTerm, filterStatus, filterBranch]);
 
   // Clear success/error messages after a delay and close modals on success
   useEffect(() => {
@@ -133,10 +140,34 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
       if (updateSuccess) {
         setShowEditModal(false);
         setSelectedLead(null);
+        // Clear leads state to force fresh fetch (prevents cache issues)
+        dispatch(clearAllLeadData());
+        // Refresh the leads list after update with cache-busting
+        dispatch(getAllLeads({
+          page: currentPage,
+          limit: itemsPerPage,
+          search: searchTerm,
+          leadStatus: filterStatus === 'all' ? '' : filterStatus,
+          dispatchedFrom: filterBranch === 'all' ? '' : filterBranch,
+          _t: Date.now() // Cache-busting timestamp
+        }));
+        dispatch(getLeadStats());
       }
       if (deleteSuccess) {
         setShowDeleteModal(false);
         setSelectedLead(null);
+        // Clear leads state to force fresh fetch (prevents cache issues)
+        dispatch(clearAllLeadData());
+        // Refresh the leads list after delete with cache-busting
+        dispatch(getAllLeads({
+          page: currentPage,
+          limit: itemsPerPage,
+          search: searchTerm,
+          leadStatus: filterStatus === 'all' ? '' : filterStatus,
+          dispatchedFrom: filterBranch === 'all' ? '' : filterBranch,
+          _t: Date.now() // Cache-busting timestamp
+        }));
+        dispatch(getLeadStats());
       }
       
       const timer = setTimeout(() => {
@@ -144,7 +175,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
       }, 5000);
       return () => clearTimeout(timer);
     }
-  }, [createSuccess, updateSuccess, deleteSuccess, dispatch]);
+  }, [createSuccess, updateSuccess, deleteSuccess, dispatch, currentPage, itemsPerPage, searchTerm, filterStatus, filterBranch]);
 
   useEffect(() => {
     if (createError || updateError || deleteError) {
@@ -229,7 +260,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
       dispatch(createLead(leadData));
   };
 
-  const handleUpdateLead = (leadData) => {
+  const handleUpdateLead = async (leadData) => {
     try {
       if (selectedLead) {
         // Debug logging removed for production
@@ -247,34 +278,110 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
           return;
         }
         
-        dispatch(updateLead({ leadId: selectedLead._id, leadData }));
+        const result = await dispatch(updateLead({ leadId: selectedLead._id, leadData })).unwrap();
+        
+        // Close modal and clear selection
         setShowEditModal(false);
         setSelectedLead(null);
+        
+        // Clear leads state to force fresh fetch (prevents cache issues)
+        dispatch(clearAllLeadData());
+        
+        // Refresh the leads list immediately with cache-busting
+        dispatch(getAllLeads({
+          page: currentPage,
+          limit: itemsPerPage,
+          search: searchTerm,
+          leadStatus: filterStatus === 'all' ? '' : filterStatus,
+          dispatchedFrom: filterBranch === 'all' ? '' : filterBranch,
+          _t: Date.now() // Cache-busting timestamp
+        }));
+        dispatch(getLeadStats());
+        
+        // Show success notification
+        dispatch(addNotification({
+          type: 'success',
+          message: 'Lead updated successfully!'
+        }));
       } else {
         console.error('No selected lead for update');
       }
     } catch (error) {
       console.error('Error updating lead:', error);
+      dispatch(addNotification({
+        type: 'error',
+        message: error?.message || 'Failed to update lead'
+      }));
     }
   };
 
-  const handleDeleteLead = () => {
+  const handleDeleteLead = async () => {
     try {
       if (selectedLead) {
-        dispatch(deleteLead(selectedLead._id));
+        const result = await dispatch(deleteLead(selectedLead._id)).unwrap();
+        
+        // Close modal and clear selection
         setShowDeleteModal(false);
         setSelectedLead(null);
+        
+        // Clear leads state to force fresh fetch (prevents cache issues)
+        dispatch(clearAllLeadData());
+        
+        // Refresh the leads list immediately after deletion with cache-busting
+        dispatch(getAllLeads({
+          page: currentPage,
+          limit: itemsPerPage,
+          search: searchTerm,
+          leadStatus: filterStatus === 'all' ? '' : filterStatus,
+          dispatchedFrom: filterBranch === 'all' ? '' : filterBranch,
+          _t: Date.now() // Cache-busting timestamp
+        }));
+        dispatch(getLeadStats());
+        
+        // Show success notification
+        dispatch(addNotification({
+          type: 'success',
+          message: 'Lead deleted successfully!'
+        }));
       }
     } catch (error) {
       console.error('Error deleting lead:', error);
+      dispatch(addNotification({
+        type: 'error',
+        message: error?.message || 'Failed to delete lead'
+      }));
     }
   };
 
-  const handleStatusUpdate = (leadId, newStatus) => {
+  const handleStatusUpdate = async (leadId, newStatus) => {
     try {
-      dispatch(updateLeadStatus({ leadId, leadStatus: newStatus }));
+      const result = await dispatch(updateLeadStatus({ leadId, leadStatus: newStatus })).unwrap();
+      
+      // Clear leads state to force fresh fetch (prevents cache issues)
+      dispatch(clearAllLeadData());
+      
+      // Refresh the leads list immediately after status update with cache-busting
+      dispatch(getAllLeads({
+        page: currentPage,
+        limit: itemsPerPage,
+        search: searchTerm,
+        leadStatus: filterStatus === 'all' ? '' : filterStatus,
+        dispatchedFrom: filterBranch === 'all' ? '' : filterBranch,
+        _t: Date.now() // Cache-busting timestamp
+      }));
+      dispatch(getLeadStats());
+      
+      // Show success notification
+      dispatch(addNotification({
+        type: 'success',
+        message: `Lead status updated to ${newStatus}`
+      }));
     } catch (error) {
       console.error('Error updating lead status:', error);
+      dispatch(addNotification({
+        type: 'error',
+        message: error?.message || 'Failed to update lead status'
+      }));
     }
   };
 
@@ -323,8 +430,9 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
     return 0;
   };
 
+  // Calculate stats from filtered leads array (use pagination for total, filtered array for status counts)
   const cardCounts = {
-    total: leads.length || stats?.overview?.totalLeads || totalLeads || 0,
+    total: totalLeads || pagination?.totalLeads || leads.length || 0,
     newLead: getStatusCount('new_lead'),
     qualified: getStatusCount('qualified'),
     unqualified: getStatusCount('unqualified'),
@@ -451,14 +559,16 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
               >
                 Import Leads
               </Button>
-              <Button
-                onClick={() => navigate('/leads/create')}
-                icon={HiPlus}
-                variant="gradient"
-                size="sm"
-              >
-                Add New Lead
-              </Button>
+              {!isAccountsManager && !isProductionManager && (
+                <Button
+                  onClick={() => navigate('/leads/create')}
+                  icon={HiPlus}
+                  variant="gradient"
+                  size="sm"
+                >
+                  Add New Lead
+                </Button>
+              )}
             </div>
           </div>
 
@@ -653,14 +763,16 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
               >
                 Import Leads
               </Button>
-              <Button
-                onClick={() => navigate('/leads/create')}
-                icon={HiPlus}
-                variant="gradient"
-                size="sm"
-              >
-                Add New Lead
-              </Button>
+              {!isAccountsManager && !isProductionManager && (
+                <Button
+                  onClick={() => navigate('/leads/create')}
+                  icon={HiPlus}
+                  variant="gradient"
+                  size="sm"
+                >
+                  Add New Lead
+                </Button>
+              )}
               {viewOptions.map((view) => (
                   <Button
                   key={view.id}

@@ -10,12 +10,16 @@ import {
   HiChartBar,
   HiCog6Tooth,
   HiPlus,
-  HiTruck
+  HiTruck,
+  HiShoppingBag,
+  HiClock
 } from 'react-icons/hi2';
 import { StatCard, FilterCard, Button, SearchInput, Select, Pagination } from '../common';
 import { addNotification } from '../../redux/slices/uiSlice';
 import InventoryCRUD from './inventory/InventoryCRUD';
 import ReceivedGoodsCRUD from './inventory/ReceivedGoodsCRUD';
+import RequestGoodsModal from './inventory/RequestGoodsModal';
+import GoodsRequestsCRUD from './inventory/GoodsRequestsCRUD';
 import {
   getAllRawMaterials,
   getAllFinishedGoods,
@@ -25,6 +29,7 @@ import {
   deleteFinishedGoods
 } from '../../redux/actions/inventoryActions';
 import { getAllSentGoods, getReceivedGoods } from '../../redux/actions/sentGoodsActions';
+import { getAllGoodsRequests } from '../../redux/actions/goodsRequestActions';
 import { clearError as clearInventoryErrors } from '../../redux/slices/inventorySlice';
 import { getAllProducts } from '../../redux/actions/productActions';
 
@@ -55,10 +60,16 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
     loading: sentGoodsLoading = false
   } = useSelector((state) => state.sentGoods);
 
+  const {
+    goodsRequests = [],
+    loading: goodsRequestsLoading = false
+  } = useSelector((state) => state.goodsRequests);
+
 
   // Local state
   const [selectedInventory, setSelectedInventory] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showRequestGoodsModal, setShowRequestGoodsModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterProduct, setFilterProduct] = useState('all');
   const [filterStockStatus, setFilterStockStatus] = useState('all');
@@ -68,18 +79,20 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
   const isProductionManager = user?.role === 'production_manager';
   const isAccountsManager = user?.role === 'accounts_manager';
   const isAdmin = user?.role === 'admin';
+  const isSupervisor = user?.role === 'supervisor';
+  const isSuperAdmin = user?.role === 'super_admin';
   
   // Set default tab based on role
-  const defaultTab = (isAccountsManager || isAdmin) ? 'sentGoods' : (location.state?.activeTab || 'rawMaterials');
-  const [activeTab, setActiveTab] = useState(defaultTab); // 'rawMaterials', 'finishedGoods', or 'sentGoods'
+  const defaultTab = (isAccountsManager || isAdmin || isSupervisor) ? 'sentGoods' : isSuperAdmin ? 'goodsRequests' : (location.state?.activeTab || 'rawMaterials');
+  const [activeTab, setActiveTab] = useState(defaultTab); // 'rawMaterials', 'finishedGoods', 'sentGoods', or 'goodsRequests'
 
 
 
   // Load data on component mount
   useEffect(() => {
     if (isAuthenticated) {
-      // Don't load raw materials and finished goods for accounts_manager
-      if (!isAccountsManager) {
+      // Don't load raw materials and finished goods for accounts_manager and supervisor
+      if (!isAccountsManager && !isSupervisor) {
         dispatch(getAllRawMaterials({
           page: currentPage,
           limit: itemsPerPage,
@@ -94,9 +107,9 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
           stockStatus: filterStockStatus === 'all' ? '' : filterStockStatus
         }));
       }
-      // Load sent goods for all users (production managers, accounts managers, and admins will see filtered results)
-      if (isProductionManager || isAccountsManager || isAdmin) {
-        console.log('🚀 Dispatching getReceivedGoods for production manager/accounts manager/admin...');
+      // Load sent goods for all users (production managers, accounts managers, admins, and supervisors will see filtered results)
+      if (isProductionManager || isAccountsManager || isAdmin || isSupervisor) {
+        console.log('🚀 Dispatching getReceivedGoods for production manager/accounts manager/admin/supervisor...');
         dispatch(getReceivedGoods({ page: 1, limit: 1000 }));
       } else {
         console.log('🚀 Dispatching getAllSentGoods for other roles...');
@@ -104,12 +117,17 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
       }
       dispatch(getInventoryStats());
       dispatch(getAllProducts({ page: 1, limit: 1000, isActive: true }));
+      
+      // Load goods requests for super admin, supervisor, and admin
+      if (isSuperAdmin || isSupervisor || isAdmin) {
+        dispatch(getAllGoodsRequests({ page: 1, limit: 1000 }));
+      }
     }
-  }, [dispatch, isAuthenticated, isProductionManager, isAccountsManager]);
+  }, [dispatch, isAuthenticated, isProductionManager, isAccountsManager, isAdmin, isSupervisor, isSuperAdmin]);
 
   // Load filtered inventory when filters change
   useEffect(() => {
-    if (isAuthenticated && !isAccountsManager && !isAdmin) {
+    if (isAuthenticated && !isAccountsManager && !isAdmin && !isSupervisor) {
       dispatch(getAllRawMaterials({
         page: currentPage,
         limit: itemsPerPage,
@@ -129,8 +147,8 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
   // Refresh inventory when navigating to this page (e.g., returning from edit form)
   useEffect(() => {
     if (location.pathname === '/inventory' && isAuthenticated) {
-      // Don't load raw materials and finished goods for accounts_manager
-      if (!isAccountsManager) {
+      // Don't load raw materials and finished goods for accounts_manager and supervisor
+      if (!isAccountsManager && !isSupervisor) {
         dispatch(getAllRawMaterials({
           page: currentPage,
           limit: itemsPerPage,
@@ -146,13 +164,13 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
         }));
       }
       dispatch(getInventoryStats());
-      if (isProductionManager || isAccountsManager || isAdmin) {
+      if (isProductionManager || isAccountsManager || isAdmin || isSupervisor) {
         dispatch(getReceivedGoods({ page: 1, limit: 1000 }));
       } else {
         dispatch(getAllSentGoods({ page: 1, limit: 1000 }));
       }
     }
-  }, [location.pathname, dispatch, isAuthenticated, isProductionManager, isAccountsManager, isAdmin]);
+  }, [location.pathname, dispatch, isAuthenticated, isProductionManager, isAccountsManager, isAdmin, isSupervisor]);
 
   // Handle success notifications
   useEffect(() => {
@@ -179,6 +197,26 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
     }
   }, [error, dispatch]);
 
+  // Filter goods requests for current user's branch if supervisor/admin
+  const filteredGoodsRequests = useMemo(() => {
+    if (!goodsRequests || goodsRequests.length === 0) return [];
+    if (isSuperAdmin) return goodsRequests; // Super admin sees all requests
+    
+    // For admin/supervisor, filter by their branch
+    if ((isAdmin || isSupervisor) && user?.branch) {
+      const userBranchId = typeof user.branch === 'object' 
+        ? user.branch._id || user.branch 
+        : user.branch;
+      return goodsRequests.filter(req => {
+        const reqBranchId = typeof req.branchId === 'object' 
+          ? req.branchId._id || req.branchId 
+          : req.branchId;
+        return reqBranchId?.toString() === userBranchId.toString();
+      });
+    }
+    return goodsRequests;
+  }, [goodsRequests, isSuperAdmin, isAdmin, isSupervisor, user?.branch]);
+
   // Get current inventory data based on active tab
   const currentInventory = (() => {
     switch (activeTab) {
@@ -188,6 +226,9 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
         return Array.isArray(finishedGoods) ? finishedGoods : [];
       case 'sentGoods':
         return Array.isArray(sentGoods) ? sentGoods : [];
+      case 'myRequests':
+      case 'goodsRequests':
+        return Array.isArray(filteredGoodsRequests) ? filteredGoodsRequests : [];
       default:
         return [];
     }
@@ -323,7 +364,15 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
   // Refresh function for sent goods status updates
   const handleRefreshSentGoods = () => {
     if (activeTab === 'sentGoods') {
-      dispatch(getAllSentGoods({ page: currentPage, limit: itemsPerPage }));
+      if (isProductionManager || isAccountsManager || isAdmin || isSupervisor) {
+        dispatch(getReceivedGoods({ page: 1, limit: 1000 }));
+      } else {
+        dispatch(getAllSentGoods({ page: currentPage, limit: itemsPerPage }));
+      }
+      // Also refresh goods requests to get updated approved requests
+      if (isSuperAdmin || isSupervisor || isAdmin) {
+        dispatch(getAllGoodsRequests({ page: 1, limit: 1000 }));
+      }
     }
   };
 
@@ -447,7 +496,7 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
               Add Raw Material
             </Button>
           )}
-          {activeTab === 'sentGoods' && !isProductionManager && (
+          {activeTab === 'sentGoods' && !isProductionManager && isSuperAdmin && (
             <Button
               onClick={() => navigate('/inventory/sent-goods')}
               className="bg-green-600 hover:bg-green-700 text-white"
@@ -456,14 +505,23 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
               Send Goods
             </Button>
           )}
+          {activeTab === 'sentGoods' && (isSupervisor || isAdmin) && (
+            <Button
+              onClick={() => setShowRequestGoodsModal(true)}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+              icon={HiShoppingBag}
+            >
+              Request Goods
+            </Button>
+          )}
         </div>
       </div>
 
       {/* Tabs */}
       <div className="border-b border-gray-200">
         <nav className="-mb-px flex space-x-8">
-          {/* Hide Raw Materials and Finished Goods tabs for accounts_manager and admin */}
-          {!isAccountsManager && !isAdmin && (
+          {/* Hide Raw Materials and Finished Goods tabs for accounts_manager, admin, and supervisor */}
+          {!isAccountsManager && !isAdmin && !isSupervisor && (
             <>
               <button
                 onClick={() => setActiveTab('rawMaterials')}
@@ -503,53 +561,83 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
           >
             <div className="flex items-center space-x-2">
               <HiTruck className="h-5 w-5" />
-              <span>{(isProductionManager || isAccountsManager || isAdmin) ? 'Received Goods' : 'Sent Goods'}</span>
+              <span>{(isProductionManager || isAccountsManager || isAdmin || isSupervisor) ? 'Received Goods' : 'Sent Goods'}</span>
             </div>
           </button>
+          {(isSupervisor || isAdmin) && (
+            <button
+              onClick={() => setActiveTab('myRequests')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'myRequests'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <div className="flex items-center space-x-2">
+                <HiShoppingBag className="h-5 w-5" />
+                <span>My Requests</span>
+              </div>
+            </button>
+          )}
+          {isSuperAdmin && (
+            <button
+              onClick={() => setActiveTab('goodsRequests')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'goodsRequests'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <div className="flex items-center space-x-2">
+                <HiShoppingBag className="h-5 w-5" />
+                <span>Goods Requests</span>
+              </div>
+            </button>
+          )}
         </nav>
       </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
         <StatCard
-          title={`Total ${activeTab === 'rawMaterials' ? 'Raw Materials' : activeTab === 'finishedGoods' ? 'Finished Goods' : 'Sent Goods'}`}
+          title={`Total ${activeTab === 'rawMaterials' ? 'Raw Materials' : activeTab === 'finishedGoods' ? 'Finished Goods' : activeTab === 'myRequests' || activeTab === 'goodsRequests' ? 'Requests' : 'Sent Goods'}`}
           value={totalInventory}
-          icon={activeTab === 'rawMaterials' ? HiCube : activeTab === 'finishedGoods' ? HiCheckCircle : HiTruck}
+          icon={activeTab === 'rawMaterials' ? HiCube : activeTab === 'finishedGoods' ? HiCheckCircle : activeTab === 'myRequests' || activeTab === 'goodsRequests' ? HiShoppingBag : HiTruck}
           gradient="blue"
           animation="bounce"
           change="+5%"
           changeType="increase"
-          loading={loading || sentGoodsLoading}
+          loading={loading || sentGoodsLoading || goodsRequestsLoading}
         />
         <StatCard
-          title={activeTab === 'sentGoods' ? 'Delivered Items' : 'Low Stock Items'}
-          value={activeTab === 'sentGoods' ? currentInventory.filter(item => item.status === 'delivered').length : lowStockItems}
-          icon={activeTab === 'sentGoods' ? HiCheckCircle : HiExclamationTriangle}
-          gradient={activeTab === 'sentGoods' ? 'green' : 'red'}
+          title={activeTab === 'sentGoods' ? 'Delivered Items' : activeTab === 'myRequests' || activeTab === 'goodsRequests' ? 'Pending Requests' : 'Low Stock Items'}
+          value={activeTab === 'sentGoods' ? currentInventory.filter(item => item.status === 'delivered').length : activeTab === 'myRequests' || activeTab === 'goodsRequests' ? currentInventory.filter(item => item.status === 'pending').length : lowStockItems}
+          icon={activeTab === 'sentGoods' ? HiCheckCircle : activeTab === 'myRequests' || activeTab === 'goodsRequests' ? HiClock : HiExclamationTriangle}
+          gradient={activeTab === 'sentGoods' ? 'green' : activeTab === 'myRequests' || activeTab === 'goodsRequests' ? 'yellow' : 'red'}
           animation="pulse"
           change="+2%"
           changeType="increase"
-          loading={loading || sentGoodsLoading}
+          loading={loading || sentGoodsLoading || goodsRequestsLoading}
         />
         <StatCard
-          title={activeTab === 'sentGoods' ? 'In Transit Items' : 'High Stock Items'}
-          value={activeTab === 'sentGoods' ? currentInventory.filter(item => item.status === 'in-transit').length : highStockItems}
-          icon={activeTab === 'sentGoods' ? HiTruck : HiInformationCircle}
-          gradient={activeTab === 'sentGoods' ? 'blue' : 'yellow'}
+          title={activeTab === 'sentGoods' ? 'In Transit Items' : activeTab === 'myRequests' || activeTab === 'goodsRequests' ? 'Approved Requests' : 'High Stock Items'}
+          value={activeTab === 'sentGoods' ? currentInventory.filter(item => item.status === 'in-transit').length : activeTab === 'myRequests' || activeTab === 'goodsRequests' ? currentInventory.filter(item => item.status === 'approved').length : highStockItems}
+          icon={activeTab === 'sentGoods' ? HiTruck : activeTab === 'myRequests' || activeTab === 'goodsRequests' ? HiCheckCircle : HiInformationCircle}
+          gradient={activeTab === 'sentGoods' ? 'blue' : activeTab === 'myRequests' || activeTab === 'goodsRequests' ? 'green' : 'yellow'}
           animation="float"
           change="+2%"
           changeType="increase"
-          loading={loading || sentGoodsLoading}
+          loading={loading || sentGoodsLoading || goodsRequestsLoading}
         />
         <StatCard
-          title={activeTab === 'sentGoods' ? 'Pending Items' : 'Total Value'}
-          value={activeTab === 'sentGoods' ? currentInventory.filter(item => item.status === 'pending').length : `₹${totalValue.toLocaleString()}`}
-          icon={activeTab === 'sentGoods' ? HiExclamationTriangle : HiCurrencyDollar}
-          gradient={activeTab === 'sentGoods' ? 'yellow' : 'emerald'}
+          title={activeTab === 'sentGoods' ? 'Pending Items' : activeTab === 'myRequests' || activeTab === 'goodsRequests' ? 'Fulfilled Requests' : 'Total Value'}
+          value={activeTab === 'sentGoods' ? currentInventory.filter(item => item.status === 'pending').length : activeTab === 'myRequests' || activeTab === 'goodsRequests' ? currentInventory.filter(item => item.status === 'fulfilled').length : `₹${totalValue.toLocaleString()}`}
+          icon={activeTab === 'sentGoods' ? HiExclamationTriangle : activeTab === 'myRequests' || activeTab === 'goodsRequests' ? HiCheckCircle : HiCurrencyDollar}
+          gradient={activeTab === 'sentGoods' ? 'yellow' : activeTab === 'myRequests' || activeTab === 'goodsRequests' ? 'emerald' : 'emerald'}
           animation="bounce"
           change="+8%"
           changeType="increase"
-          loading={loading || sentGoodsLoading}
+          loading={loading || sentGoodsLoading || goodsRequestsLoading}
         />
       </div>
 
@@ -586,11 +674,29 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
       </div>
 
       {/* Inventory Table */}
-      {activeTab === 'sentGoods' && (isProductionManager || isAccountsManager || isAdmin) ? (
+      {activeTab === 'goodsRequests' && isSuperAdmin ? (
+        <>
+          <GoodsRequestsCRUD
+            goodsRequests={goodsRequests}
+            loading={goodsRequestsLoading}
+            onRefresh={() => dispatch(getAllGoodsRequests({ page: 1, limit: 1000 }))}
+          />
+        </>
+      ) : activeTab === 'myRequests' && (isSupervisor || isAdmin) ? (
+        <>
+          <GoodsRequestsCRUD
+            goodsRequests={goodsRequests}
+            loading={goodsRequestsLoading}
+            onRefresh={() => dispatch(getAllGoodsRequests({ page: 1, limit: 1000 }))}
+            showActions={false}
+          />
+        </>
+      ) : activeTab === 'sentGoods' && (isProductionManager || isAccountsManager || isAdmin || isSupervisor) ? (
         <>
           <ReceivedGoodsCRUD
             sentGoods={sentGoods}
-            loading={sentGoodsLoading}
+            goodsRequests={goodsRequests}
+            loading={sentGoodsLoading || goodsRequestsLoading}
             onRefresh={handleRefreshSentGoods}
           />
         </>
@@ -627,6 +733,17 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
         />
       )}
 
+      {/* Request Goods Modal */}
+      <RequestGoodsModal
+        isOpen={showRequestGoodsModal}
+        onClose={() => setShowRequestGoodsModal(false)}
+        onSuccess={() => {
+          // Refresh goods requests if super admin
+          if (isSuperAdmin) {
+            dispatch(getAllGoodsRequests({ page: 1, limit: 1000 }));
+          }
+        }}
+      />
     </div>
   );
 };

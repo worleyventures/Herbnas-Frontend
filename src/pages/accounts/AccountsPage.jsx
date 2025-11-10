@@ -99,6 +99,7 @@ const AccountsPage = () => {
   const isSuperAdmin = user?.role === 'super_admin';
   const isAccountsManager = user?.role === 'accounts_manager';
   const isAdmin = user?.role === 'admin';
+  const isSupervisor = user?.role === 'supervisor';
 
   // Helper function to get date range based on filter selection
   const getDateRange = useCallback(() => {
@@ -148,9 +149,9 @@ const AccountsPage = () => {
 
   // Load data on component mount
   useEffect(() => {
-    if (activeTab === 'overview' || isAccountsManager || isAdmin) {
-      // For accounts managers and admins, always filter by their branch
-      const branchId = (isAccountsManager || isAdmin) ? (user?.branch?._id || user?.branch) : (branchFilter !== 'all' ? branchFilter : undefined);
+    if (activeTab === 'overview' || isAccountsManager || isAdmin || isSupervisor) {
+      // For accounts managers, admins, and supervisors, always filter by their branch
+      const branchId = (isAccountsManager || isAdmin || isSupervisor) ? (user?.branch?._id || user?.branch) : (branchFilter !== 'all' ? branchFilter : undefined);
       const dateRange = getDateRange();
       
       // For custom date range, only fetch if both dates are provided
@@ -183,7 +184,7 @@ const AccountsPage = () => {
         }));
       }
     }
-  }, [activeTab, currentPage, searchTerm, dateRangeFilter, fromDate, toDate, branchFilter, paymentStatusFilter, transactionTypeFilter, dispatch, isSuperAdmin, isAccountsManager, isAdmin, user?.branch?._id, user?.branch, getDateRange]);
+  }, [activeTab, currentPage, searchTerm, dateRangeFilter, fromDate, toDate, branchFilter, paymentStatusFilter, transactionTypeFilter, dispatch, isSuperAdmin, isAccountsManager, isAdmin, isSupervisor, user?.branch?._id, user?.branch, getDateRange]);
 
   // Separate effect to reload branch summary when date range changes (for super admin)
   useEffect(() => {
@@ -440,8 +441,81 @@ const AccountsPage = () => {
     }
   };
 
-  // Table columns - different for accounts managers vs other roles
-  const columns = isAccountsManager ? [
+  // Table columns - different for accounts managers, supervisors vs other roles
+  const columns = isSupervisor ? [
+    // View-only columns for supervisors
+    {
+      key: 'accountId',
+      label: 'Account ID',
+      render: (account) => (
+        <div className="font-medium text-gray-900">
+          {account.accountId}
+        </div>
+      )
+    },
+    {
+      key: 'transactionType',
+      label: 'Type',
+      render: (account) => (
+        <StatusBadge
+          status={account.transactionType}
+          color={getTransactionTypeColor(account.transactionType)}
+        />
+      )
+    },
+    {
+      key: 'category',
+      label: 'Category',
+      render: (account) => (
+        <div className="text-sm text-gray-900">
+          {account.category.replace('_', ' ').toUpperCase()}
+        </div>
+      )
+    },
+    {
+      key: 'amount',
+      label: 'Amount',
+      render: (account) => (
+        <div className={`font-medium ${account.transactionType === 'income' ? 'text-green-600' : 'text-red-600'}`}>
+          {account.formattedAmount}
+        </div>
+      )
+    },
+    {
+      key: 'paymentStatus',
+      label: 'Payment',
+      render: (account) => (
+        <StatusBadge
+          status={account.paymentStatus}
+          color={getPaymentStatusColor(account.paymentStatus)}
+        />
+      )
+    },
+    {
+      key: 'transactionDate',
+      label: 'Date',
+      render: (account) => (
+        <div className="text-sm text-gray-900">
+          {new Date(account.transactionDate).toLocaleDateString()}
+        </div>
+      )
+    },
+    {
+      key: 'actions',
+      label: 'Actions',
+      render: (account) => (
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() => handleViewAccount(account._id)}
+            className="text-gray-500 hover:text-gray-700 transition-colors"
+            title="View Account"
+          >
+            <HiEye className="w-4 h-4" />
+          </button>
+        </div>
+      )
+    }
+  ] : isAccountsManager ? [
     // Simplified columns for accounts managers
     {
       key: 'accountId',
@@ -946,22 +1020,24 @@ const AccountsPage = () => {
           <p className="mt-1 text-sm text-gray-500">
             {isSuperAdmin 
               ? 'Manage all branch accounts, expenses, and incomes across all branches' 
-              : (isAccountsManager || isAdmin)
+              : (isAccountsManager || isAdmin || isSupervisor)
               ? `Manage accounts, expenses, and incomes for ${user?.branch?.branchName || 'your branch'}`
               : 'Manage all branch accounts, expenses, and incomes'
             }
           </p>
         </div>
-        <div className="mt-4 sm:mt-0">
-          <Button
-            onClick={handleAddAccount}
-            icon={HiPlus}
-            variant="primary"
-            size="sm"
-          >
-            Add Accounts
-          </Button>
-        </div>
+        {!isSupervisor && (
+          <div className="mt-4 sm:mt-0">
+            <Button
+              onClick={handleAddAccount}
+              icon={HiPlus}
+              variant="primary"
+              size="sm"
+            >
+              Add Accounts
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Content based on role */}
@@ -1552,8 +1628,8 @@ const AccountsPage = () => {
           )}
         </div>
         )
-      ) : (isAccountsManager || isAdmin) ? (
-        // Accounts Manager and Admin: Simplified view with only cards and table (no tabs)
+      ) : (isAccountsManager || isAdmin || isSupervisor) ? (
+        // Accounts Manager, Admin, and Supervisor: Simplified view with only cards and table (no tabs)
         <div className="space-y-6">
           {/* Statistics Cards */}
           {stats && (

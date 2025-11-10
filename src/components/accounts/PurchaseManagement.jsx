@@ -618,11 +618,6 @@ const PurchaseManagement = () => {
                 disabled={isAccountsManager}
                 className={isAccountsManager ? 'opacity-60 cursor-not-allowed' : ''}
               />
-              {isAccountsManager && (
-                <p className="mt-1 text-sm text-gray-500">
-                  Branch is automatically set to your assigned branch
-                </p>
-              )}
             </div>
           </div>
 

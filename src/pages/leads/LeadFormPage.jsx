@@ -79,7 +79,7 @@ const LeadFormPage = () => {
     currentLeadId: currentLead?._id
   });
   
-  const handleSubmit = (formData) => {
+  const handleSubmit = async (formData) => {
     if (mode === 'edit' && currentLead) {
       console.log('Updating lead with ID:', currentLead._id, 'Data:', formData);
       
@@ -107,6 +107,7 @@ const LeadFormPage = () => {
         leadStatus: formData.leadStatus || 'new_lead',
         priority: formData.priority || 'medium',
         leadSource: formData.leadSource || undefined,
+        leadDate: formData.leadDate ? new Date(formData.leadDate) : new Date(),
         notes: formData.notes?.trim() || undefined,
         healthIssues: formData.healthIssues || [],
         products: formData.products?.map(p => typeof p === 'object' ? p._id || p : p).filter(Boolean) || [],
@@ -117,7 +118,12 @@ const LeadFormPage = () => {
       };
       
       console.log('Cleaned update data being sent:', JSON.stringify(cleanedData, null, 2));
-      dispatch(updateLead({ leadId: currentLead._id, leadData: cleanedData }));
+      try {
+        await dispatch(updateLead({ leadId: currentLead._id, leadData: cleanedData })).unwrap();
+        // Navigate will happen via useEffect watching updateSuccess
+      } catch (error) {
+        console.error('Error updating lead:', error);
+      }
     } else {
       console.log('Creating new lead with data:', JSON.stringify(formData, null, 2));
       
@@ -140,6 +146,7 @@ const LeadFormPage = () => {
         leadStatus: formData.leadStatus || 'new_lead',
         priority: formData.priority || 'medium',
         leadSource: formData.leadSource || undefined,
+        leadDate: formData.leadDate ? new Date(formData.leadDate) : new Date(),
         notes: formData.notes?.trim() || undefined,
         healthIssues: formData.healthIssues || [],
         products: formData.products?.map(p => typeof p === 'object' ? p._id || p : p).filter(Boolean) || [],

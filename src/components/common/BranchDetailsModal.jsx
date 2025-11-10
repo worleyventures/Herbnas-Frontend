@@ -271,48 +271,6 @@ const BranchDetailsModal = ({
           Edit Branch
         </Button>
       )}
-      {branch.isActive ? (
-        onDisable && (
-          <Button
-            onClick={() => {
-              onDisable(branch);
-              onClose();
-            }}
-            variant="warning"
-            icon={HiXCircle}
-            className="px-4 py-2"
-          >
-            Disable Branch
-          </Button>
-        )
-      ) : (
-        onActivate && (
-          <Button
-            onClick={() => {
-              onActivate(branch);
-              onClose();
-            }}
-            variant="success"
-            icon={HiCheckCircle}
-            className="px-4 py-2"
-          >
-            Activate Branch
-          </Button>
-        )
-      )}
-      {onDelete && (
-        <Button
-          onClick={() => {
-            onDelete(branch);
-            onClose();
-          }}
-          variant="danger"
-          icon={HiTrash}
-          className="px-4 py-2"
-        >
-          Delete Branch
-        </Button>
-      )}
     </>
   );
 

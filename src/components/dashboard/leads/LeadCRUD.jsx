@@ -67,6 +67,8 @@ const LeadCRUD = ({
   
   // Get authentication state
   const { isAuthenticated, user } = useSelector((state) => state.auth);
+  const isAccountsManager = user?.role === 'accounts_manager';
+  const isProductionManager = user?.role === 'production_manager';
   
   // Fetch branches and users data on component mount only if authenticated
   useEffect(() => {
@@ -124,7 +126,11 @@ const LeadCRUD = ({
 
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleDateString();
+    const date = new Date(dateString);
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
   };
 
   const getStatusColor = (status) => {
@@ -254,18 +260,20 @@ const LeadCRUD = ({
             title: "View Details",
             variant: "view"
           },
-          {
-            icon: HiPencil,
-            onClick: handleEditClick,
-            title: "Edit Lead",
-            variant: "edit"
-          },
-          {
-            icon: HiTrash,
-            onClick: handleDelete,
-            title: "Delete Lead",
-            variant: "delete"
-          }
+          ...(isAccountsManager || isProductionManager ? [] : [
+            {
+              icon: HiPencil,
+              onClick: handleEditClick,
+              title: "Edit Lead",
+              variant: "edit"
+            },
+            {
+              icon: HiTrash,
+              onClick: handleDelete,
+              title: "Delete Lead",
+              variant: "delete"
+            }
+          ])
         ]}
       />
 

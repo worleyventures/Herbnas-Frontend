@@ -44,6 +44,9 @@ const BranchesDashboard = ({ propActiveView = 'table' }) => {
   const [itemsPerPage] = useState(10);
 
   const { user, isAuthenticated } = useSelector((state) => state.auth);
+  const isAccountsManager = user?.role === 'accounts_manager';
+  const isProductionManager = user?.role === 'production_manager';
+  const isSuperAdmin = user?.role === 'super_admin';
   
   const {
     branches: allBranches = [],
@@ -65,9 +68,11 @@ const BranchesDashboard = ({ propActiveView = 'table' }) => {
   // Fetch branches when component mounts or filters change
   useEffect(() => {
     if (isAuthenticated && user) {
+      // Super admin gets higher limit to see more branches at once
+      const limit = isSuperAdmin ? 50 : itemsPerPage;
       const params = {
         page: currentPage,
-        limit: itemsPerPage,
+        limit: limit,
         search: searchTerm,
         status: filterStatus === 'all' ? '' : filterStatus
       };
@@ -75,7 +80,7 @@ const BranchesDashboard = ({ propActiveView = 'table' }) => {
       console.log('Fetching branches with params:', params);
       dispatch(getAllBranches(params));
     }
-  }, [dispatch, isAuthenticated, user, currentPage, searchTerm, filterStatus, itemsPerPage]);
+  }, [dispatch, isAuthenticated, user, currentPage, searchTerm, filterStatus, itemsPerPage, isSuperAdmin]);
 
   // Refresh branches when navigating to this page (e.g., returning from edit form)
   useEffect(() => {
@@ -91,9 +96,10 @@ const BranchesDashboard = ({ propActiveView = 'table' }) => {
       
       // Refresh filtered branches - use page 1 if refresh was requested
       const pageToFetch = refreshRequested ? 1 : currentPage;
+      const limit = isSuperAdmin ? 50 : itemsPerPage;
       dispatch(getAllBranches({
         page: pageToFetch,
-        limit: itemsPerPage,
+        limit: limit,
         search: refreshRequested ? '' : searchTerm,
         status: filterStatus === 'all' ? '' : filterStatus
       }));
@@ -426,16 +432,20 @@ const BranchesDashboard = ({ propActiveView = 'table' }) => {
               Manage and track your branch locations effectively
             </p>
           </div>
-          <div className="flex items-center space-x-3 mt-4 sm:mt-0">
-            <Button
-              onClick={() => navigate('/branches/create')}
-              icon={HiPlus}
-              variant="gradient"
-              size="sm"
-            >
-              Add New Branch
-            </Button>
-          </div>
+          {user?.role !== 'sales_executive' && (
+            <div className="flex items-center space-x-3 mt-4 sm:mt-0">
+              {!isAccountsManager && !isProductionManager && (
+                <Button
+                  onClick={() => navigate('/branches/create')}
+                  icon={HiPlus}
+                  variant="gradient"
+                  size="sm"
+                >
+                  Add New Branch
+                </Button>
+              )}
+            </div>
+          )}
         </div>
 
           {/* Stats Cards */}

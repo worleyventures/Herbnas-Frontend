@@ -5,6 +5,7 @@ import {
   createSentGoods,
   updateSentGoods,
   updateSentGoodsStatus,
+  markAsReceived,
   deleteSentGoods,
   getSentGoodsStats,
   getReceivedGoods
@@ -129,6 +130,33 @@ const sentGoodsSlice = createSlice({
         state.error = null;
       })
       .addCase(updateSentGoodsStatus.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+
+      // Mark as received
+      .addCase(markAsReceived.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(markAsReceived.fulfilled, (state, action) => {
+        state.loading = false;
+        const updatedSentGoods = action.payload.data.sentGoods;
+        
+        // Update in the sent goods list
+        const index = state.sentGoods.findIndex(sg => sg._id === updatedSentGoods._id);
+        if (index !== -1) {
+          state.sentGoods[index] = updatedSentGoods;
+        }
+        
+        // Update current sent goods if it's the same one
+        if (state.currentSentGoods && state.currentSentGoods._id === updatedSentGoods._id) {
+          state.currentSentGoods = updatedSentGoods;
+        }
+        
+        state.error = null;
+      })
+      .addCase(markAsReceived.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })

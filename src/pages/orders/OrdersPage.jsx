@@ -42,6 +42,11 @@ const OrdersPage = () => {
   const location = useLocation();
   const dispatch = useDispatch();
   
+  // Get user role for permissions
+  const { user } = useSelector((state) => state.auth || {});
+  const isAccountsManager = user?.role === 'accounts_manager';
+  const isProductionManager = user?.role === 'production_manager';
+  
   // Redux state
   const orders = useSelector(selectOrders);
   const loading = useSelector(selectOrderLoading);
@@ -166,7 +171,14 @@ const OrdersPage = () => {
         type: 'success',
         message: `Order status updated to ${newStatus}`
       }));
-      handleRefresh();
+      // Refresh the list immediately
+      await dispatch(getAllOrders({
+        page: currentPage,
+        limit: 10,
+        search: searchTerm,
+        paymentStatus: paymentStatusFilter
+      }));
+      dispatch(getOrderStats());
     } catch (error) {
       dispatch(addNotification({
         type: 'error',
@@ -183,7 +195,14 @@ const OrdersPage = () => {
         type: 'success',
         message: `Payment status updated to ${newPaymentStatus}`
       }));
-      handleRefresh();
+      // Refresh the list immediately
+      await dispatch(getAllOrders({
+        page: currentPage,
+        limit: 10,
+        search: searchTerm,
+        paymentStatus: paymentStatusFilter
+      }));
+      dispatch(getOrderStats());
     } catch (error) {
       dispatch(addNotification({
         type: 'error',
@@ -651,20 +670,24 @@ const OrdersPage = () => {
           >
             <HiDocumentArrowDown className="w-4 h-4" />
           </button>
-          <button
-            onClick={() => handleEditOrder(order._id)}
-            className="text-gray-500 hover:text-gray-700 transition-colors"
-            title="Edit Order"
-          >
-            <HiPencil className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => handleDeleteOrder(order._id)}
-            className="text-gray-500 hover:text-gray-700 transition-colors"
-            title="Delete Order"
-          >
-            <HiTrash className="w-4 h-4" />
-          </button>
+          {!isAccountsManager && !isProductionManager && (
+            <>
+              <button
+                onClick={() => handleEditOrder(order._id)}
+                className="text-gray-500 hover:text-gray-700 transition-colors"
+                title="Edit Order"
+              >
+                <HiPencil className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => handleDeleteOrder(order._id)}
+                className="text-gray-500 hover:text-gray-700 transition-colors"
+                title="Delete Order"
+              >
+                <HiTrash className="w-4 h-4" />
+              </button>
+            </>
+          )}
         </div>
       )
     }
@@ -680,6 +703,29 @@ const OrdersPage = () => {
     { value: 'failed', label: 'Failed' }
   ];
 
+  // Calculate stats from filtered orders array
+  // Use pagination.totalOrders for accurate total count (respects filters)
+  // For revenue and status counts, calculate from visible orders (may not reflect all filtered orders if paginated)
+  const totalOrders = pagination?.totalOrders || orders.length;
+  
+  // Calculate revenue from visible orders
+  const totalRevenue = orders.reduce((sum, order) => {
+    const orderTotal = calculateOrderTotal(order);
+    return sum + orderTotal;
+  }, 0);
+  
+  // Calculate status counts from visible orders
+  // Note: These counts only reflect the current page, not all filtered orders
+  const pendingOrders = orders.filter(order => 
+    order.status === 'pending' || order.status === 'draft'
+  ).length;
+  const deliveredOrders = orders.filter(order => 
+    order.status === 'delivered'
+  ).length;
+  
+  // If we have pagination data and want accurate status counts, we'd need to fetch all matching orders
+  // For now, we'll use visible orders which is better than showing unfiltered stats
+
   if (loading && orders.length === 0) {
     return <Loading />;
   }
@@ -692,44 +738,46 @@ const OrdersPage = () => {
           <h1 className="text-2xl font-bold text-gray-900">Orders</h1>
           <p className="text-gray-600">Manage customer orders and track their status</p>
         </div>
-        <Button
-          onClick={() => navigate('/orders/new')}
-          variant="primary"
-          icon={HiPlus}
-        >
-          New Order
-        </Button>
+        {!isAccountsManager && !isProductionManager && (
+          <Button
+            onClick={() => navigate('/orders/new')}
+            variant="primary"
+            icon={HiPlus}
+          >
+            New Order
+          </Button>
+        )}
       </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
         <StatCard
           title="Total Orders"
-          value={stats?.overview?.totalOrders || 0}
+          value={totalOrders}
           icon={HiClipboardDocumentList}
           gradient="blue"
-          loading={statsLoading}
+          loading={loading}
         />
         <StatCard
           title="Total Revenue"
-          value={`₹${stats?.totalRevenue?.toLocaleString() || 0}`}
+          value={`₹${totalRevenue.toLocaleString()}`}
           icon={HiCurrencyDollar}
           gradient="green"
-          loading={statsLoading}
+          loading={loading}
         />
         <StatCard
           title="Pending Orders"
-          value={stats?.overview?.pendingOrders || 0}
+          value={pendingOrders}
           icon={HiTruck}
           gradient="yellow"
-          loading={statsLoading}
+          loading={loading}
         />
         <StatCard
           title="Delivered"
-          value={stats?.overview?.deliveredOrders || 0}
+          value={deliveredOrders}
           icon={HiCheckCircle}
           gradient="purple"
-          loading={statsLoading}
+          loading={loading}
         />
           </div>
 

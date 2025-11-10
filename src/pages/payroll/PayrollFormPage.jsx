@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { 
@@ -29,6 +29,16 @@ const PayrollFormPage = () => {
   const location = useLocation();
   const params = useParams();
   const dispatch = useDispatch();
+  
+  // Get user information for role-based functionality
+  const { user } = useSelector((state) => state.auth || {});
+  const isSupervisor = user?.role === 'supervisor';
+  
+  // Get supervisor's branch ID
+  const supervisorBranchId = useMemo(() => {
+    if (!isSupervisor || !user?.branch) return null;
+    return typeof user.branch === 'object' ? user.branch._id : user.branch;
+  }, [isSupervisor, user?.branch]);
   
   // Get payroll data from location state or params
   const selectedPayroll = location.state?.payroll || null;
@@ -268,6 +278,16 @@ const PayrollFormPage = () => {
     }
   }, [isEdit, currentPayroll]);
 
+  // Auto-set branch for supervisors when creating
+  useEffect(() => {
+    if (isSupervisor && !isEdit && supervisorBranchId && !formData.branchId) {
+      setFormData(prev => ({
+        ...prev,
+        branchId: supervisorBranchId
+      }));
+    }
+  }, [isSupervisor, isEdit, supervisorBranchId, formData.branchId]);
+
   const handleInputChange = (field, value) => {
     if (field.includes('.')) {
       const [parent, child] = field.split('.');
@@ -334,7 +354,8 @@ const PayrollFormPage = () => {
         }
       }
     }
-    if (!formData.branchId) {
+    // For supervisors, branch is auto-set, so skip validation if supervisorBranchId exists
+    if (!formData.branchId && !(isSupervisor && supervisorBranchId)) {
       newErrors.branchId = 'Branch is required';
     }
     if (!formData.basicSalary || formData.basicSalary <= 0) {
@@ -399,6 +420,11 @@ const PayrollFormPage = () => {
     await new Promise(resolve => setTimeout(resolve, 100));
     
     try {
+      // For supervisors creating employees, ensure branch is set to their branch
+      const finalBranchId = isSupervisor && !isEdit && supervisorBranchId 
+        ? supervisorBranchId 
+        : formData.branchId;
+      
       const payrollData = {
         employeeName: formData.employeeName.trim(),
         employeeId: formData.employeeId.trim(),
@@ -406,7 +432,7 @@ const PayrollFormPage = () => {
         email: formData.email.trim(),
         ...(isEdit && formData.password ? { password: formData.password } : {}),
         ...(!isEdit ? { password: formData.password } : {}),
-        branchId: formData.branchId,
+        branchId: finalBranchId,
         dateOfBirth: formData.dateOfBirth,
         address: {
           street: formData.address.street.trim(),
@@ -608,67 +634,69 @@ const PayrollFormPage = () => {
                     )}
                   </div>
                   
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Password {!isEdit && '*'}
-                      {isEdit && <span className="text-gray-500 text-xs ml-1">(Leave blank to keep current password)</span>}
-                    </label>
-                    <div className="relative">
-                      <input
-                        type={showPassword ? "text" : "password"}
-                        name="password"
-                        value={formData.password}
-                        onChange={(e) => handleInputChange('password', e.target.value)}
-                        placeholder={isEdit ? "Enter new password (optional)" : "Enter password"}
-                        className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white shadow-sm hover:shadow-md"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 transition-colors duration-200"
-                      >
-                        {showPassword ? (
-                          <HiEyeSlash className="h-5 w-5" />
-                        ) : (
-                          <HiEye className="h-5 w-5" />
+                  {!isEdit && (
+                    <>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Password *
+                        </label>
+                        <div className="relative">
+                          <input
+                            type={showPassword ? "text" : "password"}
+                            name="password"
+                            value={formData.password}
+                            onChange={(e) => handleInputChange('password', e.target.value)}
+                            placeholder="Enter password"
+                            className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 transition-colors duration-200"
+                          >
+                            {showPassword ? (
+                              <HiEyeSlash className="h-5 w-5" />
+                            ) : (
+                              <HiEye className="h-5 w-5" />
+                            )}
+                          </button>
+                        </div>
+                        {errors.password && (
+                          <p className="mt-1 text-sm text-red-600">{errors.password}</p>
                         )}
-                      </button>
-                    </div>
-                    {errors.password && (
-                      <p className="mt-1 text-sm text-red-600">{errors.password}</p>
-                    )}
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Confirm Password {!isEdit && '*'}
-                      {isEdit && <span className="text-gray-500 text-xs ml-1">(Required if password is provided)</span>}
-                    </label>
-                    <div className="relative">
-                      <input
-                        type={showConfirmPassword ? "text" : "password"}
-                        name="confirmPassword"
-                        value={formData.confirmPassword}
-                        onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
-                        placeholder={isEdit ? "Confirm new password (optional)" : "Confirm password"}
-                        className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white shadow-sm hover:shadow-md"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 transition-colors duration-200"
-                      >
-                        {showConfirmPassword ? (
-                          <HiEyeSlash className="h-5 w-5" />
-                        ) : (
-                          <HiEye className="h-5 w-5" />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Confirm Password *
+                        </label>
+                        <div className="relative">
+                          <input
+                            type={showConfirmPassword ? "text" : "password"}
+                            name="confirmPassword"
+                            value={formData.confirmPassword}
+                            onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
+                            placeholder="Confirm password"
+                            className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                            className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 transition-colors duration-200"
+                          >
+                            {showConfirmPassword ? (
+                              <HiEyeSlash className="h-5 w-5" />
+                            ) : (
+                              <HiEye className="h-5 w-5" />
+                            )}
+                          </button>
+                        </div>
+                        {errors.confirmPassword && (
+                          <p className="mt-1 text-sm text-red-600">{errors.confirmPassword}</p>
                         )}
-                      </button>
-                    </div>
-                    {errors.confirmPassword && (
-                      <p className="mt-1 text-sm text-red-600">{errors.confirmPassword}</p>
-                    )}
-                  </div>
+                      </div>
+                    </>
+                  )}
                   
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -679,7 +707,7 @@ const PayrollFormPage = () => {
                       value={formData.branchId}
                       onChange={(e) => handleInputChange('branchId', e.target.value)}
                       placeholder={branchesLoading ? "Loading branches..." : "Select a branch"}
-                      disabled={branchesLoading || branchOptions.length === 0}
+                      disabled={isSupervisor || branchesLoading || branchOptions.length === 0}
                       error={errors.branchId}
                     />
                   </div>
