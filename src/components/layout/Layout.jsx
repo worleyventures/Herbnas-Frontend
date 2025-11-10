@@ -5,6 +5,7 @@ import { useLocation, Outlet } from "react-router-dom";
 import Header from "./Header";
 import Sidebar from "./Sidebar";
 import AttendanceModal from "../common/AttendanceModal";
+import NotificationToast from "../common/NotificationToast";
 
 const Layout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -70,6 +71,9 @@ const Layout = () => {
         isOpen={showAttendanceModal}
         onClose={() => setShowAttendanceModal(false)}
       />
+
+      {/* Notification Toast - Rendered at top level for proper positioning */}
+      <NotificationToast />
     </div>
   );
 };

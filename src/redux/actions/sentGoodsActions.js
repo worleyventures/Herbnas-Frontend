@@ -91,7 +91,24 @@ export const updateSentGoodsStatus = createAsyncThunk(
       const response = await axiosInstance.put(`/goods/sent-goods/${id}/status`, { status });
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to update status');
+      // Axios interceptor transforms error to { message, status, data, isNetworkError }
+      const errorMessage = error.message || error.data?.message || 'Failed to update status';
+      return rejectWithValue(errorMessage);
+    }
+  }
+);
+
+// Mark sent goods as received
+export const markAsReceived = createAsyncThunk(
+  'sentGoods/markAsReceived',
+  async (id, { rejectWithValue }) => {
+    try {
+      const response = await axiosInstance.put(`/goods/sent-goods/${id}/receive`);
+      return response.data;
+    } catch (error) {
+      // Axios interceptor transforms error to { message, status, data, isNetworkError }
+      const errorMessage = error.message || error.data?.message || 'Failed to mark as received';
+      return rejectWithValue(errorMessage);
     }
   }
 );

@@ -4,6 +4,7 @@ import {
   getGoodsRequestById,
   createGoodsRequest,
   updateGoodsRequestStatus,
+  markGoodsRequestAsReceived,
   deleteGoodsRequest
 } from '../actions/goodsRequestActions';
 
@@ -119,6 +120,33 @@ const goodsRequestSlice = createSlice({
         state.error = null;
       })
       .addCase(updateGoodsRequestStatus.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+
+      // Mark goods request as received
+      .addCase(markGoodsRequestAsReceived.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(markGoodsRequestAsReceived.fulfilled, (state, action) => {
+        state.loading = false;
+        const updatedRequest = action.payload.data.goodsRequest;
+        
+        // Update in the requests list
+        const index = state.goodsRequests.findIndex(req => req._id === updatedRequest._id);
+        if (index !== -1) {
+          state.goodsRequests[index] = updatedRequest;
+        }
+        
+        // Update current request if it's the same one
+        if (state.currentGoodsRequest && state.currentGoodsRequest._id === updatedRequest._id) {
+          state.currentGoodsRequest = updatedRequest;
+        }
+        
+        state.error = null;
+      })
+      .addCase(markGoodsRequestAsReceived.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })

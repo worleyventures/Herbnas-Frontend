@@ -30,6 +30,7 @@ const GoodsRequestsCRUD = ({
   const [showActionModal, setShowActionModal] = useState(false);
   const [actionType, setActionType] = useState(null);
   const [rejectionReason, setRejectionReason] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
 
   // Get status color
   const getStatusColor = (status) => {
@@ -70,34 +71,56 @@ const GoodsRequestsCRUD = ({
   // Handle status update
   const handleStatusUpdate = async (requestId, newStatus, reason = '') => {
     setUpdatingStatus(requestId);
+    setErrorMessage(''); // Clear any previous error
     try {
-      const result = await dispatch(updateGoodsRequestStatus({ 
+      await dispatch(updateGoodsRequestStatus({ 
         id: requestId, 
         status: newStatus,
         rejectionReason: reason
-      }));
+      })).unwrap();
       
-      if (updateGoodsRequestStatus.fulfilled.match(result)) {
-        dispatch(addNotification({
-          type: 'success',
-          message: `Request ${newStatus} successfully!`
-        }));
-        setShowActionModal(false);
-        setActionType(null);
-        setRejectionReason('');
-        if (onRefresh) {
-          onRefresh();
-        }
-      } else {
-        dispatch(addNotification({
-          type: 'error',
-          message: result.payload || 'Failed to update request status'
-        }));
+      dispatch(addNotification({
+        type: 'success',
+        title: 'Success',
+        message: `Request ${newStatus} successfully!`,
+        duration: 3000
+      }));
+      setShowActionModal(false);
+      setActionType(null);
+      setRejectionReason('');
+      setErrorMessage('');
+      if (onRefresh) {
+        onRefresh();
       }
     } catch (error) {
+      // Extract error message - handle both string and object error formats
+      // The error can be:
+      // 1. A string (when rejectWithValue passes a string)
+      // 2. An object with message property (transformed axios error)
+      // 3. An object with data.message (nested error structure)
+      let extractedErrorMessage = 'Failed to update request status';
+      
+      if (typeof error === 'string') {
+        extractedErrorMessage = error;
+      } else if (error?.message) {
+        extractedErrorMessage = error.message;
+      } else if (error?.data?.message) {
+        extractedErrorMessage = error.data.message;
+      } else if (error?.response?.data?.message) {
+        extractedErrorMessage = error.response.data.message;
+      }
+      
+      console.error('Error updating goods request status:', error);
+      
+      // Set error message in state to display in modal
+      setErrorMessage(extractedErrorMessage);
+      
+      // Also show notification
       dispatch(addNotification({
         type: 'error',
-        message: 'Failed to update request status'
+        title: 'Error',
+        message: extractedErrorMessage,
+        duration: 5000
       }));
     } finally {
       setUpdatingStatus(null);
@@ -107,6 +130,7 @@ const GoodsRequestsCRUD = ({
   const handleActionClick = (request, action) => {
     setSelectedRequest(request);
     setActionType(action);
+    setErrorMessage(''); // Clear any previous error
     setShowActionModal(true);
   };
 
@@ -207,9 +231,12 @@ const GoodsRequestsCRUD = ({
         }
         
         // For super admin, show all actions
-        const canApprove = request.status === 'pending';
-        const canReject = request.status === 'pending';
-        const canFulfill = request.status === 'approved';
+        // Only show approve/reject for pending requests
+        const status = (request.status || '').toLowerCase();
+        const canApprove = status === 'pending';
+        const canReject = status === 'pending';
+        // Only show fulfill for approved requests (not yet fulfilled or cancelled)
+        const canFulfill = status === 'approved';
         
         return (
           <div className="flex items-center space-x-2">
@@ -387,6 +414,7 @@ const GoodsRequestsCRUD = ({
           setShowActionModal(false);
           setActionType(null);
           setRejectionReason('');
+          setErrorMessage('');
         }}
         title={actionType === 'approved' ? 'Approve Request' : actionType === 'rejected' ? 'Reject Request' : 'Fulfill Request'}
         subtitle={selectedRequest?.requestId || ''}
@@ -399,6 +427,7 @@ const GoodsRequestsCRUD = ({
                 setShowActionModal(false);
                 setActionType(null);
                 setRejectionReason('');
+                setErrorMessage('');
               }}
               variant="outline"
             >
@@ -414,24 +443,36 @@ const GoodsRequestsCRUD = ({
           </div>
         }
       >
-        {actionType === 'rejected' ? (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Rejection Reason *
-            </label>
-            <textarea
-              value={rejectionReason}
-              onChange={(e) => setRejectionReason(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              rows={4}
-              placeholder="Please provide a reason for rejection"
-            />
-          </div>
-        ) : (
-          <p className="text-gray-600">
-            Are you sure you want to {actionType} this goods request?
-          </p>
-        )}
+        <div className="space-y-4">
+          {errorMessage && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start space-x-3">
+              <HiXCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <h4 className="text-sm font-semibold text-red-800 mb-1">Error</h4>
+                <p className="text-sm text-red-700">{errorMessage}</p>
+              </div>
+            </div>
+          )}
+          
+          {actionType === 'rejected' ? (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Rejection Reason *
+              </label>
+              <textarea
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                rows={4}
+                placeholder="Please provide a reason for rejection"
+              />
+            </div>
+          ) : (
+            <p className="text-gray-600">
+              Are you sure you want to {actionType} this goods request?
+            </p>
+          )}
+        </div>
       </CommonModal>
     </>
   );

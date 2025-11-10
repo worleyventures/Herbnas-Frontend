@@ -341,7 +341,15 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
   // Refresh function for sent goods status updates
   const handleRefreshSentGoods = () => {
     if (activeTab === 'sentGoods') {
-      dispatch(getAllSentGoods({ page: currentPage, limit: itemsPerPage }));
+      if (isProductionManager || isAccountsManager || isAdmin || isSupervisor) {
+        dispatch(getReceivedGoods({ page: 1, limit: 1000 }));
+      } else {
+        dispatch(getAllSentGoods({ page: currentPage, limit: itemsPerPage }));
+      }
+      // Also refresh goods requests to get updated approved requests
+      if (isSuperAdmin || isSupervisor || isAdmin) {
+        dispatch(getAllGoodsRequests({ page: 1, limit: 1000 }));
+      }
     }
   };
 
@@ -664,7 +672,8 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
         <>
           <ReceivedGoodsCRUD
             sentGoods={sentGoods}
-            loading={sentGoodsLoading}
+            goodsRequests={goodsRequests}
+            loading={sentGoodsLoading || goodsRequestsLoading}
             onRefresh={handleRefreshSentGoods}
           />
         </>

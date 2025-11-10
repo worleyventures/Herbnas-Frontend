@@ -15,22 +15,71 @@ import { Table, StatusBadge, ConfirmationModal, ActionButton } from '../../commo
 import CommonModal from '../../common/CommonModal';
 import DetailsView from '../../common/DetailsView';
 import Button from '../../common/Button';
-import { updateSentGoodsStatus } from '../../../redux/actions/sentGoodsActions';
+import { updateSentGoodsStatus, markAsReceived } from '../../../redux/actions/sentGoodsActions';
+import { markGoodsRequestAsReceived } from '../../../redux/actions/goodsRequestActions';
 import { addNotification } from '../../../redux/slices/uiSlice';
 
 const ReceivedGoodsCRUD = ({ 
   sentGoods = [],
+  goodsRequests = [],
   loading = false,
   onRefresh
 }) => {
   const dispatch = useDispatch();
+  const { user } = useSelector((state) => state.auth);
   const [updatingStatus, setUpdatingStatus] = useState(null);
+  const [markingAsReceived, setMarkingAsReceived] = useState(null);
   const [selectedGoods, setSelectedGoods] = useState(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [openStatusDropdown, setOpenStatusDropdown] = useState(null);
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
   const statusDropdownRefs = useRef({});
   const buttonRefs = useRef({});
+
+  // Check if user can mark as received (admin or supervisor)
+  const canMarkAsReceived = user?.role === 'admin' || user?.role === 'supervisor' || user?.role === 'super_admin';
+
+  // Transform approved goods requests to match sent goods format
+  const transformApprovedRequests = () => {
+    return goodsRequests
+      .filter(request => request.status === 'approved')
+      .map(request => ({
+        _id: request._id,
+        trackingId: request.requestId || `REQ-${request.requestId?.slice(-6)}`,
+        branchId: request.branchId,
+        status: 'approved-request', // Special status for approved requests
+        items: request.items?.map(item => ({
+          inventoryId: null, // No inventory ID for requests
+          productId: item.productId,
+          quantity: item.quantity,
+          unitPrice: item.productId?.price || 0,
+          notes: item.notes
+        })) || [],
+        totalValue: request.items?.reduce((sum, item) => {
+          const price = item.productId?.price || 0;
+          return sum + (item.quantity * price);
+        }, 0) || 0,
+        sentAt: request.requestedDate || request.createdAt,
+        deliveredAt: null,
+        notes: request.notes,
+        createdBy: request.createdBy,
+        updatedBy: request.updatedBy,
+        isReceived: false,
+        isApprovedRequest: true, // Flag to identify this is from a goods request
+        originalRequest: request // Keep reference to original request
+      }));
+  };
+
+  // Combine sent goods and approved requests
+  const combinedGoods = [
+    ...sentGoods,
+    ...transformApprovedRequests()
+  ].sort((a, b) => {
+    // Sort by date (most recent first)
+    const dateA = new Date(a.sentAt || a.requestedDate || 0);
+    const dateB = new Date(b.sentAt || b.requestedDate || 0);
+    return dateB - dateA;
+  });
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -61,7 +110,8 @@ const ReceivedGoodsCRUD = ({
       'pending': 'bg-yellow-100 text-yellow-800',
       'in-transit': 'bg-blue-100 text-blue-800',
       'delivered': 'bg-green-100 text-green-800',
-      'cancelled': 'bg-red-100 text-red-800'
+      'cancelled': 'bg-red-100 text-red-800',
+      'approved-request': 'bg-blue-100 text-blue-800' // For approved goods requests
     };
     return colors[status] || 'bg-gray-100 text-gray-800';
   };
@@ -72,7 +122,8 @@ const ReceivedGoodsCRUD = ({
       'pending': 'Pending',
       'in-transit': 'In Transit',
       'delivered': 'Delivered',
-      'cancelled': 'Cancelled'
+      'cancelled': 'Cancelled',
+      'approved-request': 'Approved Request'
     };
     return displays[status] || status;
   };
@@ -113,7 +164,8 @@ const ReceivedGoodsCRUD = ({
         { value: 'cancelled', label: 'Cancel' }
       ],
       'delivered': [], // No further actions for delivered
-      'cancelled': [] // No further actions for cancelled
+      'cancelled': [], // No further actions for cancelled
+      'approved-request': [] // No status changes for approved requests (they can only be marked as received)
     };
     return statusOptions[currentStatus] || [];
   };
@@ -146,6 +198,58 @@ const ReceivedGoodsCRUD = ({
       }));
     } finally {
       setUpdatingStatus(null);
+    }
+  };
+
+  // Handle mark as received
+  const handleMarkAsReceived = async (goodsId, isApprovedRequest = false) => {
+    setMarkingAsReceived(goodsId);
+    try {
+      let result;
+      if (isApprovedRequest) {
+        // Mark approved goods request as received
+        result = await dispatch(markGoodsRequestAsReceived(goodsId));
+      } else {
+        // Mark sent goods as received
+        result = await dispatch(markAsReceived(goodsId));
+      }
+      
+      const action = isApprovedRequest ? markGoodsRequestAsReceived : markAsReceived;
+      
+      if (action.fulfilled.match(result)) {
+        dispatch(addNotification({
+          type: 'success',
+          title: 'Success',
+          message: 'Goods marked as received and added to branch inventory successfully!',
+          duration: 3000
+        }));
+        // Refresh the data
+        if (onRefresh) {
+          onRefresh();
+        }
+      } else {
+        const errorMessage = typeof result.payload === 'string' 
+          ? result.payload 
+          : result.payload?.message || 'Failed to mark as received';
+        dispatch(addNotification({
+          type: 'error',
+          title: 'Error',
+          message: errorMessage,
+          duration: 5000
+        }));
+      }
+    } catch (error) {
+      const errorMessage = typeof error === 'string' 
+        ? error 
+        : error?.message || 'Failed to mark as received';
+      dispatch(addNotification({
+        type: 'error',
+        title: 'Error',
+        message: errorMessage,
+        duration: 5000
+      }));
+    } finally {
+      setMarkingAsReceived(null);
     }
   };
 
@@ -235,7 +339,7 @@ const ReceivedGoodsCRUD = ({
       label: 'Sent Date',
       render: (goods) => (
         <div className="text-sm text-gray-900">
-          {formatDate(goods.sentAt)}
+          {formatDate(goods.sentAt || goods.requestedDate || goods.createdAt)}
         </div>
       )
     },
@@ -253,7 +357,7 @@ const ReceivedGoodsCRUD = ({
       label: 'Total Amount',
       render: (goods) => (
         <div className="text-sm font-medium text-gray-900">
-          ₹{goods.totalAmount?.toLocaleString() || '0'}
+          ₹{(goods.totalAmount || goods.totalValue || 0).toLocaleString()}
         </div>
       )
     },
@@ -261,6 +365,13 @@ const ReceivedGoodsCRUD = ({
       key: 'actions',
       label: 'Actions',
       render: (goods) => {
+        const isMarking = markingAsReceived === goods._id;
+        // Can mark as received if: not already received, and either sent goods or approved request
+        const canMark = canMarkAsReceived && 
+          !goods.isReceived && 
+          goods.status !== 'fulfilled' &&
+          (goods.status !== 'cancelled' || goods.isApprovedRequest);
+        
         return (
           <div className="flex items-center space-x-2">
             <ActionButton
@@ -273,6 +384,20 @@ const ReceivedGoodsCRUD = ({
               variant="view"
               size="sm"
             />
+            {canMark && (
+              <ActionButton
+                icon={HiCheckCircle}
+                onClick={() => handleMarkAsReceived(goods._id, goods.isApprovedRequest)}
+                tooltip="Mark as Received"
+                variant="success"
+                size="sm"
+                disabled={isMarking}
+                loading={isMarking}
+              />
+            )}
+            {(goods.isReceived || goods.status === 'fulfilled') && (
+              <span className="text-xs text-green-600 font-medium">Received</span>
+            )}
           </div>
         );
       }
@@ -287,7 +412,7 @@ const ReceivedGoodsCRUD = ({
     );
   }
 
-  if (sentGoods.length === 0) {
+  if (combinedGoods.length === 0) {
     return (
       <div className="text-center py-12">
         <HiTruck className="mx-auto h-12 w-12 text-gray-400" />
@@ -301,7 +426,7 @@ const ReceivedGoodsCRUD = ({
     <>
 
       <Table
-        data={sentGoods}
+        data={combinedGoods}
         columns={columns}
         loading={loading}
         emptyMessage="No received goods found"
@@ -339,12 +464,24 @@ const ReceivedGoodsCRUD = ({
                 value: getStatusDisplay(selectedGoods.status)
               },
               {
-                label: 'Sent At',
-                value: formatDate(selectedGoods.sentAt)
+                label: selectedGoods.isApprovedRequest ? 'Requested At' : 'Sent At',
+                value: formatDate(selectedGoods.sentAt || selectedGoods.requestedDate || selectedGoods.createdAt)
               },
               ...(selectedGoods.deliveredAt ? [{
                 label: 'Delivered At',
                 value: formatDate(selectedGoods.deliveredAt)
+              }] : []),
+              ...(selectedGoods.isReceived ? [{
+                label: 'Received',
+                value: 'Yes'
+              }] : []),
+              ...(selectedGoods.receivedAt ? [{
+                label: 'Received At',
+                value: formatDate(selectedGoods.receivedAt)
+              }] : []),
+              ...(selectedGoods.receivedBy ? [{
+                label: 'Received By',
+                value: `${selectedGoods.receivedBy?.firstName || ''} ${selectedGoods.receivedBy?.lastName || ''}`.trim() || 'N/A'
               }] : [])
             ].filter(Boolean)
           };
@@ -353,25 +490,29 @@ const ReceivedGoodsCRUD = ({
             title: 'Basic Information',
             fields: [
               {
-                label: 'Tracking ID',
-                value: selectedGoods.trackingId || 'N/A'
+                label: selectedGoods.isApprovedRequest ? 'Request ID' : 'Tracking ID',
+                value: selectedGoods.trackingId || selectedGoods.requestId || 'N/A'
               },
               {
                 label: 'Total Items',
                 value: selectedGoods.items?.length || 0
               },
               {
-                label: 'Sent From',
-                value: 'Head Office'
-              }
-            ]
+                label: selectedGoods.isApprovedRequest ? 'Request Type' : 'Sent From',
+                value: selectedGoods.isApprovedRequest ? 'Goods Request' : 'Head Office'
+              },
+              ...(selectedGoods.isApprovedRequest && selectedGoods.originalRequest?.priority ? [{
+                label: 'Priority',
+                value: selectedGoods.originalRequest.priority.toUpperCase()
+              }] : [])
+            ].filter(Boolean)
           };
 
           const itemsInfo = selectedGoods.items && selectedGoods.items.length > 0 ? {
             title: 'Items',
             fields: selectedGoods.items.map((item, index) => ({
-              label: item.inventoryId?.productId?.productName || 'Unknown Product',
-              value: `${item.quantity} units | ₹${item.unitPrice}`
+              label: item.inventoryId?.productId?.productName || item.productId?.productName || 'Unknown Product',
+              value: `${item.quantity} units${item.unitPrice ? ` | ₹${item.unitPrice}` : ''}${item.notes ? ` | Notes: ${item.notes}` : ''}`
             }))
           } : null;
 

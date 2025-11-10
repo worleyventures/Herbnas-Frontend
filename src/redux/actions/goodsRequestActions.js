@@ -80,7 +80,26 @@ export const updateGoodsRequestStatus = createAsyncThunk(
       return response.data;
     } catch (error) {
       console.error('❌ updateGoodsRequestStatus error:', error);
-      return rejectWithValue(error.response?.data?.message || 'Failed to update goods request status');
+      // Axios interceptor transforms error to { message, status, data, isNetworkError }
+      // Extract message from the transformed error object
+      const errorMessage = error.message || error.data?.message || 'Failed to update goods request status';
+      return rejectWithValue(errorMessage);
+    }
+  }
+);
+
+// Mark approved goods request as received
+export const markGoodsRequestAsReceived = createAsyncThunk(
+  'goodsRequests/markGoodsRequestAsReceived',
+  async (id, { rejectWithValue }) => {
+    try {
+      const response = await axiosInstance.put(`/goods/goods-requests/${id}/receive`);
+      return response.data;
+    } catch (error) {
+      console.error('❌ markGoodsRequestAsReceived error:', error);
+      // Axios interceptor transforms error to { message, status, data, isNetworkError }
+      const errorMessage = error.message || error.data?.message || 'Failed to mark goods request as received';
+      return rejectWithValue(errorMessage);
     }
   }
 );
