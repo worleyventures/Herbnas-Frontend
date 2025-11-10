@@ -38,6 +38,10 @@ const ProductionCRUD = ({
 }) => {
   const navigate = useNavigate();
   const [showProductionModal, setShowProductionModal] = useState(false);
+  const { user } = useSelector((state) => state.auth);
+  const isProductionManager = user?.role === 'production_manager';
+  const isSuperAdmin = user?.role === 'super_admin';
+  const canManageProduction = isProductionManager || isSuperAdmin;
 
   // Get status badge for production status
   const getProductionStatusBadge = (status) => {
@@ -200,18 +204,22 @@ const ProductionCRUD = ({
             title="View Details"
             className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
           />
-          <ActionButton
-            onClick={() => handleEditProduction(production)}
-            icon={HiPencil}
-            title="Edit Production"
-            className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
-          />
-          <ActionButton
-            onClick={() => handleDeleteProduction(production)}
-            icon={HiTrash}
-            title="Delete Production"
-            className="text-red-600 hover:text-red-700 hover:bg-red-50"
-          />
+          {canManageProduction && (
+            <>
+              <ActionButton
+                onClick={() => handleEditProduction(production)}
+                icon={HiPencil}
+                title="Edit Production"
+                className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
+              />
+              <ActionButton
+                onClick={() => handleDeleteProduction(production)}
+                icon={HiTrash}
+                title="Delete Production"
+                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+              />
+            </>
+          )}
         </div>
       )
     }

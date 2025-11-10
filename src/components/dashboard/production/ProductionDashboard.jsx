@@ -52,6 +52,10 @@ const ProductionDashboard = () => {
   const [productFilter, setProductFilter] = useState('all');
 
   const { user, isAuthenticated } = useSelector((state) => state.auth);
+  const isAdmin = user?.role === 'admin';
+  const isProductionManager = user?.role === 'production_manager';
+  const isSuperAdmin = user?.role === 'super_admin';
+  const canManageProduction = isProductionManager || isSuperAdmin;
   const {
     productions = [],
     loading = false,
@@ -255,15 +259,17 @@ const ProductionDashboard = () => {
           </p>
         </div>
         <div className="mt-4 sm:mt-0 flex space-x-3">
-          <Button
-            onClick={handleCreateProduction}
-            icon={HiPlus}
-            variant="gradient"
-            size="sm"
-            className="shadow-lg"
-          >
-            Add Production Batch
-          </Button>
+          {canManageProduction && (
+            <Button
+              onClick={handleCreateProduction}
+              icon={HiPlus}
+              variant="gradient"
+              size="sm"
+              className="shadow-lg"
+            >
+              Add Production Batch
+            </Button>
+          )}
         </div>
       </div>
 

@@ -47,9 +47,44 @@ const BranchCRUD = ({
   const isSalesExecutive = user?.role === 'sales_executive';
   const isAccountsManager = user?.role === 'accounts_manager';
   const isProductionManager = user?.role === 'production_manager';
+  const isAdmin = user?.role === 'admin';
+  const isSuperAdmin = user?.role === 'super_admin';
+  const isSupervisor = user?.role === 'supervisor';
+  // Admin, super_admin, and supervisor can edit any branch
+  const canEditBranch = (branch) => {
+    if (isSuperAdmin || isSupervisor || isAdmin) return true;
+    return false;
+  };
   
   // Get users for createdBy/updatedBy display
   const users = useSelector((state) => state.user?.users || []);
+  
+  // Handler functions (defined before useMemo to avoid reference errors)
+  const handleViewBranch = (branch) => {
+    onSelectBranch(branch);
+    setShowBranchModal(true);
+  };
+
+  const handleDisableBranch = (branch) => {
+    console.log('Disable branch clicked:', {
+      branchId: branch._id,
+      branchName: branch.branchName,
+      isActive: branch.isActive,
+      isActiveType: typeof branch.isActive
+    });
+    onSelectBranch(branch);
+    onDisableBranch();
+  };
+
+  const handleActivateBranch = (branch) => {
+    onSelectBranch(branch);
+    onActivateBranch();
+  };
+
+  const handleDeleteBranch = (branch) => {
+    onSelectBranch(branch);
+    setShowDeleteModal(true);
+  };
   
   // Get branch users from Redux state
   const { branchUsers, branchUsersLoading } = useSelector(state => state.user);
@@ -171,7 +206,7 @@ const BranchCRUD = ({
             size="sm"
             title="View Details"
           />
-          {!isSalesExecutive && !isAccountsManager && !isProductionManager && (
+          {(!isSalesExecutive && !isAccountsManager && !isProductionManager && canEditBranch(branch)) && (
             <>
               <ActionButton
                 icon={HiPencil}
@@ -185,21 +220,32 @@ const BranchCRUD = ({
                 size="sm"
                 title="Edit Branch"
               />
-              {branch.isActive ? (
+              {(isSuperAdmin || isSupervisor) && (
+                branch.isActive ? (
+                  <ActionButton
+                    icon={HiXCircle}
+                    onClick={() => handleDisableBranch(branch)}
+                    variant="warning"
+                    size="sm"
+                    title="Disable Branch"
+                  />
+                ) : (
+                  <ActionButton
+                    icon={HiCheckCircle}
+                    onClick={() => handleActivateBranch(branch)}
+                    variant="success"
+                    size="sm"
+                    title="Activate Branch"
+                  />
+                )
+              )}
+              {isSuperAdmin && (
                 <ActionButton
-                  icon={HiXCircle}
-                  onClick={() => handleDisableBranch(branch)}
-                  variant="warning"
+                  icon={HiTrash}
+                  onClick={() => handleDeleteBranch(branch)}
+                  variant="delete"
                   size="sm"
-                  title="Disable Branch"
-                />
-              ) : (
-                <ActionButton
-                  icon={HiCheckCircle}
-                  onClick={() => handleActivateBranch(branch)}
-                  variant="success"
-                  size="sm"
-                  title="Activate Branch"
+                  title="Delete Branch"
                 />
               )}
             </>
@@ -207,34 +253,7 @@ const BranchCRUD = ({
         </div>
       )
     }
-  ], [allUsers, isSalesExecutive]);
-
-
-  const handleDeleteBranch = (branch) => {
-    onSelectBranch(branch);
-    setShowDeleteModal(true);
-  };
-
-  const handleDisableBranch = (branch) => {
-    console.log('Disable branch clicked:', {
-      branchId: branch._id,
-      branchName: branch.branchName,
-      isActive: branch.isActive,
-      isActiveType: typeof branch.isActive
-    });
-    onSelectBranch(branch);
-    onDisableBranch();
-  };
-
-  const handleActivateBranch = (branch) => {
-    onSelectBranch(branch);
-    onActivateBranch();
-  };
-
-  const handleViewBranch = (branch) => {
-    onSelectBranch(branch);
-    setShowBranchModal(true);
-  };
+  ], [allUsers, isSalesExecutive, isAdmin, isSuperAdmin, isSupervisor, user, navigate, handleViewBranch, handleDisableBranch, handleActivateBranch, handleDeleteBranch]);
 
 
   // Loading state
