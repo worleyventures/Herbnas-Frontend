@@ -113,16 +113,21 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
   // Refresh leads when navigating to this page (e.g., returning from edit form)
   useEffect(() => {
     if ((location.pathname === '/leads' || location.pathname === '/leads/table' || location.pathname === '/leads/pipeline') && isAuthenticated && user) {
-      dispatch(getAllLeads({
-        page: currentPage,
-        limit: itemsPerPage,
-        search: searchTerm,
-        leadStatus: filterStatus === 'all' ? '' : filterStatus,
-        dispatchedFrom: filterBranch === 'all' ? '' : filterBranch
-      }));
-      dispatch(getLeadStats());
+      // Use a small delay to ensure state is ready after navigation
+      const timeoutId = setTimeout(() => {
+        dispatch(getAllLeads({
+          page: currentPage,
+          limit: itemsPerPage,
+          search: searchTerm,
+          leadStatus: filterStatus === 'all' ? '' : filterStatus,
+          dispatchedFrom: filterBranch === 'all' ? '' : filterBranch
+        }));
+        dispatch(getLeadStats());
+      }, 100);
+      
+      return () => clearTimeout(timeoutId);
     }
-  }, [location.pathname, dispatch, isAuthenticated, user]);
+  }, [location.pathname, dispatch, isAuthenticated, user, currentPage, itemsPerPage, searchTerm, filterStatus, filterBranch]);
 
   // Clear success/error messages after a delay and close modals on success
   useEffect(() => {
@@ -247,7 +252,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
       dispatch(createLead(leadData));
   };
 
-  const handleUpdateLead = (leadData) => {
+  const handleUpdateLead = async (leadData) => {
     try {
       if (selectedLead) {
         // Debug logging removed for production
@@ -265,14 +270,36 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
           return;
         }
         
-        dispatch(updateLead({ leadId: selectedLead._id, leadData }));
+        const result = await dispatch(updateLead({ leadId: selectedLead._id, leadData })).unwrap();
+        
+        // Close modal and clear selection
         setShowEditModal(false);
         setSelectedLead(null);
+        
+        // Refresh the leads list immediately
+        dispatch(getAllLeads({
+          page: currentPage,
+          limit: itemsPerPage,
+          search: searchTerm,
+          leadStatus: filterStatus === 'all' ? '' : filterStatus,
+          dispatchedFrom: filterBranch === 'all' ? '' : filterBranch
+        }));
+        dispatch(getLeadStats());
+        
+        // Show success notification
+        dispatch(addNotification({
+          type: 'success',
+          message: 'Lead updated successfully!'
+        }));
       } else {
         console.error('No selected lead for update');
       }
     } catch (error) {
       console.error('Error updating lead:', error);
+      dispatch(addNotification({
+        type: 'error',
+        message: error?.message || 'Failed to update lead'
+      }));
     }
   };
 
@@ -288,11 +315,31 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
     }
   };
 
-  const handleStatusUpdate = (leadId, newStatus) => {
+  const handleStatusUpdate = async (leadId, newStatus) => {
     try {
-      dispatch(updateLeadStatus({ leadId, leadStatus: newStatus }));
+      const result = await dispatch(updateLeadStatus({ leadId, leadStatus: newStatus })).unwrap();
+      
+      // Refresh the leads list immediately after status update
+      dispatch(getAllLeads({
+        page: currentPage,
+        limit: itemsPerPage,
+        search: searchTerm,
+        leadStatus: filterStatus === 'all' ? '' : filterStatus,
+        dispatchedFrom: filterBranch === 'all' ? '' : filterBranch
+      }));
+      dispatch(getLeadStats());
+      
+      // Show success notification
+      dispatch(addNotification({
+        type: 'success',
+        message: `Lead status updated to ${newStatus}`
+      }));
     } catch (error) {
       console.error('Error updating lead status:', error);
+      dispatch(addNotification({
+        type: 'error',
+        message: error?.message || 'Failed to update lead status'
+      }));
     }
   };
 
