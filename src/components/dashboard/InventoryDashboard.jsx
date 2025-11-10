@@ -197,6 +197,26 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
     }
   }, [error, dispatch]);
 
+  // Filter goods requests for current user's branch if supervisor/admin
+  const filteredGoodsRequests = useMemo(() => {
+    if (!goodsRequests || goodsRequests.length === 0) return [];
+    if (isSuperAdmin) return goodsRequests; // Super admin sees all requests
+    
+    // For admin/supervisor, filter by their branch
+    if ((isAdmin || isSupervisor) && user?.branch) {
+      const userBranchId = typeof user.branch === 'object' 
+        ? user.branch._id || user.branch 
+        : user.branch;
+      return goodsRequests.filter(req => {
+        const reqBranchId = typeof req.branchId === 'object' 
+          ? req.branchId._id || req.branchId 
+          : req.branchId;
+        return reqBranchId?.toString() === userBranchId.toString();
+      });
+    }
+    return goodsRequests;
+  }, [goodsRequests, isSuperAdmin, isAdmin, isSupervisor, user?.branch]);
+
   // Get current inventory data based on active tab
   const currentInventory = (() => {
     switch (activeTab) {
@@ -206,6 +226,9 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
         return Array.isArray(finishedGoods) ? finishedGoods : [];
       case 'sentGoods':
         return Array.isArray(sentGoods) ? sentGoods : [];
+      case 'myRequests':
+      case 'goodsRequests':
+        return Array.isArray(filteredGoodsRequests) ? filteredGoodsRequests : [];
       default:
         return [];
     }
