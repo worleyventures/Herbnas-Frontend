@@ -55,6 +55,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
 
   const { user, isAuthenticated } = useSelector((state) => state.auth);
   const { branches = [] } = useSelector((state) => state.branches);
+  const isAccountsManager = user?.role === 'accounts_manager';
 
   const {
     leads = [],
@@ -517,14 +518,16 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
               >
                 Import Leads
               </Button>
-              <Button
-                onClick={() => navigate('/leads/create')}
-                icon={HiPlus}
-                variant="gradient"
-                size="sm"
-              >
-                Add New Lead
-              </Button>
+              {!isAccountsManager && (
+                <Button
+                  onClick={() => navigate('/leads/create')}
+                  icon={HiPlus}
+                  variant="gradient"
+                  size="sm"
+                >
+                  Add New Lead
+                </Button>
+              )}
             </div>
           </div>
 
@@ -719,14 +722,16 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
               >
                 Import Leads
               </Button>
-              <Button
-                onClick={() => navigate('/leads/create')}
-                icon={HiPlus}
-                variant="gradient"
-                size="sm"
-              >
-                Add New Lead
-              </Button>
+              {!isAccountsManager && (
+                <Button
+                  onClick={() => navigate('/leads/create')}
+                  icon={HiPlus}
+                  variant="gradient"
+                  size="sm"
+                >
+                  Add New Lead
+                </Button>
+              )}
               {viewOptions.map((view) => (
                   <Button
                   key={view.id}

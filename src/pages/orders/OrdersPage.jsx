@@ -42,6 +42,10 @@ const OrdersPage = () => {
   const location = useLocation();
   const dispatch = useDispatch();
   
+  // Get user role for permissions
+  const { user } = useSelector((state) => state.auth || {});
+  const isAccountsManager = user?.role === 'accounts_manager';
+  
   // Redux state
   const orders = useSelector(selectOrders);
   const loading = useSelector(selectOrderLoading);
@@ -665,20 +669,24 @@ const OrdersPage = () => {
           >
             <HiDocumentArrowDown className="w-4 h-4" />
           </button>
-          <button
-            onClick={() => handleEditOrder(order._id)}
-            className="text-gray-500 hover:text-gray-700 transition-colors"
-            title="Edit Order"
-          >
-            <HiPencil className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => handleDeleteOrder(order._id)}
-            className="text-gray-500 hover:text-gray-700 transition-colors"
-            title="Delete Order"
-          >
-            <HiTrash className="w-4 h-4" />
-          </button>
+          {!isAccountsManager && (
+            <>
+              <button
+                onClick={() => handleEditOrder(order._id)}
+                className="text-gray-500 hover:text-gray-700 transition-colors"
+                title="Edit Order"
+              >
+                <HiPencil className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => handleDeleteOrder(order._id)}
+                className="text-gray-500 hover:text-gray-700 transition-colors"
+                title="Delete Order"
+              >
+                <HiTrash className="w-4 h-4" />
+              </button>
+            </>
+          )}
         </div>
       )
     }
@@ -729,13 +737,15 @@ const OrdersPage = () => {
           <h1 className="text-2xl font-bold text-gray-900">Orders</h1>
           <p className="text-gray-600">Manage customer orders and track their status</p>
         </div>
-        <Button
-          onClick={() => navigate('/orders/new')}
-          variant="primary"
-          icon={HiPlus}
-        >
-          New Order
-        </Button>
+        {!isAccountsManager && (
+          <Button
+            onClick={() => navigate('/orders/new')}
+            variant="primary"
+            icon={HiPlus}
+          >
+            New Order
+          </Button>
+        )}
       </div>
 
       {/* Stats Cards */}

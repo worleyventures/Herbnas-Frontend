@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Button, Input, Select, TextArea, Loading } from '../../components/common';
 import { createAccount, updateAccount, getAccountById } from '../../redux/actions/accountActions';
 import { getAllBranches } from '../../redux/actions/branchActions';
+import { getAllOrders } from '../../redux/actions/orderActions';
 import { addNotification } from '../../redux/slices/uiSlice';
 
 const AccountFormPage = () => {
@@ -14,6 +15,9 @@ const AccountFormPage = () => {
 
   // Get branches from Redux store
   const { branches = [], loading: branchesLoading } = useSelector(state => state.branches || {});
+  
+  // Get orders from Redux store
+  const { orders = [], loading: ordersLoading } = useSelector(state => state.orders || {});
   
   // Get user information for role-based functionality
   const { user } = useSelector((state) => state.auth);
@@ -31,7 +35,8 @@ const AccountFormPage = () => {
     amount: '',
     currency: 'INR',
     branchId: '',
-    orderId: '',
+    orderId: '', // Local orderId for display
+    orderIdMongo: '', // MongoDB _id for submission
     description: '',
     paymentMethod: 'cash',
     paymentStatus: 'completed',
@@ -53,6 +58,13 @@ const AccountFormPage = () => {
       const result = await dispatch(getAccountById(id)).unwrap();
       const account = result.data.account;
       
+      // Get local orderId if orderId is populated, otherwise use MongoDB _id
+      let displayOrderId = '';
+      if (account.orderId) {
+        // If populated, get the local orderId field
+        displayOrderId = account.orderId.orderId || account.orderId._id || '';
+      }
+      
       setFormData({
         transactionType: account.transactionType || 'income',
         category: account.category || '',
@@ -60,7 +72,8 @@ const AccountFormPage = () => {
         amount: account.amount || '',
         currency: account.currency || 'INR',
         branchId: account.branchId?._id || '',
-        orderId: account.orderId?._id || '',
+        orderId: displayOrderId, // Store local orderId for display
+        orderIdMongo: account.orderId?._id || '', // Store MongoDB _id separately for submission
         description: account.description || '',
         paymentMethod: account.paymentMethod || 'cash',
         paymentStatus: account.paymentStatus || 'completed',
@@ -87,10 +100,22 @@ const AccountFormPage = () => {
     console.log('AccountFormPage - Dispatching getAllBranches');
     dispatch(getAllBranches());
     
+    // Load orders if orderId field might be visible (income transactions with sales/service category)
+    if (formData.transactionType === 'income' && ['sales', 'service'].includes(formData.category)) {
+      dispatch(getAllOrders({ page: 1, limit: 1000 }));
+    }
+    
     if (isEdit) {
       loadAccountData();
     }
   }, [isEdit, id, dispatch, navigate]);
+
+  // Load orders when transaction type or category changes and orderId field becomes visible
+  useEffect(() => {
+    if (formData.transactionType === 'income' && ['sales', 'service'].includes(formData.category)) {
+      dispatch(getAllOrders({ page: 1, limit: 1000 }));
+    }
+  }, [formData.transactionType, formData.category, dispatch]);
 
   // Auto-select branch for accounts managers when creating new accounts
   useEffect(() => {
@@ -206,11 +231,40 @@ const AccountFormPage = () => {
 
     setLoading(true);
     try {
+      // Convert local orderId to MongoDB _id if orderId is provided
+      let orderIdMongo = null;
+      if (formData.orderId) {
+        // Check if it's already a MongoDB ObjectId (24 hex characters)
+        const isMongoId = /^[0-9a-fA-F]{24}$/.test(formData.orderId);
+        if (isMongoId) {
+          orderIdMongo = formData.orderId;
+        } else {
+          // Find order by local orderId
+          const order = orders.find(o => o.orderId === formData.orderId);
+          if (order) {
+            orderIdMongo = order._id;
+          } else {
+            dispatch(addNotification({
+              type: 'error',
+              message: `Order with ID "${formData.orderId}" not found`
+            }));
+            setLoading(false);
+            return;
+          }
+        }
+      } else if (formData.orderIdMongo) {
+        // Use stored MongoDB _id if local orderId is empty
+        orderIdMongo = formData.orderIdMongo;
+      }
+      
       const accountData = {
         ...formData,
         amount: parseFloat(formData.amount),
-        orderId: formData.orderId || null,
+        orderId: orderIdMongo,
       };
+      
+      // Remove orderIdMongo from accountData as it's not a field in the model
+      delete accountData.orderIdMongo;
 
       if (isEdit) {
         // Update existing account
@@ -283,6 +337,15 @@ const AccountFormPage = () => {
     label: `${branch.branchName} (${branch.branchCode})`
   }));
 
+  // Order options - show local orderId but store MongoDB _id
+  const orderOptions = orders
+    .filter(order => order.isActive !== false)
+    .map(order => ({
+      value: order.orderId, // Use local orderId as value for display
+      label: order.orderId, // Show only the order ID
+      mongoId: order._id // Store MongoDB _id separately
+    }));
+
   // Payment method options
   const paymentMethodOptions = [
     { value: 'cash', label: 'Cash' },
@@ -340,7 +403,8 @@ const AccountFormPage = () => {
               <Select
                 options={transactionTypeOptions}
                 value={formData.transactionType}
-                onChange={(value) => {
+                onChange={(e) => {
+                  const value = e.target.value;
                   handleInputChange('transactionType', value);
                   handleInputChange('category', ''); // Reset category when type changes
                 }}
@@ -354,7 +418,7 @@ const AccountFormPage = () => {
               <Select
                 options={getCategoryOptions()}
                 value={formData.category}
-                onChange={(value) => handleInputChange('category', value)}
+                onChange={(e) => handleInputChange('category', e.target.value)}
                 placeholder="Select category"
                 error={errors.category}
               />
@@ -399,7 +463,7 @@ const AccountFormPage = () => {
               <Select
                 options={branchOptions}
                 value={formData.branchId}
-                onChange={(value) => handleInputChange('branchId', value)}
+                onChange={(e) => handleInputChange('branchId', e.target.value)}
                 placeholder="Select branch"
                 error={errors.branchId}
                 disabled={isAccountsManager}
@@ -442,7 +506,7 @@ const AccountFormPage = () => {
               <Select
                 options={paymentMethodOptions}
                 value={formData.paymentMethod}
-                onChange={(value) => handleInputChange('paymentMethod', value)}
+                onChange={(e) => handleInputChange('paymentMethod', e.target.value)}
               />
             </div>
             <div>
@@ -452,7 +516,7 @@ const AccountFormPage = () => {
               <Select
                 options={paymentStatusOptions}
                 value={formData.paymentStatus}
-                onChange={(value) => handleInputChange('paymentStatus', value)}
+                onChange={(e) => handleInputChange('paymentStatus', e.target.value)}
               />
             </div>
           </div>
@@ -487,10 +551,19 @@ const AccountFormPage = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Order ID
                 </label>
-                <Input
+                <Select
+                  options={orderOptions}
                   value={formData.orderId}
-                  onChange={(e) => handleInputChange('orderId', e.target.value)}
-                  placeholder="Enter order ID (optional)"
+                  onChange={(e) => {
+                    const selectedOrderId = e.target.value;
+                    const selectedOrder = orderOptions.find(opt => opt.value === selectedOrderId);
+                    handleInputChange('orderId', selectedOrderId);
+                    if (selectedOrder) {
+                      handleInputChange('orderIdMongo', selectedOrder.mongoId);
+                    }
+                  }}
+                  placeholder="Select order (optional)"
+                  searchable={true}
                 />
               </div>
             ) : (

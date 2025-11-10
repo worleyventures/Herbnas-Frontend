@@ -12,6 +12,10 @@ const ProductsPage = () => {
   const location = useLocation();
   const dispatch = useDispatch();
 
+  // Get user role for permissions
+  const { user } = useSelector((state) => state.auth || {});
+  const isAccountsManager = user?.role === 'accounts_manager';
+
   // Redux state
   const productState = useSelector((state) => state.products);
   const products = productState?.products || [];
@@ -237,16 +241,18 @@ const ProductsPage = () => {
             Manage all products and their details
           </p>
         </div>
-        <div className="mt-4 sm:mt-0 flex space-x-3">
-          <Button
-            className='sm:w-auto w-full'
-            onClick={handleCreateProduct}
-            variant="gradient"
-            icon={HiPlus}
-          >
-            Add Product
-          </Button>
-        </div>
+        {!isAccountsManager && (
+          <div className="mt-4 sm:mt-0 flex space-x-3">
+            <Button
+              className='sm:w-auto w-full'
+              onClick={handleCreateProduct}
+              variant="gradient"
+              icon={HiPlus}
+            >
+              Add Product
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Statistics Cards */}
