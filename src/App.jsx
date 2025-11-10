@@ -80,8 +80,16 @@ function App() {
             <Route path="/branches" element={<BranchesPage />} />
             <Route path="/branches/table" element={<BranchesPage />} />
             <Route path="/branches/map" element={<BranchesPage />} />
-            <Route path="/branches/create" element={<BranchFormPage />} />
-            <Route path="/branches/edit/:id" element={<BranchFormPage />} />
+            <Route path="/branches/create" element={
+              <RoleProtectedRoute allowedRoles={['super_admin', 'admin', 'supervisor']}>
+                <BranchFormPage />
+              </RoleProtectedRoute>
+            } />
+            <Route path="/branches/edit/:id" element={
+              <RoleProtectedRoute allowedRoles={['super_admin', 'admin', 'supervisor']}>
+                <BranchFormPage />
+              </RoleProtectedRoute>
+            } />
             <Route path="/branches/view/:id" element={<BranchDetailsPage />} />
             <Route path="/health-issues" element={<HealthPage />} />
             <Route path="/health-issues/create" element={<HealthFormPage />} />

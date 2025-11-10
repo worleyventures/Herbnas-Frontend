@@ -15,7 +15,7 @@ import { Table, StatusBadge, ConfirmationModal, ActionButton } from '../../commo
 import CommonModal from '../../common/CommonModal';
 import DetailsView from '../../common/DetailsView';
 import Button from '../../common/Button';
-import { updateSentGoodsStatus, markAsReceived } from '../../../redux/actions/sentGoodsActions';
+import { updateSentGoodsStatus, markAsReceived, getReceivedGoods } from '../../../redux/actions/sentGoodsActions';
 import { markGoodsRequestAsReceived } from '../../../redux/actions/goodsRequestActions';
 import { addNotification } from '../../../redux/slices/uiSlice';
 
@@ -270,9 +270,12 @@ const ReceivedGoodsCRUD = ({
           type: 'success',
           message: `Status updated to ${getStatusDisplay(newStatus)} successfully!`
         }));
-        // Refresh the data
+        // Refresh the data immediately
         if (onRefresh) {
           onRefresh();
+        } else {
+          // Fallback: dispatch refresh if onRefresh is not available
+          dispatch(getReceivedGoods({ page: 1, limit: 1000 }));
         }
       } else {
         dispatch(addNotification({

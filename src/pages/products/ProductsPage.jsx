@@ -68,11 +68,11 @@ const ProductsPage = () => {
     return matchesSearch && matchesCategory;
   });
 
-  // Calculate statistics
-  const totalProducts = stats?.totalProducts || products.length;
-  const activeProducts = stats?.activeProducts || products.filter(p => p.isActive).length;
-  const categories = [...new Set(products.map(p => p.category))];
-  const totalValue = stats?.totalValue || products.reduce((sum, product) => sum + (product.price || 0), 0);
+  // Calculate statistics from filtered products array
+  const totalProducts = filteredProducts.length;
+  const activeProducts = filteredProducts.filter(p => p.isActive).length;
+  const categories = [...new Set(filteredProducts.map(p => p.category))];
+  const totalValue = filteredProducts.reduce((sum, product) => sum + (product.price || 0), 0);
 
   // CRUD Handlers
   const handleSelectProduct = (product) => {

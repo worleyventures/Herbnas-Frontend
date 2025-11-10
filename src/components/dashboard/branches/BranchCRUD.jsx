@@ -42,6 +42,10 @@ const BranchCRUD = ({
   
   const dispatch = useDispatch();
   
+  // Get user role for permission checks
+  const { user } = useSelector((state) => state.auth);
+  const isSalesExecutive = user?.role === 'sales_executive';
+  
   // Get users for createdBy/updatedBy display
   const users = useSelector((state) => state.user?.users || []);
   
@@ -165,39 +169,43 @@ const BranchCRUD = ({
             size="sm"
             title="View Details"
           />
-          <ActionButton
-            icon={HiPencil}
-            onClick={() => navigate(`/branches/edit/${branch._id}`, { 
-              state: { 
-                branch,
-                returnTo: '/branches'
-              }
-            })}
-            variant="edit"
-            size="sm"
-            title="Edit Branch"
-          />
-          {branch.isActive ? (
-            <ActionButton
-              icon={HiXCircle}
-              onClick={() => handleDisableBranch(branch)}
-              variant="warning"
-              size="sm"
-              title="Disable Branch"
-            />
-          ) : (
-            <ActionButton
-              icon={HiCheckCircle}
-              onClick={() => handleActivateBranch(branch)}
-              variant="success"
-              size="sm"
-              title="Activate Branch"
-            />
+          {!isSalesExecutive && (
+            <>
+              <ActionButton
+                icon={HiPencil}
+                onClick={() => navigate(`/branches/edit/${branch._id}`, { 
+                  state: { 
+                    branch,
+                    returnTo: '/branches'
+                  }
+                })}
+                variant="edit"
+                size="sm"
+                title="Edit Branch"
+              />
+              {branch.isActive ? (
+                <ActionButton
+                  icon={HiXCircle}
+                  onClick={() => handleDisableBranch(branch)}
+                  variant="warning"
+                  size="sm"
+                  title="Disable Branch"
+                />
+              ) : (
+                <ActionButton
+                  icon={HiCheckCircle}
+                  onClick={() => handleActivateBranch(branch)}
+                  variant="success"
+                  size="sm"
+                  title="Activate Branch"
+                />
+              )}
+            </>
           )}
         </div>
       )
     }
-  ], [allUsers]);
+  ], [allUsers, isSalesExecutive]);
 
 
   const handleDeleteBranch = (branch) => {
@@ -250,13 +258,15 @@ const BranchCRUD = ({
         <HiBuildingOffice2 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
         <h3 className="text-lg font-medium text-gray-900 mb-2">No Branches Found</h3>
         <p className="text-gray-600 mb-4">Get started by creating your first branch.</p>
-        <button
-          onClick={onCreateBranch}
-          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-[#22c55e] hover:bg-[#16a34a] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#22c55e]"
-        >
-          <HiBuildingOffice2 className="h-4 w-4 mr-2" />
-          Add New Branch
-        </button>
+        {!isSalesExecutive && (
+          <button
+            onClick={onCreateBranch}
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-[#22c55e] hover:bg-[#16a34a] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#22c55e]"
+          >
+            <HiBuildingOffice2 className="h-4 w-4 mr-2" />
+            Add New Branch
+          </button>
+        )}
       </div>
     );
   }

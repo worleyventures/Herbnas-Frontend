@@ -426,16 +426,18 @@ const BranchesDashboard = ({ propActiveView = 'table' }) => {
               Manage and track your branch locations effectively
             </p>
           </div>
-          <div className="flex items-center space-x-3 mt-4 sm:mt-0">
-            <Button
-              onClick={() => navigate('/branches/create')}
-              icon={HiPlus}
-              variant="gradient"
-              size="sm"
-            >
-              Add New Branch
-            </Button>
-          </div>
+          {user?.role !== 'sales_executive' && (
+            <div className="flex items-center space-x-3 mt-4 sm:mt-0">
+              <Button
+                onClick={() => navigate('/branches/create')}
+                icon={HiPlus}
+                variant="gradient"
+                size="sm"
+              >
+                Add New Branch
+              </Button>
+            </div>
+          )}
         </div>
 
           {/* Stats Cards */}

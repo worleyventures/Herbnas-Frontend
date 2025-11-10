@@ -133,10 +133,28 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
       if (updateSuccess) {
         setShowEditModal(false);
         setSelectedLead(null);
+        // Refresh the leads list after update
+        dispatch(getAllLeads({
+          page: currentPage,
+          limit: itemsPerPage,
+          search: searchTerm,
+          leadStatus: filterStatus === 'all' ? '' : filterStatus,
+          dispatchedFrom: filterBranch === 'all' ? '' : filterBranch
+        }));
+        dispatch(getLeadStats());
       }
       if (deleteSuccess) {
         setShowDeleteModal(false);
         setSelectedLead(null);
+        // Refresh the leads list after delete
+        dispatch(getAllLeads({
+          page: currentPage,
+          limit: itemsPerPage,
+          search: searchTerm,
+          leadStatus: filterStatus === 'all' ? '' : filterStatus,
+          dispatchedFrom: filterBranch === 'all' ? '' : filterBranch
+        }));
+        dispatch(getLeadStats());
       }
       
       const timer = setTimeout(() => {
@@ -144,7 +162,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
       }, 5000);
       return () => clearTimeout(timer);
     }
-  }, [createSuccess, updateSuccess, deleteSuccess, dispatch]);
+  }, [createSuccess, updateSuccess, deleteSuccess, dispatch, currentPage, itemsPerPage, searchTerm, filterStatus, filterBranch]);
 
   useEffect(() => {
     if (createError || updateError || deleteError) {
@@ -323,8 +341,9 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
     return 0;
   };
 
+  // Calculate stats from filtered leads array (use pagination for total, filtered array for status counts)
   const cardCounts = {
-    total: leads.length || stats?.overview?.totalLeads || totalLeads || 0,
+    total: totalLeads || pagination?.totalLeads || leads.length || 0,
     newLead: getStatusCount('new_lead'),
     qualified: getStatusCount('qualified'),
     unqualified: getStatusCount('unqualified'),
