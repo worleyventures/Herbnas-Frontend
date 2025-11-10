@@ -56,6 +56,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
   const { user, isAuthenticated } = useSelector((state) => state.auth);
   const { branches = [] } = useSelector((state) => state.branches);
   const isAccountsManager = user?.role === 'accounts_manager';
+  const isProductionManager = user?.role === 'production_manager';
 
   const {
     leads = [],
@@ -518,7 +519,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
               >
                 Import Leads
               </Button>
-              {!isAccountsManager && (
+              {!isAccountsManager && !isProductionManager && (
                 <Button
                   onClick={() => navigate('/leads/create')}
                   icon={HiPlus}
@@ -722,7 +723,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
               >
                 Import Leads
               </Button>
-              {!isAccountsManager && (
+              {!isAccountsManager && !isProductionManager && (
                 <Button
                   onClick={() => navigate('/leads/create')}
                   icon={HiPlus}

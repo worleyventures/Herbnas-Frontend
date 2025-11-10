@@ -45,6 +45,7 @@ const BranchesDashboard = ({ propActiveView = 'table' }) => {
 
   const { user, isAuthenticated } = useSelector((state) => state.auth);
   const isAccountsManager = user?.role === 'accounts_manager';
+  const isProductionManager = user?.role === 'production_manager';
   
   const {
     branches: allBranches = [],
@@ -429,7 +430,7 @@ const BranchesDashboard = ({ propActiveView = 'table' }) => {
           </div>
           {user?.role !== 'sales_executive' && (
             <div className="flex items-center space-x-3 mt-4 sm:mt-0">
-              {!isAccountsManager && (
+              {!isAccountsManager && !isProductionManager && (
                 <Button
                   onClick={() => navigate('/branches/create')}
                   icon={HiPlus}

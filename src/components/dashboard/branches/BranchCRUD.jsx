@@ -46,6 +46,7 @@ const BranchCRUD = ({
   const { user } = useSelector((state) => state.auth);
   const isSalesExecutive = user?.role === 'sales_executive';
   const isAccountsManager = user?.role === 'accounts_manager';
+  const isProductionManager = user?.role === 'production_manager';
   
   // Get users for createdBy/updatedBy display
   const users = useSelector((state) => state.user?.users || []);
@@ -170,7 +171,7 @@ const BranchCRUD = ({
             size="sm"
             title="View Details"
           />
-          {!isSalesExecutive && !isAccountsManager && (
+          {!isSalesExecutive && !isAccountsManager && !isProductionManager && (
             <>
               <ActionButton
                 icon={HiPencil}
@@ -259,7 +260,7 @@ const BranchCRUD = ({
         <HiBuildingOffice2 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
         <h3 className="text-lg font-medium text-gray-900 mb-2">No Branches Found</h3>
         <p className="text-gray-600 mb-4">Get started by creating your first branch.</p>
-        {!isSalesExecutive && !isAccountsManager && (
+        {!isSalesExecutive && !isAccountsManager && !isProductionManager && (
           <button
             onClick={onCreateBranch}
             className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-[#22c55e] hover:bg-[#16a34a] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#22c55e]"

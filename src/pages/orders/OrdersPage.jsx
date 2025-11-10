@@ -45,6 +45,7 @@ const OrdersPage = () => {
   // Get user role for permissions
   const { user } = useSelector((state) => state.auth || {});
   const isAccountsManager = user?.role === 'accounts_manager';
+  const isProductionManager = user?.role === 'production_manager';
   
   // Redux state
   const orders = useSelector(selectOrders);
@@ -669,7 +670,7 @@ const OrdersPage = () => {
           >
             <HiDocumentArrowDown className="w-4 h-4" />
           </button>
-          {!isAccountsManager && (
+          {!isAccountsManager && !isProductionManager && (
             <>
               <button
                 onClick={() => handleEditOrder(order._id)}
@@ -737,7 +738,7 @@ const OrdersPage = () => {
           <h1 className="text-2xl font-bold text-gray-900">Orders</h1>
           <p className="text-gray-600">Manage customer orders and track their status</p>
         </div>
-        {!isAccountsManager && (
+        {!isAccountsManager && !isProductionManager && (
           <Button
             onClick={() => navigate('/orders/new')}
             variant="primary"
