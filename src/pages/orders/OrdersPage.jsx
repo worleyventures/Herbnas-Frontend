@@ -15,7 +15,8 @@ import {
   HiExclamationTriangle,
   HiEye,
   HiPencil,
-  HiTrash
+  HiTrash,
+  HiDocumentArrowDown
 } from 'react-icons/hi2';
 import { Button, Input, Select, Table, StatusBadge, Loading, StatCard, CommonModal } from '../../components/common';
 import OrderDetailsModal from '../../components/common/OrderDetailsModal';
@@ -229,6 +230,271 @@ const OrdersPage = () => {
     return totalAmount;
   };
 
+  // Generate invoice for an order
+  const handleGenerateInvoice = (order) => {
+    if (!order) return;
+
+    const customerName = order.customerType === 'user'
+      ? `${order.customerId?.firstName || ''} ${order.customerId?.lastName || ''}`.trim()
+      : order.leadId?.customerName || 'Unknown Customer';
+    
+    const customerEmail = order.customerType === 'user'
+      ? order.customerId?.email
+      : order.leadId?.email;
+    
+    const customerPhone = order.customerType === 'user'
+      ? order.customerId?.phone
+      : order.leadId?.customerMobile;
+
+    const codCharges = order.paymentMethod === 'cod' ? (order.codCharges || 0) : 0;
+    
+    // Calculate subtotal from items
+    const calculatedSubtotal = order.items?.reduce((sum, item) => {
+      const quantity = parseInt(item.quantity) || 0;
+      const unitPrice = parseFloat(item.unitPrice) || 0;
+      const totalPrice = parseFloat(item.totalPrice) || (quantity * unitPrice);
+      return sum + totalPrice;
+    }, 0) || 0;
+    
+    const subtotal = calculatedSubtotal > 0 ? calculatedSubtotal : (order.subtotal || 0);
+    const totalAmount = subtotal + (order.taxAmount || 0) + (order.shippingAmount || 0) + codCharges - (order.discountAmount || 0);
+    
+    const invoiceNumber = order.orderNumber || order.orderId;
+    const invoiceDate = new Date(order.createdAt).toLocaleDateString('en-IN', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+
+    const invoiceHTML = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>Invoice - ${invoiceNumber}</title>
+        <style>
+          * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+          }
+          body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f5f5f5;
+            padding: 20px;
+          }
+          .invoice-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+          }
+          .header {
+            border-bottom: 3px solid #8bc34a;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+          }
+          .header h1 {
+            color: #8bc34a;
+            font-size: 32px;
+            margin-bottom: 10px;
+          }
+          .header-info {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+          }
+          .info-section {
+            flex: 1;
+          }
+          .info-section h3 {
+            color: #333;
+            font-size: 16px;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+          }
+          .info-section p {
+            margin: 5px 0;
+            font-size: 14px;
+            color: #666;
+          }
+          .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 30px 0;
+          }
+          .items-table th {
+            background: #8bc34a;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+          }
+          .items-table td {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+          }
+          .items-table tr:hover {
+            background: #f9f9f9;
+          }
+          .totals {
+            margin-top: 20px;
+            border-top: 2px solid #eee;
+            padding-top: 20px;
+          }
+          .total-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            font-size: 14px;
+          }
+          .total-label {
+            font-weight: 500;
+            color: #666;
+          }
+          .total-amount {
+            font-weight: 600;
+            color: #333;
+          }
+          .grand-total {
+            border-top: 2px solid #8bc34a;
+            margin-top: 10px;
+            padding-top: 15px;
+            font-size: 18px;
+          }
+          .grand-total .total-label {
+            font-size: 18px;
+            font-weight: 700;
+            color: #333;
+          }
+          .grand-total .total-amount {
+            font-size: 20px;
+            color: #8bc34a;
+          }
+          .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            text-align: center;
+            color: #666;
+            font-size: 12px;
+          }
+          @media print {
+            body {
+              background: white;
+              padding: 0;
+            }
+            .invoice-container {
+              box-shadow: none;
+              padding: 20px;
+            }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="invoice-container">
+          <div class="header">
+            <h1>INVOICE</h1>
+            <div class="header-info">
+              <div class="info-section">
+                <h3>Bill To:</h3>
+                <p><strong>${customerName}</strong></p>
+                ${customerPhone ? `<p>Phone: ${customerPhone}</p>` : ''}
+                ${customerEmail ? `<p>Email: ${customerEmail}</p>` : ''}
+                <p>${order.shippingAddress?.address || ''}</p>
+                <p>${order.shippingAddress?.city || ''}, ${order.shippingAddress?.state || ''} ${order.shippingAddress?.pincode || ''}</p>
+              </div>
+              <div class="info-section">
+                <h3>Invoice Details:</h3>
+                <p><strong>Invoice #:</strong> ${invoiceNumber}</p>
+                <p><strong>Order ID:</strong> ${order.orderId}</p>
+                <p><strong>Date:</strong> ${invoiceDate}</p>
+                ${order.branchId?.branchName ? `<p><strong>Branch:</strong> ${order.branchId.branchName}</p>` : ''}
+              </div>
+            </div>
+          </div>
+          
+          <table class="items-table">
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th>Product ID</th>
+                <th>Quantity</th>
+                <th>Unit Price</th>
+                <th>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${order.items?.map(item => `
+                <tr>
+                  <td>${item.productId?.productName || 'Unknown Product'}</td>
+                  <td>${item.productId?.productId || 'N/A'}</td>
+                  <td>${item.quantity}</td>
+                  <td>₹${item.unitPrice?.toLocaleString() || '0'}</td>
+                  <td>₹${item.totalPrice?.toLocaleString() || '0'}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+          
+          <div class="totals">
+            <div class="total-row">
+              <span class="total-label">Subtotal:</span>
+              <span class="total-amount">₹${subtotal.toLocaleString()}</span>
+            </div>
+            ${order.taxAmount > 0 ? `
+              <div class="total-row">
+                <span class="total-label">Tax:</span>
+                <span class="total-amount">₹${order.taxAmount?.toLocaleString() || '0'}</span>
+              </div>
+            ` : ''}
+            ${order.shippingAmount > 0 ? `
+              <div class="total-row">
+                <span class="total-label">Shipping:</span>
+                <span class="total-amount">₹${order.shippingAmount?.toLocaleString() || '0'}</span>
+              </div>
+            ` : ''}
+            ${codCharges > 0 ? `
+              <div class="total-row">
+                <span class="total-label">COD Charges:</span>
+                <span class="total-amount">₹${codCharges.toLocaleString()}</span>
+              </div>
+            ` : ''}
+            ${order.discountAmount > 0 ? `
+              <div class="total-row">
+                <span class="total-label">Discount:</span>
+                <span class="total-amount">-₹${order.discountAmount?.toLocaleString() || '0'}</span>
+              </div>
+            ` : ''}
+            <div class="total-row grand-total">
+              <span class="total-label">Total Amount:</span>
+              <span class="total-amount">₹${totalAmount.toLocaleString()}</span>
+            </div>
+          </div>
+          
+          <div class="footer">
+            <p><strong>Payment Method:</strong> ${order.paymentMethod?.toUpperCase() || 'N/A'}</p>
+            <p><strong>Payment Status:</strong> ${order.paymentStatus?.toUpperCase() || 'PENDING'}</p>
+            ${order.notes ? `<p style="margin-top: 15px;"><strong>Notes:</strong> ${order.notes}</p>` : ''}
+            <p style="margin-top: 20px;">Thank you for your business!</p>
+            <p>This is a computer-generated invoice.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    // Open invoice in new window
+    const invoiceWindow = window.open('', '_blank', 'width=900,height=700,scrollbars=yes,resizable=yes');
+    invoiceWindow.document.write(invoiceHTML);
+    invoiceWindow.document.close();
+    invoiceWindow.focus();
+  };
+
   // Table columns
   const columns = [
     {
@@ -377,6 +643,13 @@ const OrdersPage = () => {
             title="View Order"
           >
             <HiEye className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => handleGenerateInvoice(order)}
+            className="text-gray-500 hover:text-gray-700 transition-colors"
+            title="Generate Invoice"
+          >
+            <HiDocumentArrowDown className="w-4 h-4" />
           </button>
           <button
             onClick={() => handleEditOrder(order._id)}

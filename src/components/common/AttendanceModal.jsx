@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { HiXMark, HiClock, HiMapPin, HiDocumentText } from 'react-icons/hi2';
-import { Button, Input, TextArea, Loading } from './index';
+import { Button, Input, TextArea, Loading, Dropdown } from './index';
 import { 
   checkIn, 
   checkOut, 
@@ -29,6 +29,15 @@ const AttendanceModal = ({ isOpen, onClose }) => {
   const [location, setLocation] = useState('');
   const [remarks, setRemarks] = useState('');
   const [manualTime, setManualTime] = useState('');
+
+  // Work type options for dropdown
+  const workTypeOptions = [
+    { value: 'office', label: 'Office Work' },
+    { value: 'field', label: 'Field Work' },
+    { value: 'remote', label: 'Remote Work' },
+    { value: 'meeting', label: 'Meeting' },
+    { value: 'training', label: 'Training' }
+  ];
 
   // Load today's attendance when modal opens
   useEffect(() => {
@@ -214,27 +223,20 @@ const AttendanceModal = ({ isOpen, onClose }) => {
             {status === 'not_checked_in' && (
               <div className="space-y-3">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-800 mb-2 flex items-center">
-                    <span className="w-2 h-2 bg-red-500 rounded-full mr-2"></span>
+                  <label className="block text-sm font-semibold text-gray-800 mb-2">
                     Work Type *
                   </label>
-                  <select
+                  <Dropdown
+                    options={workTypeOptions}
                     value={workType}
                     onChange={(e) => setWorkType(e.target.value)}
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-gray-700 font-medium"
-                  >
-                    <option value="">Choose your work type</option>
-                    <option value="office">🏢 Office Work</option>
-                    <option value="field">🌾 Field Work</option>
-                    <option value="remote">🏠 Remote Work</option>
-                    <option value="meeting">🤝 Meeting</option>
-                    <option value="training">📚 Training</option>
-                  </select>
+                    placeholder="Choose your work type"
+                    className="w-full"
+                  />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-800 mb-2 flex items-center">
-                    <span className="w-2 h-2 bg-red-500 rounded-full mr-2"></span>
+                  <label className="block text-sm font-semibold text-gray-800 mb-2">
                     Location *
                   </label>
                   <Input
@@ -242,13 +244,12 @@ const AttendanceModal = ({ isOpen, onClose }) => {
                     onChange={(e) => setLocation(e.target.value)}
                     placeholder="Enter your current location"
                     icon={HiMapPin}
-                    className="px-3 py-2 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                    className="w-full"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-800 mb-2 flex items-center">
-                    <span className="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
+                  <label className="block text-sm font-semibold text-gray-800 mb-2">
                     Time
                   </label>
                   <Input
@@ -256,7 +257,7 @@ const AttendanceModal = ({ isOpen, onClose }) => {
                     value={manualTime}
                     onChange={(e) => setManualTime(e.target.value)}
                     placeholder="HH:MM AM/PM"
-                    className="px-3 py-2 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                    className="w-full"
                   />
                   <p className="text-xs text-gray-500 mt-1">Current time is automatically set, but you can adjust it manually (e.g., 09:30 AM)</p>
                 </div>
@@ -267,8 +268,7 @@ const AttendanceModal = ({ isOpen, onClose }) => {
             {(status === 'checked_in' || status === 'on_break') && (
               <div className="space-y-3">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-800 mb-2 flex items-center">
-                    <span className="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
+                  <label className="block text-sm font-semibold text-gray-800 mb-2">
                     Current Location
                   </label>
                   <Input
@@ -276,13 +276,12 @@ const AttendanceModal = ({ isOpen, onClose }) => {
                     onChange={(e) => setLocation(e.target.value)}
                     placeholder="Enter your current location"
                     icon={HiMapPin}
-                    className="px-3 py-2 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                    className="w-full"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-800 mb-2 flex items-center">
-                    <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+                  <label className="block text-sm font-semibold text-gray-800 mb-2">
                     Time
                   </label>
                   <Input
@@ -290,7 +289,7 @@ const AttendanceModal = ({ isOpen, onClose }) => {
                     value={manualTime}
                     onChange={(e) => setManualTime(e.target.value)}
                     placeholder="HH:MM AM/PM"
-                    className="px-3 py-2 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                    className="w-full"
                   />
                   <p className="text-xs text-gray-500 mt-1">Current time is automatically set, but you can adjust it manually (e.g., 09:30 AM)</p>
                 </div>
@@ -300,8 +299,7 @@ const AttendanceModal = ({ isOpen, onClose }) => {
             {/* Remarks field - show for all statuses except checked out */}
             {status !== 'checked_out' && (
               <div className="mt-3">
-                <label className="block text-sm font-semibold text-gray-800 mb-2 flex items-center">
-                  <span className="w-2 h-2 bg-gray-400 rounded-full mr-2"></span>
+                <label className="block text-sm font-semibold text-gray-800 mb-2">
                   Remarks
                 </label>
                 <TextArea
@@ -315,7 +313,7 @@ const AttendanceModal = ({ isOpen, onClose }) => {
                       : "Checkout notes or comments..."
                   }
                   rows={2}
-                  className="px-3 py-2 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 resize-none"
+                  className="w-full"
                 />
               </div>
             )}
