@@ -816,11 +816,6 @@ const LeadFormSingle = ({
                     emptyMessage="No active branches available"
                     className={user?.role === 'accounts_manager' ? 'opacity-60 cursor-not-allowed' : ''}
                   />
-                  {user?.role === 'accounts_manager' && (
-                    <p className="mt-1 text-sm text-gray-500">
-                      Branch is automatically set to your assigned branch
-                    </p>
-                  )}
                   {user?.role !== 'accounts_manager' && branchesLoading && (
                     <p className="mt-1 text-xs text-gray-500">Loading branches...</p>
                   )}
