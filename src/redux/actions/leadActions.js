@@ -35,6 +35,9 @@ export const getAllLeads = createAsyncThunk(
       if (params.sortBy) queryParams.append('sortBy', params.sortBy);
       if (params.sortOrder) queryParams.append('sortOrder', params.sortOrder);
       
+      // Add cache-busting timestamp if provided (ignored by backend but prevents browser cache)
+      if (params._t) queryParams.append('_t', params._t);
+      
       const response = await api.get(`/leads?${queryParams.toString()}`);
       
       // Handle 204 No Content response (empty collection)

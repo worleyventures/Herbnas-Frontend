@@ -47,6 +47,7 @@ const LeadFormSingle = ({
     leadStatus: 'new_lead',
     priority: 'medium',
     leadSource: '',
+    leadDate: new Date().toISOString().split('T')[0], // Initialize with today's date
     notes: '',
     reminders: [],
     healthIssues: [],
@@ -112,6 +113,15 @@ const LeadFormSingle = ({
         }
       }
       
+      // Format leadDate for input field (YYYY-MM-DD format)
+      let leadDateValue = new Date().toISOString().split('T')[0]; // Default to today
+      if (selectedLead.leadDate) {
+        const leadDate = new Date(selectedLead.leadDate);
+        if (!isNaN(leadDate.getTime())) {
+          leadDateValue = leadDate.toISOString().split('T')[0];
+        }
+      }
+      
       setFormData({
         customerName: selectedLead.customerName || '',
         mobileNumber: selectedLead.customerMobile || '',
@@ -122,6 +132,7 @@ const LeadFormSingle = ({
         leadStatus: selectedLead.leadStatus || 'new_lead',
         priority: selectedLead.priority || 'medium',
         leadSource: selectedLead.leadSource || '',
+        leadDate: leadDateValue,
         notes: selectedLead.notes || '',
         reminders: selectedLead.reminders || [],
         healthIssues: selectedLead.healthIssues || [],
@@ -745,7 +756,22 @@ const LeadFormSingle = ({
                 </div>
               </div>
               
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Lead Date
+                  </label>
+                  <Input
+                    name="leadDate"
+                    value={formData.leadDate}
+                    onChange={handleInputChange}
+                    placeholder="Select lead date"
+                    icon={HiCalendar}
+                    type="date"
+                    max={new Date().toISOString().split('T')[0]} // Prevent future dates
+                  />
+                </div>
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Email Address
@@ -787,7 +813,9 @@ const LeadFormSingle = ({
                     placeholder="Select priority"
                   />
                 </div>
+              </div>
 
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Lead Source

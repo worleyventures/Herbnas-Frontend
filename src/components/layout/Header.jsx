@@ -36,6 +36,17 @@ const Header = ({ sidebarOpen, setSidebarOpen, showAttendanceModal, setShowAtten
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [notificationDropdownOpen, setNotificationDropdownOpen] = useState(false);
   
+  // Track read notifications (persist in localStorage)
+  const [readNotifications, setReadNotifications] = useState(() => {
+    try {
+      const stored = localStorage.getItem('readNotifications');
+      return stored ? JSON.parse(stored) : [];
+    } catch (error) {
+      console.error('Error loading read notifications:', error);
+      return [];
+    }
+  });
+  
   // Attendance state
   const todayAttendance = useSelector(selectTodayAttendance);
   const attendanceLoading = useSelector(selectAttendanceLoading);
@@ -225,12 +236,13 @@ const Header = ({ sidebarOpen, setSidebarOpen, showAttendanceModal, setShowAtten
         // Show reminder if follow-up is due within 24 hours
         if (hoursDiff <= 24 && hoursDiff >= -24) {
           const isOverdue = hoursDiff < 0;
+          const notificationId = `followup-${lead._id || lead.id}`;
           notifications.push({
-            id: `followup-${lead._id || lead.id}`,
+            id: notificationId,
             title: isOverdue ? 'Overdue Follow-up' : 'Follow-up Reminder',
             message: `${lead.customerName} - ${lead.customerMobile}`,
             time: isOverdue ? `${Math.abs(Math.round(hoursDiff))} hours overdue` : `Due in ${Math.round(hoursDiff)} hours`,
-            unread: true,
+            unread: !readNotifications.includes(notificationId),
             type: 'followup',
             leadId: lead._id || lead.id
           });
@@ -244,12 +256,13 @@ const Header = ({ sidebarOpen, setSidebarOpen, showAttendanceModal, setShowAtten
         const hoursDiff = timeDiff / (1000 * 60 * 60);
         
         if (hoursDiff <= 1) {
+          const notificationId = `new-${lead._id || lead.id}`;
           notifications.push({
-            id: `new-${lead._id || lead.id}`,
+            id: notificationId,
             title: 'New Lead Assigned',
             message: `${lead.customerName} - ${lead.branch || 'No Branch'}`,
             time: `${Math.round(hoursDiff * 60)} min ago`,
-            unread: true,
+            unread: !readNotifications.includes(notificationId),
             type: 'new_lead',
             leadId: lead._id || lead.id
           });
@@ -262,6 +275,19 @@ const Header = ({ sidebarOpen, setSidebarOpen, showAttendanceModal, setShowAtten
       if (a.unread !== b.unread) return b.unread - a.unread;
       return new Date(b.time) - new Date(a.time);
     });
+  };
+  
+  // Mark notification as read
+  const markNotificationAsRead = (notificationId) => {
+    if (!readNotifications.includes(notificationId)) {
+      const updated = [...readNotifications, notificationId];
+      setReadNotifications(updated);
+      try {
+        localStorage.setItem('readNotifications', JSON.stringify(updated));
+      } catch (error) {
+        console.error('Error saving read notifications:', error);
+      }
+    }
   };
 
   const notifications = generateNotifications();
@@ -364,6 +390,8 @@ const Header = ({ sidebarOpen, setSidebarOpen, showAttendanceModal, setShowAtten
                         <div
                           key={notification.id}
                           onClick={() => {
+                            // Mark notification as read when clicked
+                            markNotificationAsRead(notification.id);
                             // Navigate to leads page when notification is clicked
                             navigate('/leads');
                             setNotificationDropdownOpen(false);

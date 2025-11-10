@@ -140,26 +140,32 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
       if (updateSuccess) {
         setShowEditModal(false);
         setSelectedLead(null);
-        // Refresh the leads list after update
+        // Clear leads state to force fresh fetch (prevents cache issues)
+        dispatch(clearAllLeadData());
+        // Refresh the leads list after update with cache-busting
         dispatch(getAllLeads({
           page: currentPage,
           limit: itemsPerPage,
           search: searchTerm,
           leadStatus: filterStatus === 'all' ? '' : filterStatus,
-          dispatchedFrom: filterBranch === 'all' ? '' : filterBranch
+          dispatchedFrom: filterBranch === 'all' ? '' : filterBranch,
+          _t: Date.now() // Cache-busting timestamp
         }));
         dispatch(getLeadStats());
       }
       if (deleteSuccess) {
         setShowDeleteModal(false);
         setSelectedLead(null);
-        // Refresh the leads list after delete
+        // Clear leads state to force fresh fetch (prevents cache issues)
+        dispatch(clearAllLeadData());
+        // Refresh the leads list after delete with cache-busting
         dispatch(getAllLeads({
           page: currentPage,
           limit: itemsPerPage,
           search: searchTerm,
           leadStatus: filterStatus === 'all' ? '' : filterStatus,
-          dispatchedFrom: filterBranch === 'all' ? '' : filterBranch
+          dispatchedFrom: filterBranch === 'all' ? '' : filterBranch,
+          _t: Date.now() // Cache-busting timestamp
         }));
         dispatch(getLeadStats());
       }
@@ -278,13 +284,17 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
         setShowEditModal(false);
         setSelectedLead(null);
         
-        // Refresh the leads list immediately
+        // Clear leads state to force fresh fetch (prevents cache issues)
+        dispatch(clearAllLeadData());
+        
+        // Refresh the leads list immediately with cache-busting
         dispatch(getAllLeads({
           page: currentPage,
           limit: itemsPerPage,
           search: searchTerm,
           leadStatus: filterStatus === 'all' ? '' : filterStatus,
-          dispatchedFrom: filterBranch === 'all' ? '' : filterBranch
+          dispatchedFrom: filterBranch === 'all' ? '' : filterBranch,
+          _t: Date.now() // Cache-busting timestamp
         }));
         dispatch(getLeadStats());
         
@@ -305,15 +315,41 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
     }
   };
 
-  const handleDeleteLead = () => {
+  const handleDeleteLead = async () => {
     try {
       if (selectedLead) {
-        dispatch(deleteLead(selectedLead._id));
+        const result = await dispatch(deleteLead(selectedLead._id)).unwrap();
+        
+        // Close modal and clear selection
         setShowDeleteModal(false);
         setSelectedLead(null);
+        
+        // Clear leads state to force fresh fetch (prevents cache issues)
+        dispatch(clearAllLeadData());
+        
+        // Refresh the leads list immediately after deletion with cache-busting
+        dispatch(getAllLeads({
+          page: currentPage,
+          limit: itemsPerPage,
+          search: searchTerm,
+          leadStatus: filterStatus === 'all' ? '' : filterStatus,
+          dispatchedFrom: filterBranch === 'all' ? '' : filterBranch,
+          _t: Date.now() // Cache-busting timestamp
+        }));
+        dispatch(getLeadStats());
+        
+        // Show success notification
+        dispatch(addNotification({
+          type: 'success',
+          message: 'Lead deleted successfully!'
+        }));
       }
     } catch (error) {
       console.error('Error deleting lead:', error);
+      dispatch(addNotification({
+        type: 'error',
+        message: error?.message || 'Failed to delete lead'
+      }));
     }
   };
 
@@ -321,13 +357,17 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
     try {
       const result = await dispatch(updateLeadStatus({ leadId, leadStatus: newStatus })).unwrap();
       
-      // Refresh the leads list immediately after status update
+      // Clear leads state to force fresh fetch (prevents cache issues)
+      dispatch(clearAllLeadData());
+      
+      // Refresh the leads list immediately after status update with cache-busting
       dispatch(getAllLeads({
         page: currentPage,
         limit: itemsPerPage,
         search: searchTerm,
         leadStatus: filterStatus === 'all' ? '' : filterStatus,
-        dispatchedFrom: filterBranch === 'all' ? '' : filterBranch
+        dispatchedFrom: filterBranch === 'all' ? '' : filterBranch,
+        _t: Date.now() // Cache-busting timestamp
       }));
       dispatch(getLeadStats());
       
