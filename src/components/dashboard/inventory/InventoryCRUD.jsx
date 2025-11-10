@@ -1045,9 +1045,9 @@ const InvoiceModal = ({ isOpen, onClose, account }) => {
         </div>
       }
     >
-      <div className="space-y-6">
+      <div className="space-y-4">
         {/* Invoice Details */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-b pb-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-b pb-4">
           <div>
             <h3 className="text-sm font-semibold text-gray-900 mb-3">Invoice Information</h3>
             <div className="space-y-2">
@@ -1094,7 +1094,7 @@ const InvoiceModal = ({ isOpen, onClose, account }) => {
         {/* Item Details */}
         <div className="border-b pb-4">
           <h3 className="text-sm font-semibold text-gray-900 mb-3">Item Details</h3>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <div>
               <label className="text-xs text-gray-500">Material Name</label>
               <p className="text-sm font-medium text-gray-900">
@@ -1132,24 +1132,37 @@ const InvoiceModal = ({ isOpen, onClose, account }) => {
         <div className="border-b pb-4">
           <h3 className="text-sm font-semibold text-gray-900 mb-3">Amount Details</h3>
           <div className="space-y-2">
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600">Subtotal:</span>
-              <span className="text-sm font-medium text-gray-900">
-                ₹{(account.totalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600">GST Amount:</span>
-              <span className="text-sm font-medium text-gray-900">
-                ₹{(account.gstAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </span>
-            </div>
-            <div className="flex justify-between items-center pt-2 border-t">
-              <span className="text-base font-semibold text-gray-900">Total Amount:</span>
-              <span className="text-base font-bold text-gray-900">
-                ₹{(account.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </span>
-            </div>
+            {(() => {
+              const quantity = account.quantity || 0;
+              const unitPrice = account.unitPrice || 0;
+              const subtotal = quantity * unitPrice;
+              const gstPercentage = account.gstPercentage || 0;
+              const gstAmount = account.gstAmount || (subtotal * gstPercentage / 100);
+              const totalAmount = account.amount || (subtotal + gstAmount);
+              
+              return (
+                <>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Subtotal:</span>
+                    <span className="text-sm font-medium text-gray-900">
+                      ₹{subtotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">GST Amount:</span>
+                    <span className="text-sm font-medium text-gray-900">
+                      ₹{gstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center pt-2 border-t">
+                    <span className="text-base font-semibold text-gray-900">Total Amount:</span>
+                    <span className="text-base font-bold text-gray-900">
+                      ₹{totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                </>
+              );
+            })()}
           </div>
         </div>
 

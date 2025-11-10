@@ -680,59 +680,14 @@ const OrderDetailsModal = ({ isOpen, onClose, orderId, onEdit, onDelete, onRefre
 
   const sections = prepareSections();
 
-  // Order items as a separate section
-  const orderItemsSection = order?.items && order.items.length > 0 ? (
-    <div className="mb-6">
-      <h5 className="text-sm font-bold bg-gradient-to-r from-[#8bc34a] to-[#558b2f] bg-clip-text text-transparent mb-3">
-        Order Items
-      </h5>
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                Product
-              </th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                Qty
-              </th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                Unit Price
-              </th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                Total
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {order.items.map((item, index) => (
-              <tr key={index}>
-                <td className="px-4 py-3">
-                  <div>
-                    <div className="text-sm font-medium text-gray-900">
-                      {item.productId?.productName || 'Unknown Product'}
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      ID: {item.productId?.productId || 'N/A'}
-                    </div>
-                  </div>
-                </td>
-                <td className="px-4 py-3 text-sm text-gray-900">
-                  {item.quantity}
-                </td>
-                <td className="px-4 py-3 text-sm text-gray-900">
-                  ₹{item.unitPrice?.toLocaleString()}
-                </td>
-                <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                  ₹{item.totalPrice?.toLocaleString()}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  ) : null;
+  // Order items as a details section
+  const orderItemsSection = order?.items && order.items.length > 0 ? {
+    title: 'Order Items',
+    fields: order.items.map((item, index) => ({
+      label: `${item.productId?.productName || 'Unknown Product'} (${item.productId?.productId || 'N/A'})`,
+      value: `Qty: ${item.quantity} × ₹${item.unitPrice?.toLocaleString()} = ₹${item.totalPrice?.toLocaleString()}`
+    }))
+  } : null;
 
   const footerContent = (
     <>
@@ -798,16 +753,16 @@ const OrderDetailsModal = ({ isOpen, onClose, orderId, onEdit, onDelete, onRefre
         ) : order ? (
           <div className="space-y-4">
             {/* Order Status Badges */}
-            <div className="flex items-center space-x-4 pb-3 border-b border-gray-200">
-              <div className="flex items-center space-x-2">
-                <span className="text-sm text-gray-600">Order Status:</span>
+            <div className="flex items-center space-x-6 pb-3 border-b border-gray-200">
+              <div className="flex items-center space-x-3">
+                <span className="text-sm font-medium text-gray-600">Order Status:</span>
                 <StatusBadge
                   status={order.status}
                   color={getStatusColor(order.status)}
                 />
               </div>
-              <div className="flex items-center space-x-2">
-                <span className="text-sm text-gray-600">Payment Status:</span>
+              <div className="flex items-center space-x-3">
+                <span className="text-sm font-medium text-gray-600">Payment Status:</span>
                 <StatusBadge
                   status={order.paymentStatus}
                   color={getPaymentStatusColor(order.paymentStatus)}
@@ -815,19 +770,19 @@ const OrderDetailsModal = ({ isOpen, onClose, orderId, onEdit, onDelete, onRefre
               </div>
             </div>
 
-            {/* Order Items Table */}
-            {orderItemsSection}
-
-            {/* Details Sections */}
+            {/* Details Sections - 3 sections per column */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <DetailsView sections={sections.slice(0, Math.ceil(sections.length / 3))} />
+                <DetailsView sections={[
+                  orderItemsSection,
+                  ...sections.slice(0, 2)
+                ].filter(Boolean)} />
               </div>
               <div>
-                <DetailsView sections={sections.slice(Math.ceil(sections.length / 3), Math.ceil(sections.length * 2 / 3))} />
+                <DetailsView sections={sections.slice(2, 5)} />
               </div>
               <div>
-                <DetailsView sections={sections.slice(Math.ceil(sections.length * 2 / 3))} />
+                <DetailsView sections={sections.slice(5)} />
               </div>
             </div>
           </div>

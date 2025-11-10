@@ -66,7 +66,7 @@ const Modal = ({
         >
           {/* Header */}
           {(title) && (
-            <div className="px-6 py-4 border-b border-gray-200 bg-gray-50/50">
+            <div className="px-6 py-5 border-b border-gray-200 bg-gray-50/50">
               <div className="flex items-center justify-between">
                 {title && (
                   <h3 className="text-lg font-semibold text-gray-900">
@@ -76,7 +76,7 @@ const Modal = ({
                 {showCloseButton && (
                   <button
                     onClick={onClose}
-                    className="text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#22c55e] focus:ring-offset-2 rounded-md p-1"
+                    className="text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#22c55e] focus:ring-offset-2 rounded-md p-2 flex-shrink-0"
                   >
                     <HiXMark className="h-6 w-6" />
                   </button>
@@ -86,7 +86,7 @@ const Modal = ({
           )}
 
           {/* Body */}
-          <div className="px-6 py-4 sm:p-6">
+          <div className="px-6 py-6">
             {children}
           </div>
         </div>

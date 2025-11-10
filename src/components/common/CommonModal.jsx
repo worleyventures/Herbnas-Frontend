@@ -29,7 +29,7 @@ const CommonModal = ({
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex min-h-screen items-center justify-center p-2">
+      <div className="flex min-h-screen items-center justify-center p-4 sm:p-6">
         {/* Backdrop */}
         <div
           className="fixed inset-0 bg-black/30 transition-opacity"
@@ -39,11 +39,11 @@ const CommonModal = ({
         {/* Modal */}
         <div className={`relative w-full bg-white rounded-xl shadow-2xl transform transition-all ${sizeClasses[size]} ${className}`}>
           {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-gray-100">
-            <div className="flex items-center space-x-2">
+          <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
+            <div className="flex items-center space-x-3">
               {Icon && (
-                <div className={`h-8 w-8 rounded-lg bg-gradient-to-br ${iconColor} flex items-center justify-center`}>
-                  <Icon className="h-4 w-4 text-white" />
+                <div className={`h-10 w-10 rounded-lg bg-gradient-to-br ${iconColor} flex items-center justify-center flex-shrink-0`}>
+                  <Icon className="h-5 w-5 text-white" />
                 </div>
               )}
               <div>
@@ -51,29 +51,29 @@ const CommonModal = ({
                   {title}
                 </h3>
                 {subtitle && (
-                  <p className="text-xs text-gray-500">{subtitle}</p>
+                  <p className="text-sm text-gray-500 mt-0.5">{subtitle}</p>
                 )}
               </div>
             </div>
             {showCloseButton && (
               <button
                 onClick={onClose}
-                className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
               >
-                <HiXMark className="h-4 w-4 text-gray-500" />
+                <HiXMark className="h-5 w-5 text-gray-500" />
               </button>
             )}
           </div>
 
           {/* Body */}
-          <div className="p-4">
+          <div className="px-6 py-6">
             {children}
           </div>
 
           {/* Footer */}
           {showFooter && (
-            <div className="px-4 py-3 bg-gray-50 rounded-b-xl">
-              <div className="flex items-center justify-end space-x-2">
+            <div className="px-6 py-4 bg-gray-50 rounded-b-xl border-t border-gray-100">
+              <div className="flex items-center justify-end space-x-3">
                 {footerContent}
               </div>
             </div>

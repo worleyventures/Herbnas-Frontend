@@ -133,37 +133,37 @@ const AttendanceModal = ({ isOpen, onClose }) => {
         {/* Modal Content */}
         <div className="relative transform overflow-y-auto max-h-[90vh] rounded-2xl bg-white text-left shadow-2xl transition-all w-full max-w-md z-[9999] mx-auto">
           {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gradient-to-r from-green-50 to-green-100">
-            <div className="flex items-center space-x-3">
-              <div className="h-12 w-12 bg-green-600 rounded-xl flex items-center justify-center shadow-lg">
+          <div className="flex items-center justify-between px-6 py-5 border-b border-gray-200 bg-gradient-to-r from-green-50 to-green-100">
+            <div className="flex items-center space-x-4">
+              <div className="h-12 w-12 bg-green-600 rounded-xl flex items-center justify-center shadow-lg flex-shrink-0">
                 <HiClock className="h-6 w-6 text-white" />
               </div>
               <div>
                 <h2 className="text-xl font-bold text-gray-900">Mark Attendance</h2>
-                <p className="text-sm text-gray-600">Record your work status and location</p>
+                <p className="text-sm text-gray-600 mt-0.5">Record your work status and location</p>
               </div>
             </div>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 transition-colors p-2 hover:bg-gray-100 rounded-lg"
+              className="text-gray-400 hover:text-gray-600 transition-colors p-2 hover:bg-gray-100 rounded-lg flex-shrink-0"
             >
               <HiXMark className="h-6 w-6" />
             </button>
           </div>
 
           {/* Content */}
-          <div className="p-4">
+          <div className="px-6 py-6">
             {loading && <Loading />}
             
             {error && (
-              <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-xs text-red-600">{error}</p>
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm text-red-600">{error}</p>
               </div>
             )}
 
             {success && (
-              <div className="mb-3 p-2 bg-green-50 border border-green-200 rounded-lg">
-                <p className="text-xs text-green-600">{success}</p>
+              <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                <p className="text-sm text-green-600">{success}</p>
               </div>
             )}
 
@@ -221,7 +221,7 @@ const AttendanceModal = ({ isOpen, onClose }) => {
 
             {/* Form Fields - Only show for check-in */}
             {status === 'not_checked_in' && (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-semibold text-gray-800 mb-2">
                     Work Type *
@@ -266,7 +266,7 @@ const AttendanceModal = ({ isOpen, onClose }) => {
 
             {/* Show location and time fields for break actions */}
             {(status === 'checked_in' || status === 'on_break') && (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-semibold text-gray-800 mb-2">
                     Current Location
@@ -298,7 +298,7 @@ const AttendanceModal = ({ isOpen, onClose }) => {
 
             {/* Remarks field - show for all statuses except checked out */}
             {status !== 'checked_out' && (
-              <div className="mt-3">
+              <div className="mt-6">
                 <label className="block text-sm font-semibold text-gray-800 mb-2">
                   Remarks
                 </label>
@@ -319,7 +319,7 @@ const AttendanceModal = ({ isOpen, onClose }) => {
             )}
 
             {/* Action Buttons */}
-            <div className="mt-4 space-y-2">
+            <div className="mt-6 space-y-3">
               {status === 'not_checked_in' && (
                 <Button
                   onClick={handleCheckIn}

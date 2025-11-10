@@ -104,7 +104,7 @@ function App() {
             <Route path="/orders/edit/:id" element={<OrderFormPage />} />
             <Route path="/orders/:id" element={<OrderDetailsPage />} />
             <Route path="/accounts" element={
-              <RoleProtectedRoute allowedRoles={['super_admin', 'admin', 'accounts_manager']}>
+              <RoleProtectedRoute allowedRoles={['super_admin', 'admin', 'accounts_manager', 'supervisor']}>
                 <AccountsPage />
               </RoleProtectedRoute>
             } />
