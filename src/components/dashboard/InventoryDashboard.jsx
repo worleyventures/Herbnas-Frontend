@@ -82,9 +82,24 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
   const isSupervisor = user?.role === 'supervisor';
   const isSuperAdmin = user?.role === 'super_admin';
   
-  // Set default tab based on role
-  const defaultTab = (isAccountsManager || isAdmin || isSupervisor) ? 'sentGoods' : isSuperAdmin ? 'goodsRequests' : (location.state?.activeTab || 'rawMaterials');
-  const [activeTab, setActiveTab] = useState(defaultTab); // 'rawMaterials', 'finishedGoods', 'sentGoods', or 'goodsRequests'
+  // Set default tab based on role - always show first available tab initially
+  // Priority: location.state?.activeTab > role-based default > first available tab
+  const getDefaultTab = () => {
+    // If location state has activeTab, use it
+    if (location.state?.activeTab) {
+      return location.state.activeTab;
+    }
+    
+    // For accounts_manager, admin, and supervisor, first tab is 'sentGoods'
+    if (isAccountsManager || isAdmin || isSupervisor) {
+      return 'sentGoods';
+    }
+    
+    // For super_admin and other roles, first tab is 'rawMaterials'
+    return 'rawMaterials';
+  };
+  
+  const [activeTab, setActiveTab] = useState(getDefaultTab()); // 'rawMaterials', 'finishedGoods', 'sentGoods', or 'goodsRequests'
 
   // Update active tab when location state changes
   useEffect(() => {
