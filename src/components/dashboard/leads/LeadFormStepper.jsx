@@ -313,6 +313,20 @@ const LeadFormStepper = ({
     }
   }, [selectedLead, mode, branches]);
 
+  // Auto-assign branch for non-super_admin users
+  useEffect(() => {
+    if (currentUser?.role !== 'super_admin' && currentUser?.branch && branches.length > 0 && !formData.dispatchedFrom) {
+      const userBranchId = currentUser.branch?._id || currentUser.branch;
+      const branchExists = branches.some(b => (b._id || b).toString() === userBranchId.toString());
+      if (branchExists) {
+        const branch = branches.find(b => (b._id || b).toString() === userBranchId.toString());
+        if (branch) {
+          handleBranchSelect(branch);
+        }
+      }
+    }
+  }, [currentUser, branches, formData.dispatchedFrom]);
+
   // Clear dispatchedFrom error when branch is selected
   useEffect(() => {
     if (formData.dispatchedFrom && errors.dispatchedFrom) {
@@ -593,9 +607,9 @@ const LeadFormStepper = ({
           errors={errors}
         />;
       case 'payment-assignment':
-        return <PaymentAssignmentStep 
-          formData={formData} 
-          setFormData={setFormData} 
+        return <PaymentAssignmentStep
+          formData={formData}
+          setFormData={setFormData}
           errors={errors}
           branches={branches}
           branchesLoading={branchesLoading}
@@ -605,6 +619,7 @@ const LeadFormStepper = ({
           showBranchDropdown={showBranchDropdown}
           setShowBranchDropdown={setShowBranchDropdown}
           handleBranchSelect={handleBranchSelect}
+          user={currentUser}
         />;
       default:
         return null;

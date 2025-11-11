@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
@@ -16,7 +16,9 @@ import {
   HiEye,
   HiPencil,
   HiTrash,
-  HiDocumentArrowDown
+  HiDocumentArrowDown,
+  HiCog6Tooth,
+  HiXMark
 } from 'react-icons/hi2';
 import { Button, Input, Select, Table, StatusBadge, Loading, StatCard, CommonModal } from '../../components/common';
 import OrderDetailsModal from '../../components/common/OrderDetailsModal';
@@ -25,8 +27,10 @@ import {
   getOrderStats,
   deleteOrder,
   updateOrderStatus,
-  updateOrderPayment
+  updateOrderPayment,
+  updateOrder
 } from '../../redux/actions/orderActions';
+import { getAllCourierPartners, createCourierPartner } from '../../redux/actions/courierPartnerActions';
 import { addNotification } from '../../redux/slices/uiSlice';
 import {
   selectOrders,
@@ -46,6 +50,11 @@ const OrdersPage = () => {
   const { user } = useSelector((state) => state.auth || {});
   const isAccountsManager = user?.role === 'accounts_manager';
   const isProductionManager = user?.role === 'production_manager';
+  const isSupervisor = user?.role === 'supervisor';
+  const isAdmin = user?.role === 'admin';
+  const isSuperAdmin = user?.role === 'super_admin';
+  const isSalesExecutive = user?.role === 'sales_executive';
+  const canUpdateCourierAndStatus = isSupervisor || isAdmin || isSuperAdmin;
   
   // Redux state
   const orders = useSelector(selectOrders);
@@ -64,17 +73,31 @@ const OrdersPage = () => {
   const [orderToDelete, setOrderToDelete] = useState(null);
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState(null);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [selectedOrderForUpdate, setSelectedOrderForUpdate] = useState(null);
+  const [courierPartners, setCourierPartners] = useState([]);
+  const [updateFormData, setUpdateFormData] = useState({
+    courierPartnerId: '',
+    status: ''
+  });
+  const [updating, setUpdating] = useState(false);
+  const [showAddCourierModal, setShowAddCourierModal] = useState(false);
+  const [newCourierName, setNewCourierName] = useState('');
 
   // Load data on component mount
   useEffect(() => {
-    dispatch(getAllOrders({
+    const orderParams = {
       page: currentPage,
       limit: 10,
       search: searchTerm,
       paymentStatus: paymentStatusFilter
-    }));
+    };
+    
+    // For sales executive, filter orders by createdBy (already handled by backend, but we can add it here for clarity)
+    // Note: Backend already filters by branch for sales_executive, but we need to filter by createdBy on frontend
+    dispatch(getAllOrders(orderParams));
     dispatch(getOrderStats());
-  }, [dispatch, currentPage, searchTerm, paymentStatusFilter]);
+  }, [dispatch, currentPage, searchTerm, paymentStatusFilter, isSalesExecutive, user?._id]);
 
   // Refresh orders when navigating to this page (e.g., returning from edit form)
   useEffect(() => {
@@ -514,6 +537,70 @@ const OrdersPage = () => {
     invoiceWindow.focus();
   };
 
+  // Handle update courier partner and status
+  const handleUpdateCourierAndStatus = (order) => {
+    setSelectedOrderForUpdate(order);
+    setUpdateFormData({
+      courierPartnerId: order.courierPartnerId?._id || order.courierPartnerId || '',
+      status: order.status || 'draft'
+    });
+    setShowUpdateModal(true);
+    // Fetch courier partners
+    dispatch(getAllCourierPartners({ isActive: true })).then((result) => {
+      if (result.payload?.data?.courierPartners) {
+        setCourierPartners(result.payload.data.courierPartners);
+      }
+    }).catch((error) => {
+      console.error('Error fetching courier partners:', error);
+    });
+  };
+
+  // Handle update form submission
+  const handleUpdateSubmit = async (e) => {
+    e.preventDefault();
+    if (!selectedOrderForUpdate) return;
+
+    setUpdating(true);
+    try {
+      const updateData = {
+        courierPartnerId: updateFormData.courierPartnerId || undefined,
+        status: updateFormData.status
+      };
+      
+      await dispatch(updateOrder({ id: selectedOrderForUpdate._id, orderData: updateData })).unwrap();
+      
+      dispatch(addNotification({
+        type: 'success',
+        message: 'Order updated successfully!'
+      }));
+      
+      setShowUpdateModal(false);
+      setSelectedOrderForUpdate(null);
+      setUpdateFormData({ courierPartnerId: '', status: '' });
+      
+      // Refresh orders
+      handleRefresh();
+    } catch (error) {
+      dispatch(addNotification({
+        type: 'error',
+        message: error || 'Failed to update order'
+      }));
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  // Order status options
+  const orderStatusOptions = [
+    { value: 'draft', label: 'Draft' },
+    { value: 'pending', label: 'Pending' },
+    { value: 'confirmed', label: 'Confirmed' },
+    { value: 'picked', label: 'Picked' },
+    { value: 'dispatched', label: 'Dispatched' },
+    { value: 'delivered', label: 'Delivered' },
+    { value: 'returned', label: 'Returned' }
+  ];
+
   // Table columns
   const columns = [
     {
@@ -670,6 +757,15 @@ const OrdersPage = () => {
           >
             <HiDocumentArrowDown className="w-4 h-4" />
           </button>
+          {canUpdateCourierAndStatus && (
+            <button
+              onClick={() => handleUpdateCourierAndStatus(order)}
+              className="text-gray-500 hover:text-gray-700 transition-colors"
+              title="Update Courier Partner & Status"
+            >
+              <HiCog6Tooth className="w-4 h-4" />
+            </button>
+          )}
           {!isAccountsManager && !isProductionManager && (
             <>
               <button
@@ -679,13 +775,16 @@ const OrdersPage = () => {
               >
                 <HiPencil className="w-4 h-4" />
               </button>
-              <button
-                onClick={() => handleDeleteOrder(order._id)}
-                className="text-gray-500 hover:text-gray-700 transition-colors"
-                title="Delete Order"
-              >
-                <HiTrash className="w-4 h-4" />
-              </button>
+              {/* Hide delete for sales executive */}
+              {!isSalesExecutive && (
+                <button
+                  onClick={() => handleDeleteOrder(order._id)}
+                  className="text-gray-500 hover:text-gray-700 transition-colors"
+                  title="Delete Order"
+                >
+                  <HiTrash className="w-4 h-4" />
+                </button>
+              )}
             </>
           )}
         </div>
@@ -703,23 +802,35 @@ const OrdersPage = () => {
     { value: 'failed', label: 'Failed' }
   ];
 
+  // Filter orders by createdBy for sales executive
+  const filteredOrders = useMemo(() => {
+    if (isSalesExecutive && user?._id) {
+      return orders.filter(order => {
+        const orderCreatedBy = order.createdBy?._id || order.createdBy;
+        const userId = user._id || user.id;
+        return orderCreatedBy && userId && orderCreatedBy.toString() === userId.toString();
+      });
+    }
+    return orders;
+  }, [orders, isSalesExecutive, user?._id]);
+
   // Calculate stats from filtered orders array
   // Use pagination.totalOrders for accurate total count (respects filters)
   // For revenue and status counts, calculate from visible orders (may not reflect all filtered orders if paginated)
-  const totalOrders = pagination?.totalOrders || orders.length;
+  const totalOrders = isSalesExecutive ? filteredOrders.length : (pagination?.totalOrders || orders.length);
   
   // Calculate revenue from visible orders
-  const totalRevenue = orders.reduce((sum, order) => {
+  const totalRevenue = filteredOrders.reduce((sum, order) => {
     const orderTotal = calculateOrderTotal(order);
     return sum + orderTotal;
   }, 0);
   
   // Calculate status counts from visible orders
   // Note: These counts only reflect the current page, not all filtered orders
-  const pendingOrders = orders.filter(order => 
+  const pendingOrders = filteredOrders.filter(order => 
     order.status === 'pending' || order.status === 'draft'
   ).length;
-  const deliveredOrders = orders.filter(order => 
+  const deliveredOrders = filteredOrders.filter(order => 
     order.status === 'delivered'
   ).length;
   
@@ -808,7 +919,7 @@ const OrdersPage = () => {
       {/* Orders Table */}
       <div className="bg-white">
         <Table
-          data={orders}
+          data={filteredOrders}
           columns={columns}
           loading={loading}
           error={error}
@@ -884,6 +995,212 @@ const OrdersPage = () => {
           </p>
         </div>
       </CommonModal>
+
+      {/* Update Courier Partner & Status Modal */}
+      <CommonModal
+        isOpen={showUpdateModal}
+        onClose={() => {
+          setShowUpdateModal(false);
+          setSelectedOrderForUpdate(null);
+          setUpdateFormData({ courierPartnerId: '', status: '' });
+        }}
+        title="Update Courier Partner & Order Status"
+        subtitle={selectedOrderForUpdate ? `Order: ${selectedOrderForUpdate.orderId}` : ''}
+        icon={HiCog6Tooth}
+        iconColor="from-blue-500 to-blue-600"
+        size="md"
+        showFooter={true}
+        footerContent={
+          <div className="flex space-x-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowUpdateModal(false);
+                setSelectedOrderForUpdate(null);
+                setUpdateFormData({ courierPartnerId: '', status: '' });
+              }}
+              size="sm"
+              disabled={updating}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleUpdateSubmit}
+              size="sm"
+              loading={updating}
+              disabled={updating}
+            >
+              Update Order
+            </Button>
+          </div>
+        }
+      >
+        <form onSubmit={handleUpdateSubmit} className="space-y-4">
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-sm font-medium text-gray-700">
+                Courier Partner
+              </label>
+              <button
+                type="button"
+                onClick={() => setShowAddCourierModal(true)}
+                className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1"
+              >
+                <HiPlus className="w-3 h-3" />
+                Add New
+              </button>
+            </div>
+            <Select
+              options={[
+                { value: '', label: 'Select Courier Partner' },
+                ...courierPartners.map(partner => ({
+                  value: partner._id,
+                  label: partner.name
+                }))
+              ]}
+              value={updateFormData.courierPartnerId}
+              onChange={(e) => setUpdateFormData(prev => ({ ...prev, courierPartnerId: e.target.value }))}
+              placeholder="Select Courier Partner"
+            />
+            <button
+              type="button"
+              onClick={() => setShowAddCourierModal(true)}
+              className="text-xs text-blue-600 hover:text-blue-800 mt-1 flex items-center gap-1 self-start"
+            >
+              <HiPlus className="w-3 h-3" />
+              Add New Courier Partner
+            </button>
+            <p className="text-xs text-gray-500 mt-1">
+              Leave empty to remove courier partner
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              Order Status *
+            </label>
+            <Select
+              options={orderStatusOptions}
+              value={updateFormData.status}
+              onChange={(e) => setUpdateFormData(prev => ({ ...prev, status: e.target.value }))}
+              placeholder="Select Order Status"
+              required
+            />
+          </div>
+
+          {selectedOrderForUpdate && (
+            <div className="bg-gray-50 rounded-lg p-3 text-sm">
+              <p className="text-gray-600 mb-1">
+                <strong>Current Status:</strong> {selectedOrderForUpdate.status || 'N/A'}
+              </p>
+              <p className="text-gray-600">
+                <strong>Current Courier Partner:</strong> {
+                  selectedOrderForUpdate.courierPartnerId?.name || 
+                  (selectedOrderForUpdate.courierPartnerId ? 'Selected' : 'None')
+                }
+              </p>
+            </div>
+          )}
+        </form>
+      </CommonModal>
+
+      {/* Add Courier Partner Modal */}
+      {showAddCourierModal && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex min-h-full items-center justify-center p-4 text-center sm:p-0">
+            {/* Backdrop */}
+            <div
+              className="fixed inset-0 bg-black/20 backdrop-blur-sm transition-opacity"
+              onClick={() => {
+                setShowAddCourierModal(false);
+                setNewCourierName('');
+              }}
+            ></div>
+
+            {/* Modal Content */}
+            <div className="relative transform overflow-hidden rounded-2xl bg-white/95 backdrop-blur-md text-left shadow-2xl transition-all w-full max-w-md">
+              {/* Header */}
+              <div className="px-6 py-4 border-b border-gray-200 bg-gray-50/50">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Add New Courier Partner
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAddCourierModal(false);
+                      setNewCourierName('');
+                    }}
+                    className="text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#22c55e] focus:ring-offset-2 rounded-md p-1"
+                  >
+                    <HiXMark className="h-6 w-6" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Body */}
+              <div className="px-6 py-4 sm:p-6">
+                <div className="space-y-4">
+                  <Input
+                    label="Courier Partner Name *"
+                    value={newCourierName}
+                    onChange={(e) => setNewCourierName(e.target.value)}
+                    placeholder="Enter courier partner name (e.g., BlueDart, FedEx, etc.)"
+                    className="w-full"
+                  />
+                  <div className="flex gap-2 justify-end pt-2">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => {
+                        setShowAddCourierModal(false);
+                        setNewCourierName('');
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="primary"
+                      onClick={async () => {
+                        if (!newCourierName.trim()) {
+                          dispatch(addNotification({
+                            type: 'error',
+                            message: 'Please enter courier partner name'
+                          }));
+                          return;
+                        }
+                        try {
+                          const result = await dispatch(createCourierPartner({ name: newCourierName.trim() })).unwrap();
+                          const newPartner = result.data?.courierPartner;
+                          if (newPartner) {
+                            setCourierPartners(prev => [...prev, newPartner]);
+                            setUpdateFormData(prev => ({ ...prev, courierPartnerId: newPartner._id }));
+                            setShowAddCourierModal(false);
+                            setNewCourierName('');
+                            dispatch(addNotification({
+                              type: 'success',
+                              message: 'Courier partner added successfully'
+                            }));
+                          }
+                        } catch (error) {
+                          dispatch(addNotification({
+                            type: 'error',
+                            message: error?.message || error?.toString() || 'Failed to create courier partner'
+                          }));
+                        }
+                      }}
+                    >
+                      Add
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

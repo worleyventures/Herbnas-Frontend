@@ -291,16 +291,23 @@ const InventoryCRUD = ({
           key: 'material',
           label: 'Material',
           sortable: true,
-          render: (inventoryItem) => (
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 truncate">
-                {inventoryItem.set || 'Unknown Material'}
-              </p>
-              <p className="text-sm text-gray-500 truncate">
-                ID: {inventoryItem.materialId || 'N/A'}
-              </p>
-            </div>
-          )
+          render: (inventoryItem) => {
+            // For sets, show set name, otherwise show materialName
+            const displayName = inventoryItem.materialType === 'sets' 
+              ? (inventoryItem.set || inventoryItem.materialName || 'Unknown Material')
+              : (inventoryItem.materialName || inventoryItem.set || 'Unknown Material');
+            
+            return (
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-900 truncate">
+                  {displayName}
+                </p>
+                <p className="text-sm text-gray-500 truncate">
+                  ID: {inventoryItem.materialId || 'N/A'}
+                </p>
+              </div>
+            );
+          }
         },
         {
           key: 'supplier',

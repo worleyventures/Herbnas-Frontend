@@ -57,6 +57,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
   const { branches = [] } = useSelector((state) => state.branches);
   const isAccountsManager = user?.role === 'accounts_manager';
   const isProductionManager = user?.role === 'production_manager';
+  const isSalesExecutive = user?.role === 'sales_executive';
 
   const {
     leads = [],
@@ -99,37 +100,51 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
   useEffect(() => {
     if (isAuthenticated && user) {
       // Fetch leads with current filters
-      dispatch(getAllLeads({
+      const leadParams = {
         page: currentPage,
         limit: itemsPerPage,
         search: searchTerm,
         leadStatus: filterStatus === 'all' ? '' : filterStatus,
         dispatchedFrom: filterBranch === 'all' ? '' : filterBranch
-      }));
+      };
+      
+      // For sales executive, only show leads created by them
+      if (isSalesExecutive && user?._id) {
+        leadParams.createdBy = user._id;
+      }
+      
+      dispatch(getAllLeads(leadParams));
       
       // Fetch stats
       dispatch(getLeadStats());
     }
-  }, [dispatch, isAuthenticated, user]);
+  }, [dispatch, isAuthenticated, user, isSalesExecutive]);
 
   // Refresh leads when navigating to this page (e.g., returning from edit form)
   useEffect(() => {
     if ((location.pathname === '/leads' || location.pathname === '/leads/table' || location.pathname === '/leads/pipeline') && isAuthenticated && user) {
       // Use a small delay to ensure state is ready after navigation
       const timeoutId = setTimeout(() => {
-        dispatch(getAllLeads({
+        const leadParams = {
           page: currentPage,
           limit: itemsPerPage,
           search: searchTerm,
           leadStatus: filterStatus === 'all' ? '' : filterStatus,
           dispatchedFrom: filterBranch === 'all' ? '' : filterBranch
-        }));
+        };
+        
+        // For sales executive, only show leads created by them
+        if (isSalesExecutive && user?._id) {
+          leadParams.createdBy = user._id;
+        }
+        
+        dispatch(getAllLeads(leadParams));
         dispatch(getLeadStats());
       }, 100);
       
       return () => clearTimeout(timeoutId);
     }
-  }, [location.pathname, dispatch, isAuthenticated, user, currentPage, itemsPerPage, searchTerm, filterStatus, filterBranch]);
+  }, [location.pathname, dispatch, isAuthenticated, user, isSalesExecutive, currentPage, itemsPerPage, searchTerm, filterStatus, filterBranch]);
 
   // Clear success/error messages after a delay and close modals on success
   useEffect(() => {
