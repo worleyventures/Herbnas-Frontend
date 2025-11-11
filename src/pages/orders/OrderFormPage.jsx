@@ -1551,25 +1551,6 @@ const OrderFormPage = () => {
                   </div>
                 )}
                 
-                {/* Ready Cash Display - Show for Cash, UPI, and COD */}
-                {['cash', 'upi', 'cod'].includes(formData.paymentMethod) && formData.branchId && selectedBranchDetails && (
-                  <div className="w-full flex flex-col">
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                      Ready Cash
-                    </label>
-                    <div className="text-sm text-gray-900 p-2 bg-green-50 rounded border border-green-200">
-                      <div className="font-medium text-green-800">
-                        {selectedBranchDetails.readyCashAmount !== undefined && selectedBranchDetails.readyCashAmount !== null
-                          ? `₹${parseFloat(selectedBranchDetails.readyCashAmount).toLocaleString()}`
-                          : '₹0.00'
-                        }
-                      </div>
-                      <div className="text-xs text-green-600 mt-1">
-                        Payment will be added to branch's ready cash
-                      </div>
-                    </div>
-                  </div>
-                )}
                 {/* Order Status - Show in edit mode or when payment method is COD */}
                 {(isEdit || formData.paymentMethod === 'cod') && (
                   <div className="w-full flex flex-col">
@@ -1622,45 +1603,6 @@ const OrderFormPage = () => {
                         className="w-full"
                         placeholder="Select courier partner"
                       />
-                      {/* Show courier partner deposit amount and branch COD amount */}
-                      {formData.courierPartnerId && formData.paymentMethod === 'cod' && (
-                        <div className="w-full mt-2 space-y-2">
-                          {/* Courier Partner Deposit Amount */}
-                          {(() => {
-                            const selectedPartner = courierPartners.find(p => p._id === formData.courierPartnerId);
-                            return selectedPartner && (
-                              <div className="text-sm text-gray-900 p-2 bg-purple-50 rounded border border-purple-200">
-                                <div className="font-medium text-purple-800">
-                                  Courier Partner Deposit Amount: ₹{selectedPartner.depositAmount 
-                                    ? parseFloat(selectedPartner.depositAmount).toLocaleString() 
-                                    : '0.00'}
-                                </div>
-                                <div className="text-xs text-purple-600 mt-1">
-                                  Total COD amount collected by this courier partner
-                                </div>
-                              </div>
-                            );
-                          })()}
-                          
-                          {/* Branch COD Amount for this Courier Partner */}
-                          {formData.branchId && selectedBranchDetails && (
-                            <div className="text-sm text-gray-900 p-2 bg-blue-50 rounded border border-blue-200">
-                              <div className="font-medium text-blue-800">
-                                Branch COD Amount: ₹{(() => {
-                                  const courierCod = selectedBranchDetails.courierCodAmounts?.find(
-                                    cod => cod.courierPartnerId?._id?.toString() === formData.courierPartnerId ||
-                                           cod.courierPartnerId?.toString() === formData.courierPartnerId
-                                  );
-                                  return courierCod ? parseFloat(courierCod.amount || 0).toLocaleString() : '0.00';
-                                })()}
-                              </div>
-                              <div className="text-xs text-blue-600 mt-1">
-                                COD amount collected by this courier partner for this branch
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      )}
                       <button
                         type="button"
                         onClick={() => setShowAddCourierModal(true)}

@@ -640,7 +640,14 @@ const InventoryCRUD = ({
       const result = await dispatch(getAccountByRawMaterialId(inventoryItem._id)).unwrap();
       // Handle both nested and direct account data
       const accountData = result.data?.account || result.data || result.account || result;
-      setRawMaterialAccount(accountData);
+      // Also get all sets in batch if available
+      const allSetsInBatch = result.data?.allSetsInBatch;
+      const totalAmountForAllSets = result.data?.totalAmountForAllSets;
+      setRawMaterialAccount({
+        ...accountData,
+        allSetsInBatch,
+        totalAmountForAllSets
+      });
       setShowPaymentStatusModal(true);
     } catch (error) {
       const errorMessage = error?.message || 'Failed to fetch account details';
@@ -1236,6 +1243,19 @@ const PaymentStatusModal = ({ isOpen, onClose, rawMaterial, account, onUpdate })
   const readyCashAmount = isHeadOffice && branch && typeof branch === 'object' 
     ? (branch.readyCashAmount || 0) 
     : 0;
+  
+  // Calculate available balance based on selected payment source
+  const getAvailableBalance = () => {
+    if (paymentSource === 'ready_cash') {
+      return readyCashAmount;
+    } else if (paymentSource === 'bank_account' && bankAccountIndex !== '') {
+      const accountIndex = parseInt(bankAccountIndex, 10);
+      if (!isNaN(accountIndex) && accountIndex >= 0 && accountIndex < bankAccounts.length) {
+        return bankAccounts[accountIndex].accountBalance || 0;
+      }
+    }
+    return 0;
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -1258,12 +1278,33 @@ const PaymentStatusModal = ({ isOpen, onClose, rawMaterial, account, onUpdate })
       return;
     }
     
+    // Validate sufficient balance
+    const allSetsInBatch = account?.allSetsInBatch || [];
+    const totalAmountForAllSets = account?.totalAmountForAllSets || account?.amount || 0;
+    const availableBalance = getAvailableBalance();
+    
+    if (paymentStatus === 'completed' && isHeadOffice && availableBalance < totalAmountForAllSets) {
+      dispatch(addNotification({
+        type: 'error',
+        message: `Insufficient balance. Available: ₹${availableBalance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}, Required: ₹${totalAmountForAllSets.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+      }));
+      return;
+    }
+    
     setLoading(true);
     await onUpdate(paymentStatus, paymentSource, bankAccountIndex);
     setLoading(false);
   };
 
   const isAlreadyCompleted = account?.paymentStatus === 'completed';
+  
+  // Get all sets in batch if available
+  const allSetsInBatch = account?.allSetsInBatch || [];
+  const totalAmountForAllSets = account?.totalAmountForAllSets || account?.amount || 0;
+  const isSetMaterial = allSetsInBatch.length > 0;
+  
+  const availableBalance = getAvailableBalance();
+  const hasInsufficientBalance = paymentStatus === 'completed' && isHeadOffice && availableBalance < totalAmountForAllSets;
 
   return (
     <CommonModal
@@ -1299,7 +1340,7 @@ const PaymentStatusModal = ({ isOpen, onClose, rawMaterial, account, onUpdate })
               onClick={handleSubmit}
               size="sm"
               loading={loading}
-              disabled={paymentStatus === 'completed' && !paymentSource && isHeadOffice}
+              disabled={paymentStatus === 'completed' && (!paymentSource && isHeadOffice || hasInsufficientBalance)}
             >
               {paymentStatus === 'completed' ? 'Payment Completed' : 'Update Status'}
             </Button>
@@ -1308,6 +1349,32 @@ const PaymentStatusModal = ({ isOpen, onClose, rawMaterial, account, onUpdate })
       }
     >
       <div className="space-y-6">
+        {/* All Sets in Batch */}
+        {isSetMaterial && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <h3 className="text-sm font-semibold text-gray-900 mb-3">All Sets in Batch</h3>
+            <div className="space-y-2">
+              {allSetsInBatch.map((set, index) => (
+                <div key={set._id || index} className="flex justify-between items-center py-2 border-b border-blue-100 last:border-b-0">
+                  <div>
+                    <span className="text-sm font-medium text-gray-900">{set.set || 'N/A'}</span>
+                    <span className="text-xs text-gray-500 ml-2">({set.materialName})</span>
+                  </div>
+                  <span className="text-sm font-semibold text-gray-900">
+                    ₹{(set.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+              ))}
+              <div className="flex justify-between items-center pt-2 mt-2 border-t-2 border-blue-300">
+                <span className="text-sm font-semibold text-gray-900">Total Amount</span>
+                <span className="text-base font-bold text-blue-700">
+                  ₹{totalAmountForAllSets.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Payment Status */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1352,13 +1419,18 @@ const PaymentStatusModal = ({ isOpen, onClose, rawMaterial, account, onUpdate })
                   }
                 }}
                 options={[
-                  { value: 'ready_cash', label: `Ready Cash (Balance: ₹${readyCashAmount.toLocaleString()})` },
+                  { value: 'ready_cash', label: `Ready Cash (Balance: ₹${readyCashAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})` },
                   ...(bankAccountOptions.length > 0 ? [{ value: 'bank_account', label: 'Bank Account' }] : [])
                 ]}
               />
               <p className="mt-1 text-xs text-gray-500">
                 Select from which account the amount should be deducted
               </p>
+              {hasInsufficientBalance && (
+                <p className="mt-1 text-xs text-red-600 font-medium">
+                  Insufficient balance. Available: ₹{availableBalance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}, Required: ₹{totalAmountForAllSets.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </p>
+              )}
             </div>
 
             {paymentSource === 'bank_account' && bankAccountOptions.length > 0 && (
@@ -1372,6 +1444,11 @@ const PaymentStatusModal = ({ isOpen, onClose, rawMaterial, account, onUpdate })
                   options={bankAccountOptions}
                   placeholder="Select Bank Account"
                 />
+                {hasInsufficientBalance && (
+                  <p className="mt-1 text-xs text-red-600 font-medium">
+                    Insufficient balance. Available: ₹{availableBalance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}, Required: ₹{totalAmountForAllSets.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -1384,7 +1461,7 @@ const PaymentStatusModal = ({ isOpen, onClose, rawMaterial, account, onUpdate })
             <div>
               <label className="text-xs text-gray-500">Amount</label>
               <p className="text-sm font-medium text-gray-900">
-                ₹{account?.amount?.toLocaleString() || 'N/A'}
+                ₹{isSetMaterial ? totalAmountForAllSets.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : (account?.amount?.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || 'N/A')}
               </p>
             </div>
             <div>

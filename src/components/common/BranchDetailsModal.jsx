@@ -331,7 +331,7 @@ const BranchDetailsModal = ({
   const renderPage1 = () => (
     <div className="space-y-4">
       {/* Basic, Additional and Ready Cash Information */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div>
           <DetailsView sections={[additionalInfo]} />
         </div>
@@ -516,7 +516,7 @@ const BranchDetailsModal = ({
       onClose={onClose}
       title="Branch Details"
       subtitle={branch.branchName}
-      size="xl"
+      size="lg"
       showFooter={false}
     >
       <div className="space-y-4">

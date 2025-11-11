@@ -689,47 +689,6 @@ const OrderDetailsModal = ({ isOpen, onClose, orderId, onEdit, onDelete, onRefre
     }))
   } : null;
 
-  const footerContent = (
-    <>
-      <Button
-        onClick={onClose}
-        variant="outline"
-        className="px-4 py-2"
-      >
-        Close
-      </Button>
-      <div className="flex space-x-2">
-        <Button
-          onClick={generateInvoice}
-          variant="primary"
-          icon={HiDocumentArrowDown}
-          className="px-4 py-2"
-        >
-          Generate Invoice
-        </Button>
-        {onEdit && (
-          <Button
-            onClick={handleEditClick}
-            variant="primary"
-            icon={HiPencil}
-            className="px-4 py-2"
-          >
-            Edit
-          </Button>
-        )}
-        {onDelete && (
-          <Button
-            onClick={handleDeleteClick}
-            variant="danger"
-            icon={HiTrash}
-            className="px-4 py-2"
-          >
-            Delete
-          </Button>
-        )}
-      </div>
-    </>
-  );
 
   return (
     <>
@@ -739,8 +698,7 @@ const OrderDetailsModal = ({ isOpen, onClose, orderId, onEdit, onDelete, onRefre
         title="Order Details"
         subtitle={order ? `Order #${order.orderNumber || order.orderId}` : ''}
         size="xl"
-        showFooter={true}
-        footerContent={footerContent}
+        showFooter={false}
       >
         {loading && !order ? (
           <div className="flex justify-center items-center py-12">
@@ -771,7 +729,7 @@ const OrderDetailsModal = ({ isOpen, onClose, orderId, onEdit, onDelete, onRefre
             </div>
 
             {/* Details Sections - 3 sections per column */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <DetailsView sections={[
                   orderItemsSection,
