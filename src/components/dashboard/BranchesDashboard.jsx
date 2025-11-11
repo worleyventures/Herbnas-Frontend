@@ -171,7 +171,7 @@ const BranchesDashboard = ({ propActiveView = 'table' }) => {
     }
   };
 
-  const handleUpdateBranch = (branchData) => {
+  const handleUpdateBranch = async (branchData) => {
     try {
       if (selectedBranch) {
         dispatch(updateBranch({ branchId: selectedBranch._id, branchData }));
