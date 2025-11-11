@@ -1,19 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import {
-  HiCheckCircle,
-  HiXCircle,
-  HiPencil,
-  HiTrash,
   HiCube,
   HiExclamationTriangle,
   HiCheckCircle as HiCheck,
   HiBuildingOffice2,
-  HiTruck
+  HiTruck,
+  HiChevronLeft,
+  HiChevronRight
 } from 'react-icons/hi2';
 import CommonModal from './CommonModal';
 import DetailsView from './DetailsView';
-import Button from './Button';
 import { getBranchInventory } from '../../redux/actions/branchActions';
 import { selectBranchInventory, selectInventoryLoading, selectInventoryError } from '../../redux/slices/branchSlice';
 import { getAllOrders } from '../../redux/actions/orderActions';
@@ -33,6 +30,14 @@ const BranchDetailsModal = ({
   const inventoryLoading = useSelector(selectInventoryLoading);
   const inventoryError = useSelector(selectInventoryError);
   const [lastTransactionAmounts, setLastTransactionAmounts] = useState({});
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Reset to page 1 when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setCurrentPage(1);
+    }
+  }, [isOpen]);
 
   // Load branch inventory when modal opens (skip for Head Office)
   useEffect(() => {
@@ -321,30 +326,189 @@ const BranchDetailsModal = ({
     );
   };
 
-  const footerContent = (
-    <>
-      <Button
-        onClick={onClose}
-        variant="outline"
-        className="px-4 py-2"
-      >
-        Close
-      </Button>
-      {onEdit && (
-        <Button
-          onClick={() => {
-            onEdit(branch);
-            onClose();
-          }}
-          variant="primary"
-          icon={HiPencil}
-          className="px-4 py-2"
-        >
-          Edit Branch
-        </Button>
+
+  // Render Page 1: Basic Information and Inventory
+  const renderPage1 = () => (
+    <div className="space-y-4">
+      {/* Basic, Additional and Ready Cash Information */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <DetailsView sections={[additionalInfo]} />
+        </div>
+        <div>
+          <DetailsView sections={[basicInfo]} />
+        </div>
+        <div>
+          <DetailsView sections={[readyCashInfo]} />
+        </div>
+      </div>
+
+      {/* Branch Inventory Section - Hide for Head Office */}
+      {branch.branchName && branch.branchName.toLowerCase() !== 'head office' && (
+        <div className="border-t border-gray-200 pt-6">
+          <div className="flex items-center space-x-2 mb-4">
+            <HiCube className="h-5 w-5 text-gray-600" />
+            <h3 className="text-lg font-medium text-gray-900">Branch Inventory</h3>
+            <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-sm">
+              {branchInventory.length} items
+            </span>
+          </div>
+
+          {inventoryLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <span className="ml-2 text-gray-600">Loading inventory...</span>
+            </div>
+          ) : inventoryError ? (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <div className="flex items-center">
+                <HiExclamationTriangle className="h-5 w-5 text-red-500 mr-2" />
+                <span className="text-red-700">Failed to load inventory: {inventoryError}</span>
+              </div>
+            </div>
+          ) : (
+            renderInventoryTable()
+          )}
+        </div>
       )}
-    </>
+    </div>
   );
+
+  // Render Page 2: Bank Accounts and Courier Partners
+  const renderPage2 = () => (
+    <div className="space-y-6">
+      {/* Bank Accounts Section */}
+      {normalizedBankAccounts.length > 0 && (
+        <div>
+          <div className="flex items-center space-x-2 mb-4">
+            <HiBuildingOffice2 className="h-5 w-5 text-gray-600" />
+            <h3 className="text-lg font-medium text-gray-900">Bank Accounts</h3>
+            <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-sm">
+              {normalizedBankAccounts.length} account{normalizedBankAccounts.length > 1 ? 's' : ''}
+            </span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {normalizedBankAccounts.map((account, index) => (
+              <div key={index} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center space-x-2">
+                    <div className="p-2 bg-blue-100 rounded-lg">
+                      <HiBuildingOffice2 className="h-4 w-4 text-blue-600" />
+                    </div>
+                    <h4 className="text-sm font-semibold text-gray-900">
+                      {account.bankName || `Bank Account ${index + 1}`}
+                    </h4>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <div>
+                    <span className="text-xs font-medium text-gray-500">Account Holder</span>
+                    <p className="text-sm text-gray-900 mt-0.5">{account.bankAccountHolder || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <span className="text-xs font-medium text-gray-500">Account Number</span>
+                    <p className="text-sm text-gray-900 mt-0.5 font-mono">{account.bankAccountNumber || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <span className="text-xs font-medium text-gray-500">IFSC Code</span>
+                    <p className="text-sm text-gray-900 mt-0.5 font-mono">{account.bankIfsc || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <span className="text-xs font-medium text-gray-500">Branch</span>
+                    <p className="text-sm text-gray-900 mt-0.5">{account.bankBranch || 'N/A'}</p>
+                  </div>
+                  {account.accountBalance !== undefined && (
+                    <div className="pt-2 border-t border-gray-100">
+                      <span className="text-xs font-medium text-gray-500">Account Balance</span>
+                      <p className="text-sm font-semibold text-green-600 mt-0.5">
+                        {formatCurrency(account.accountBalance)}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Courier Partners Section */}
+      {branch.courierCodAmounts && Array.isArray(branch.courierCodAmounts) && branch.courierCodAmounts.length > 0 && (
+        <div>
+          <div className="flex items-center space-x-2 mb-4">
+            <HiTruck className="h-5 w-5 text-gray-600" />
+            <h3 className="text-lg font-medium text-gray-900">Courier Partners</h3>
+            <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-sm">
+              {branch.courierCodAmounts.length} partner{branch.courierCodAmounts.length > 1 ? 's' : ''}
+            </span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {branch.courierCodAmounts.map((courierCod, index) => {
+              const courierPartner = courierCod.courierPartnerId;
+              const courierPartnerId = typeof courierPartner === 'object' 
+                ? (courierPartner._id || courierPartner)
+                : courierPartner;
+              const partnerName = typeof courierPartner === 'object' 
+                ? (courierPartner.name || courierPartnerId?.name || 'Unknown Partner')
+                : 'Unknown Partner';
+              const partnerDepositAmount = typeof courierPartner === 'object' 
+                ? (courierPartner.depositAmount || 0)
+                : 0;
+              const totalCodAmount = courierCod.amount || 0;
+              const lastTransactionAmount = lastTransactionAmounts[courierPartnerId?.toString()] || 0;
+              
+              return (
+                <div key={index} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center space-x-2">
+                      <div className="p-2 bg-green-100 rounded-lg">
+                        <HiTruck className="h-4 w-4 text-green-600" />
+                      </div>
+                      <h4 className="text-sm font-semibold text-gray-900">
+                        {partnerName}
+                      </h4>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div>
+                      <span className="text-xs font-medium text-gray-500">Last Transaction Amount</span>
+                      <p className="text-sm font-semibold text-blue-600 mt-0.5">
+                        {formatCurrency(lastTransactionAmount)}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-xs font-medium text-gray-500">Total COD Amount (This Branch)</span>
+                      <p className="text-sm font-semibold text-green-600 mt-0.5">
+                        {formatCurrency(totalCodAmount)}
+                      </p>
+                    </div>
+                    {courierCod.lastUpdated && (
+                      <div className="pt-2 border-t border-gray-100">
+                        <span className="text-xs font-medium text-gray-500">Last Updated</span>
+                        <p className="text-xs text-gray-600 mt-0.5">{formatDate(courierCod.lastUpdated)}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Show message if no bank accounts or courier partners */}
+      {normalizedBankAccounts.length === 0 && (!branch.courierCodAmounts || branch.courierCodAmounts.length === 0) && (
+        <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
+          <HiBuildingOffice2 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+          <h4 className="text-lg font-medium text-gray-900 mb-2">No Financial Information</h4>
+          <p className="text-gray-600">No bank accounts or courier partners found for this branch.</p>
+        </div>
+      )}
+    </div>
+  );
+
+  const totalPages = 2;
+  const hasPage2Content = normalizedBankAccounts.length > 0 || (branch.courierCodAmounts && Array.isArray(branch.courierCodAmounts) && branch.courierCodAmounts.length > 0);
 
   return (
     <CommonModal
@@ -353,177 +517,46 @@ const BranchDetailsModal = ({
       title="Branch Details"
       subtitle={branch.branchName}
       size="xl"
-      showFooter={true}
-      footerContent={footerContent}
+      showFooter={false}
     >
       <div className="space-y-4">
-        {/* Basic, Additional and Ready Cash Information */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <DetailsView sections={[additionalInfo]} />
-          </div>
-          <div>
-            <DetailsView sections={[basicInfo]} />
-          </div>
-          <div>
-            <DetailsView sections={[readyCashInfo]} />
-          </div>
+        {/* Page Content */}
+        <div className="min-h-[400px]">
+          {currentPage === 1 && renderPage1()}
+          {currentPage === 2 && renderPage2()}
         </div>
 
-        {/* Bank Accounts and Courier Partners Section - Display in same row */}
-        {(normalizedBankAccounts.length > 0 || (branch.courierCodAmounts && Array.isArray(branch.courierCodAmounts) && branch.courierCodAmounts.length > 0)) && (
-          <div className="border-t border-gray-200 pt-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Bank Accounts Section */}
-              {normalizedBankAccounts.length > 0 && (
-                <div>
-                  <div className="flex items-center space-x-2 mb-4">
-                    <HiBuildingOffice2 className="h-5 w-5 text-gray-600" />
-                    <h3 className="text-lg font-medium text-gray-900">Bank Accounts</h3>
-                    <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-sm">
-                      {normalizedBankAccounts.length} account{normalizedBankAccounts.length > 1 ? 's' : ''}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {normalizedBankAccounts.map((account, index) => (
-                      <div key={index} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center space-x-2">
-                            <div className="p-2 bg-blue-100 rounded-lg">
-                              <HiBuildingOffice2 className="h-4 w-4 text-blue-600" />
-                            </div>
-                            <h4 className="text-sm font-semibold text-gray-900">
-                              {account.bankName || `Bank Account ${index + 1}`}
-                            </h4>
-                          </div>
-                        </div>
-                        <div className="space-y-2">
-                          <div>
-                            <span className="text-xs font-medium text-gray-500">Account Holder</span>
-                            <p className="text-sm text-gray-900 mt-0.5">{account.bankAccountHolder || 'N/A'}</p>
-                          </div>
-                          <div>
-                            <span className="text-xs font-medium text-gray-500">Account Number</span>
-                            <p className="text-sm text-gray-900 mt-0.5 font-mono">{account.bankAccountNumber || 'N/A'}</p>
-                          </div>
-                          <div>
-                            <span className="text-xs font-medium text-gray-500">IFSC Code</span>
-                            <p className="text-sm text-gray-900 mt-0.5 font-mono">{account.bankIfsc || 'N/A'}</p>
-                          </div>
-                          <div>
-                            <span className="text-xs font-medium text-gray-500">Branch</span>
-                            <p className="text-sm text-gray-900 mt-0.5">{account.bankBranch || 'N/A'}</p>
-                          </div>
-                          {account.accountBalance !== undefined && (
-                            <div className="pt-2 border-t border-gray-100">
-                              <span className="text-xs font-medium text-gray-500">Account Balance</span>
-                              <p className="text-sm font-semibold text-green-600 mt-0.5">
-                                {formatCurrency(account.accountBalance)}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+        {/* Navigation Controls */}
+        <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+          <button
+            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+            disabled={currentPage === 1}
+            className={`flex items-center justify-center w-8 h-8 rounded-lg transition-colors ${
+              currentPage === 1
+                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            }`}
+          >
+            <HiChevronLeft className="h-5 w-5" />
+          </button>
 
-              {/* Courier Partners Section */}
-              {branch.courierCodAmounts && Array.isArray(branch.courierCodAmounts) && branch.courierCodAmounts.length > 0 && (
-                <div>
-                  <div className="flex items-center space-x-2 mb-4">
-                    <HiTruck className="h-5 w-5 text-gray-600" />
-                    <h3 className="text-lg font-medium text-gray-900">Courier Partners</h3>
-                    <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-sm">
-                      {branch.courierCodAmounts.length} partner{branch.courierCodAmounts.length > 1 ? 's' : ''}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-1 gap-4">
-                    {branch.courierCodAmounts.map((courierCod, index) => {
-                      const courierPartner = courierCod.courierPartnerId;
-                      const courierPartnerId = typeof courierPartner === 'object' 
-                        ? (courierPartner._id || courierPartner)
-                        : courierPartner;
-                      const partnerName = typeof courierPartner === 'object' 
-                        ? (courierPartner.name || courierPartnerId?.name || 'Unknown Partner')
-                        : 'Unknown Partner';
-                      const partnerDepositAmount = typeof courierPartner === 'object' 
-                        ? (courierPartner.depositAmount || 0)
-                        : 0;
-                      const totalCodAmount = courierCod.amount || 0;
-                      const lastTransactionAmount = lastTransactionAmounts[courierPartnerId?.toString()] || 0;
-                      
-                      return (
-                        <div key={index} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
-                          <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-center space-x-2">
-                              <div className="p-2 bg-green-100 rounded-lg">
-                                <HiTruck className="h-4 w-4 text-green-600" />
-                              </div>
-                              <h4 className="text-sm font-semibold text-gray-900">
-                                {partnerName}
-                              </h4>
-                            </div>
-                          </div>
-                          <div className="space-y-2">
-                            <div>
-                              <span className="text-xs font-medium text-gray-500">Last Transaction Amount</span>
-                              <p className="text-sm font-semibold text-blue-600 mt-0.5">
-                                {formatCurrency(lastTransactionAmount)}
-                              </p>
-                            </div>
-                            <div>
-                              <span className="text-xs font-medium text-gray-500">Total COD Amount (This Branch)</span>
-                              <p className="text-sm font-semibold text-green-600 mt-0.5">
-                                {formatCurrency(totalCodAmount)}
-                              </p>
-                            </div>
-                            {courierCod.lastUpdated && (
-                              <div className="pt-2 border-t border-gray-100">
-                                <span className="text-xs font-medium text-gray-500">Last Updated</span>
-                                <p className="text-xs text-gray-600 mt-0.5">{formatDate(courierCod.lastUpdated)}</p>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
+          <div className="flex items-center space-x-2">
+            <span className={`w-2 h-2 rounded-full ${currentPage === 1 ? 'bg-blue-600' : 'bg-gray-300'}`}></span>
+            <span className={`w-2 h-2 rounded-full ${currentPage === 2 ? 'bg-blue-600' : 'bg-gray-300'}`}></span>
           </div>
-        )}
 
-        {/* Branch Inventory Section - Hide for Head Office */}
-        {branch.branchName && branch.branchName.toLowerCase() !== 'head office' && (
-          <div className="border-t border-gray-200 pt-6">
-            <div className="flex items-center space-x-2 mb-4">
-              <HiCube className="h-5 w-5 text-gray-600" />
-              <h3 className="text-lg font-medium text-gray-900">Branch Inventory</h3>
-              <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-sm">
-                {branchInventory.length} items
-              </span>
-            </div>
-
-            {inventoryLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                <span className="ml-2 text-gray-600">Loading inventory...</span>
-              </div>
-            ) : inventoryError ? (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                <div className="flex items-center">
-                  <HiExclamationTriangle className="h-5 w-5 text-red-500 mr-2" />
-                  <span className="text-red-700">Failed to load inventory: {inventoryError}</span>
-                </div>
-              </div>
-            ) : (
-              renderInventoryTable()
-            )}
-          </div>
-        )}
+          <button
+            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+            disabled={currentPage === totalPages || !hasPage2Content}
+            className={`flex items-center justify-center w-8 h-8 rounded-lg transition-colors ${
+              currentPage === totalPages || !hasPage2Content
+                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            }`}
+          >
+            <HiChevronRight className="h-5 w-5" />
+          </button>
+        </div>
       </div>
     </CommonModal>
   );
