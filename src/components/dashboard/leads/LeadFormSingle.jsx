@@ -46,7 +46,6 @@ const LeadFormSingle = ({
     maritalStatus: '',
     leadStatus: 'new_lead',
     priority: 'medium',
-    leadSource: '',
     leadDate: new Date().toISOString().split('T')[0], // Initialize with today's date
     notes: '',
     reminders: [],
@@ -131,7 +130,6 @@ const LeadFormSingle = ({
         maritalStatus: selectedLead.maritalStatus || '',
         leadStatus: selectedLead.leadStatus || 'new_lead',
         priority: selectedLead.priority || 'medium',
-        leadSource: selectedLead.leadSource || '',
         leadDate: leadDateValue,
         notes: selectedLead.notes || '',
         reminders: selectedLead.reminders || [],
@@ -227,17 +225,6 @@ const LeadFormSingle = ({
     { value: 'low', label: 'Low' },
     { value: 'medium', label: 'Medium' },
     { value: 'high', label: 'High' }
-  ];
-
-  // Lead source options
-  const leadSourceOptions = [
-    { value: 'website', label: 'Website' },
-    { value: 'social_media', label: 'Social Media' },
-    { value: 'referral', label: 'Referral' },
-    { value: 'advertisement', label: 'Advertisement' },
-    { value: 'walk_in', label: 'Walk-in' },
-    { value: 'phone_call', label: 'Phone Call' },
-    { value: 'other', label: 'Other' }
   ];
 
   // Gender options
@@ -815,21 +802,8 @@ const LeadFormSingle = ({
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Lead Source
-                  </label>
-                  <Select
-                    name="leadSource"
-                    value={formData.leadSource}
-                    onChange={handleInputChange}
-                    options={leadSourceOptions}
-                    placeholder="Select lead source"
-                  />
-                </div>
-
-                <div>
+              <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mt-6">
+                <div className="lg:col-span-1">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Branch
                   </label>

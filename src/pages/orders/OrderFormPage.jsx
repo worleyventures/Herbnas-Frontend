@@ -14,6 +14,7 @@ import {
   HiXMark
 } from 'react-icons/hi2';
 import { Button, Input, Select, TextArea, Loading } from '../../components/common';
+import Card from '../../components/common/Card';
 import CustomerSelect from '../../components/common/CustomerSelect';
 import {
   createOrder,
@@ -112,6 +113,7 @@ const OrderFormPage = () => {
   const [courierPartners, setCourierPartners] = useState([]);
   const [showAddCourierModal, setShowAddCourierModal] = useState(false);
   const [newCourierName, setNewCourierName] = useState('');
+  const notesTextareaRef = useRef(null);
 
   // Load data on component mount
   useEffect(() => {
@@ -961,6 +963,19 @@ const OrderFormPage = () => {
     }
   }, [formData.paymentStatus, formData.amountReceived, formData.status, totalAmount]);
 
+  // Auto-resize textarea to match date input height initially, then expand as needed
+  useEffect(() => {
+    if (notesTextareaRef.current) {
+      const textarea = notesTextareaRef.current;
+      // Reset height to auto to get the correct scrollHeight
+      textarea.style.height = 'auto';
+      // Set min-height to match date input field (approximately 42px for input with padding)
+      const minHeight = 42;
+      // Set height to max of minHeight or scrollHeight
+      textarea.style.height = `${Math.max(minHeight, textarea.scrollHeight)}px`;
+    }
+  }, [formData.notes]);
+
   // Allow editing order status if:
   // 1. Fully paid, OR
   // 2. Any amount received (partial or full payment for any payment method), OR
@@ -1004,14 +1019,14 @@ const OrderFormPage = () => {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-3">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Form */}
-          <div className="lg:col-span-2 space-y-3">
+          <div className="lg:col-span-2 space-y-6">
             {/* Order Details */}
-            <div className="pb-2">
-              <h3 className="text-lg font-medium text-gray-900 mb-1.5">Order Details</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <Card>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 pb-3 border-b border-gray-200">Order Details</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="w-full flex flex-col">
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">
                     Customer *
@@ -1055,12 +1070,12 @@ const OrderFormPage = () => {
                   />
                 </div>
               </div>
-            </div>
+            </Card>
 
             {/* Order Items */}
-            <div className="pb-2">
-              <div className="flex justify-between items-center mb-1.5">
-                <h3 className="text-lg font-medium text-gray-900">Order Items</h3>
+            <Card>
+              <div className="flex justify-between items-center mb-4 pb-3 border-b border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900">Order Items</h3>
                 <Button
                   type="button"
                   onClick={addItem}
@@ -1072,11 +1087,11 @@ const OrderFormPage = () => {
                 </Button>
               </div>
               
-              <div className="space-y-2">
+              <div className="space-y-4">
                 {formData.items.map((item, index) => (
-                  <div key={index} className="grid grid-cols-1 md:grid-cols-12 gap-3 py-1.5">
-                    <div className="md:col-span-6 w-full flex flex-col">
-                      <label className="block text-sm font-medium mb-1.5">
+                  <div key={index} className="grid grid-cols-1 sm:grid-cols-12 gap-4">
+                    <div className="sm:col-span-12 md:col-span-6 w-full flex flex-col">
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
                         Product *
                       </label>
                       <Select
@@ -1089,7 +1104,7 @@ const OrderFormPage = () => {
                         className="w-full"
                       />
                     </div>
-                    <div className="md:col-span-2 w-full flex flex-col">
+                    <div className="sm:col-span-4 md:col-span-2 w-full flex flex-col">
                       <label className="block text-sm font-medium text-gray-700 mb-1.5">
                         Quantity *
                       </label>
@@ -1103,7 +1118,7 @@ const OrderFormPage = () => {
                         className="w-full"
                       />
                     </div>
-                    <div className="md:col-span-3 w-full flex flex-col">
+                    <div className="sm:col-span-8 md:col-span-3 w-full flex flex-col">
                       <label className="block text-sm font-medium text-gray-700 mb-1.5">
                         Price (Tax Included) *
                       </label>
@@ -1121,28 +1136,26 @@ const OrderFormPage = () => {
                         Price includes 5% tax
                       </span>
                     </div>
-                    <div className="md:col-span-1 flex items-end">
-                      <Button
+                    <div className="sm:col-span-12 md:col-span-1 flex items-start md:items-center justify-start sm:justify-end md:justify-center pt-7 md:pt-0">
+                      <button
                         type="button"
                         onClick={() => removeItem(index)}
-                        variant="danger"
-                        icon={HiTrash}
-                        size="sm"
                         disabled={formData.items.length === 1}
-                        className="w-full"
+                        className="w-8 h-8 flex items-center justify-center rounded-md text-red-600 hover:bg-red-50 hover:text-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        title="Remove item"
                       >
-                        Remove
-                      </Button>
+                        <HiXMark className="w-5 h-5" />
+                      </button>
                     </div>
                   </div>
                 ))}
               </div>
-            </div>
+            </Card>
 
             {/* Shipping Address */}
-            <div className="pb-2">
-              <h3 className="text-lg font-medium text-gray-900 mb-1.5">Shipping Address</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <Card>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 pb-3 border-b border-gray-200">Shipping Address</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2 w-full flex flex-col">
                   <Input
                     label="Name *"
@@ -1224,12 +1237,12 @@ const OrderFormPage = () => {
                   />
                 </div>
               </div>
-            </div>
+            </Card>
 
-            {/* Delivery Information */}
-            <div className="pb-2">
-              <h3 className="text-lg font-medium text-gray-900 mb-1.5">Delivery Information</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {/* Delivery Information & Notes */}
+            <Card>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 pb-3 border-b border-gray-200">Delivery Information & Notes</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="w-full flex flex-col">
                   <Input
                     label="Expected Delivery Date"
@@ -1242,46 +1255,50 @@ const OrderFormPage = () => {
                     className="w-full"
                   />
                 </div>
-              </div>
-            </div>
-
-            {/* Notes */}
-            <div className="pb-2">
-              <h3 className="text-lg font-medium text-gray-900 mb-1.5">Notes</h3>
-              <div className="space-y-2">
                 <div className="w-full flex flex-col">
                   <TextArea
+                    ref={notesTextareaRef}
                     label="Customer Notes"
                     value={formData.notes}
-                    onChange={(e) => handleInputChange('notes', e.target.value)}
+                    onChange={(e) => {
+                      handleInputChange('notes', e.target.value);
+                      // Auto-resize on input
+                      if (notesTextareaRef.current) {
+                        const textarea = notesTextareaRef.current;
+                        textarea.style.height = 'auto';
+                        const minHeight = 42;
+                        textarea.style.height = `${Math.max(minHeight, textarea.scrollHeight)}px`;
+                      }
+                    }}
                     placeholder="Notes for the customer"
-                    rows={3}
-                    className="w-full"
+                    rows={1}
+                    className="w-full resize-none overflow-y-auto"
+                    style={{ minHeight: '42px' }}
                   />
                 </div>
               </div>
-            </div>
+            </Card>
           </div>
 
           {/* Sidebar */}
-          <div className="space-y-3">
+          <div className="space-y-6">
             {/* Order Summary */}
-            <div className="pb-2">
-              <h3 className="text-lg font-medium text-gray-900 mb-1.5">Order Summary</h3>
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Subtotal</span>
-                  <span className="text-sm font-medium">₹{subtotal.toLocaleString()}</span>
+            <Card>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 pb-3 border-b border-gray-200">Order Summary</h3>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center py-2">
+                  <span className="text-sm font-medium text-gray-700">Subtotal</span>
+                  <span className="text-sm font-semibold text-gray-900">₹{subtotal.toLocaleString()}</span>
                 </div>
-                <div className="flex justify-between items-center gap-3">
+                <div className="flex justify-between items-center gap-3 py-2">
                   <div className="flex flex-col">
-                    <span className="text-sm text-gray-600">Tax (%)</span>
+                    <span className="text-sm font-medium text-gray-700">Tax (%)</span>
                     {taxAmount > 0 && (
-                      <span className="text-xs text-gray-500">₹{taxAmount.toFixed(2)}</span>
+                      <span className="text-xs text-gray-500 mt-0.5">₹{taxAmount.toFixed(2)}</span>
                     )}
                     <span className="text-xs text-gray-400 mt-0.5">(Included in price)</span>
                   </div>
-                  <div className="w-24">
+                  <div className="w-28">
                     <Input
                       type="number"
                       value={formData.taxPercentage}
@@ -1296,9 +1313,9 @@ const OrderFormPage = () => {
                     />
                   </div>
                 </div>
-                <div className="flex justify-between items-center gap-3">
-                  <span className="text-sm text-gray-600">Shipping</span>
-                  <div className="w-24">
+                <div className="flex justify-between items-center gap-3 py-2">
+                  <span className="text-sm font-medium text-gray-700">Shipping</span>
+                  <div className="w-28">
                     <Input
                       type="number"
                       value={formData.shippingAmount}
@@ -1310,14 +1327,14 @@ const OrderFormPage = () => {
                     />
                   </div>
                 </div>
-                <div className="flex justify-between items-center gap-3">
+                <div className="flex justify-between items-center gap-3 py-2">
                   <div className="flex flex-col">
-                    <span className="text-sm text-gray-600">Discount (%)</span>
+                    <span className="text-sm font-medium text-gray-700">Discount (%)</span>
                     {discountAmount > 0 && (
-                      <span className="text-xs text-gray-500">₹{discountAmount.toFixed(2)}</span>
+                      <span className="text-xs text-gray-500 mt-0.5">₹{discountAmount.toFixed(2)}</span>
                     )}
                   </div>
-                  <div className="w-24">
+                  <div className="w-28">
                     <Input
                       type="number"
                       value={formData.discountPercentage}
@@ -1331,9 +1348,9 @@ const OrderFormPage = () => {
                   </div>
                 </div>
                 {formData.paymentMethod === 'cod' && (
-                  <div className="flex justify-between items-center gap-3">
-                    <span className="text-sm text-gray-600">COD Charges</span>
-                    <div className="w-24">
+                  <div className="flex justify-between items-center gap-3 py-2">
+                    <span className="text-sm font-medium text-gray-700">COD Charges</span>
+                    <div className="w-28">
                       <Input
                         type="number"
                         value={formData.codCharges}
@@ -1346,19 +1363,31 @@ const OrderFormPage = () => {
                     </div>
                   </div>
                 )}
-                <div className="border-t pt-3">
+                {formData.expectedDeliveryDate && (
+                  <div className="flex justify-between items-center py-2 border-t border-gray-200 pt-3 mt-2">
+                    <span className="text-sm font-medium text-gray-700">Expected Delivery</span>
+                    <span className="text-sm font-semibold text-gray-900">
+                      {new Date(formData.expectedDeliveryDate).toLocaleDateString('en-IN', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric'
+                      })}
+                    </span>
+                  </div>
+                )}
+                <div className="border-t border-gray-200 pt-4 mt-2">
                   <div className="flex justify-between items-center">
-                    <span className="text-base font-medium text-gray-900">Total</span>
-                    <span className="text-base font-bold text-gray-900">₹{totalAmount.toLocaleString()}</span>
+                    <span className="text-lg font-semibold text-gray-900">Total</span>
+                    <span className="text-lg font-bold text-gray-900">₹{totalAmount.toLocaleString()}</span>
                   </div>
                 </div>
               </div>
-            </div>
+            </Card>
 
             {/* Payment Status and Notes */}
-            <div className="pb-2">
-              <h3 className="text-lg font-medium text-gray-900 mb-1.5">Payment Information</h3>
-              <div className="space-y-2">
+            <Card>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 pb-3 border-b border-gray-200">Payment Information</h3>
+              <div className="space-y-4">
                 <div className="w-full flex flex-col">
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">
                     Payment Status
@@ -1659,7 +1688,7 @@ const OrderFormPage = () => {
                   </div>
                 )}
               </div>
-            </div>
+            </Card>
 
             {/* Add Courier Partner Modal */}
             {showAddCourierModal && (
@@ -1759,14 +1788,14 @@ const OrderFormPage = () => {
             )}
 
             {/* Submit Button */}
-            <div className="pt-3">
+            <div className="flex justify-center">
               <Button
                 type="submit"
                 variant="primary"
                 loading={submitting}
                 disabled={submitting}
-                className="w-full"
                 icon={HiShoppingBag}
+                size="md"
               >
                 {isEdit ? 'Update Order' : 'Create Order'}
               </Button>

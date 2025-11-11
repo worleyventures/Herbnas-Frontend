@@ -86,7 +86,12 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
   const defaultTab = (isAccountsManager || isAdmin || isSupervisor) ? 'sentGoods' : isSuperAdmin ? 'goodsRequests' : (location.state?.activeTab || 'rawMaterials');
   const [activeTab, setActiveTab] = useState(defaultTab); // 'rawMaterials', 'finishedGoods', 'sentGoods', or 'goodsRequests'
 
-
+  // Update active tab when location state changes
+  useEffect(() => {
+    if (location.state?.activeTab) {
+      setActiveTab(location.state.activeTab);
+    }
+  }, [location.state]);
 
   // Load data on component mount
   useEffect(() => {

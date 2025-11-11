@@ -1,7 +1,7 @@
 import React from 'react';
 import { HiExclamationTriangle } from 'react-icons/hi2';
 
-const TextArea = ({
+const TextArea = React.forwardRef(({
   name,
   value,
   onChange,
@@ -9,9 +9,13 @@ const TextArea = ({
   rows = 3,
   disabled = false,
   error,
+  label,
+  helperText,
   className = '',
+  labelClassName = '',
+  wrapperClassName = '',
   ...props
-}) => {
+}, ref) => {
   const baseClasses = `
     block w-full px-3 py-2 border rounded-md shadow-sm
     focus:outline-none focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a]
@@ -26,33 +30,50 @@ const TextArea = ({
   const combinedClasses = `${baseClasses} ${errorClasses} ${className}`.trim();
 
   return (
-    <div className="relative">
-      <textarea
-        id={name}
-        name={name}
-        value={value}
-        onChange={onChange}
-        placeholder={placeholder}
-        rows={rows}
-        disabled={disabled}
-        className={combinedClasses}
-        {...props}
-      />
+    <div className={`space-y-2 ${wrapperClassName}`}>
+      {label && (
+        <label className={`block text-sm font-semibold text-gray-700 ${labelClassName}`}>
+          {label}
+        </label>
+      )}
       
-      {error && (
-        <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-          <HiExclamationTriangle className="h-5 w-5 text-red-500" />
-        </div>
+      <div className="relative">
+        <textarea
+          ref={ref}
+          id={name}
+          name={name}
+          value={value}
+          onChange={onChange}
+          placeholder={placeholder}
+          rows={rows}
+          disabled={disabled}
+          className={combinedClasses}
+          {...props}
+        />
+        
+        {error && (
+          <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+            <HiExclamationTriangle className="h-5 w-5 text-red-500" />
+          </div>
+        )}
+      </div>
+      
+      {helperText && !error && (
+        <p className="text-xs text-gray-500">
+          {helperText}
+        </p>
       )}
       
       {error && (
-        <p className="mt-1 text-sm text-red-600">
+        <p className="text-sm text-red-600">
           {error}
         </p>
       )}
     </div>
   );
-};
+});
+
+TextArea.displayName = 'TextArea';
 
 export default TextArea;
 

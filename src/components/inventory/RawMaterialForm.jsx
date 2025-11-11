@@ -490,7 +490,7 @@ const RawMaterialForm = () => {
 
       // Check if the operation was successful and navigate immediately
       if (result && (result.success || result.data)) {
-        navigate('/inventory');
+        navigate('/inventory', { state: { activeTab: 'rawMaterials' } });
       } else {
         throw new Error('Operation failed - no success response received');
       }

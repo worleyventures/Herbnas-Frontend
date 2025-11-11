@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import {
   HiCheckCircle,
@@ -16,6 +16,8 @@ import DetailsView from './DetailsView';
 import Button from './Button';
 import { getBranchInventory } from '../../redux/actions/branchActions';
 import { selectBranchInventory, selectInventoryLoading, selectInventoryError } from '../../redux/slices/branchSlice';
+import { getAllOrders } from '../../redux/actions/orderActions';
+import api from '../../lib/axiosInstance';
 
 const BranchDetailsModal = ({ 
   isOpen, 
@@ -30,6 +32,7 @@ const BranchDetailsModal = ({
   const branchInventory = useSelector(selectBranchInventory);
   const inventoryLoading = useSelector(selectInventoryLoading);
   const inventoryError = useSelector(selectInventoryError);
+  const [lastTransactionAmounts, setLastTransactionAmounts] = useState({});
 
   // Load branch inventory when modal opens (skip for Head Office)
   useEffect(() => {
@@ -46,6 +49,75 @@ const BranchDetailsModal = ({
       }
     }
   }, [isOpen, branch, dispatch]);
+
+  // Fetch last transaction amounts for each courier partner
+  useEffect(() => {
+    const fetchLastTransactionAmounts = async () => {
+      if (!isOpen || !branch || !branch.courierCodAmounts || branch.courierCodAmounts.length === 0) {
+        return;
+      }
+
+      const branchId = branch._id || branch.id;
+      if (!branchId) return;
+
+      const amounts = {};
+      
+      try {
+        // Fetch last order for each courier partner
+        for (const courierCod of branch.courierCodAmounts) {
+          const courierPartnerId = typeof courierCod.courierPartnerId === 'object' 
+            ? courierCod.courierPartnerId._id || courierCod.courierPartnerId
+            : courierCod.courierPartnerId;
+          
+          if (!courierPartnerId) continue;
+
+          try {
+            // Get recent orders for this branch to find the last transaction for this courier partner
+            const response = await api.get('/orders', {
+              params: {
+                branchId: branchId,
+                page: 1,
+                limit: 50, // Fetch more orders to find the right one
+                sortBy: 'createdAt',
+                sortOrder: 'desc'
+              }
+            });
+
+            const orders = response.data?.data?.orders || [];
+            // Filter orders by courier partner ID and COD payment method
+            const codOrders = orders.filter(order => {
+              if (!order.courierPartnerId || order.paymentMethod !== 'cod' || !order.amountReceived || order.amountReceived <= 0) {
+                return false;
+              }
+              
+              const orderCourierId = typeof order.courierPartnerId === 'object' 
+                ? (order.courierPartnerId._id || order.courierPartnerId)
+                : order.courierPartnerId;
+              
+              return orderCourierId && orderCourierId.toString() === courierPartnerId.toString();
+            });
+
+            if (codOrders.length > 0) {
+              // Get the most recent order (already sorted by createdAt desc)
+              const lastOrder = codOrders[0];
+              amounts[courierPartnerId.toString()] = lastOrder.amountReceived || 0;
+            } else {
+              amounts[courierPartnerId.toString()] = 0;
+            }
+          } catch (error) {
+            console.error(`Error fetching last transaction for courier partner ${courierPartnerId}:`, error);
+            amounts[courierPartnerId.toString()] = 0;
+          }
+        }
+
+        setLastTransactionAmounts(amounts);
+      } catch (error) {
+        console.error('Error fetching last transaction amounts:', error);
+      }
+    };
+
+    fetchLastTransactionAmounts();
+  }, [isOpen, branch]);
 
   if (!isOpen || !branch) return null;
 
@@ -370,13 +442,17 @@ const BranchDetailsModal = ({
                   <div className="grid grid-cols-1 gap-4">
                     {branch.courierCodAmounts.map((courierCod, index) => {
                       const courierPartner = courierCod.courierPartnerId;
+                      const courierPartnerId = typeof courierPartner === 'object' 
+                        ? (courierPartner._id || courierPartner)
+                        : courierPartner;
                       const partnerName = typeof courierPartner === 'object' 
-                        ? (courierPartner.name || 'Unknown Partner')
+                        ? (courierPartner.name || courierPartnerId?.name || 'Unknown Partner')
                         : 'Unknown Partner';
                       const partnerDepositAmount = typeof courierPartner === 'object' 
                         ? (courierPartner.depositAmount || 0)
                         : 0;
-                      const codAmount = courierCod.amount || 0;
+                      const totalCodAmount = courierCod.amount || 0;
+                      const lastTransactionAmount = lastTransactionAmounts[courierPartnerId?.toString()] || 0;
                       
                       return (
                         <div key={index} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
@@ -392,15 +468,15 @@ const BranchDetailsModal = ({
                           </div>
                           <div className="space-y-2">
                             <div>
-                              <span className="text-xs font-medium text-gray-500">COD Amount (This Branch)</span>
+                              <span className="text-xs font-medium text-gray-500">Last Transaction Amount</span>
                               <p className="text-sm font-semibold text-blue-600 mt-0.5">
-                                {formatCurrency(codAmount)}
+                                {formatCurrency(lastTransactionAmount)}
                               </p>
                             </div>
                             <div>
-                              <span className="text-xs font-medium text-gray-500">Total Deposit Amount</span>
+                              <span className="text-xs font-medium text-gray-500">Total COD Amount (This Branch)</span>
                               <p className="text-sm font-semibold text-green-600 mt-0.5">
-                                {formatCurrency(partnerDepositAmount)}
+                                {formatCurrency(totalCodAmount)}
                               </p>
                             </div>
                             {courierCod.lastUpdated && (
