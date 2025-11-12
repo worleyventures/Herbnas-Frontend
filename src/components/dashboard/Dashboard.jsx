@@ -226,10 +226,10 @@ const Dashboard = () => {
           const branchUsers = usersResponse.data?.data?.users || [];
           const branchUserIds = branchUsers.map(u => u._id || u.id);
           
-          // Fetch recent leads created by branch employees
+          // Fetch recent leads created by branch employees AND for the branch
           if (branchUserIds.length > 0) {
             const recentLeadsPromises = branchUserIds.map(userId => 
-              api.get(`/leads?createdBy=${userId}&limit=10&sortBy=createdAt&sortOrder=desc`)
+              api.get(`/leads?createdBy=${userId}&dispatchedFrom=${branchId}&limit=10&sortBy=createdAt&sortOrder=desc`)
             );
             const recentLeadsResponses = await Promise.all(recentLeadsPromises);
             const allRecentLeads = recentLeadsResponses.flatMap(response => response.data?.data?.leads || []);
@@ -269,12 +269,12 @@ const Dashboard = () => {
             const branchUsers = usersResponse.data?.data?.users || [];
             const branchUserIds = branchUsers.map(u => u._id || u.id);
             
-            // Fetch leads created by branch employees (last 6 months)
+            // Fetch leads created by branch employees AND for the branch (last 6 months)
             let branchLeads = [];
             if (branchUserIds.length > 0) {
-              // Fetch leads with createdBy filter for branch users
+              // Fetch leads with both createdBy (branch employees) and dispatchedFrom (branch) filters
               const leadsPromises = branchUserIds.map(userId => 
-                api.get(`/leads?createdBy=${userId}&limit=1000`)
+                api.get(`/leads?createdBy=${userId}&dispatchedFrom=${branchId}&limit=1000`)
               );
               const leadsResponses = await Promise.all(leadsPromises);
               branchLeads = leadsResponses.flatMap(response => response.data?.data?.leads || []);
@@ -286,9 +286,22 @@ const Dashboard = () => {
               branchLeads = uniqueLeads;
             }
             
-            // Fetch orders for the branch (last 6 months)
-            const ordersResponse = await api.get(`/orders?branchId=${branchId}&limit=1000`);
-            const branchOrders = ordersResponse.data?.data?.orders || [];
+            // Fetch orders created by branch employees AND for the branch (last 6 months)
+            let branchOrders = [];
+            if (branchUserIds.length > 0) {
+              // Fetch orders with both createdBy (branch employees) and branchId (branch) filters
+              const ordersPromises = branchUserIds.map(userId => 
+                api.get(`/orders?createdBy=${userId}&branchId=${branchId}&limit=1000`)
+              );
+              const ordersResponses = await Promise.all(ordersPromises);
+              branchOrders = ordersResponses.flatMap(response => response.data?.data?.orders || []);
+              
+              // Remove duplicates
+              const uniqueOrders = branchOrders.filter((order, index, self) => 
+                index === self.findIndex(o => o._id === order._id)
+              );
+              branchOrders = uniqueOrders;
+            }
             
             // Calculate monthly leads and orders (last 6 months)
             const currentDate = new Date();

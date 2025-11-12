@@ -32,6 +32,7 @@ import {
 } from '../../redux/actions/orderActions';
 import { getAllCourierPartners, createCourierPartner } from '../../redux/actions/courierPartnerActions';
 import { addNotification } from '../../redux/slices/uiSlice';
+import api from '../../lib/axiosInstance';
 import {
   selectOrders,
   selectOrderLoading,
@@ -83,34 +84,58 @@ const OrdersPage = () => {
   const [updating, setUpdating] = useState(false);
   const [showAddCourierModal, setShowAddCourierModal] = useState(false);
   const [newCourierName, setNewCourierName] = useState('');
+  const [branchUserIds, setBranchUserIds] = useState([]);
+
+  // Fetch branch users for admin
+  useEffect(() => {
+    const fetchBranchUsers = async () => {
+      if (isAdmin && user?.branch) {
+        try {
+          const branchId = user.branch._id || user.branch;
+          const usersResponse = await api.get(`/users?branch=${branchId}&limit=1000`);
+          const branchUsers = usersResponse.data?.data?.users || [];
+          const userIds = branchUsers.map(u => (u._id || u.id).toString());
+          setBranchUserIds(userIds);
+        } catch (error) {
+          console.error('Error fetching branch users:', error);
+        }
+      }
+    };
+    
+    fetchBranchUsers();
+  }, [isAdmin, user?.branch]);
 
   // Load data on component mount
   useEffect(() => {
+    // For admin, fetch all orders (backend already filters by branch)
+    // We'll filter by branch employees on frontend
+    const limit = isAdmin ? 1000 : 10;
     const orderParams = {
-      page: currentPage,
-      limit: 10,
+      page: isAdmin ? 1 : currentPage,
+      limit: limit,
       search: searchTerm,
-      paymentStatus: paymentStatusFilter
+      paymentStatus: paymentStatusFilter === 'all' ? '' : paymentStatusFilter
+      // Note: Backend already filters by branch for admin automatically
     };
     
-    // For sales executive, filter orders by createdBy (already handled by backend, but we can add it here for clarity)
-    // Note: Backend already filters by branch for sales_executive, but we need to filter by createdBy on frontend
     dispatch(getAllOrders(orderParams));
     dispatch(getOrderStats());
-  }, [dispatch, currentPage, searchTerm, paymentStatusFilter, isSalesExecutive, user?._id]);
+  }, [dispatch, currentPage, searchTerm, paymentStatusFilter, isSalesExecutive, isAdmin, user?._id]);
 
   // Refresh orders when navigating to this page (e.g., returning from edit form)
   useEffect(() => {
     if (location.pathname === '/orders') {
+      const limit = isAdmin ? 1000 : 10;
       dispatch(getAllOrders({
-        page: currentPage,
-        limit: 10,
+        page: isAdmin ? 1 : currentPage,
+        limit: limit,
         search: searchTerm,
         paymentStatus: paymentStatusFilter
+        // Note: Backend already filters by branch for admin
       }));
       dispatch(getOrderStats());
     }
-  }, [location.pathname, dispatch]);
+  }, [location.pathname, dispatch, isAdmin, currentPage, searchTerm, paymentStatusFilter]);
 
   // Handle search
   const handleSearch = (e) => {
@@ -126,11 +151,13 @@ const OrdersPage = () => {
 
   // Handle refresh
   const handleRefresh = () => {
+    const limit = isAdmin ? 1000 : 10;
     dispatch(getAllOrders({
-      page: currentPage,
-      limit: 10,
+      page: isAdmin ? 1 : currentPage,
+      limit: limit,
       search: searchTerm,
       paymentStatus: paymentStatusFilter
+      // Note: Backend already filters by branch for admin
     }));
     dispatch(getOrderStats());
   };
@@ -195,11 +222,13 @@ const OrdersPage = () => {
         message: `Order status updated to ${newStatus}`
       }));
       // Refresh the list immediately
+      const limit = isAdmin ? 1000 : 10;
       await dispatch(getAllOrders({
-        page: currentPage,
-        limit: 10,
+        page: isAdmin ? 1 : currentPage,
+        limit: limit,
         search: searchTerm,
         paymentStatus: paymentStatusFilter
+        // Note: Backend already filters by branch for admin
       }));
       dispatch(getOrderStats());
     } catch (error) {
@@ -219,11 +248,13 @@ const OrdersPage = () => {
         message: `Payment status updated to ${newPaymentStatus}`
       }));
       // Refresh the list immediately
+      const limit = isAdmin ? 1000 : 10;
       await dispatch(getAllOrders({
-        page: currentPage,
-        limit: 10,
+        page: isAdmin ? 1 : currentPage,
+        limit: limit,
         search: searchTerm,
         paymentStatus: paymentStatusFilter
+        // Note: Backend already filters by branch for admin
       }));
       dispatch(getOrderStats());
     } catch (error) {
@@ -802,7 +833,7 @@ const OrdersPage = () => {
     { value: 'failed', label: 'Failed' }
   ];
 
-  // Filter orders by createdBy for sales executive
+  // Filter orders by createdBy for sales executive and admin
   const filteredOrders = useMemo(() => {
     if (isSalesExecutive && user?._id) {
       return orders.filter(order => {
@@ -811,13 +842,27 @@ const OrdersPage = () => {
         return orderCreatedBy && userId && orderCreatedBy.toString() === userId.toString();
       });
     }
+    
+    // For admin: Show all orders from their branch (backend already filters by branch)
+    if (isAdmin && user?.branch) {
+      const branchId = (user.branch._id || user.branch).toString();
+      
+      return orders.filter(order => {
+        // Check if order is from admin's branch
+        const orderBranchId = (order.branchId?._id || order.branchId)?.toString();
+        return orderBranchId === branchId;
+      });
+    }
+    
     return orders;
-  }, [orders, isSalesExecutive, user?._id]);
+  }, [orders, isSalesExecutive, isAdmin, branchUserIds, user?._id, user?.branch]);
 
   // Calculate stats from filtered orders array
   // Use pagination.totalOrders for accurate total count (respects filters)
   // For revenue and status counts, calculate from visible orders (may not reflect all filtered orders if paginated)
-  const totalOrders = isSalesExecutive ? filteredOrders.length : (pagination?.totalOrders || orders.length);
+  const totalOrders = isSalesExecutive || isAdmin
+    ? filteredOrders.length 
+    : (pagination?.totalOrders || orders.length);
   
   // Calculate revenue from visible orders
   const totalRevenue = filteredOrders.reduce((sum, order) => {
@@ -837,7 +882,19 @@ const OrdersPage = () => {
   // If we have pagination data and want accurate status counts, we'd need to fetch all matching orders
   // For now, we'll use visible orders which is better than showing unfiltered stats
 
-  if (loading && orders.length === 0) {
+  // Paginate filtered orders for admin
+  const paginatedOrders = React.useMemo(() => {
+    if (isAdmin) {
+      const start = (currentPage - 1) * 10;
+      const end = start + 10;
+      return filteredOrders.slice(start, end);
+    }
+    return filteredOrders;
+  }, [filteredOrders, isAdmin, currentPage]);
+  
+  const displayOrders = isSalesExecutive || isAdmin ? paginatedOrders : orders;
+  
+  if (loading && displayOrders.length === 0 && orders.length === 0) {
     return <Loading />;
   }
 
@@ -919,11 +976,19 @@ const OrdersPage = () => {
       {/* Orders Table */}
       <div className="bg-white">
         <Table
-          data={filteredOrders}
+          data={displayOrders}
           columns={columns}
           loading={loading}
           error={error}
-          pagination={pagination}
+          pagination={isAdmin ? {
+            ...pagination,
+            totalPages: Math.ceil(filteredOrders.length / 10),
+            totalOrders: filteredOrders.length,
+            currentPage: currentPage,
+            itemsPerPage: 10,
+            hasNextPage: currentPage < Math.ceil(filteredOrders.length / 10),
+            hasPrevPage: currentPage > 1
+          } : pagination}
           onPageChange={handlePageChange}
           emptyMessage="No orders found"
           emptyIcon={HiClipboardDocumentList}
