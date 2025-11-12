@@ -46,7 +46,6 @@ const LeadFormSingle = ({
     maritalStatus: '',
     leadStatus: 'new_lead',
     priority: 'medium',
-    leadSource: '',
     leadDate: new Date().toISOString().split('T')[0], // Initialize with today's date
     notes: '',
     reminders: [],
@@ -131,7 +130,6 @@ const LeadFormSingle = ({
         maritalStatus: selectedLead.maritalStatus || '',
         leadStatus: selectedLead.leadStatus || 'new_lead',
         priority: selectedLead.priority || 'medium',
-        leadSource: selectedLead.leadSource || '',
         leadDate: leadDateValue,
         notes: selectedLead.notes || '',
         reminders: selectedLead.reminders || [],
@@ -174,14 +172,17 @@ const LeadFormSingle = ({
     }
   }, [branches, branchesLoading, branchesError]);
 
-  // Auto-assign branch for accounts managers
+  // Auto-assign branch for non-super_admin users
   useEffect(() => {
-    if (user?.role === 'accounts_manager' && user?.branch && branches.length > 0) {
+    if (user?.role !== 'super_admin' && user?.branch && branches.length > 0) {
       const userBranchId = user.branch?._id || user.branch;
-      setFormData(prev => ({
-        ...prev,
-        branchId: userBranchId
-      }));
+      const branchExists = branches.some(b => (b._id || b).toString() === userBranchId.toString());
+      if (branchExists) {
+        setFormData(prev => ({
+          ...prev,
+          branchId: userBranchId
+        }));
+      }
     }
   }, [user, branches]);
 
@@ -229,17 +230,6 @@ const LeadFormSingle = ({
     { value: 'high', label: 'High' }
   ];
 
-  // Lead source options
-  const leadSourceOptions = [
-    { value: 'website', label: 'Website' },
-    { value: 'social_media', label: 'Social Media' },
-    { value: 'referral', label: 'Referral' },
-    { value: 'advertisement', label: 'Advertisement' },
-    { value: 'walk_in', label: 'Walk-in' },
-    { value: 'phone_call', label: 'Phone Call' },
-    { value: 'other', label: 'Other' }
-  ];
-
   // Gender options
   const genderOptions = [
     { value: 'Male', label: 'Male' },
@@ -274,13 +264,24 @@ const LeadFormSingle = ({
       return [];
     }
     
-    return branches
+    // For super_admin, show all branches
+    // For other roles, show only their branch
+    let filteredBranches = branches;
+    if (user?.role !== 'super_admin' && user?.branch) {
+      const userBranchId = user.branch?._id || user.branch;
+      filteredBranches = branches.filter(branch => {
+        const branchId = branch._id || branch;
+        return branchId.toString() === userBranchId.toString();
+      });
+    }
+    
+    return filteredBranches
       .filter(branch => branch && branch._id && branch.branchName)
       .map(branch => ({
         value: branch._id,
         label: `${branch.branchName} (${branch.branchCode || ''})`.trim()
       }));
-  }, [branches, branchesLoading]);
+  }, [branches, branchesLoading, user?.role, user?.branch]);
 
   // Health issues from API
   const allHealthIssues = activeHealthIssues.length > 0 
@@ -815,21 +816,8 @@ const LeadFormSingle = ({
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Lead Source
-                  </label>
-                  <Select
-                    name="leadSource"
-                    value={formData.leadSource}
-                    onChange={handleInputChange}
-                    options={leadSourceOptions}
-                    placeholder="Select lead source"
-                  />
-                </div>
-
-                <div>
+              <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mt-6">
+                <div className="lg:col-span-1">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Branch
                   </label>
@@ -839,16 +827,19 @@ const LeadFormSingle = ({
                     onChange={handleInputChange}
                     options={branchOptions}
                     placeholder={branchesLoading ? 'Loading branches...' : branchOptions.length === 0 ? 'No branches available' : 'Select branch'}
-                    disabled={user?.role === 'accounts_manager' || branchesLoading}
+                    disabled={user?.role !== 'super_admin' || branchesLoading}
                     loading={branchesLoading}
                     emptyMessage="No active branches available"
-                    className={user?.role === 'accounts_manager' ? 'opacity-60 cursor-not-allowed' : ''}
+                    className={user?.role !== 'super_admin' ? 'opacity-60 cursor-not-allowed' : ''}
                   />
-                  {user?.role !== 'accounts_manager' && branchesLoading && (
+                  {user?.role === 'super_admin' && branchesLoading && (
                     <p className="mt-1 text-xs text-gray-500">Loading branches...</p>
                   )}
-                  {user?.role !== 'accounts_manager' && !branchesLoading && branchOptions.length === 0 && !branchesError && (
+                  {user?.role === 'super_admin' && !branchesLoading && branchOptions.length === 0 && !branchesError && (
                     <p className="mt-1 text-xs text-yellow-600">No active branches found. Please create a branch first.</p>
+                  )}
+                  {user?.role !== 'super_admin' && (
+                    <p className="mt-1 text-xs text-gray-500">Your assigned branch</p>
                   )}
                   {branchesError && (
                     <div className="mt-1">

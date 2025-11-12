@@ -14,6 +14,7 @@ import {
   HiXMark
 } from 'react-icons/hi2';
 import { Button, Input, Select, TextArea, Loading } from '../../components/common';
+import Card from '../../components/common/Card';
 import CustomerSelect from '../../components/common/CustomerSelect';
 import {
   createOrder,
@@ -26,7 +27,6 @@ import { getAllProducts } from '../../redux/actions/productActions';
 import { getAllBranches, getBranchById } from '../../redux/actions/branchActions';
 import { getAllUsers } from '../../redux/actions/userActions';
 import { getAllLeads } from '../../redux/actions/leadActions';
-import { getAllCourierPartners, createCourierPartner } from '../../redux/actions/courierPartnerActions';
 import { addNotification } from '../../redux/slices/uiSlice';
 import {
   selectCurrentOrder,
@@ -69,6 +69,7 @@ const OrderFormPage = () => {
   const usersLoading = useSelector(selectUserLoading);
   const leads = useSelector(selectLeads);
   const leadsLoading = useSelector(selectLeadLoading);
+  const { user } = useSelector((state) => state.auth || {});
   
   // Form state
   const [formData, setFormData] = useState({
@@ -99,7 +100,6 @@ const OrderFormPage = () => {
     status: 'draft', // Add status field
     bankAccountId: '', // Selected bank account for the order
     returnReason: '', // Reason for cancellation/return
-    courierPartnerId: '' // Courier partner for delivery
   });
   
   const [errors, setErrors] = useState({});
@@ -109,50 +109,30 @@ const OrderFormPage = () => {
   const [selectedBranchDetails, setSelectedBranchDetails] = useState(null);
   const [pincodeLoading, setPincodeLoading] = useState(false);
   const [againReceiveAmount, setAgainReceiveAmount] = useState(0);
-  const [courierPartners, setCourierPartners] = useState([]);
-  const [showAddCourierModal, setShowAddCourierModal] = useState(false);
-  const [newCourierName, setNewCourierName] = useState('');
+  const notesTextareaRef = useRef(null);
 
   // Load data on component mount
   useEffect(() => {
     dispatch(getAllProducts({ page: 1, limit: 1000, isActive: true }));
     dispatch(getAllBranches({ page: 1, limit: 1000, isActive: true }));
     dispatch(getAllUsers({ page: 1, limit: 1000, isActive: true }));
-    dispatch(getAllLeads({ page: 1, limit: 1000 }));
-    dispatch(getAllCourierPartners({ isActive: true }));
+    
+    // Fetch leads - filter by createdBy if user is not super_admin
+    if (user?._id) {
+      const leadParams = { page: 1, limit: 1000 };
+      if (user.role !== 'super_admin') {
+        leadParams.createdBy = user._id;
+      }
+      dispatch(getAllLeads(leadParams));
+    } else {
+      dispatch(getAllLeads({ page: 1, limit: 1000 }));
+    }
     
     if (isEdit && id) {
       dispatch(getOrderById(id));
     }
-  }, [dispatch, isEdit, id]);
+  }, [dispatch, isEdit, id, user?._id, user?.role]);
   
-  // Fetch and update courier partners list
-  useEffect(() => {
-    const fetchCourierPartners = async () => {
-      try {
-        const result = await dispatch(getAllCourierPartners({ isActive: true })).unwrap();
-        const partners = result.data?.courierPartners || [];
-        setCourierPartners(partners);
-        console.log('[OrderFormPage] Loaded courier partners:', partners.length);
-      } catch (error) {
-        console.error('Error fetching courier partners:', error);
-      }
-    };
-    fetchCourierPartners();
-  }, [dispatch, showAddCourierModal]);
-  
-  // Refresh courier partners when payment method changes to COD to get updated deposit amounts
-  useEffect(() => {
-    if (formData.paymentMethod === 'cod') {
-      dispatch(getAllCourierPartners({ isActive: true })).then((result) => {
-        if (result.payload?.data?.courierPartners) {
-          setCourierPartners(result.payload.data.courierPartners);
-        }
-      }).catch((error) => {
-        console.error('Error refreshing courier partners:', error);
-      });
-    }
-  }, [formData.paymentMethod, dispatch]);
 
   // Update form data when order is loaded
   useEffect(() => {
@@ -215,10 +195,9 @@ const OrderFormPage = () => {
         paymentNotes: order.paymentNotes || '',
         amountReceived: order.amountReceived || 0,
         expectedDeliveryDate: order.expectedDeliveryDate ? new Date(order.expectedDeliveryDate).toISOString().split('T')[0] : '',
-        status: order.status || 'draft',
+        status: order.paymentMethod === 'cod' ? 'confirmed' : (order.status || 'draft'),
         bankAccountId: order.bankAccountId || '',
         returnReason: order.returnReason || '',
-        courierPartnerId: order.courierPartnerId?._id || order.courierPartnerId || ''
       });
       
       // Reset again receive amount when loading order
@@ -280,7 +259,15 @@ const OrderFormPage = () => {
     
     if (field === 'customerId') {
       // Find the selected customer and set customer type
-      const allCustomers = [...leads, ...users.filter(user => user.role === 'customer')];
+      // Filter leads based on user role
+      const filteredLeadsForSelection = user?.role === 'super_admin' 
+        ? leads 
+        : leads.filter(lead => {
+            const leadCreatedBy = lead.createdBy?._id || lead.createdBy;
+            const userId = user?._id || user?.id;
+            return leadCreatedBy && userId && leadCreatedBy.toString() === userId.toString();
+          });
+      const allCustomers = [...filteredLeadsForSelection, ...users.filter(user => user.role === 'customer')];
       const selectedCustomer = allCustomers.find(customer => customer._id === value);
       
       if (selectedCustomer && value) {
@@ -346,11 +333,13 @@ const OrderFormPage = () => {
     } else if (field === 'paymentMethod') {
       // When payment method changes, reset COD charges if not COD
       // Also reset bankAccountId if payment method doesn't require it (cash goes to ready cash, not bank account)
+      // If payment method is COD, automatically set status to 'confirmed'
       setFormData(prev => ({
         ...prev,
         [field]: value,
         codCharges: value === 'cod' ? prev.codCharges : 0,
-        bankAccountId: ['card', 'netbanking'].includes(value) ? prev.bankAccountId : ''
+        bankAccountId: ['card', 'netbanking'].includes(value) ? prev.bankAccountId : '',
+        status: value === 'cod' ? 'confirmed' : prev.status
       }));
       // Trigger branch details refresh when payment method changes (if branch is already selected)
       // The useEffect will handle the actual fetch, but we need to ensure it triggers
@@ -670,12 +659,6 @@ const OrderFormPage = () => {
       newErrors.returnReason = 'Reason for cancellation is required when order status is returned';
     }
     
-    // Validate courier partner if status is picked or payment method is COD
-    if ((formData.status === 'picked' || formData.paymentMethod === 'cod') && !formData.courierPartnerId) {
-      newErrors.courierPartnerId = formData.paymentMethod === 'cod' 
-        ? 'Courier partner is required for Cash on Delivery orders'
-        : 'Courier partner is required when order status is picked';
-    }
     
     // Validate received amount cannot exceed total amount
     // For partial payment in edit mode, validate the total (original + additional)
@@ -753,7 +736,6 @@ const OrderFormPage = () => {
         status: (formData.amountReceived > 0 && formData.status === 'draft') ? undefined : formData.status,
         bankAccountId: formData.bankAccountId || undefined, // Include bank account ID if selected
         returnReason: formData.status === 'returned' ? formData.returnReason : undefined, // Include return reason if status is returned
-        courierPartnerId: formData.courierPartnerId || undefined // Include courier partner ID if selected
       };
       
       if (isEdit) {
@@ -841,8 +823,16 @@ const OrderFormPage = () => {
     }
   };
 
-  // Prepare options
-  const customerOptions = leads
+  // Prepare options - filter leads based on user role
+  const filteredLeads = user?.role === 'super_admin' 
+    ? leads 
+    : leads.filter(lead => {
+        const leadCreatedBy = lead.createdBy?._id || lead.createdBy;
+        const userId = user?._id || user?.id;
+        return leadCreatedBy && userId && leadCreatedBy.toString() === userId.toString();
+      });
+  
+  const customerOptions = filteredLeads
     .map(lead => ({
       value: lead._id,
       label: `${lead.customerName} | ${lead.customerMobile}`,
@@ -918,16 +908,6 @@ const OrderFormPage = () => {
     { value: 'failed', label: 'Failed' }
   ];
 
-  const orderStatusOptions = [
-    { value: 'draft', label: 'Draft' },
-    { value: 'pending', label: 'Pending' },
-    { value: 'confirmed', label: 'Confirmed' },
-    { value: 'picked', label: 'Picked' },
-    { value: 'dispatched', label: 'Dispatched' },
-    { value: 'delivered', label: 'Delivered' },
-    { value: 'returned', label: 'Returned' }
-  ];
-
   const { subtotal, taxAmount, discountAmount, totalAmount } = calculateTotals();
 
   // Watch paymentStatus and automatically set amountReceived to totalAmount when payment is "paid"
@@ -961,29 +941,21 @@ const OrderFormPage = () => {
     }
   }, [formData.paymentStatus, formData.amountReceived, formData.status, totalAmount]);
 
-  // Allow editing order status if:
-  // 1. Fully paid, OR
-  // 2. Any amount received (partial or full payment for any payment method), OR
-  // 3. Payment method is COD (Cash on Delivery) - allow status edit even before payment
-  const canEditOrderStatus = (
-    (formData.paymentStatus === 'paid' && +formData.amountReceived === +totalAmount)
-    ||
-    (+formData.amountReceived > 0 && ['paid', 'partial'].includes(formData.paymentStatus))
-    ||
-    (formData.paymentMethod === 'cod') // COD orders can have status edited even without payment
-  );
+  // Auto-resize textarea to match date input height initially, then expand as needed
+  useEffect(() => {
+    if (notesTextareaRef.current) {
+      const textarea = notesTextareaRef.current;
+      // Reset height to auto to get the correct scrollHeight
+      textarea.style.height = 'auto';
+      // Set min-height to match date input field (approximately 42px for input with padding)
+      const minHeight = 42;
+      // Set height to max of minHeight or scrollHeight
+      textarea.style.height = `${Math.max(minHeight, textarea.scrollHeight)}px`;
+    }
+  }, [formData.notes]);
 
   if (loading && isEdit) {
     return <Loading />;
-  }
-
-  const statusOptions = [...orderStatusOptions];
-  const isKnownStatus = statusOptions.some(opt => opt.value === formData.status);
-  if (!isKnownStatus && formData.status) {
-    statusOptions.push({
-      value: formData.status,
-      label: formData.status.charAt(0).toUpperCase() + formData.status.slice(1)
-    });
   }
 
   return (
@@ -1004,14 +976,14 @@ const OrderFormPage = () => {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-3">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Form */}
-          <div className="lg:col-span-2 space-y-3">
+          <div className="lg:col-span-2 space-y-6">
             {/* Order Details */}
-            <div className="pb-2">
-              <h3 className="text-lg font-medium text-gray-900 mb-1.5">Order Details</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <Card>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 pb-3 border-b border-gray-200">Order Details</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="w-full flex flex-col">
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">
                     Customer *
@@ -1055,12 +1027,12 @@ const OrderFormPage = () => {
                   />
                 </div>
               </div>
-            </div>
+            </Card>
 
             {/* Order Items */}
-            <div className="pb-2">
-              <div className="flex justify-between items-center mb-1.5">
-                <h3 className="text-lg font-medium text-gray-900">Order Items</h3>
+            <Card>
+              <div className="flex justify-between items-center mb-4 pb-3 border-b border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900">Order Items</h3>
                 <Button
                   type="button"
                   onClick={addItem}
@@ -1072,11 +1044,11 @@ const OrderFormPage = () => {
                 </Button>
               </div>
               
-              <div className="space-y-2">
+              <div className="space-y-4">
                 {formData.items.map((item, index) => (
-                  <div key={index} className="grid grid-cols-1 md:grid-cols-12 gap-3 py-1.5">
-                    <div className="md:col-span-6 w-full flex flex-col">
-                      <label className="block text-sm font-medium mb-1.5">
+                  <div key={index} className="grid grid-cols-1 sm:grid-cols-12 gap-4">
+                    <div className="sm:col-span-12 md:col-span-6 w-full flex flex-col">
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
                         Product *
                       </label>
                       <Select
@@ -1089,7 +1061,7 @@ const OrderFormPage = () => {
                         className="w-full"
                       />
                     </div>
-                    <div className="md:col-span-2 w-full flex flex-col">
+                    <div className="sm:col-span-4 md:col-span-2 w-full flex flex-col">
                       <label className="block text-sm font-medium text-gray-700 mb-1.5">
                         Quantity *
                       </label>
@@ -1103,7 +1075,7 @@ const OrderFormPage = () => {
                         className="w-full"
                       />
                     </div>
-                    <div className="md:col-span-3 w-full flex flex-col">
+                    <div className="sm:col-span-8 md:col-span-3 w-full flex flex-col">
                       <label className="block text-sm font-medium text-gray-700 mb-1.5">
                         Price (Tax Included) *
                       </label>
@@ -1121,28 +1093,26 @@ const OrderFormPage = () => {
                         Price includes 5% tax
                       </span>
                     </div>
-                    <div className="md:col-span-1 flex items-end">
-                      <Button
+                    <div className="sm:col-span-12 md:col-span-1 flex items-start md:items-center justify-start sm:justify-end md:justify-center pt-7 md:pt-0">
+                      <button
                         type="button"
                         onClick={() => removeItem(index)}
-                        variant="danger"
-                        icon={HiTrash}
-                        size="sm"
                         disabled={formData.items.length === 1}
-                        className="w-full"
+                        className="w-8 h-8 flex items-center justify-center rounded-md text-red-600 hover:bg-red-50 hover:text-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        title="Remove item"
                       >
-                        Remove
-                      </Button>
+                        <HiXMark className="w-5 h-5" />
+                      </button>
                     </div>
                   </div>
                 ))}
               </div>
-            </div>
+            </Card>
 
             {/* Shipping Address */}
-            <div className="pb-2">
-              <h3 className="text-lg font-medium text-gray-900 mb-1.5">Shipping Address</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <Card>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 pb-3 border-b border-gray-200">Shipping Address</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2 w-full flex flex-col">
                   <Input
                     label="Name *"
@@ -1224,12 +1194,12 @@ const OrderFormPage = () => {
                   />
                 </div>
               </div>
-            </div>
+            </Card>
 
-            {/* Delivery Information */}
-            <div className="pb-2">
-              <h3 className="text-lg font-medium text-gray-900 mb-1.5">Delivery Information</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {/* Delivery Information & Notes */}
+            <Card>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 pb-3 border-b border-gray-200">Delivery Information & Notes</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="w-full flex flex-col">
                   <Input
                     label="Expected Delivery Date"
@@ -1242,46 +1212,50 @@ const OrderFormPage = () => {
                     className="w-full"
                   />
                 </div>
-              </div>
-            </div>
-
-            {/* Notes */}
-            <div className="pb-2">
-              <h3 className="text-lg font-medium text-gray-900 mb-1.5">Notes</h3>
-              <div className="space-y-2">
                 <div className="w-full flex flex-col">
                   <TextArea
+                    ref={notesTextareaRef}
                     label="Customer Notes"
                     value={formData.notes}
-                    onChange={(e) => handleInputChange('notes', e.target.value)}
+                    onChange={(e) => {
+                      handleInputChange('notes', e.target.value);
+                      // Auto-resize on input
+                      if (notesTextareaRef.current) {
+                        const textarea = notesTextareaRef.current;
+                        textarea.style.height = 'auto';
+                        const minHeight = 42;
+                        textarea.style.height = `${Math.max(minHeight, textarea.scrollHeight)}px`;
+                      }
+                    }}
                     placeholder="Notes for the customer"
-                    rows={3}
-                    className="w-full"
+                    rows={1}
+                    className="w-full resize-none overflow-y-auto"
+                    style={{ minHeight: '42px' }}
                   />
                 </div>
               </div>
-            </div>
+            </Card>
           </div>
 
           {/* Sidebar */}
-          <div className="space-y-3">
+          <div className="space-y-6">
             {/* Order Summary */}
-            <div className="pb-2">
-              <h3 className="text-lg font-medium text-gray-900 mb-1.5">Order Summary</h3>
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Subtotal</span>
-                  <span className="text-sm font-medium">₹{subtotal.toLocaleString()}</span>
+            <Card>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 pb-3 border-b border-gray-200">Order Summary</h3>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center py-2">
+                  <span className="text-sm font-medium text-gray-700">Subtotal</span>
+                  <span className="text-sm font-semibold text-gray-900">₹{subtotal.toLocaleString()}</span>
                 </div>
-                <div className="flex justify-between items-center gap-3">
+                <div className="flex justify-between items-center gap-3 py-2">
                   <div className="flex flex-col">
-                    <span className="text-sm text-gray-600">Tax (%)</span>
+                    <span className="text-sm font-medium text-gray-700">Tax (%)</span>
                     {taxAmount > 0 && (
-                      <span className="text-xs text-gray-500">₹{taxAmount.toFixed(2)}</span>
+                      <span className="text-xs text-gray-500 mt-0.5">₹{taxAmount.toFixed(2)}</span>
                     )}
                     <span className="text-xs text-gray-400 mt-0.5">(Included in price)</span>
                   </div>
-                  <div className="w-24">
+                  <div className="w-28">
                     <Input
                       type="number"
                       value={formData.taxPercentage}
@@ -1296,9 +1270,9 @@ const OrderFormPage = () => {
                     />
                   </div>
                 </div>
-                <div className="flex justify-between items-center gap-3">
-                  <span className="text-sm text-gray-600">Shipping</span>
-                  <div className="w-24">
+                <div className="flex justify-between items-center gap-3 py-2">
+                  <span className="text-sm font-medium text-gray-700">Shipping</span>
+                  <div className="w-28">
                     <Input
                       type="number"
                       value={formData.shippingAmount}
@@ -1310,14 +1284,14 @@ const OrderFormPage = () => {
                     />
                   </div>
                 </div>
-                <div className="flex justify-between items-center gap-3">
+                <div className="flex justify-between items-center gap-3 py-2">
                   <div className="flex flex-col">
-                    <span className="text-sm text-gray-600">Discount (%)</span>
+                    <span className="text-sm font-medium text-gray-700">Discount (%)</span>
                     {discountAmount > 0 && (
-                      <span className="text-xs text-gray-500">₹{discountAmount.toFixed(2)}</span>
+                      <span className="text-xs text-gray-500 mt-0.5">₹{discountAmount.toFixed(2)}</span>
                     )}
                   </div>
-                  <div className="w-24">
+                  <div className="w-28">
                     <Input
                       type="number"
                       value={formData.discountPercentage}
@@ -1331,9 +1305,9 @@ const OrderFormPage = () => {
                   </div>
                 </div>
                 {formData.paymentMethod === 'cod' && (
-                  <div className="flex justify-between items-center gap-3">
-                    <span className="text-sm text-gray-600">COD Charges</span>
-                    <div className="w-24">
+                  <div className="flex justify-between items-center gap-3 py-2">
+                    <span className="text-sm font-medium text-gray-700">COD Charges</span>
+                    <div className="w-28">
                       <Input
                         type="number"
                         value={formData.codCharges}
@@ -1346,19 +1320,31 @@ const OrderFormPage = () => {
                     </div>
                   </div>
                 )}
-                <div className="border-t pt-3">
+                {formData.expectedDeliveryDate && (
+                  <div className="flex justify-between items-center py-2 border-t border-gray-200 pt-3 mt-2">
+                    <span className="text-sm font-medium text-gray-700">Expected Delivery</span>
+                    <span className="text-sm font-semibold text-gray-900">
+                      {new Date(formData.expectedDeliveryDate).toLocaleDateString('en-IN', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric'
+                      })}
+                    </span>
+                  </div>
+                )}
+                <div className="border-t border-gray-200 pt-4 mt-2">
                   <div className="flex justify-between items-center">
-                    <span className="text-base font-medium text-gray-900">Total</span>
-                    <span className="text-base font-bold text-gray-900">₹{totalAmount.toLocaleString()}</span>
+                    <span className="text-lg font-semibold text-gray-900">Total</span>
+                    <span className="text-lg font-bold text-gray-900">₹{totalAmount.toLocaleString()}</span>
                   </div>
                 </div>
               </div>
-            </div>
+            </Card>
 
             {/* Payment Status and Notes */}
-            <div className="pb-2">
-              <h3 className="text-lg font-medium text-gray-900 mb-1.5">Payment Information</h3>
-              <div className="space-y-2">
+            <Card>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 pb-3 border-b border-gray-200">Payment Information</h3>
+              <div className="space-y-4">
                 <div className="w-full flex flex-col">
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">
                     Payment Status
@@ -1522,127 +1508,6 @@ const OrderFormPage = () => {
                   </div>
                 )}
                 
-                {/* Ready Cash Display - Show for Cash, UPI, and COD */}
-                {['cash', 'upi', 'cod'].includes(formData.paymentMethod) && formData.branchId && selectedBranchDetails && (
-                  <div className="w-full flex flex-col">
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                      Ready Cash
-                    </label>
-                    <div className="text-sm text-gray-900 p-2 bg-green-50 rounded border border-green-200">
-                      <div className="font-medium text-green-800">
-                        {selectedBranchDetails.readyCashAmount !== undefined && selectedBranchDetails.readyCashAmount !== null
-                          ? `₹${parseFloat(selectedBranchDetails.readyCashAmount).toLocaleString()}`
-                          : '₹0.00'
-                        }
-                      </div>
-                      <div className="text-xs text-green-600 mt-1">
-                        Payment will be added to branch's ready cash
-                      </div>
-                    </div>
-                  </div>
-                )}
-                {/* Order Status - Show in edit mode or when payment method is COD */}
-                {(isEdit || formData.paymentMethod === 'cod') && (
-                  <div className="w-full flex flex-col">
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Order Status</label>
-                    <Select
-                      options={statusOptions}
-                      value={formData.status || orderStatusOptions[0].value}
-                      onChange={handleSelectChange('status')}
-                      error={errors.status}
-                      disabled={isEdit && !canEditOrderStatus}
-                      className={`w-full ${(isEdit && !canEditOrderStatus) ? 'opacity-60 cursor-not-allowed' : ''}`}
-                    />
-                    <div className="text-xs text-gray-400 mt-1">
-                      {isEdit && !canEditOrderStatus
-                        ? "Order status can be changed after receiving any payment amount or if payment method is Cash on Delivery."
-                        : (formData.paymentMethod === 'cod' 
-                            ? 'Order status can be set for Cash on Delivery orders. Select courier partner when status is "Picked".'
-                            : 'Order status is now editable.')}
-                    </div>
-                  </div>
-                )}
-                {/* Courier Partner - Show when payment method is COD or when status is 'picked' */}
-                {(formData.paymentMethod === 'cod' || formData.status === 'picked') && (
-                  <div className="w-full flex flex-col space-y-4">
-                    <div className="w-full flex flex-col">
-                      <div className="flex items-center justify-between mb-1.5">
-                        <label className="block text-sm font-medium text-gray-700">Courier Partner *</label>
-                        <button
-                          type="button"
-                          onClick={() => setShowAddCourierModal(true)}
-                          className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1"
-                        >
-                          <HiPlus className="w-3 h-3" />
-                          Add New
-                        </button>
-                      </div>
-                      <Select
-                        options={courierPartners.map(partner => ({
-                          value: partner._id,
-                          label: partner.name
-                        }))}
-                        value={formData.courierPartnerId}
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          if (value) {
-                            handleInputChange('courierPartnerId', value);
-                          }
-                        }}
-                        error={errors.courierPartnerId}
-                        className="w-full"
-                        placeholder="Select courier partner"
-                      />
-                      {/* Show courier partner deposit amount and branch COD amount */}
-                      {formData.courierPartnerId && formData.paymentMethod === 'cod' && (
-                        <div className="w-full mt-2 space-y-2">
-                          {/* Courier Partner Deposit Amount */}
-                          {(() => {
-                            const selectedPartner = courierPartners.find(p => p._id === formData.courierPartnerId);
-                            return selectedPartner && (
-                              <div className="text-sm text-gray-900 p-2 bg-purple-50 rounded border border-purple-200">
-                                <div className="font-medium text-purple-800">
-                                  Courier Partner Deposit Amount: ₹{selectedPartner.depositAmount 
-                                    ? parseFloat(selectedPartner.depositAmount).toLocaleString() 
-                                    : '0.00'}
-                                </div>
-                                <div className="text-xs text-purple-600 mt-1">
-                                  Total COD amount collected by this courier partner
-                                </div>
-                              </div>
-                            );
-                          })()}
-                          
-                          {/* Branch COD Amount for this Courier Partner */}
-                          {formData.branchId && selectedBranchDetails && (
-                            <div className="text-sm text-gray-900 p-2 bg-blue-50 rounded border border-blue-200">
-                              <div className="font-medium text-blue-800">
-                                Branch COD Amount: ₹{(() => {
-                                  const courierCod = selectedBranchDetails.courierCodAmounts?.find(
-                                    cod => cod.courierPartnerId?._id?.toString() === formData.courierPartnerId ||
-                                           cod.courierPartnerId?.toString() === formData.courierPartnerId
-                                  );
-                                  return courierCod ? parseFloat(courierCod.amount || 0).toLocaleString() : '0.00';
-                                })()}
-                              </div>
-                              <div className="text-xs text-blue-600 mt-1">
-                                COD amount collected by this courier partner for this branch
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => setShowAddCourierModal(true)}
-                        className="text-xs text-blue-600 hover:text-blue-800 mt-1 flex items-center gap-1 self-start"
-                      >
-                        <HiPlus className="w-3 h-3" />
-                        Add New Courier Partner
-                      </button>
-                    </div>
-                  </div>
-                )}
                 {/* Reason for Cancellation - Show only when status is 'returned' */}
                 {formData.status === 'returned' && (
                   <div className="w-full flex flex-col">
@@ -1659,114 +1524,18 @@ const OrderFormPage = () => {
                   </div>
                 )}
               </div>
-            </div>
+            </Card>
 
-            {/* Add Courier Partner Modal */}
-            {showAddCourierModal && (
-              <div className="fixed inset-0 z-50 overflow-y-auto">
-                <div className="flex min-h-full items-center justify-center p-4 text-center sm:p-0">
-                  {/* Backdrop */}
-                  <div
-                    className="fixed inset-0 bg-black/20 backdrop-blur-sm transition-opacity"
-                    onClick={() => {
-                      setShowAddCourierModal(false);
-                      setNewCourierName('');
-                    }}
-                  ></div>
-
-                  {/* Modal Content */}
-                  <div className="relative transform overflow-hidden rounded-2xl bg-white/95 backdrop-blur-md text-left shadow-2xl transition-all w-full max-w-md">
-                    {/* Header */}
-                    <div className="px-6 py-4 border-b border-gray-200 bg-gray-50/50">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-lg font-semibold text-gray-900">
-                          Add New Courier Partner
-                        </h3>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowAddCourierModal(false);
-                            setNewCourierName('');
-                          }}
-                          className="text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#22c55e] focus:ring-offset-2 rounded-md p-1"
-                        >
-                          <HiXMark className="h-6 w-6" />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Body */}
-                    <div className="px-6 py-4 sm:p-6">
-                      <div className="space-y-4">
-                        <Input
-                          label="Courier Partner Name *"
-                          value={newCourierName}
-                          onChange={(e) => setNewCourierName(e.target.value)}
-                          placeholder="Enter courier partner name (e.g., BlueDart, FedEx, etc.)"
-                          className="w-full"
-                        />
-                        <div className="flex gap-2 justify-end pt-2">
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            onClick={() => {
-                              setShowAddCourierModal(false);
-                              setNewCourierName('');
-                            }}
-                          >
-                            Cancel
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="primary"
-                            onClick={async () => {
-                              if (!newCourierName.trim()) {
-                                dispatch(addNotification({
-                                  type: 'error',
-                                  message: 'Please enter courier partner name'
-                                }));
-                                return;
-                              }
-                              try {
-                                const result = await dispatch(createCourierPartner({ name: newCourierName.trim() })).unwrap();
-                                const newPartner = result.data?.courierPartner;
-                                if (newPartner) {
-                                  setCourierPartners(prev => [...prev, newPartner]);
-                                  setFormData(prev => ({ ...prev, courierPartnerId: newPartner._id }));
-                                  setShowAddCourierModal(false);
-                                  setNewCourierName('');
-                                  dispatch(addNotification({
-                                    type: 'success',
-                                    message: 'Courier partner added successfully'
-                                  }));
-                                }
-                              } catch (error) {
-                                dispatch(addNotification({
-                                  type: 'error',
-                                  message: error?.message || error?.toString() || 'Failed to create courier partner'
-                                }));
-                              }
-                            }}
-                          >
-                            Add
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
 
             {/* Submit Button */}
-            <div className="pt-3">
+            <div className="flex justify-center">
               <Button
                 type="submit"
                 variant="primary"
                 loading={submitting}
                 disabled={submitting}
-                className="w-full"
                 icon={HiShoppingBag}
+                size="md"
               >
                 {isEdit ? 'Update Order' : 'Create Order'}
               </Button>

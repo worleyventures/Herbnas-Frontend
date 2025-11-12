@@ -149,7 +149,8 @@ const PayrollFormPage = () => {
   // Form state
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState({
-    employeeName: '',
+    firstName: '',
+    lastName: '',
     employeeId: '',
     designation: '',
     email: '',
@@ -242,9 +243,24 @@ const PayrollFormPage = () => {
         }
       }
       
+      // Handle employeeId - could be an object (populated) or string/ID
+      const employeeIdValue = typeof currentPayroll.employeeId === 'object' 
+        ? (currentPayroll.employeeId._id || currentPayroll.employeeId.employeeId || currentPayroll.employeeId)
+        : currentPayroll.employeeId;
+      
+      // Get firstName and lastName from employeeId object if populated, or from payroll directly
+      const firstNameValue = typeof currentPayroll.employeeId === 'object' && currentPayroll.employeeId.firstName
+        ? currentPayroll.employeeId.firstName
+        : (currentPayroll.firstName || '');
+      
+      const lastNameValue = typeof currentPayroll.employeeId === 'object' && currentPayroll.employeeId.lastName
+        ? currentPayroll.employeeId.lastName
+        : (currentPayroll.lastName || '');
+      
       setFormData({
-        employeeName: currentPayroll.employeeName || '',
-        employeeId: currentPayroll.employeeId || '',
+        firstName: firstNameValue,
+        lastName: lastNameValue,
+        employeeId: employeeIdValue || '',
         designation: currentPayroll.designation || '',
         email: currentPayroll.email || '',
         password: '', // Password should be empty for edit mode
@@ -317,8 +333,11 @@ const PayrollFormPage = () => {
   const validateForm = () => {
     const newErrors = {};
     
-    if (!formData.employeeName?.trim()) {
-      newErrors.employeeName = 'Employee name is required';
+    if (!formData.firstName?.trim()) {
+      newErrors.firstName = 'First name is required';
+    }
+    if (!formData.lastName?.trim()) {
+      newErrors.lastName = 'Last name is required';
     }
     if (!formData.employeeId?.trim()) {
       newErrors.employeeId = 'Employee ID is required';
@@ -426,7 +445,8 @@ const PayrollFormPage = () => {
         : formData.branchId;
       
       const payrollData = {
-        employeeName: formData.employeeName.trim(),
+        firstName: formData.firstName.trim(),
+        lastName: formData.lastName.trim(),
         employeeId: formData.employeeId.trim(),
         designation: formData.designation.trim(),
         email: formData.email.trim(),
@@ -470,7 +490,7 @@ const PayrollFormPage = () => {
         await dispatch(updatePayroll({ id: currentPayroll._id, payrollData })).unwrap();
         console.log('✅ Payroll updated successfully');
       } else {
-        console.log('➕ Creating new payroll:', payrollData.employeeName);
+        console.log('➕ Creating new payroll:', `${payrollData.firstName} ${payrollData.lastName}`);
         const result = await dispatch(createPayroll(payrollData)).unwrap();
         console.log('✅ Payroll created successfully:', result);
         console.log('🔍 Checking createSuccess state after creation');
@@ -572,18 +592,35 @@ const PayrollFormPage = () => {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Employee Name *
+                      First Name *
                     </label>
                     <input
                       type="text"
-                      name="employeeName"
-                      value={formData.employeeName}
-                      onChange={(e) => handleInputChange('employeeName', e.target.value)}
-                      placeholder="Enter employee name"
+                      name="firstName"
+                      value={formData.firstName}
+                      onChange={(e) => handleInputChange('firstName', e.target.value)}
+                      placeholder="Enter first name"
                       className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white shadow-sm hover:shadow-md"
                     />
-                    {errors.employeeName && (
-                      <p className="mt-1 text-sm text-red-600">{errors.employeeName}</p>
+                    {errors.firstName && (
+                      <p className="mt-1 text-sm text-red-600">{errors.firstName}</p>
+                    )}
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Last Name *
+                    </label>
+                    <input
+                      type="text"
+                      name="lastName"
+                      value={formData.lastName}
+                      onChange={(e) => handleInputChange('lastName', e.target.value)}
+                      placeholder="Enter last name"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+                    />
+                    {errors.lastName && (
+                      <p className="mt-1 text-sm text-red-600">{errors.lastName}</p>
                     )}
                   </div>
                   

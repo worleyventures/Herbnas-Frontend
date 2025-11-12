@@ -359,28 +359,6 @@ const InventoryDetailsModal = ({
     ]
   };
 
-  const footerContent = (
-    <>
-      <Button
-        onClick={onClose}
-        variant="outline"
-        className="px-4 py-2"
-      >
-        Close
-      </Button>
-      {isRawMaterial && (
-        <Button
-          onClick={generateInvoice}
-          variant="primary"
-          icon={HiDocumentArrowDown}
-          className="px-4 py-2"
-        >
-          Generate Invoice
-        </Button>
-      )}
-    </>
-  );
-
   const sections = [basicInfo, additionalInfo];
   if (supplierInfo) sections.push(supplierInfo);
   sections.push(managementInfo);
@@ -391,11 +369,10 @@ const InventoryDetailsModal = ({
       onClose={onClose}
       title={isRawMaterial ? 'Raw Material Details' : 'Finished Product Details'}
       subtitle={`${itemName} - ${itemId}`}
-      size="xl"
-      showFooter={true}
-      footerContent={footerContent}
+      size="lg"
+      showFooter={false}
     >
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div>
           <DetailsView sections={sections.slice(0, Math.ceil(sections.length / 3))} />
         </div>

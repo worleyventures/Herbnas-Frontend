@@ -24,6 +24,9 @@ export const getAllBranches = createAsyncThunk(
       if (params.sortBy) queryParams.append('sortBy', params.sortBy);
       if (params.sortOrder) queryParams.append('sortOrder', params.sortOrder);
       
+      // Add cache-busting timestamp to ensure fresh data
+      queryParams.append('_t', Date.now());
+      
       const response = await api.get(`/branches?${queryParams.toString()}`);
       return response.data;
     } catch (err) {

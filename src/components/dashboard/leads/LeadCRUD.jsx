@@ -69,6 +69,7 @@ const LeadCRUD = ({
   const { isAuthenticated, user } = useSelector((state) => state.auth);
   const isAccountsManager = user?.role === 'accounts_manager';
   const isProductionManager = user?.role === 'production_manager';
+  const isSalesExecutive = user?.role === 'sales_executive';
   
   // Fetch branches and users data on component mount only if authenticated
   useEffect(() => {
@@ -267,12 +268,15 @@ const LeadCRUD = ({
               title: "Edit Lead",
               variant: "edit"
             },
-            {
-              icon: HiTrash,
-              onClick: handleDelete,
-              title: "Delete Lead",
-              variant: "delete"
-            }
+            // Hide delete for sales executive
+            ...(isSalesExecutive ? [] : [
+              {
+                icon: HiTrash,
+                onClick: handleDelete,
+                title: "Delete Lead",
+                variant: "delete"
+              }
+            ])
           ])
         ]}
       />

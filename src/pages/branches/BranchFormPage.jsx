@@ -356,6 +356,12 @@ const BranchFormPage = () => {
         const result = await dispatch(updateBranch({ branchId, branchData })).unwrap();
         // Refresh stats
         dispatch(getBranchStats());
+        // Force refresh branches list with cache-busting
+        dispatch(getAllBranches({
+          page: 1,
+          limit: 1000,
+          _t: Date.now()
+        }));
         // Navigate back - the dashboard will automatically refresh
         navigate('/branches', { state: { refresh: true } });
       }

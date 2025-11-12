@@ -10,7 +10,7 @@ import {
   HiTag
 } from 'react-icons/hi2';
 import { Button, Input, Select, TextArea, CommonModal } from './index';
-import { createAccount, updateAccount } from '../../redux/actions/accountActions';
+import { createAccount, updateAccount, getUniqueVendors, getUniqueCustomers } from '../../redux/actions/accountActions';
 import { getAllBranches } from '../../redux/actions/branchActions';
 import { addNotification } from '../../redux/slices/uiSlice';
 
@@ -21,6 +21,10 @@ const AccountFormModal = ({ isOpen, onClose, account = null }) => {
   const { branches = [], loading: branchesLoading } = useSelector(state => state.branches || {});
   
   const [loading, setLoading] = useState(false);
+  const [vendors, setVendors] = useState([]);
+  const [vendorsLoading, setVendorsLoading] = useState(false);
+  const [customers, setCustomers] = useState([]);
+  const [customersLoading, setCustomersLoading] = useState(false);
   const [formData, setFormData] = useState({
     transactionType: 'income',
     category: '',
@@ -40,10 +44,42 @@ const AccountFormModal = ({ isOpen, onClose, account = null }) => {
   });
   const [errors, setErrors] = useState({});
 
-  // Load branches when modal opens
+  // Load branches and vendors when modal opens
   useEffect(() => {
     if (isOpen) {
       dispatch(getAllBranches());
+      
+      // Load vendors
+      const fetchVendors = async () => {
+        setVendorsLoading(true);
+        try {
+          const result = await dispatch(getUniqueVendors()).unwrap();
+          const vendorsList = result.data || [];
+          setVendors(vendorsList);
+        } catch (error) {
+          console.error('Error fetching vendors:', error);
+        } finally {
+          setVendorsLoading(false);
+        }
+      };
+      
+      fetchVendors();
+      
+      // Load customers
+      const fetchCustomers = async () => {
+        setCustomersLoading(true);
+        try {
+          const result = await dispatch(getUniqueCustomers()).unwrap();
+          const customersList = result.data || [];
+          setCustomers(customersList);
+        } catch (error) {
+          console.error('Error fetching customers:', error);
+        } finally {
+          setCustomersLoading(false);
+        }
+      };
+      
+      fetchCustomers();
     }
   }, [isOpen, dispatch]);
 
@@ -66,8 +102,7 @@ const AccountFormModal = ({ isOpen, onClose, account = null }) => {
           transactionDate: account.transactionDate ? new Date(account.transactionDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
           referenceNumber: account.referenceNumber || '',
           vendorName: account.vendorName || '',
-          customerName: account.customerName || '',
-          notes: account.notes || ''
+          customerName: account.customerName || ''
         });
       } else {
         // Create mode - reset form
@@ -85,8 +120,7 @@ const AccountFormModal = ({ isOpen, onClose, account = null }) => {
           transactionDate: new Date().toISOString().split('T')[0],
           referenceNumber: '',
           vendorName: '',
-          customerName: '',
-          notes: ''
+          customerName: ''
         });
       }
       setErrors({});
@@ -237,7 +271,6 @@ const AccountFormModal = ({ isOpen, onClose, account = null }) => {
       paymentStatus: true,
       transactionDate: true,
       referenceNumber: true,
-      notes: true,
 
       // Conditional fields
       subCategory: false,
@@ -432,7 +465,7 @@ const AccountFormModal = ({ isOpen, onClose, account = null }) => {
 
         
 
-        {/* Reference Number and Vendor/Order (single row) */}
+        {/* Reference Number and Vendor/Customer Name (single row) */}
         <div className={`grid grid-cols-1 md:grid-cols-2 gap-4`}>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -449,10 +482,47 @@ const AccountFormModal = ({ isOpen, onClose, account = null }) => {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Vendor Name
               </label>
-              <Input
+              <Select
+                options={[
+                  ...vendors.map(v => ({
+                    value: v.vendorName,
+                    label: `${v.vendorName}${v.referenceNumber ? ` (${v.referenceNumber})` : ''}`
+                  })),
+                  // Add current vendor name if it's not in the list (for new vendors or editing)
+                  ...(formData.vendorName && !vendors.find(v => v.vendorName === formData.vendorName)
+                    ? [{ value: formData.vendorName, label: formData.vendorName }]
+                    : [])
+                ]}
                 value={formData.vendorName}
                 onChange={(e) => handleInputChange('vendorName', e.target.value)}
-                placeholder="Enter vendor name"
+                placeholder="Select or type vendor name"
+                searchable={true}
+                searchPlaceholder="Search or type new vendor..."
+                loading={vendorsLoading}
+              />
+            </div>
+          ) : visibleFields.customerName ? (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Customer Name
+              </label>
+              <Select
+                options={[
+                  ...customers.map(c => ({
+                    value: c.customerName,
+                    label: `${c.customerName}${c.referenceNumber ? ` (${c.referenceNumber})` : ''}`
+                  })),
+                  // Add current customer name if it's not in the list (for new customers or editing)
+                  ...(formData.customerName && !customers.find(c => c.customerName === formData.customerName)
+                    ? [{ value: formData.customerName, label: formData.customerName }]
+                    : [])
+                ]}
+                value={formData.customerName}
+                onChange={(e) => handleInputChange('customerName', e.target.value)}
+                placeholder="Select or type customer name"
+                searchable={true}
+                searchPlaceholder="Search or type new customer..."
+                loading={customersLoading}
               />
             </div>
           ) : visibleFields.orderId ? (
@@ -471,35 +541,23 @@ const AccountFormModal = ({ isOpen, onClose, account = null }) => {
           )}
         </div>
 
-        {/* Vendor/Customer Name (customer only; vendor shown with reference) */}
-        {(visibleFields.customerName) && (
+        {/* Order ID (shown separately for income transactions when customer name is also shown) */}
+        {visibleFields.orderId && visibleFields.customerName && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Customer Name
-                </label>
-                <Input
-                  value={formData.customerName}
-                  onChange={(e) => handleInputChange('customerName', e.target.value)}
-                  placeholder="Enter customer name"
-                />
-              </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Order ID
+              </label>
+              <Input
+                value={formData.orderId}
+                onChange={(e) => handleInputChange('orderId', e.target.value)}
+                placeholder="Enter order ID (optional)"
+              />
+            </div>
             <div className="hidden md:block"></div>
           </div>
         )}
 
-        {/* Notes */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Notes
-          </label>
-          <TextArea
-            value={formData.notes}
-            onChange={(e) => handleInputChange('notes', e.target.value)}
-            placeholder="Enter additional notes (optional)"
-            rows={3}
-          />
-        </div>
 
         {/* Form Actions */}
         <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">

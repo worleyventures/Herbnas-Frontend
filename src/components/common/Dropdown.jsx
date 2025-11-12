@@ -178,30 +178,70 @@ const Dropdown = ({
             
             {/* Options List */}
             {filteredOptions.length > 0 ? (
-              filteredOptions.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleSelectChange(option.value);
-                  }}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                  }}
-                  className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-100 focus:outline-none focus:bg-gray-100 transition-colors ${
-                    String(safeValue) === String(option.value) ? 'bg-[#8bc34a]/10 text-[#8bc34a] font-medium' : 'text-gray-900'
-                  }`}
-                >
-                  {option.label}
-                </button>
-              ))
+              <>
+                {filteredOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleSelectChange(option.value);
+                    }}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                    className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-100 focus:outline-none focus:bg-gray-100 transition-colors ${
+                      String(safeValue) === String(option.value) ? 'bg-[#8bc34a]/10 text-[#8bc34a] font-medium' : 'text-gray-900'
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+                {/* Show option to add new value if search term doesn't match any option */}
+                {searchable && searchTerm && !filteredOptions.find(opt => opt.value.toLowerCase() === searchTerm.toLowerCase()) && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleSelectChange(searchTerm);
+                    }}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                    className="w-full px-4 py-2 text-left text-sm text-[#8bc34a] hover:bg-green-50 focus:outline-none focus:bg-green-50 transition-colors font-medium border-t border-gray-200"
+                  >
+                    + Add "{searchTerm}"
+                  </button>
+                )}
+              </>
             ) : (
-              <div className="px-4 py-2 text-sm text-gray-500">
-                {searchTerm ? 'No matching options found' : emptyMessage}
-              </div>
+              <>
+                <div className="px-4 py-2 text-sm text-gray-500">
+                  {searchTerm ? 'No matching options found' : emptyMessage}
+                </div>
+                {/* Show option to add new value if search term is provided */}
+                {searchable && searchTerm && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleSelectChange(searchTerm);
+                    }}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                    className="w-full px-4 py-2 text-left text-sm text-[#8bc34a] hover:bg-green-50 focus:outline-none focus:bg-green-50 transition-colors font-medium border-t border-gray-200"
+                  >
+                    + Add "{searchTerm}"
+                  </button>
+                )}
+              </>
             )}
           </div>
         )}

@@ -143,44 +143,6 @@ const ProductionDetailsModal = ({
     ]
   } : null;
 
-  const footerContent = (
-    <>
-      <Button
-        onClick={onClose}
-        variant="outline"
-        className="px-4 py-2"
-      >
-        Close
-      </Button>
-      {onEdit && (
-        <Button
-          onClick={() => {
-            onEdit(production);
-            onClose();
-          }}
-          variant="primary"
-          icon={HiPencil}
-          className="px-4 py-2"
-        >
-          Edit Production
-        </Button>
-      )}
-      {onDelete && (
-        <Button
-          onClick={() => {
-            onDelete(production);
-            onClose();
-          }}
-          variant="danger"
-          icon={HiTrash}
-          className="px-4 py-2"
-        >
-          Delete Production
-        </Button>
-      )}
-    </>
-  );
-
   const sections = [basicInfo, additionalInfo];
   if (rawMaterialsInfo) sections.push(rawMaterialsInfo);
   if (notesInfo) sections.push(notesInfo);
@@ -191,11 +153,10 @@ const ProductionDetailsModal = ({
       onClose={onClose}
       title="Production Batch Details"
       subtitle={production.batchId}
-      size="xl"
-      showFooter={true}
-      footerContent={footerContent}
+      size="lg"
+      showFooter={false}
     >
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div>
           <DetailsView sections={[basicInfo]} />
         </div>

@@ -102,7 +102,7 @@ const PayrollDetailsModal = ({ isOpen, onClose, payrollId, onEdit, onDelete }) =
       isOpen={isOpen}
       onClose={onClose}
       title={`Payroll Details - ${currentPayroll?.payrollId || ''}`}
-      size="xl"
+      size="lg"
     >
       {loading ? (
         <div className="flex justify-center items-center py-8">
@@ -233,7 +233,7 @@ const PayrollDetailsModal = ({ isOpen, onClose, payrollId, onEdit, onDelete }) =
           </div>
 
           {/* Additional Details */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {/* Bank Details */}
             <div className="space-y-4">
               <h3 className="text-sm font-bold bg-gradient-to-r from-[#8bc34a] to-[#558b2f] bg-clip-text text-transparent">Bank Details</h3>
@@ -280,34 +280,6 @@ const PayrollDetailsModal = ({ isOpen, onClose, payrollId, onEdit, onDelete }) =
             </div>
           </div>
 
-          {/* Modal Actions */}
-          <div className="flex justify-end space-x-2 pt-4 border-t">
-            <Button
-              variant="outline"
-              onClick={() => onEdit && onEdit(currentPayroll._id)}
-              size="xs"
-              className="flex items-center space-x-1 text-xs px-3 py-1.5"
-            >
-              <HiPencil className="w-3 h-3" />
-              <span>Edit</span>
-            </Button>
-            <Button
-              onClick={handleDelete}
-              variant="outline"
-              size="xs"
-              className="flex items-center space-x-1 text-red-600 border-red-600 hover:bg-red-50 text-xs px-3 py-1.5"
-            >
-              <HiTrash className="w-3 h-3" />
-              <span>Delete</span>
-            </Button>
-            <Button 
-              onClick={onClose}
-              size="xs"
-              className="text-xs px-3 py-1.5"
-            >
-              Close
-            </Button>
-          </div>
         </div>
       )}
     </CommonModal>

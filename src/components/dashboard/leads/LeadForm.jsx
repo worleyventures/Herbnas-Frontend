@@ -113,15 +113,26 @@ const LeadForm = ({
     }
   }, [dispatch, isAuthenticated, user]);
 
-  // Filter branches based on search
+  // Filter branches based on search and user role
   const filteredBranches = useMemo(() => {
-    if (!branchSearch) {
-      return branches;
+    // For super_admin, show all branches
+    // For other roles, show only their branch
+    let availableBranches = branches;
+    if (user?.role !== 'super_admin' && user?.branch) {
+      const userBranchId = user.branch?._id || user.branch;
+      availableBranches = branches.filter(branch => {
+        const branchId = branch._id || branch;
+        return branchId.toString() === userBranchId.toString();
+      });
     }
-    return branches.filter(branch => 
+    
+    if (!branchSearch) {
+      return availableBranches;
+    }
+    return availableBranches.filter(branch => 
       branch.branchName.toLowerCase().includes(branchSearch.toLowerCase())
     );
-  }, [branches, branchSearch]);
+  }, [branches, branchSearch, user?.role, user?.branch]);
 
   // Get all users in the selected branch (for validation)
   const branchUsers = useMemo(() => {
@@ -343,6 +354,25 @@ const LeadForm = ({
       }
     }
   }, [selectedLead, mode, branches, users]);
+
+  // Auto-assign branch for non-super_admin users
+  useEffect(() => {
+    if (user?.role !== 'super_admin' && user?.branch && branches.length > 0 && !formData.dispatchedFrom) {
+      const userBranchId = user.branch?._id || user.branch;
+      const branchExists = branches.some(b => (b._id || b).toString() === userBranchId.toString());
+      if (branchExists) {
+        const branch = branches.find(b => (b._id || b).toString() === userBranchId.toString());
+        if (branch) {
+          setFormData(prev => ({
+            ...prev,
+            dispatchedFrom: branch._id
+          }));
+          setBranchSearch(branch.branchName);
+          setShowBranchDropdown(false);
+        }
+      }
+    }
+  }, [user, branches, formData.dispatchedFrom]);
 
   const statusOptions = [
     { value: 'new_lead', label: 'New Lead', color: 'bg-blue-100 text-blue-800' },
@@ -1384,11 +1414,13 @@ const LeadForm = ({
                     placeholder={branchesLoading ? 'Loading branches...' : 
                                branchesError ? 'Error loading branches' :
                                branches.length === 0 ? 'No branches available' :
+                               user?.role !== 'super_admin' ? 'Your assigned branch' :
                                'Search branches...'}
                     className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-[#22c55e] focus:border-[#22c55e] transition-all duration-200 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md ${
                     errors.dispatchedFrom ? 'border-red-500' : 'border-gray-300/50'
-                  }`}
-                    disabled={branchesLoading}
+                  } ${user?.role !== 'super_admin' ? 'opacity-60 cursor-not-allowed' : ''}`}
+                    disabled={branchesLoading || user?.role !== 'super_admin'}
+                    readOnly={user?.role !== 'super_admin'}
                   />
                   <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
                     <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1396,7 +1428,7 @@ const LeadForm = ({
                     </svg>
               </div>
               
-                  {showBranchDropdown && (
+                  {showBranchDropdown && user?.role === 'super_admin' && (
                     <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-xl shadow-lg max-h-60 overflow-auto">
                       {filteredBranches.length === 0 ? (
                         <div className="px-4 py-3 text-sm text-gray-500">
@@ -1429,6 +1461,9 @@ const LeadForm = ({
                 )}
                 {branchesError && (
                   <p className="mt-1 text-sm text-red-600">Failed to load branches: {branchesError}</p>
+                )}
+                {user?.role !== 'super_admin' && (
+                  <p className="mt-1 text-xs text-gray-500">Your assigned branch</p>
                 )}
             </div>
             

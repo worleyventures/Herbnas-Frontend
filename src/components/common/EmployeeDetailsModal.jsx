@@ -364,56 +364,19 @@ const EmployeeDetailsModal = ({
     additionalInfo
   ];
 
-  const footerContent = (
-    <div className="flex space-x-2">
-      <Button
-        onClick={onClose}
-        variant="outline"
-        className="px-4 py-2"
-      >
-        Close
-      </Button>
-      {onEdit && (
-        <Button
-          onClick={() => {
-            onEdit(employee);
-            onClose();
-          }}
-          variant="primary"
-          className="px-4 py-2"
-        >
-          Edit Employee
-        </Button>
-      )}
-      {onDelete && (
-        <Button
-          onClick={() => {
-            onDelete(employee);
-            onClose();
-          }}
-          variant="danger"
-          className="px-4 py-2"
-        >
-          Delete Employee
-        </Button>
-      )}
-    </div>
-  );
-
   return (
     <CommonModal
       isOpen={isOpen}
       onClose={onClose}
       title="Employee Details"
       subtitle={`${employee.firstName || ''} ${employee.lastName || ''}`.trim() || 'Employee Information'}
-      size="xl"
-      showFooter={true}
-      footerContent={footerContent}
+      size="lg"
+      showFooter={false}
       icon={HiUser}
       iconColor="from-blue-500 to-blue-600"
     >
       <div className="overflow-y-auto max-h-[calc(90vh-180px)]">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {sections.map((section, index) => (
             <div key={index}>
               <DetailsView sections={[section]} />
