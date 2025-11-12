@@ -211,3 +211,29 @@ export const updateAccountPaymentStatus = createAsyncThunk(
     }
   }
 );
+
+// Get unique vendors from accounts
+export const getUniqueVendors = createAsyncThunk(
+  'accounts/getUniqueVendors',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await api.get('/accounts/vendors');
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch vendors');
+    }
+  }
+);
+
+// Get unique customers from accounts
+export const getUniqueCustomers = createAsyncThunk(
+  'accounts/getUniqueCustomers',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await api.get('/accounts/customers');
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch customers');
+    }
+  }
+);

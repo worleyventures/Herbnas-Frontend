@@ -23,7 +23,9 @@ import {
   deleteAccount,
   getAccountById,
   getHeadOfficeSupplierExpenses,
-  backfillUnrecordedRawMaterials
+  backfillUnrecordedRawMaterials,
+  getUniqueVendors,
+  getUniqueCustomers
 } from '../../redux/actions/accountActions';
 import { getOrderById } from '../../redux/actions/orderActions';
 import { getBranchById, getAllBranches } from '../../redux/actions/branchActions';
@@ -108,6 +110,12 @@ const AccountsPage = () => {
   const [summarySelectedVendor, setSummarySelectedVendor] = useState(null);
   const [summaryVendorLedgerTransactions, setSummaryVendorLedgerTransactions] = useState([]);
   const [summaryVendorLedgerLoading, setSummaryVendorLedgerLoading] = useState(false);
+  
+  // Tab state for Admin and Accounts Manager
+  const [adminAccountsTab, setAdminAccountsTab] = useState('overview'); // 'overview' or 'ledger'
+  const [adminSelectedVendor, setAdminSelectedVendor] = useState(null);
+  const [adminVendorLedgerTransactions, setAdminVendorLedgerTransactions] = useState([]);
+  const [adminVendorLedgerLoading, setAdminVendorLedgerLoading] = useState(false);
 
   // Role-based access
   const isSuperAdmin = user?.role === 'super_admin';
@@ -508,11 +516,38 @@ const AccountsPage = () => {
       )
     },
     {
+      key: 'vendorCustomer',
+      label: 'Vendor/Customer',
+      render: (account) => (
+        <div>
+          {account.vendorName && (
+            <div>
+              <div className="font-medium text-gray-900">{account.vendorName}</div>
+              {account.referenceNumber && (
+                <div className="text-xs text-gray-500">Ref: {account.referenceNumber}</div>
+              )}
+            </div>
+          )}
+          {account.customerName && (
+            <div>
+              <div className="font-medium text-gray-900">{account.customerName}</div>
+              {account.referenceNumber && (
+                <div className="text-xs text-gray-500">Ref: {account.referenceNumber}</div>
+              )}
+            </div>
+          )}
+          {!account.vendorName && !account.customerName && (
+            <div className="text-sm text-gray-400">N/A</div>
+          )}
+        </div>
+      )
+    },
+    {
       key: 'transactionDate',
       label: 'Date',
       render: (account) => (
         <div className="text-sm text-gray-900">
-          {new Date(account.transactionDate).toLocaleDateString()}
+{new Date(account.transactionDate).toLocaleDateString()}
         </div>
       )
     },
@@ -578,6 +613,33 @@ const AccountsPage = () => {
           status={account.paymentStatus}
           color={getPaymentStatusColor(account.paymentStatus)}
         />
+      )
+    },
+    {
+      key: 'vendorCustomer',
+      label: 'Vendor/Customer',
+      render: (account) => (
+        <div>
+          {account.vendorName && (
+            <div>
+              <div className="font-medium text-gray-900">{account.vendorName}</div>
+              {account.referenceNumber && (
+                <div className="text-xs text-gray-500">Ref: {account.referenceNumber}</div>
+              )}
+            </div>
+          )}
+          {account.customerName && (
+            <div>
+              <div className="font-medium text-gray-900">{account.customerName}</div>
+              {account.referenceNumber && (
+                <div className="text-xs text-gray-500">Ref: {account.referenceNumber}</div>
+              )}
+            </div>
+          )}
+          {!account.vendorName && !account.customerName && (
+            <div className="text-sm text-gray-400">N/A</div>
+          )}
+        </div>
       )
     },
     {
@@ -681,6 +743,33 @@ const AccountsPage = () => {
           status={account.paymentStatus}
           color={getPaymentStatusColor(account.paymentStatus)}
         />
+      )
+    },
+    {
+      key: 'vendorCustomer',
+      label: 'Vendor/Customer',
+      render: (account) => (
+        <div>
+          {account.vendorName && (
+            <div>
+              <div className="font-medium text-gray-900">{account.vendorName}</div>
+              {account.referenceNumber && (
+                <div className="text-xs text-gray-500">Ref: {account.referenceNumber}</div>
+              )}
+            </div>
+          )}
+          {account.customerName && (
+            <div>
+              <div className="font-medium text-gray-900">{account.customerName}</div>
+              {account.referenceNumber && (
+                <div className="text-xs text-gray-500">Ref: {account.referenceNumber}</div>
+              )}
+            </div>
+          )}
+          {!account.vendorName && !account.customerName && (
+            <div className="text-sm text-gray-400">N/A</div>
+          )}
+        </div>
       )
     },
     {
@@ -1028,7 +1117,7 @@ const AccountsPage = () => {
   };
 
   // Check if viewing a vendor ledger (hide header and tabs)
-  const isViewingVendorLedger = summarySelectedVendor !== null || selectedVendor !== null;
+  const isViewingVendorLedger = summarySelectedVendor !== null || selectedVendor !== null || adminSelectedVendor !== null;
 
   return (
     <div className="space-y-6">
@@ -1704,114 +1793,179 @@ const AccountsPage = () => {
               getUniqueSuppliers={getUniqueSuppliers}
               getAllBranches={getAllBranches}
               addNotification={addNotification}
+              getUniqueVendors={getUniqueVendors}
+              getUniqueCustomers={getUniqueCustomers}
+              user={user}
             />
           )}
         </div>
         )
       ) : (isAccountsManager || isAdmin || isSupervisor) ? (
-        // Accounts Manager, Admin, and Supervisor: Simplified view with only cards and table (no tabs)
+        // Accounts Manager, Admin, and Supervisor: View with tabs (Overview and Ledger)
         <div className="space-y-6">
-          {/* Statistics Cards */}
-          {stats && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
-              <StatCard
-                title="Total Income"
-                value={`₹${stats.summary?.totalIncome?.toLocaleString() || 0}`}
-                icon={HiArrowUp}
-                gradient="green"
-                loading={statsLoading}
-              />
-              <StatCard
-                title="Total Expense"
-                value={`₹${stats.summary?.totalExpense?.toLocaleString() || 0}`}
-                icon={HiArrowDown}
-                gradient="red"
-                loading={statsLoading}
-              />
-              <StatCard
-                title="Net Profit"
-                value={`₹${stats.summary?.netProfit?.toLocaleString() || 0}`}
-                icon={HiCurrencyDollar}
-                gradient="purple"
-                loading={statsLoading}
-              />
-              <StatCard
-                title="Total Transactions"
-                value={stats.summary?.totalTransactions || 0}
-                icon={HiClipboardDocumentList}
-                gradient="blue"
-                loading={statsLoading}
-              />
+          {/* Tabs - Hide when viewing vendor ledger */}
+          {!isViewingVendorLedger && (
+            <div className="border-b border-gray-200">
+              <nav className="-mb-px flex space-x-8">
+                <button
+                  onClick={() => {
+                    setAdminAccountsTab('overview');
+                    setAdminSelectedVendor(null);
+                  }}
+                  className={`${
+                    adminAccountsTab === 'overview'
+                      ? 'border-[#8bc34a] text-[#8bc34a]'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}
+                >
+                  Overview
+                </button>
+                <button
+                  onClick={() => {
+                    setAdminAccountsTab('ledger');
+                    setAdminSelectedVendor(null);
+                  }}
+                  className={`${
+                    adminAccountsTab === 'ledger'
+                      ? 'border-[#8bc34a] text-[#8bc34a]'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}
+                >
+                  Ledger
+                </button>
+              </nav>
             </div>
           )}
 
-          {/* Search and Filter Section */}
-          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-            <div className="w-full sm:w-80">
-              <SearchInput
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search accounts..."
-                icon={HiMagnifyingGlass}
-              />
-            </div>
-              <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0 sm:items-center">
-              <Select
-                value={dateRangeFilter}
-                onChange={handleDateRangeFilter}
-                options={dateRangeOptions}
-                className="w-full sm:w-48"
-              />
-              {dateRangeFilter === 'custom' && (
-                <>
-                  <div className="w-full sm:w-auto sm:flex sm:items-center sm:gap-2">
-                    <label className="text-sm font-medium text-gray-700 whitespace-nowrap mb-2 sm:mb-0">From</label>
-                    <Input
-                      type="date"
-                      value={fromDate}
-                      onChange={(e) => handleFromDateChange(e.target.value)}
-                      className="w-full sm:w-40"
-                    />
-                  </div>
-                  <div className="w-full sm:w-auto sm:flex sm:items-center sm:gap-2">
-                    <label className="text-sm font-medium text-gray-700 whitespace-nowrap mb-2 sm:mb-0">To</label>
-                    <Input
-                      type="date"
-                      value={toDate}
-                      onChange={(e) => handleToDateChange(e.target.value)}
-                      className="w-full sm:w-40"
-                    />
-                  </div>
-                </>
+          {/* Tab Content */}
+          {adminAccountsTab === 'overview' ? (
+            <>
+              {/* Statistics Cards */}
+              {stats && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
+                  <StatCard
+                    title="Total Income"
+                    value={`₹${stats.summary?.totalIncome?.toLocaleString() || 0}`}
+                    icon={HiArrowUp}
+                    gradient="green"
+                    loading={statsLoading}
+                  />
+                  <StatCard
+                    title="Total Expense"
+                    value={`₹${stats.summary?.totalExpense?.toLocaleString() || 0}`}
+                    icon={HiArrowDown}
+                    gradient="red"
+                    loading={statsLoading}
+                  />
+                  <StatCard
+                    title="Net Profit"
+                    value={`₹${stats.summary?.netProfit?.toLocaleString() || 0}`}
+                    icon={HiCurrencyDollar}
+                    gradient="purple"
+                    loading={statsLoading}
+                  />
+                  <StatCard
+                    title="Total Transactions"
+                    value={stats.summary?.totalTransactions || 0}
+                    icon={HiClipboardDocumentList}
+                    gradient="blue"
+                    loading={statsLoading}
+                  />
+                </div>
               )}
-              <Select
-                value={paymentStatusFilter}
-                onChange={handlePaymentStatusFilter}
-                options={paymentStatusOptions}
-                className="w-full sm:w-48"
-              />
-              <Select
-                value={transactionTypeFilter}
-                onChange={setTransactionTypeFilter}
-                options={transactionTypeOptions}
-                className="w-full sm:w-48"
-              />
-            </div>
-          </div>
 
-          {/* Accounts Table */}
-          <div className="bg-white">
-            <Table
-              data={accounts}
-              columns={columns}
-              loading={loading}
-              error={error}
-              pagination={pagination}
-              onPageChange={handlePageChange}
-              emptyMessage="No accounts found"
-              emptyIcon={HiClipboardDocumentList}
+              {/* Search and Filter Section */}
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                <div className="w-full sm:w-80">
+                  <SearchInput
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Search accounts..."
+                    icon={HiMagnifyingGlass}
+                  />
+                </div>
+                  <div className="flex flex-col sm:flex-row gap-4 sm:flex-shrink-0 sm:items-center">
+                  <Select
+                    value={dateRangeFilter}
+                    onChange={handleDateRangeFilter}
+                    options={dateRangeOptions}
+                    className="w-full sm:w-48"
+                  />
+                  {dateRangeFilter === 'custom' && (
+                    <>
+                      <div className="w-full sm:w-auto sm:flex sm:items-center sm:gap-2">
+                        <label className="text-sm font-medium text-gray-700 whitespace-nowrap mb-2 sm:mb-0">From</label>
+                        <Input
+                          type="date"
+                          value={fromDate}
+                          onChange={(e) => handleFromDateChange(e.target.value)}
+                          className="w-full sm:w-40"
+                        />
+                      </div>
+                      <div className="w-full sm:w-auto sm:flex sm:items-center sm:gap-2">
+                        <label className="text-sm font-medium text-gray-700 whitespace-nowrap mb-2 sm:mb-0">To</label>
+                        <Input
+                          type="date"
+                          value={toDate}
+                          onChange={(e) => handleToDateChange(e.target.value)}
+                          className="w-full sm:w-40"
+                        />
+                      </div>
+                    </>
+                  )}
+                  <Select
+                    value={paymentStatusFilter}
+                    onChange={handlePaymentStatusFilter}
+                    options={paymentStatusOptions}
+                    className="w-full sm:w-48"
+                  />
+                  <Select
+                    value={transactionTypeFilter}
+                    onChange={setTransactionTypeFilter}
+                    options={transactionTypeOptions}
+                    className="w-full sm:w-48"
+                  />
+                </div>
+              </div>
+
+              {/* Accounts Table */}
+              <div className="bg-white">
+                <Table
+                  data={accounts}
+                  columns={columns}
+                  loading={loading}
+                  error={error}
+                  pagination={pagination}
+                  onPageChange={handlePageChange}
+                  emptyMessage="No accounts found"
+                  emptyIcon={HiClipboardDocumentList}
+                />
+              </div>
+            </>
+          ) : (
+            <LedgerTabContent
+              selectedBranch={null}
+              selectedVendor={adminSelectedVendor}
+              setSelectedVendor={setAdminSelectedVendor}
+              vendorLedgerTransactions={adminVendorLedgerTransactions}
+              setVendorLedgerTransactions={setAdminVendorLedgerTransactions}
+              vendorLedgerLoading={adminVendorLedgerLoading}
+              setVendorLedgerLoading={setAdminVendorLedgerLoading}
+              dateRangeFilter={dateRangeFilter}
+              fromDate={fromDate}
+              toDate={toDate}
+              getDateRange={getDateRange}
+              dispatch={dispatch}
+              getAllAccounts={getAllAccounts}
+              getAllCourierPartners={getAllCourierPartners}
+              getUniqueSuppliers={getUniqueSuppliers}
+              getAllBranches={getAllBranches}
+              addNotification={addNotification}
+              getUniqueVendors={getUniqueVendors}
+              getUniqueCustomers={getUniqueCustomers}
+              user={user}
             />
-          </div>
+          )}
         </div>
       ) : (
         // Other roles (supervisor, etc.): Tabbed interface
@@ -2327,10 +2481,15 @@ const LedgerTabContent = ({
   getAllCourierPartners,
   getUniqueSuppliers,
   getAllBranches,
-  addNotification
+  addNotification,
+  getUniqueVendors,
+  getUniqueCustomers,
+  user = null // Add user prop to determine if branch-specific filtering should be used
 }) => {
   const [suppliers, setSuppliers] = useState([]);
   const [courierPartners, setCourierPartners] = useState([]);
+  const [expenseVendors, setExpenseVendors] = useState([]);
+  const [customers, setCustomers] = useState([]);
   const [vendorsLoading, setVendorsLoading] = useState(false);
   const [vendorBalance, setVendorBalance] = useState({ total: 0, credit: 0, debit: 0 });
   const [selectedTransaction, setSelectedTransaction] = useState(null);
@@ -2350,6 +2509,16 @@ const LedgerTabContent = ({
         const courierResult = await dispatch(getAllCourierPartners({ isActive: true })).unwrap();
         const courierList = courierResult.data?.courierPartners || [];
         setCourierPartners(courierList);
+
+        // Fetch expense vendors
+        const vendorsResult = await dispatch(getUniqueVendors()).unwrap();
+        const vendorsList = vendorsResult.data || [];
+        setExpenseVendors(vendorsList);
+
+        // Fetch customers
+        const customersResult = await dispatch(getUniqueCustomers()).unwrap();
+        const customersList = customersResult.data || [];
+        setCustomers(customersList);
       } catch (error) {
         console.error('Error fetching vendors:', error);
       } finally {
@@ -2360,7 +2529,7 @@ const LedgerTabContent = ({
     if (!selectedVendor) {
       fetchVendors();
     }
-  }, [dispatch, getAllCourierPartners, getUniqueSuppliers, selectedVendor]);
+  }, [dispatch, getAllCourierPartners, getUniqueSuppliers, getUniqueVendors, getUniqueCustomers, selectedVendor]);
 
   // Fetch vendor ledger transactions when vendor is selected
   useEffect(() => {
@@ -2376,7 +2545,12 @@ const LedgerTabContent = ({
         // So we need to fetch from Head Office branch, not the selected branch
         // For courier partners: Orders are branch-specific, so use the selected branch
         // If no branch selected (summary view), fetch from Head Office for suppliers, or all branches for couriers
-        if (selectedVendor.type === 'supplier') {
+        // EXCEPTION: For Admin/Accounts Manager (branch-specific users), don't override branchId
+        // Let getAllAccounts handle branch filtering automatically
+        const isBranchSpecificUser = user && (user.role === 'admin' || user.role === 'accounts_manager' || user.role === 'supervisor');
+        
+        if (selectedVendor.type === 'supplier' && !isBranchSpecificUser) {
+          // Only override for superadmin - for branch-specific users, let getAllAccounts handle it
           // Try to find Head Office branch ID
           try {
             const branchesResult = await dispatch(getAllBranches({ page: 1, limit: 1000 })).unwrap();
@@ -2394,11 +2568,34 @@ const LedgerTabContent = ({
             console.error('[LedgerTabContent] Error fetching branches:', error);
             // Fall back to selected branch or null (all branches)
           }
-        } else if (selectedVendor.type === 'courier' && !selectedBranch) {
+        } else if (selectedVendor.type === 'courier' && !selectedBranch && !isBranchSpecificUser) {
           // For courier partners in summary view, we need to fetch from all branches
           // So we don't set branchId (will fetch all)
+          // EXCEPTION: For branch-specific users, let getAllAccounts handle branch filtering
           branchId = undefined;
           console.log('[LedgerTabContent] Fetching courier transactions from all branches');
+        } else if (selectedVendor.type === 'vendor') {
+          // For expense vendors, use the user's branch (handled automatically by getAllAccounts for branch-specific users)
+          // For superadmin, don't set branchId to fetch from all branches
+          if (!isBranchSpecificUser) {
+            branchId = undefined;
+          } else {
+            branchId = undefined; // Let getAllAccounts handle branch filtering
+          }
+          console.log('[LedgerTabContent] Fetching vendor transactions');
+        } else if (selectedVendor.type === 'customer') {
+          // For customers, use the user's branch (handled automatically by getAllAccounts for branch-specific users)
+          // For superadmin, don't set branchId to fetch from all branches
+          if (!isBranchSpecificUser) {
+            branchId = undefined;
+          } else {
+            branchId = undefined; // Let getAllAccounts handle branch filtering
+          }
+          console.log('[LedgerTabContent] Fetching customer transactions');
+        } else if (isBranchSpecificUser) {
+          // For branch-specific users, don't set branchId - let getAllAccounts handle it
+          branchId = undefined;
+          console.log('[LedgerTabContent] Branch-specific user detected, letting getAllAccounts handle branch filtering');
         }
 
         // For suppliers, we need to get ALL accounts for the branch and filter by supplier
@@ -2449,7 +2646,45 @@ const LedgerTabContent = ({
         
         // Filter transactions by vendor name/supplier ID with better matching
         const filteredTransactions = transactions.filter(acc => {
-          if (selectedVendor.type === 'supplier') {
+          if (selectedVendor.type === 'vendor') {
+            // For expense vendors, match by vendorName and referenceNumber
+            const normalize = (str) => (str || '').toString().trim().toLowerCase();
+            const vendorNameMatch = acc.vendorName && normalize(acc.vendorName) === normalize(selectedVendor.vendorName);
+            const referenceMatch = selectedVendor.referenceNumber 
+              ? (acc.referenceNumber && normalize(acc.referenceNumber) === normalize(selectedVendor.referenceNumber))
+              : true; // If no reference number in vendor, match any reference number
+            
+            const match = vendorNameMatch && referenceMatch;
+            if (match) {
+              console.log('[LedgerTabContent] Matched vendor transaction:', {
+                accountId: acc.accountId,
+                vendorName: acc.vendorName,
+                referenceNumber: acc.referenceNumber,
+                transactionType: acc.transactionType,
+                category: acc.category
+              });
+            }
+            return match;
+          } else if (selectedVendor.type === 'customer') {
+            // For customers, match by customerName and referenceNumber
+            const normalize = (str) => (str || '').toString().trim().toLowerCase();
+            const customerNameMatch = acc.customerName && normalize(acc.customerName) === normalize(selectedVendor.customerName);
+            const referenceMatch = selectedVendor.referenceNumber 
+              ? (acc.referenceNumber && normalize(acc.referenceNumber) === normalize(selectedVendor.referenceNumber))
+              : true; // If no reference number in customer, match any reference number
+            
+            const match = customerNameMatch && referenceMatch;
+            if (match) {
+              console.log('[LedgerTabContent] Matched customer transaction:', {
+                accountId: acc.accountId,
+                customerName: acc.customerName,
+                referenceNumber: acc.referenceNumber,
+                transactionType: acc.transactionType,
+                category: acc.category
+              });
+            }
+            return match;
+          } else if (selectedVendor.type === 'supplier') {
             // Normalize strings for comparison (trim and lowercase)
             const normalize = (str) => (str || '').toString().trim().toLowerCase();
             
@@ -2578,8 +2813,38 @@ const LedgerTabContent = ({
       });
     });
 
+    // Add expense vendors
+    expenseVendors.forEach(vendor => {
+      const vendorId = `${vendor.vendorName}_${vendor.referenceNumber || 'no-ref'}`;
+      vendorList.push({
+        _id: vendorId,
+        name: vendor.vendorName || 'Unknown Vendor',
+        type: 'vendor',
+        vendorName: vendor.vendorName,
+        referenceNumber: vendor.referenceNumber,
+        transactionCount: vendor.transactionCount,
+        totalAmount: vendor.totalAmount,
+        lastTransactionDate: vendor.lastTransactionDate
+      });
+    });
+
+    // Add customers
+    customers.forEach(customer => {
+      const customerId = `${customer.customerName}_${customer.referenceNumber || 'no-ref'}`;
+      vendorList.push({
+        _id: customerId,
+        name: customer.customerName || 'Unknown Customer',
+        type: 'customer',
+        customerName: customer.customerName,
+        referenceNumber: customer.referenceNumber,
+        transactionCount: customer.transactionCount,
+        totalAmount: customer.totalAmount,
+        lastTransactionDate: customer.lastTransactionDate
+      });
+    });
+
     return vendorList.sort((a, b) => a.name.localeCompare(b.name));
-  }, [suppliers, courierPartners]);
+  }, [suppliers, courierPartners, expenseVendors, customers]);
 
   if (selectedVendor) {
     // Show vendor ledger as standalone dashboard
@@ -2597,7 +2862,13 @@ const LedgerTabContent = ({
           <div className="text-right">
             <h2 className="text-xl font-semibold text-gray-900">{selectedVendor.name}</h2>
             <p className="text-sm text-gray-500">
-              {selectedVendor.type === 'supplier' ? 'Supplier' : 'Courier Partner'} Ledger
+              {selectedVendor.type === 'supplier' ? 'Supplier' : 
+               selectedVendor.type === 'courier' ? 'Courier Partner' : 
+               selectedVendor.type === 'customer' ? 'Customer' : 
+               'Vendor'} Ledger
+              {selectedVendor.referenceNumber && (
+                <span className="ml-2 text-gray-400">({selectedVendor.referenceNumber})</span>
+              )}
             </p>
           </div>
         </div>
@@ -2870,11 +3141,22 @@ const LedgerTabContent = ({
                           ID: {vendor.supplierId}
                         </div>
                       )}
+                      {vendor.referenceNumber && (
+                        <div className="text-xs text-gray-500">
+                          Ref: {vendor.referenceNumber}
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <StatusBadge
-                        status={vendor.type === 'supplier' ? 'Supplier' : 'Courier Partner'}
-                        variant={vendor.type === 'supplier' ? 'info' : 'warning'}
+                        status={vendor.type === 'supplier' ? 'Supplier' : 
+                                vendor.type === 'courier' ? 'Courier Partner' : 
+                                vendor.type === 'customer' ? 'Customer' : 
+                                'Vendor'}
+                        variant={vendor.type === 'supplier' ? 'info' : 
+                                 vendor.type === 'courier' ? 'warning' : 
+                                 vendor.type === 'customer' ? 'success' : 
+                                 'primary'}
                       />
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">

@@ -39,6 +39,8 @@ const Dashboard = () => {
   const [orderStatusBreakdown, setOrderStatusBreakdown] = useState([]);
   const [leadsStatusBreakdown, setLeadsStatusBreakdown] = useState([]);
   const [monthlyLeadsData, setMonthlyLeadsData] = useState([]);
+  // Admin branch performance data
+  const [adminBranchLeadsOrders, setAdminBranchLeadsOrders] = useState([]);
   
   // Get current user
   const { user } = useSelector((state) => state.auth);
@@ -48,6 +50,9 @@ const Dashboard = () => {
   
   // Check if user is sales executive
   const isSalesExecutive = user?.role === 'sales_executive';
+  
+  // Check if user is admin
+  const isAdmin = user?.role === 'admin';
 
   // Format currency
   const formatCurrency = (amount) => {
@@ -212,8 +217,35 @@ const Dashboard = () => {
         const leadStats = leadStatsResponse.data?.data;
         
         // Fetch recent leads
-        const recentLeadsResponse = await api.get('/leads?limit=3&sortBy=createdAt&sortOrder=desc');
-        const leads = recentLeadsResponse.data?.data?.leads || [];
+        let leads = [];
+        if (isAdmin && user?.branch) {
+          const branchId = user.branch._id || user.branch;
+          
+          // First, fetch all users from the admin's branch
+          const usersResponse = await api.get(`/users?branch=${branchId}&limit=1000`);
+          const branchUsers = usersResponse.data?.data?.users || [];
+          const branchUserIds = branchUsers.map(u => u._id || u.id);
+          
+          // Fetch recent leads created by branch employees
+          if (branchUserIds.length > 0) {
+            const recentLeadsPromises = branchUserIds.map(userId => 
+              api.get(`/leads?createdBy=${userId}&limit=10&sortBy=createdAt&sortOrder=desc`)
+            );
+            const recentLeadsResponses = await Promise.all(recentLeadsPromises);
+            const allRecentLeads = recentLeadsResponses.flatMap(response => response.data?.data?.leads || []);
+            
+            // Remove duplicates and sort by createdAt, then take top 3
+            const uniqueRecentLeads = allRecentLeads.filter((lead, index, self) => 
+              index === self.findIndex(l => l._id === lead._id)
+            );
+            leads = uniqueRecentLeads
+              .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+              .slice(0, 3);
+          }
+        } else {
+          const recentLeadsResponse = await api.get('/leads?limit=3&sortBy=createdAt&sortOrder=desc');
+          leads = recentLeadsResponse.data?.data?.leads || [];
+        }
         
         // Fetch branch summary for branch performance
         let branchData = [];
@@ -223,6 +255,72 @@ const Dashboard = () => {
             branchData = branchSummaryResponse.data?.data?.summary || [];
           } catch (error) {
             console.error('Error fetching branch summary:', error);
+          }
+        }
+        
+        // Fetch leads and orders for admin's branch
+        let adminLeadsOrdersData = [];
+        if (isAdmin && user?.branch) {
+          try {
+            const branchId = user.branch._id || user.branch;
+            
+            // First, fetch all users from the admin's branch
+            const usersResponse = await api.get(`/users?branch=${branchId}&limit=1000`);
+            const branchUsers = usersResponse.data?.data?.users || [];
+            const branchUserIds = branchUsers.map(u => u._id || u.id);
+            
+            // Fetch leads created by branch employees (last 6 months)
+            let branchLeads = [];
+            if (branchUserIds.length > 0) {
+              // Fetch leads with createdBy filter for branch users
+              const leadsPromises = branchUserIds.map(userId => 
+                api.get(`/leads?createdBy=${userId}&limit=1000`)
+              );
+              const leadsResponses = await Promise.all(leadsPromises);
+              branchLeads = leadsResponses.flatMap(response => response.data?.data?.leads || []);
+              
+              // Remove duplicates (in case a lead appears in multiple responses)
+              const uniqueLeads = branchLeads.filter((lead, index, self) => 
+                index === self.findIndex(l => l._id === lead._id)
+              );
+              branchLeads = uniqueLeads;
+            }
+            
+            // Fetch orders for the branch (last 6 months)
+            const ordersResponse = await api.get(`/orders?branchId=${branchId}&limit=1000`);
+            const branchOrders = ordersResponse.data?.data?.orders || [];
+            
+            // Calculate monthly leads and orders (last 6 months)
+            const currentDate = new Date();
+            for (let i = 5; i >= 0; i--) {
+              const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+              const month = date.toLocaleString('default', { month: 'short' });
+              const year = date.getFullYear();
+              const monthStart = new Date(year, date.getMonth(), 1);
+              const monthEnd = new Date(year, date.getMonth() + 1, 0, 23, 59, 59);
+              
+              // Filter leads for this month
+              const monthLeads = branchLeads.filter(lead => {
+                const leadDate = new Date(lead.createdAt);
+                return leadDate >= monthStart && leadDate <= monthEnd;
+              });
+              
+              // Filter orders for this month
+              const monthOrders = branchOrders.filter(order => {
+                const orderDate = new Date(order.createdAt);
+                return orderDate >= monthStart && orderDate <= monthEnd;
+              });
+              
+              adminLeadsOrdersData.push({
+                month: `${month} ${year}`,
+                leads: monthLeads.length,
+                orders: monthOrders.length
+              });
+            }
+            
+            setAdminBranchLeadsOrders(adminLeadsOrdersData);
+          } catch (error) {
+            console.error('Error fetching admin branch leads and orders:', error);
           }
         }
         
@@ -291,7 +389,7 @@ const Dashboard = () => {
     };
 
     fetchDashboardData();
-  }, [user?.role, user?._id, isSalesExecutive]);
+  }, [user?.role, user?._id, user?.branch, isSalesExecutive, isAdmin]);
 
   // Chart colors - Primary colors (blue, red, green)
   const COLORS = ['#2196F3', '#f44336', '#4caf50', '#1976D2', '#d32f2f', '#388e3c', '#ff9800', '#9c27b0'];
@@ -427,6 +525,64 @@ const Dashboard = () => {
     {
       name: 'Expense',
       data: branchPerformance.map(b => b.expense || 0)
+    }
+  ];
+
+  // ApexCharts options for Admin Branch Leads and Orders
+  const adminBranchLeadsOrdersChartOptions = {
+    chart: {
+      type: 'line',
+      height: 280,
+      toolbar: { show: false },
+      zoom: { enabled: false }
+    },
+    dataLabels: {
+      enabled: false
+    },
+    stroke: {
+      curve: 'smooth',
+      width: 2
+    },
+    xaxis: {
+      categories: adminBranchLeadsOrders.map(d => d.month),
+      labels: {
+        style: {
+          fontSize: '12px'
+        }
+      }
+    },
+    yaxis: {
+      labels: {
+        style: {
+          fontSize: '12px'
+        },
+        formatter: (value) => formatNumber(value)
+      }
+    },
+    tooltip: {
+      y: {
+        formatter: (value) => formatNumber(value)
+      }
+    },
+    legend: {
+      fontSize: '12px',
+      position: 'top'
+    },
+    colors: ['#2196F3', '#4caf50'],
+    grid: {
+      borderColor: '#e5e7eb',
+      strokeDashArray: 3
+    }
+  };
+
+  const adminBranchLeadsOrdersChartSeries = [
+    {
+      name: 'Leads',
+      data: adminBranchLeadsOrders.map(d => d.leads)
+    },
+    {
+      name: 'Orders',
+      data: adminBranchLeadsOrders.map(d => d.orders)
     }
   ];
 
@@ -699,7 +855,7 @@ const Dashboard = () => {
 
       {/* Chart 2: Branch Performance Comparison & Recent Leads/Orders in Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Chart 2: Branch Performance Comparison */}
+        {/* Chart 2: Branch Performance Comparison / Admin Branch Leads & Orders */}
         {!isSalesExecutive && user?.role === 'super_admin' && branchPerformance.length > 0 ? (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
             <h3 className="text-base font-semibold text-gray-900 mb-3">Branch Performance Comparison</h3>
@@ -709,11 +865,21 @@ const Dashboard = () => {
               type="bar"
               height={280}
             />
-                </div>
+          </div>
+        ) : !isSalesExecutive && isAdmin && adminBranchLeadsOrders.length > 0 ? (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+            <h3 className="text-base font-semibold text-gray-900 mb-3">Branch Leads & Orders</h3>
+            <Chart
+              options={adminBranchLeadsOrdersChartOptions}
+              series={adminBranchLeadsOrdersChartSeries}
+              type="line"
+              height={280}
+            />
+          </div>
         ) : !isSalesExecutive ? (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex items-center justify-center">
             <div className="text-gray-500 text-sm">Branch performance data not available</div>
-              </div>
+          </div>
         ) : null}
 
         {/* Recent Leads */}

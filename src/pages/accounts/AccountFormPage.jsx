@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button, Input, Select, TextArea, Loading } from '../../components/common';
-import { createAccount, updateAccount, getAccountById } from '../../redux/actions/accountActions';
+import { createAccount, updateAccount, getAccountById, getUniqueVendors, getUniqueCustomers } from '../../redux/actions/accountActions';
 import { getAllBranches } from '../../redux/actions/branchActions';
 import { getAllOrders } from '../../redux/actions/orderActions';
 import { addNotification } from '../../redux/slices/uiSlice';
@@ -43,10 +43,13 @@ const AccountFormPage = () => {
     transactionDate: new Date().toISOString().split('T')[0],
     referenceNumber: '',
     vendorName: '',
-    customerName: '',
-    notes: ''
+    customerName: ''
   });
   const [errors, setErrors] = useState({});
+  const [vendors, setVendors] = useState([]);
+  const [vendorsLoading, setVendorsLoading] = useState(false);
+  const [customers, setCustomers] = useState([]);
+  const [customersLoading, setCustomersLoading] = useState(false);
 
 
   // Load account data for editing
@@ -80,8 +83,7 @@ const AccountFormPage = () => {
         transactionDate: account.transactionDate ? new Date(account.transactionDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
         referenceNumber: account.referenceNumber || '',
         vendorName: account.vendorName || '',
-        customerName: account.customerName || '',
-        notes: account.notes || ''
+        customerName: account.customerName || ''
       });
     } catch (error) {
       dispatch(addNotification({
@@ -93,6 +95,42 @@ const AccountFormPage = () => {
       setLoading(false);
     }
   };
+
+  // Load vendors
+  useEffect(() => {
+    const fetchVendors = async () => {
+      setVendorsLoading(true);
+      try {
+        const result = await dispatch(getUniqueVendors()).unwrap();
+        const vendorsList = result.data || [];
+        setVendors(vendorsList);
+      } catch (error) {
+        console.error('Error fetching vendors:', error);
+      } finally {
+        setVendorsLoading(false);
+      }
+    };
+    
+    fetchVendors();
+  }, [dispatch]);
+
+  // Load customers
+  useEffect(() => {
+    const fetchCustomers = async () => {
+      setCustomersLoading(true);
+      try {
+        const result = await dispatch(getUniqueCustomers()).unwrap();
+        const customersList = result.data || [];
+        setCustomers(customersList);
+      } catch (error) {
+        console.error('Error fetching customers:', error);
+      } finally {
+        setCustomersLoading(false);
+      }
+    };
+    
+    fetchCustomers();
+  }, [dispatch]);
 
   // Load data on component mount
   useEffect(() => {
@@ -157,7 +195,6 @@ const AccountFormPage = () => {
       paymentStatus: true,
       transactionDate: true,
       referenceNumber: true,
-      notes: true,
 
       // Conditional fields
       subCategory: false,
@@ -523,7 +560,7 @@ const AccountFormPage = () => {
 
           
 
-          {/* Reference Number and Vendor/Order (single row) */}
+          {/* Reference Number and Vendor/Customer Name (single row) */}
           <div className={`grid grid-cols-1 md:grid-cols-2 gap-6`}>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -540,10 +577,47 @@ const AccountFormPage = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Vendor Name
                 </label>
-                <Input
+                <Select
+                  options={[
+                    ...vendors.map(v => ({
+                      value: v.vendorName,
+                      label: `${v.vendorName}${v.referenceNumber ? ` (${v.referenceNumber})` : ''}`
+                    })),
+                    // Add current vendor name if it's not in the list (for new vendors or editing)
+                    ...(formData.vendorName && !vendors.find(v => v.vendorName === formData.vendorName)
+                      ? [{ value: formData.vendorName, label: formData.vendorName }]
+                      : [])
+                  ]}
                   value={formData.vendorName}
                   onChange={(e) => handleInputChange('vendorName', e.target.value)}
-                  placeholder="Enter vendor name"
+                  placeholder="Select or type vendor name"
+                  searchable={true}
+                  searchPlaceholder="Search or type new vendor..."
+                  loading={vendorsLoading}
+                />
+              </div>
+            ) : visibleFields.customerName ? (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Customer Name
+                </label>
+                <Select
+                  options={[
+                    ...customers.map(c => ({
+                      value: c.customerName,
+                      label: `${c.customerName}${c.referenceNumber ? ` (${c.referenceNumber})` : ''}`
+                    })),
+                    // Add current customer name if it's not in the list (for new customers or editing)
+                    ...(formData.customerName && !customers.find(c => c.customerName === formData.customerName)
+                      ? [{ value: formData.customerName, label: formData.customerName }]
+                      : [])
+                  ]}
+                  value={formData.customerName}
+                  onChange={(e) => handleInputChange('customerName', e.target.value)}
+                  placeholder="Select or type customer name"
+                  searchable={true}
+                  searchPlaceholder="Search or type new customer..."
+                  loading={customersLoading}
                 />
               </div>
             ) : visibleFields.orderId ? (
@@ -571,35 +645,31 @@ const AccountFormPage = () => {
             )}
           </div>
 
-          {/* Vendor/Customer Name (customer only; vendor shown with reference) */}
-          {(visibleFields.customerName) && (
+          {/* Order ID (shown separately for income transactions when customer name is also shown) */}
+          {visibleFields.orderId && visibleFields.customerName && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Customer Name
-                  </label>
-                  <Input
-                    value={formData.customerName}
-                    onChange={(e) => handleInputChange('customerName', e.target.value)}
-                    placeholder="Enter customer name"
-                  />
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Order ID
+                </label>
+                <Select
+                  options={orderOptions}
+                  value={formData.orderId}
+                  onChange={(e) => {
+                    const selectedOrderId = e.target.value;
+                    const selectedOrder = orderOptions.find(opt => opt.value === selectedOrderId);
+                    handleInputChange('orderId', selectedOrderId);
+                    if (selectedOrder) {
+                      handleInputChange('orderIdMongo', selectedOrder.mongoId);
+                    }
+                  }}
+                  placeholder="Select order (optional)"
+                  searchable={true}
+                />
+              </div>
               <div className="hidden md:block"></div>
             </div>
           )}
-
-          {/* Notes */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Notes
-            </label>
-            <TextArea
-              value={formData.notes}
-              onChange={(e) => handleInputChange('notes', e.target.value)}
-              placeholder="Enter additional notes (optional)"
-              rows={3}
-            />
-          </div>
 
           {/* Form Actions */}
           <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">
