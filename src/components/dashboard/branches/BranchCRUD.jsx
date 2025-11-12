@@ -138,11 +138,13 @@ const BranchCRUD = ({
     },
     {
       key: 'incentiveType',
-      label: 'Incentive Type',
+      label: 'Incentive Type (Count)',
       sortable: true,
       render: (branch) => (
         <div className="text-sm text-gray-900">
-          {branch.incentiveType}%
+          {branch.incentiveType !== undefined && branch.incentiveType !== null 
+            ? branch.incentiveType.toLocaleString('en-IN') 
+            : '0'}
         </div>
       )
     },

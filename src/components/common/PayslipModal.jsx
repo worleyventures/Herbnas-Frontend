@@ -171,99 +171,50 @@ const PayslipModal = ({ isOpen, onClose, userId, attendanceData: initialAttendan
             }
           }
           
-          // Always recalculate based on attendance if we have payroll data
+          // Update attendance and let backend recalculate everything
           if (payrollToUse) {
-            const basicSalary = payrollToUse.basicSalary || 0;
-            
-            // Calculate prorated salary based on presentDays
-            let proratedBasicSalary = 0;
-            if (presentDays > 0 && totalDaysInMonth > 0 && basicSalary > 0) {
-              proratedBasicSalary = (presentDays / totalDaysInMonth) * basicSalary;
-            } else if (presentDays === 0) {
-              proratedBasicSalary = 0;
-            } else {
-              // If no attendance data, use existing grossSalary or basicSalary
-              proratedBasicSalary = payrollToUse.calculations?.grossSalary || basicSalary;
-            }
-            
-            // Calculate prorated deductions
-            const deductionPercentage = basicSalary > 0 ? proratedBasicSalary / basicSalary : 0;
-            const deductions = payrollToUse.deductions || {};
-            const totalDeductions = 
-              (deductions.providentFund || 0) * deductionPercentage +
-              (deductions.esi || 0) * deductionPercentage +
-              (deductions.otherDeductions || 0) * deductionPercentage;
-            
-            // Calculate gross salary (basic + allowances)
-            const allowances = payrollToUse.allowances || 0;
-            let grossSalary = proratedBasicSalary + allowances;
-            
-            // Calculate incentive from branch incentiveType
-            let incentiveAmount = 0;
-            const branch = payrollToUse.branchId;
-            if (branch && (typeof branch === 'object' || typeof branch === 'string')) {
-              let incentiveType = 0;
-              
-              // Get incentiveType from branch
-              if (typeof branch === 'object' && branch.incentiveType !== undefined) {
-                incentiveType = branch.incentiveType || 0;
-              } else if (typeof branch === 'string') {
-                // If branchId is a string, try to fetch branch data
-                try {
-                  const branchResponse = await api.get(`/branches/${branch}`).catch(() => null);
-                  if (branchResponse?.data?.success && branchResponse.data.data?.branch) {
-                    incentiveType = branchResponse.data.data.branch.incentiveType || 0;
-                  }
-                } catch (error) {
-                  console.error('Error fetching branch for incentive:', error);
-                }
-              }
-              
-              // Calculate incentive amount (percentage of gross salary)
-              if (incentiveType > 0 && grossSalary > 0) {
-                incentiveAmount = (grossSalary * incentiveType) / 100;
-              }
-            }
-            
-            // Add incentive to gross salary
-            grossSalary = grossSalary + incentiveAmount;
-            
-            // Update payroll with recalculated values
-            payrollToUse.attendance = {
+            // Update attendance in payroll
+            const updatedAttendance = {
               ...payrollToUse.attendance,
               presentDays: presentDays,
               totalDays: totalDaysInMonth
             };
             
-            payrollToUse.calculations = {
-              ...payrollToUse.calculations,
-              grossSalary: grossSalary,
-              incentiveAmount: incentiveAmount,
-              totalDeductions: totalDeductions,
-              netSalary: Math.max(0, grossSalary - totalDeductions)
-            };
+            // Update payPeriod if not set
+            const updatedPayPeriod = payrollToUse.payPeriod && payrollToUse.payPeriod.month && payrollToUse.payPeriod.year
+              ? payrollToUse.payPeriod
+              : {
+                  month: previousMonth.monthNumber,
+                  year: previousMonth.year
+                };
             
-            console.log('Recalculated payroll:', {
-              basicSalary,
-              allowances,
-              presentDays,
-              totalDaysInMonth,
-              proratedBasicSalary,
-              incentiveAmount,
-              grossSalary,
-              totalDeductions,
-              netSalary: payrollToUse.calculations.netSalary
-            });
-            
-            // Update the payroll record in the database if it exists
+            // Update the payroll record in the database
+            // Backend will recalculate everything including incentives, prorated salary, deductions, etc.
             if (payrollToUse._id) {
               try {
-                await api.put(`/payrolls/${payrollToUse._id}`, {
-                  attendance: payrollToUse.attendance
+                const updatedPayrollResponse = await api.put(`/payrolls/${payrollToUse._id}`, {
+                  attendance: updatedAttendance,
+                  payPeriod: updatedPayPeriod
                 });
+                
+                // Use the updated payroll from backend (with all recalculated values including incentives)
+                if (updatedPayrollResponse?.data?.success && updatedPayrollResponse.data.data?.payroll) {
+                  payrollToUse = updatedPayrollResponse.data.data.payroll;
+                } else {
+                  // If update failed, still update local data with attendance
+                  payrollToUse.attendance = updatedAttendance;
+                  payrollToUse.payPeriod = updatedPayPeriod;
+                }
               } catch (error) {
                 console.error('Failed to update payroll attendance:', error);
+                // If update failed, still update local data with attendance
+                payrollToUse.attendance = updatedAttendance;
+                payrollToUse.payPeriod = updatedPayPeriod;
               }
+            } else {
+              // If no _id, just update local data
+              payrollToUse.attendance = updatedAttendance;
+              payrollToUse.payPeriod = updatedPayPeriod;
             }
             
             setPayrollData(payrollToUse);
@@ -580,11 +531,11 @@ const PayslipModal = ({ isOpen, onClose, userId, attendanceData: initialAttendan
                         const branch = payrollData?.branchId;
                         const incentiveType = typeof branch === 'object' ? (branch?.incentiveType || 0) : 0;
                         
-                        if (incentiveAmount > 0 && incentiveType > 0) {
+                        if (incentiveAmount > 0) {
                           return (
                             <div className="flex justify-between">
                               <span className="text-sm text-gray-600">
-                                Incentive ({incentiveType}%)
+                                Incentive {incentiveType > 0 ? `(after ${incentiveType} units)` : ''}
                               </span>
                               <span className="text-sm font-medium text-gray-900">
                                 ₹{incentiveAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
