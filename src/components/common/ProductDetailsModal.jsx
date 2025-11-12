@@ -46,6 +46,11 @@ const ProductDetailsModal = ({
         label: 'Price',
         value: formatPrice(product.price),
         type: 'price'
+      },
+      {
+        label: 'Incentive',
+        value: formatPrice(product.incentive),
+        type: 'price'
       }
     ]
   };

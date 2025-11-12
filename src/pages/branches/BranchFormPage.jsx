@@ -224,7 +224,10 @@ const BranchFormPage = () => {
       // Handle number fields (incentiveType, readyCashAmount)
       let processedValue = value;
       if (type === 'number') {
-        if (name === 'incentiveType' || name === 'readyCashAmount') {
+        if (name === 'incentiveType') {
+          // Incentive type should be an integer (count), not a decimal
+          processedValue = value === '' ? '' : (parseInt(value, 10) || 0);
+        } else if (name === 'readyCashAmount') {
           processedValue = value === '' ? '' : (parseFloat(value) || 0);
         }
       }
@@ -307,8 +310,11 @@ const BranchFormPage = () => {
       newErrors.pinCode = 'Pincode is required';
     }
     
-    if (formData.incentiveType < 0) {
-      newErrors.incentiveType = 'Incentive type must be a positive number';
+    if (formData.incentiveType !== undefined && formData.incentiveType !== null && formData.incentiveType !== '') {
+      const parsedIncentive = parseFloat(formData.incentiveType);
+      if (isNaN(parsedIncentive) || parsedIncentive < 0 || !Number.isInteger(parsedIncentive)) {
+        newErrors.incentiveType = 'Incentive type must be a positive whole number (count)';
+      }
     }
     
     if (formData.readyCashAmount < 0) {
@@ -330,7 +336,7 @@ const BranchFormPage = () => {
     const branchData = {
       ...formData,
       incentiveType: formData.incentiveType !== undefined && formData.incentiveType !== null && formData.incentiveType !== ''
-        ? parseFloat(formData.incentiveType) || 0
+        ? parseInt(formData.incentiveType, 10) || 0
         : 0
     };
 
@@ -689,17 +695,20 @@ const BranchFormPage = () => {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <Input
-                  label="Incentive Type"
+                  label="Incentive Type (Count)"
                   name="incentiveType"
                   type="number"
                   value={formData.incentiveType !== undefined && formData.incentiveType !== null ? formData.incentiveType : ''}
                   onChange={handleInputChange}
-                  placeholder="0"
+                  placeholder="e.g., 100"
                   error={errors.incentiveType}
                   min="0"
-                  step="0.01"
+                  step="1"
                   className="w-full"
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  Number of product units to sell before earning incentives (e.g., 100 means after selling 100 units, incentives apply)
+                </p>
               </div>
             </div>
 

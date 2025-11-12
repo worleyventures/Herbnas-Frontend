@@ -37,7 +37,6 @@ const Dashboard = () => {
   const [recentOrders, setRecentOrders] = useState([]);
   const [salesExecutiveMonthlyData, setSalesExecutiveMonthlyData] = useState([]);
   const [orderStatusBreakdown, setOrderStatusBreakdown] = useState([]);
-  const [leadsStatusBreakdown, setLeadsStatusBreakdown] = useState([]);
   const [monthlyLeadsData, setMonthlyLeadsData] = useState([]);
   // Admin branch performance data
   const [adminBranchLeadsOrders, setAdminBranchLeadsOrders] = useState([]);
@@ -85,12 +84,21 @@ const Dashboard = () => {
           const recentLeadsResponse = await api.get(`/leads?createdBy=${user._id}&limit=3&sortBy=createdAt&sortOrder=desc`);
           const leads = recentLeadsResponse.data?.data?.leads || [];
           
-          // Fetch orders (already filtered by branch for sales_executive)
-          const ordersResponse = await api.get('/orders?limit=1000');
-          const allOrdersFromBranch = ordersResponse.data?.data?.orders || [];
+          // Fetch ALL orders (not just delivered) for order status breakdown
+          const allOrdersResponse = await api.get('/orders?limit=1000');
+          const allOrdersFromBranch = allOrdersResponse.data?.data?.orders || [];
           
           // Filter orders to only show those created by the current user
           const allOrders = allOrdersFromBranch.filter(order => {
+            const orderCreatedBy = order.createdBy?._id || order.createdBy;
+            const userId = user._id || user.id;
+            return orderCreatedBy && userId && orderCreatedBy.toString() === userId.toString();
+          });
+          
+          // Fetch delivered orders separately for incentive calculation
+          const deliveredOrdersResponse = await api.get('/orders?limit=1000&status=delivered');
+          const deliveredOrdersFromBranch = deliveredOrdersResponse.data?.data?.orders || [];
+          const deliveredOrders = deliveredOrdersFromBranch.filter(order => {
             const orderCreatedBy = order.createdBy?._id || order.createdBy;
             const userId = user._id || user.id;
             return orderCreatedBy && userId && orderCreatedBy.toString() === userId.toString();
@@ -115,26 +123,65 @@ const Dashboard = () => {
             return sum;
           }, 0);
           
-          // Calculate incentive
-          // Get branch incentive type
-          let incentiveType = 0;
+          // Calculate incentive based on product sales
+          // Get branch incentive type (count threshold)
+          let branchIncentiveType = 0; // Count threshold (e.g., 100)
           let incentiveAmount = 0;
           if (user?.branch) {
             try {
-              const branchResponse = await api.get(`/branches/${user.branch}`);
-              incentiveType = branchResponse.data?.data?.branch?.incentiveType || 0;
+              // Extract branch ID - handle both string and object cases
+              const branchId = typeof user.branch === 'object' 
+                ? (user.branch._id || user.branch.id) 
+                : user.branch;
+              
+              if (branchId) {
+                const branchResponse = await api.get(`/branches/${branchId}`);
+                branchIncentiveType = branchResponse.data?.data?.branch?.incentiveType || 0;
+              }
             } catch (error) {
               console.error('Error fetching branch for incentive:', error);
             }
           }
           
-          // Calculate incentive from order revenue (incentiveType is percentage)
-          if (incentiveType > 0 && orderRevenue > 0) {
-            incentiveAmount = (orderRevenue * incentiveType) / 100;
+          // Calculate incentive based on product sales (same logic as backend)
+          // Use delivered orders for incentive calculation
+          if (branchIncentiveType > 0 && deliveredOrders.length > 0) {
+            // Aggregate product quantities sold from delivered orders
+            const productQuantities = {}; // { productId: { totalQuantity, incentive } }
+            
+            deliveredOrders.forEach(order => {
+              if (order.items && Array.isArray(order.items)) {
+                order.items.forEach(item => {
+                  const productId = (item.productId?._id || item.productId)?.toString();
+                  const productIncentive = item.productId?.incentive || 0;
+                  const quantity = parseInt(item.quantity) || 0;
+                  
+                  if (productId && productIncentive > 0) {
+                    if (!productQuantities[productId]) {
+                      productQuantities[productId] = {
+                        totalQuantity: 0,
+                        incentive: productIncentive
+                      };
+                    }
+                    productQuantities[productId].totalQuantity += quantity;
+                  }
+                });
+              }
+            });
+            
+            // Calculate incentive for each product
+            Object.values(productQuantities).forEach(product => {
+              const { totalQuantity, incentive } = product;
+              if (totalQuantity > branchIncentiveType) {
+                // Only count units above the threshold
+                const incentiveUnits = totalQuantity - branchIncentiveType;
+                incentiveAmount += incentiveUnits * incentive;
+              }
+            });
           }
           
-          // Calculate monthly leads data (last 6 months) from user's leads
-          const monthlyLeadsCount = [];
+          // Calculate monthly leads and orders data (last 6 months)
+          const monthlyLeadsOrdersCount = [];
           const currentDate = new Date();
           for (let i = 5; i >= 0; i--) {
             const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
@@ -149,25 +196,20 @@ const Dashboard = () => {
               return leadDate >= monthStart && leadDate <= monthEnd;
             });
             
-            monthlyLeadsCount.push({
+            // Filter orders for this month
+            const monthOrders = allOrders.filter(order => {
+              const orderDate = new Date(order.createdAt);
+              return orderDate >= monthStart && orderDate <= monthEnd;
+            });
+            
+            monthlyLeadsOrdersCount.push({
               month: `${month} ${year}`,
-              leads: monthLeads.length
+              leads: monthLeads.length,
+              orders: monthOrders.length
             });
           }
           
-          // Calculate leads status breakdown
-          const leadsStatusCounts = {};
-          myLeads.forEach(lead => {
-            const status = lead.leadStatus || 'new_lead';
-            leadsStatusCounts[status] = (leadsStatusCounts[status] || 0) + 1;
-          });
-          
-          const leadsStatusBreakdown = Object.entries(leadsStatusCounts).map(([status, count]) => ({
-            name: `Lead: ${status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}`,
-            value: count
-          }));
-          
-          // Calculate order status breakdown
+          // Calculate order status breakdown from ALL orders (not just delivered)
           const orderStatusCounts = {};
           allOrders.forEach(order => {
             const status = order.status || 'draft';
@@ -175,12 +217,9 @@ const Dashboard = () => {
           });
           
           const orderStatusBreakdown = Object.entries(orderStatusCounts).map(([status, count]) => ({
-            name: `Order: ${status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}`,
+            name: status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
             value: count
           }));
-          
-          // Combine leads and orders status for pie chart
-          const combinedStatusBreakdown = [...leadsStatusBreakdown, ...orderStatusBreakdown];
           
           setSalesExecutiveStats({
             myLeads: myLeadsCount,
@@ -190,9 +229,8 @@ const Dashboard = () => {
           });
           setRecentLeads(leads);
           setRecentOrders(orders);
-          setMonthlyLeadsData(monthlyLeadsCount);
-          setLeadsStatusBreakdown(leadsStatusBreakdown);
-          setOrderStatusBreakdown(combinedStatusBreakdown);
+          setMonthlyLeadsData(monthlyLeadsOrdersCount);
+          setOrderStatusBreakdown(orderStatusBreakdown);
           setStats({
             revenue: orderRevenue,
             expenses: 0,
@@ -637,15 +675,19 @@ const Dashboard = () => {
 
   const expensePieChartSeries = expenseBreakdown.map(e => e.value);
 
-  // Sales Executive Monthly Leads Chart Series
+  // Sales Executive Monthly Leads and Orders Chart Series
   const salesExecutiveMonthlyChartSeries = [
     {
       name: 'Leads',
-      data: monthlyLeadsData.map(d => d.leads)
+      data: monthlyLeadsData.map(d => d.leads || 0)
+    },
+    {
+      name: 'Orders',
+      data: monthlyLeadsData.map(d => d.orders || 0)
     }
   ];
 
-  // Sales Executive Monthly Leads Chart Options
+  // Sales Executive Monthly Leads and Orders Chart Options
   const salesExecutiveMonthlyChartOptions = {
     ...monthlyChartOptions,
     xaxis: {
@@ -665,15 +707,15 @@ const Dashboard = () => {
         formatter: (value) => formatNumber(value)
       }
     },
-    colors: ['#2196F3'],
+    colors: ['#2196F3', '#4caf50'],
     legend: {
       ...monthlyChartOptions.legend,
       show: true
     }
   };
 
-  // Leads and Orders Status Breakdown Pie Chart for Sales Executive
-  const leadsOrdersStatusPieChartOptions = {
+  // Order Status Breakdown Pie Chart for Sales Executive
+  const orderStatusPieChartOptions = {
     chart: {
       type: 'pie',
       height: 280
@@ -690,13 +732,11 @@ const Dashboard = () => {
         const value = series[seriesIndex];
         const total = series.reduce((a, b) => a + b, 0);
         const percentage = ((value / total) * 100).toFixed(1);
-        const isLead = label.startsWith('Lead:');
-        const isOrder = label.startsWith('Order:');
         return `
           <div style="padding: 8px;">
             <div style="font-weight: 600; margin-bottom: 4px; color: #fff;">${label}</div>
             <div style="font-size: 12px; color: #fff;">
-              ${isLead ? 'Leads' : isOrder ? 'Orders' : 'Count'}: ${value}
+              Orders: ${value}
             </div>
             <div style="font-size: 12px; color: #fff;">
               Percentage: ${percentage}%
@@ -710,7 +750,7 @@ const Dashboard = () => {
     }
   };
 
-  const leadsOrdersStatusPieChartSeries = orderStatusBreakdown.map(e => e.value);
+  const orderStatusPieChartSeries = orderStatusBreakdown.map(e => e.value);
 
   if (loading) {
     return (
@@ -801,10 +841,10 @@ const Dashboard = () => {
 
       {/* Charts Grid: Monthly Revenue vs Expenses, Expense Breakdown / Order Status */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Chart 1: Monthly Revenue vs Expenses / Monthly Leads */}
+        {/* Chart 1: Monthly Revenue vs Expenses / Monthly Leads & Orders */}
         {isSalesExecutive ? (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-            <h3 className="text-base font-semibold text-gray-900 mb-3">Monthly Leads</h3>
+            <h3 className="text-base font-semibold text-gray-900 mb-3">Monthly Leads & Orders</h3>
             {monthlyLeadsData.length > 0 ? (
               <Chart
                 options={salesExecutiveMonthlyChartOptions}
@@ -830,14 +870,14 @@ const Dashboard = () => {
           </div>
         )}
 
-        {/* Chart 3: Expense Breakdown (Pie Chart) / Leads and Orders Status Breakdown */}
+        {/* Chart 3: Expense Breakdown (Pie Chart) / Order Status Breakdown */}
         {isSalesExecutive ? (
           orderStatusBreakdown.length > 0 ? (
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-              <h3 className="text-base font-semibold text-gray-900 mb-3">Leads and Orders Status</h3>
+              <h3 className="text-base font-semibold text-gray-900 mb-3">Order Status</h3>
               <Chart
-                options={leadsOrdersStatusPieChartOptions}
-                series={leadsOrdersStatusPieChartSeries}
+                options={orderStatusPieChartOptions}
+                series={orderStatusPieChartSeries}
                 type="pie"
                 height={280}
               />

@@ -28,6 +28,7 @@ const ProductForm = () => {
     quantity: '',
     UOM: 'kg',
     price: '',
+    incentive: '',
     isActive: true
   });
 
@@ -64,6 +65,7 @@ const ProductForm = () => {
         quantity: product.quantity?.toString() || '',
         UOM: product.UOM || 'kg',
         price: product.price?.toString() || '',
+        incentive: product.incentive?.toString() || '',
         isActive: product.isActive !== undefined ? product.isActive : true
       });
     }
@@ -123,6 +125,10 @@ const ProductForm = () => {
       newErrors.price = 'Price must be a valid number greater than 0';
     }
 
+    if (formData.incentive && (isNaN(formData.incentive) || parseFloat(formData.incentive) < 0)) {
+      newErrors.incentive = 'Incentive must be a valid number greater than or equal to 0';
+    }
+
     if (formData.productId && !/^[A-Z0-9]+$/.test(formData.productId)) {
       newErrors.productId = 'Product ID must contain only uppercase letters and numbers';
     }
@@ -148,6 +154,7 @@ const ProductForm = () => {
         description: formData.description.trim(),
         quantity: parseFloat(formData.quantity),
         price: parseFloat(formData.price),
+        incentive: formData.incentive ? parseFloat(formData.incentive) : 0,
         productId: formData.productId && formData.productId.trim() ? formData.productId.trim().replace(/\s+/g, '') : undefined // Remove spaces and let backend auto-generate if empty
       };
 
@@ -307,6 +314,26 @@ const ProductForm = () => {
                 step="0.01"
                 min="0"
                 error={errors.price}
+                disabled={isSubmitting}
+                size="sm"
+                className="focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] "
+              />
+            </div>
+
+            {/* Incentive */}
+            <div className='bg-transparent'>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Incentive (₹)
+              </label>
+              <Input
+                type="number"
+                name="incentive"
+                value={formData.incentive}
+                onChange={handleInputChange}
+                placeholder="0.00"
+                step="0.01"
+                min="0"
+                error={errors.incentive}
                 disabled={isSubmitting}
                 size="sm"
                 className="focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] "

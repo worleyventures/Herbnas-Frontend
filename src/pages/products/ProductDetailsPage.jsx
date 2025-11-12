@@ -182,6 +182,11 @@ const ProductDetailsPage = () => {
               <span className="text-sm font-medium text-gray-600">Price</span>
               <span className="text-sm font-semibold text-gray-900">{formatPrice(currentProduct.price)}</span>
             </div>
+
+            <div className="flex justify-between items-center py-2 border-b border-gray-100">
+              <span className="text-sm font-medium text-gray-600">Incentive</span>
+              <span className="text-sm font-semibold text-gray-900">{formatPrice(currentProduct.incentive)}</span>
+            </div>
             
             <div className="flex justify-between items-center py-2">
               <span className="text-sm font-medium text-gray-600">Status</span>

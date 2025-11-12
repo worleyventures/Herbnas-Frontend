@@ -188,8 +188,8 @@ const BranchDetailsPage = () => {
                   />
                   <InfoCard
                     icon={HiCog6Tooth}
-                    label="Incentive Type"
-                    value={branch.incentiveType ? `${branch.incentiveType}%` : 'N/A'}
+                    label="Incentive Type (Count)"
+                    value={branch.incentiveType !== undefined && branch.incentiveType !== null ? branch.incentiveType.toLocaleString('en-IN') : '0'}
                   />
                   <InfoCard
                     icon={HiUsers}
