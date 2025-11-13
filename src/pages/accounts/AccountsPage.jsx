@@ -89,6 +89,7 @@ const AccountsPage = () => {
   const [branchDetails, setBranchDetails] = useState(null);
   const [loadingAccountDetails, setLoadingAccountDetails] = useState(false);
   const [transactionTypeFilter, setTransactionTypeFilter] = useState('all');
+  const [categoryFilter, setCategoryFilter] = useState('');
   
   // Drill-down state for Super Admin
   const [selectedBranch, setSelectedBranch] = useState(null);
@@ -124,6 +125,7 @@ const AccountsPage = () => {
   const isSupervisor = user?.role === 'supervisor';
 
   // Filter out lead incomes from accounts ledger
+  // Note: Category filtering is now handled by the backend
   const filteredAccounts = useMemo(() => {
     if (!accounts || accounts.length === 0) return [];
     
@@ -187,6 +189,20 @@ const AccountsPage = () => {
     }
   }, [dateRangeFilter, fromDate, toDate]);
 
+  // Read URL query parameters on mount and when location changes
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const categoryParam = searchParams.get('category');
+    const transactionTypeParam = searchParams.get('transactionType');
+    
+    if (categoryParam) {
+      setCategoryFilter(categoryParam);
+    }
+    if (transactionTypeParam) {
+      setTransactionTypeFilter(transactionTypeParam);
+    }
+  }, [location.search]);
+
   // Load data on component mount
   useEffect(() => {
     if (activeTab === 'overview' || isAccountsManager || isAdmin || isSupervisor) {
@@ -208,7 +224,8 @@ const AccountsPage = () => {
         endDate: dateRange?.endDate,
         branchId: branchId,
         paymentStatus: paymentStatusFilter !== 'all' ? paymentStatusFilter : undefined,
-        transactionType: transactionTypeFilter !== 'all' ? transactionTypeFilter : undefined
+        transactionType: transactionTypeFilter !== 'all' ? transactionTypeFilter : undefined,
+        category: categoryFilter || undefined
       }));
       dispatch(getAccountStats({
         startDate: dateRange?.startDate,

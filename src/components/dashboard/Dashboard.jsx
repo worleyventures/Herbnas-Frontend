@@ -434,7 +434,8 @@ const Dashboard = () => {
           if (expenseCategoryData?.categories) {
             expenseCategories.push(...expenseCategoryData.categories.map(cat => ({
               name: cat.category.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-              value: cat.totalAmount
+              value: cat.totalAmount,
+              category: cat.category // Store original category name for filtering
             })));
           }
         }
@@ -657,11 +658,36 @@ const Dashboard = () => {
     }
   ];
 
+  // Expense Breakdown Pie Chart - Track last click for double-click detection
+  const expenseLastClickRef = useRef({ time: 0, index: -1 });
+  
   // ApexCharts options for Expense Breakdown Pie Chart
   const expensePieChartOptions = {
     chart: {
       type: 'pie',
-      height: 280
+      height: 280,
+      events: {
+        dataPointSelection: function(event, chartContext, config) {
+          // Handle click on pie slice - detect double-click
+          if (config.dataPointIndex !== undefined) {
+            const categoryData = expenseBreakdown[config.dataPointIndex];
+            if (categoryData && categoryData.category) {
+              const now = Date.now();
+              const lastClick = expenseLastClickRef.current;
+              
+              // Check if this is a double-click (same slice clicked within 300ms)
+              if (lastClick.index === config.dataPointIndex && (now - lastClick.time) < 300) {
+                // Double-click detected - navigate to accounts page with category filter
+                navigate(`/accounts?category=${encodeURIComponent(categoryData.category)}&transactionType=expense`);
+                expenseLastClickRef.current = { time: 0, index: -1 }; // Reset
+              } else {
+                // First click - record time and index
+                expenseLastClickRef.current = { time: now, index: config.dataPointIndex };
+              }
+            }
+          }
+        }
+      }
     },
     labels: expenseBreakdown.map(e => e.name),
     colors: COLORS,
@@ -676,13 +702,16 @@ const Dashboard = () => {
         const total = series.reduce((a, b) => a + b, 0);
         const percentage = ((value / total) * 100).toFixed(1);
         return `
-          <div style="padding: 8px;">
-            <div style="font-weight: 600; margin-bottom: 4px; color: #fff;">${label}</div>
-            <div style="font-size: 12px; color: #fff;">
-              Amount: ${formatCurrency(value)}
+          <div style="padding: 10px; background: rgba(0, 0, 0, 0.8); border-radius: 6px;">
+            <div style="font-weight: 600; margin-bottom: 6px; color: #fff; font-size: 14px;">${label}</div>
+            <div style="font-size: 12px; color: #e5e7eb; margin-bottom: 4px;">
+              <strong>Amount:</strong> ${formatCurrency(value)}
             </div>
-            <div style="font-size: 12px; color: #fff;">
-              Percentage: ${percentage}%
+            <div style="font-size: 12px; color: #e5e7eb; margin-bottom: 4px;">
+              <strong>Percentage:</strong> ${percentage}%
+            </div>
+            <div style="font-size: 11px; color: #9ca3af; margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.2);">
+              Double-click to view accounts
             </div>
           </div>
         `;
@@ -690,6 +719,11 @@ const Dashboard = () => {
     },
     dataLabels: {
       enabled: false
+    },
+    plotOptions: {
+      pie: {
+        expandOnClick: false
+      }
     }
   };
 
