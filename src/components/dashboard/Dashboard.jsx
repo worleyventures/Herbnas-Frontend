@@ -40,6 +40,9 @@ const Dashboard = () => {
   const [monthlyLeadsData, setMonthlyLeadsData] = useState([]);
   // Admin branch performance data
   const [adminBranchLeadsOrders, setAdminBranchLeadsOrders] = useState([]);
+  // Production manager data
+  const [productionData, setProductionData] = useState([]);
+  const [sentGoodsData, setSentGoodsData] = useState([]);
   
   // Get current user
   const { user } = useSelector((state) => state.auth);
@@ -52,6 +55,9 @@ const Dashboard = () => {
   
   // Check if user is admin
   const isAdmin = user?.role === 'admin';
+  
+  // Check if user is accounts manager
+  const isAccountsManager = user?.role === 'accounts_manager';
 
   // Format currency
   const formatCurrency = (amount) => {
@@ -251,48 +257,143 @@ const Dashboard = () => {
           return;
         }
         
+        // Production Manager Dashboard
+        if (isProductionManager) {
+          // Get current month date range
+          const currentDate = new Date();
+          const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+          monthStart.setHours(0, 0, 0, 0);
+          const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+          monthEnd.setHours(23, 59, 59, 999);
+          
+          // Fetch finished goods (overall production) for this month
+          const finishedGoodsResponse = await api.get('/inventory/finished-goods', {
+            params: {
+              limit: 1000,
+              sortBy: 'createdAt',
+              sortOrder: 'desc'
+            }
+          });
+          const allFinishedGoods = finishedGoodsResponse.data?.data?.finishedGoods || [];
+          
+          // Filter finished goods created this month
+          const thisMonthFinishedGoods = allFinishedGoods.filter(fg => {
+            const createdAt = new Date(fg.createdAt || fg.production?.manufacturedDate);
+            return createdAt >= monthStart && createdAt <= monthEnd;
+          });
+          
+          // Group by product for overall production chart
+          const productionByProduct = {};
+          thisMonthFinishedGoods.forEach(fg => {
+            const productName = fg.product?.productName || 'Unknown';
+            if (!productionByProduct[productName]) {
+              productionByProduct[productName] = 0;
+            }
+            productionByProduct[productName] += (fg.availableQuantity || 0);
+          });
+          
+          const productionChartData = Object.entries(productionByProduct).map(([name, value]) => ({
+            name,
+            value
+          }));
+          
+          // Fetch sent goods (production sent to branches) for this month
+          const sentGoodsResponse = await api.get('/inventory/sent-goods', {
+            params: {
+              limit: 1000,
+              sortBy: 'sentAt',
+              sortOrder: 'desc'
+            }
+          });
+          const allSentGoods = sentGoodsResponse.data?.data?.sentGoods || [];
+          
+          // Filter sent goods sent this month
+          const thisMonthSentGoods = allSentGoods.filter(sg => {
+            const sentAt = new Date(sg.sentAt || sg.createdAt);
+            return sentAt >= monthStart && sentAt <= monthEnd;
+          });
+          
+          // Group by branch for sent goods chart
+          const sentGoodsByBranch = {};
+          thisMonthSentGoods.forEach(sg => {
+            const branchName = sg.branchId?.branchName || 'Unknown';
+            if (!sentGoodsByBranch[branchName]) {
+              sentGoodsByBranch[branchName] = 0;
+            }
+            // Sum up quantities from all items
+            if (sg.items && Array.isArray(sg.items)) {
+              sg.items.forEach(item => {
+                sentGoodsByBranch[branchName] += (item.quantity || 0);
+              });
+            }
+          });
+          
+          const sentGoodsChartData = Object.entries(sentGoodsByBranch).map(([name, value]) => ({
+            name,
+            value
+          }));
+          
+          setProductionData(productionChartData);
+          setSentGoodsData(sentGoodsChartData);
+          setStats({
+            revenue: 0,
+            expenses: 0,
+            inventory: productionChartData.reduce((sum, item) => sum + item.value, 0),
+            leads: 0
+          });
+          setLoading(false);
+          return;
+        }
+        
         // Default Dashboard (for other roles)
         // Fetch account stats for revenue and expenses
+        // Backend automatically filters by branch for accounts_manager
         const accountStatsResponse = await api.get('/accounts/stats');
         const accountStats = accountStatsResponse.data?.data;
         
-        // Fetch inventory stats
-        const inventoryStatsResponse = await api.get('/inventory/stats');
-        const inventoryStats = inventoryStatsResponse.data?.data?.stats;
+        // Fetch inventory stats (skip for accounts_manager)
+        let inventoryStats = null;
+        if (!isAccountsManager) {
+          const inventoryStatsResponse = await api.get('/inventory/stats');
+          inventoryStats = inventoryStatsResponse.data?.data?.stats;
+        }
         
-        // Fetch lead stats
-        const leadStatsResponse = await api.get('/leads/admin/stats');
-        const leadStats = leadStatsResponse.data?.data;
-        
-        // Fetch recent leads
+        // Fetch lead stats (skip for accounts_manager)
+        let leadStats = null;
         let leads = [];
-        if (isAdmin && user?.branch) {
-          const branchId = user.branch._id || user.branch;
+        if (!isAccountsManager) {
+          const leadStatsResponse = await api.get('/leads/admin/stats');
+          leadStats = leadStatsResponse.data?.data;
           
-          // First, fetch all users from the admin's branch
-          const usersResponse = await api.get(`/users?branch=${branchId}&limit=1000`);
-          const branchUsers = usersResponse.data?.data?.users || [];
-          const branchUserIds = branchUsers.map(u => u._id || u.id);
-          
-          // Fetch recent leads created by branch employees AND for the branch
-          if (branchUserIds.length > 0) {
-            const recentLeadsPromises = branchUserIds.map(userId => 
-              api.get(`/leads?createdBy=${userId}&dispatchedFrom=${branchId}&limit=10&sortBy=createdAt&sortOrder=desc`)
-            );
-            const recentLeadsResponses = await Promise.all(recentLeadsPromises);
-            const allRecentLeads = recentLeadsResponses.flatMap(response => response.data?.data?.leads || []);
+          // Fetch recent leads
+          if (isAdmin && user?.branch) {
+            const branchId = user.branch._id || user.branch;
             
-            // Remove duplicates and sort by createdAt, then take top 3
-            const uniqueRecentLeads = allRecentLeads.filter((lead, index, self) => 
-              index === self.findIndex(l => l._id === lead._id)
-            );
-            leads = uniqueRecentLeads
-              .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-              .slice(0, 3);
+            // First, fetch all users from the admin's branch
+            const usersResponse = await api.get(`/users?branch=${branchId}&limit=1000`);
+            const branchUsers = usersResponse.data?.data?.users || [];
+            const branchUserIds = branchUsers.map(u => u._id || u.id);
+            
+            // Fetch recent leads created by branch employees AND for the branch
+            if (branchUserIds.length > 0) {
+              const recentLeadsPromises = branchUserIds.map(userId => 
+                api.get(`/leads?createdBy=${userId}&dispatchedFrom=${branchId}&limit=10&sortBy=createdAt&sortOrder=desc`)
+              );
+              const recentLeadsResponses = await Promise.all(recentLeadsPromises);
+              const allRecentLeads = recentLeadsResponses.flatMap(response => response.data?.data?.leads || []);
+              
+              // Remove duplicates and sort by createdAt, then take top 3
+              const uniqueRecentLeads = allRecentLeads.filter((lead, index, self) => 
+                index === self.findIndex(l => l._id === lead._id)
+              );
+              leads = uniqueRecentLeads
+                .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                .slice(0, 3);
+            }
+          } else {
+            const recentLeadsResponse = await api.get('/leads?limit=3&sortBy=createdAt&sortOrder=desc');
+            leads = recentLeadsResponse.data?.data?.leads || [];
           }
-        } else {
-          const recentLeadsResponse = await api.get('/leads?limit=3&sortBy=createdAt&sortOrder=desc');
-          leads = recentLeadsResponse.data?.data?.leads || [];
         }
         
         // Fetch branch summary for branch performance
@@ -424,7 +525,8 @@ const Dashboard = () => {
           if (expenseCategoryData?.categories) {
             expenseCategories.push(...expenseCategoryData.categories.map(cat => ({
               name: cat.category.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-              value: cat.totalAmount
+              value: cat.totalAmount,
+              category: cat.category // Store original category name for filtering
             })));
           }
         }
@@ -433,8 +535,8 @@ const Dashboard = () => {
         setStats({
           revenue: accountStats?.summary?.totalIncome || 0,
           expenses: accountStats?.summary?.totalExpense || 0,
-          inventory: inventoryStats?.rawMaterials?.totalItems || 0,
-          leads: leadStats?.overview?.totalLeads || 0
+          inventory: isAccountsManager ? 0 : (inventoryStats?.rawMaterials?.totalItems || 0),
+          leads: isAccountsManager ? 0 : (leadStats?.overview?.totalLeads || 0)
         });
         
         setMonthlyData(monthlyRevenueExpenses);
@@ -450,7 +552,7 @@ const Dashboard = () => {
     };
 
     fetchDashboardData();
-  }, [user?.role, user?._id, user?.branch, isSalesExecutive, isAdmin]);
+  }, [user?.role, user?._id, user?.branch, isSalesExecutive, isAdmin, isAccountsManager, isProductionManager]);
 
   // Chart colors - Primary colors (blue, red, green)
   const COLORS = ['#2196F3', '#f44336', '#4caf50', '#1976D2', '#d32f2f', '#388e3c', '#ff9800', '#9c27b0'];
@@ -647,11 +749,36 @@ const Dashboard = () => {
     }
   ];
 
+  // Expense Breakdown Pie Chart - Track last click for double-click detection
+  const expenseLastClickRef = useRef({ time: 0, index: -1 });
+  
   // ApexCharts options for Expense Breakdown Pie Chart
   const expensePieChartOptions = {
     chart: {
       type: 'pie',
-      height: 280
+      height: 280,
+      events: {
+        dataPointSelection: function(event, chartContext, config) {
+          // Handle click on pie slice - detect double-click
+          if (config.dataPointIndex !== undefined) {
+            const categoryData = expenseBreakdown[config.dataPointIndex];
+            if (categoryData && categoryData.category) {
+              const now = Date.now();
+              const lastClick = expenseLastClickRef.current;
+              
+              // Check if this is a double-click (same slice clicked within 300ms)
+              if (lastClick.index === config.dataPointIndex && (now - lastClick.time) < 300) {
+                // Double-click detected - navigate to accounts page with category filter
+                navigate(`/accounts?category=${encodeURIComponent(categoryData.category)}&transactionType=expense`);
+                expenseLastClickRef.current = { time: 0, index: -1 }; // Reset
+              } else {
+                // First click - record time and index
+                expenseLastClickRef.current = { time: now, index: config.dataPointIndex };
+              }
+            }
+          }
+        }
+      }
     },
     labels: expenseBreakdown.map(e => e.name),
     colors: COLORS,
@@ -666,13 +793,16 @@ const Dashboard = () => {
         const total = series.reduce((a, b) => a + b, 0);
         const percentage = ((value / total) * 100).toFixed(1);
         return `
-          <div style="padding: 8px;">
-            <div style="font-weight: 600; margin-bottom: 4px; color: #fff;">${label}</div>
-            <div style="font-size: 12px; color: #fff;">
-              Amount: ${formatCurrency(value)}
+          <div style="padding: 10px; background: rgba(0, 0, 0, 0.8); border-radius: 6px;">
+            <div style="font-weight: 600; margin-bottom: 6px; color: #fff; font-size: 14px;">${label}</div>
+            <div style="font-size: 12px; color: #e5e7eb; margin-bottom: 4px;">
+              <strong>Amount:</strong> ${formatCurrency(value)}
             </div>
-            <div style="font-size: 12px; color: #fff;">
-              Percentage: ${percentage}%
+            <div style="font-size: 12px; color: #e5e7eb; margin-bottom: 4px;">
+              <strong>Percentage:</strong> ${percentage}%
+            </div>
+            <div style="font-size: 11px; color: #9ca3af; margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.2);">
+              Double-click to view accounts
             </div>
           </div>
         `;
@@ -680,6 +810,11 @@ const Dashboard = () => {
     },
     dataLabels: {
       enabled: false
+    },
+    plotOptions: {
+      pie: {
+        expandOnClick: false
+      }
     }
   };
 
@@ -800,6 +935,117 @@ const Dashboard = () => {
 
   const orderStatusPieChartSeries = orderStatusBreakdown.map(e => e.value);
 
+  // Production Manager Charts
+  // Overall Production Chart (Bar Chart)
+  const productionBarChartOptions = {
+    chart: {
+      type: 'bar',
+      height: 280,
+      toolbar: { show: false }
+    },
+    plotOptions: {
+      bar: {
+        horizontal: false,
+        columnWidth: '55%',
+        endingShape: 'rounded'
+      }
+    },
+    dataLabels: {
+      enabled: false
+    },
+    xaxis: {
+      categories: productionData.map(d => d.name),
+      labels: {
+        style: {
+          fontSize: '12px'
+        },
+        rotate: -45,
+        rotateAlways: true
+      }
+    },
+    yaxis: {
+      labels: {
+        style: {
+          fontSize: '12px'
+        },
+        formatter: (value) => formatNumber(value)
+      }
+    },
+    tooltip: {
+      y: {
+        formatter: (value) => formatNumber(value)
+      }
+    },
+    legend: {
+      show: false
+    },
+    colors: ['#2196F3'],
+    grid: {
+      borderColor: '#e5e7eb',
+      strokeDashArray: 3
+    }
+  };
+
+  const productionBarChartSeries = [{
+    name: 'Production',
+    data: productionData.map(d => d.value)
+  }];
+
+  // Sent Goods to Branches Chart (Bar Chart)
+  const sentGoodsBarChartOptions = {
+    chart: {
+      type: 'bar',
+      height: 280,
+      toolbar: { show: false }
+    },
+    plotOptions: {
+      bar: {
+        horizontal: false,
+        columnWidth: '55%',
+        endingShape: 'rounded'
+      }
+    },
+    dataLabels: {
+      enabled: false
+    },
+    xaxis: {
+      categories: sentGoodsData.map(d => d.name),
+      labels: {
+        style: {
+          fontSize: '12px'
+        },
+        rotate: -45,
+        rotateAlways: true
+      }
+    },
+    yaxis: {
+      labels: {
+        style: {
+          fontSize: '12px'
+        },
+        formatter: (value) => formatNumber(value)
+      }
+    },
+    tooltip: {
+      y: {
+        formatter: (value) => formatNumber(value)
+      }
+    },
+    legend: {
+      show: false
+    },
+    colors: ['#4caf50'],
+    grid: {
+      borderColor: '#e5e7eb',
+      strokeDashArray: 3
+    }
+  };
+
+  const sentGoodsBarChartSeries = [{
+    name: 'Sent to Branches',
+    data: sentGoodsData.map(d => d.value)
+  }];
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -853,9 +1099,27 @@ const Dashboard = () => {
             loading={loading}
           />
               </div>
+      ) : isProductionManager ? (
+        // Production Manager Dashboard Cards
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-2 gap-3 sm:gap-4">
+          <StatCard
+            title="Total Production (This Month)"
+            value={formatNumber(stats.inventory)}
+            icon={HiCube}
+            gradient="blue"
+            loading={loading}
+          />
+          <StatCard
+            title="Sent to Branches (This Month)"
+            value={formatNumber(sentGoodsData.reduce((sum, item) => sum + item.value, 0))}
+            icon={HiShoppingBag}
+            gradient="green"
+            loading={loading}
+          />
+        </div>
       ) : (
         // Default Dashboard Cards
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
+        <div className={`grid grid-cols-1 sm:grid-cols-2 ${isAccountsManager ? 'xl:grid-cols-2' : 'xl:grid-cols-4'} gap-3 sm:gap-4`}>
           <StatCard
             title="Revenue"
             value={formatCurrency(stats.revenue)}
@@ -870,27 +1134,47 @@ const Dashboard = () => {
             gradient="red"
             loading={loading}
           />
-          <StatCard
-            title="Inventory"
-            value={formatNumber(stats.inventory)}
-            icon={HiCube}
-            gradient="blue"
-            loading={loading}
-          />
-          <StatCard
-            title="Leads"
-            value={formatNumber(stats.leads)}
-            icon={HiUsers}
-            gradient="blue"
-            loading={loading}
-          />
+          {!isAccountsManager && (
+            <>
+              <StatCard
+                title="Inventory"
+                value={formatNumber(stats.inventory)}
+                icon={HiCube}
+                gradient="blue"
+                loading={loading}
+              />
+              <StatCard
+                title="Leads"
+                value={formatNumber(stats.leads)}
+                icon={HiUsers}
+                gradient="blue"
+                loading={loading}
+              />
+            </>
+          )}
                 </div>
       )}
 
-      {/* Charts Grid: Monthly Revenue vs Expenses, Expense Breakdown / Order Status */}
+      {/* Charts Grid: Monthly Revenue vs Expenses, Expense Breakdown / Order Status / Production Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Chart 1: Monthly Revenue vs Expenses / Monthly Leads & Orders */}
-        {isSalesExecutive ? (
+        {/* Chart 1: Monthly Revenue vs Expenses / Monthly Leads & Orders / Overall Production */}
+        {isProductionManager ? (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+            <h3 className="text-base font-semibold text-gray-900 mb-3">Overall Production (This Month)</h3>
+            {productionData.length > 0 ? (
+              <Chart
+                options={productionBarChartOptions}
+                series={productionBarChartSeries}
+                type="bar"
+                height={280}
+              />
+            ) : (
+              <div className="flex items-center justify-center h-[280px]">
+                <div className="text-gray-500 text-sm">No production data available for this month</div>
+              </div>
+            )}
+          </div>
+        ) : isSalesExecutive ? (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
             <h3 className="text-base font-semibold text-gray-900 mb-3">Monthly Leads & Orders</h3>
             {monthlyLeadsData.length > 0 ? (
@@ -918,8 +1202,24 @@ const Dashboard = () => {
           </div>
         )}
 
-        {/* Chart 3: Expense Breakdown (Pie Chart) / Order Status Breakdown */}
-        {isSalesExecutive ? (
+        {/* Chart 3: Expense Breakdown (Pie Chart) / Order Status Breakdown / Sent Goods to Branches */}
+        {isProductionManager ? (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+            <h3 className="text-base font-semibold text-gray-900 mb-3">Production Sent to Branches (This Month)</h3>
+            {sentGoodsData.length > 0 ? (
+              <Chart
+                options={sentGoodsBarChartOptions}
+                series={sentGoodsBarChartSeries}
+                type="bar"
+                height={280}
+              />
+            ) : (
+              <div className="flex items-center justify-center h-[280px]">
+                <div className="text-gray-500 text-sm">No goods sent to branches this month</div>
+              </div>
+            )}
+          </div>
+        ) : isSalesExecutive ? (
           orderStatusBreakdown.length > 0 ? (
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
               <h3 className="text-base font-semibold text-gray-900 mb-3">Order Status</h3>
@@ -957,7 +1257,7 @@ const Dashboard = () => {
       {/* Chart 2: Branch Performance Comparison & Recent Leads/Orders in Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Chart 2: Branch Performance Comparison / Admin Branch Leads & Orders */}
-        {!isSalesExecutive && user?.role === 'super_admin' && branchPerformance.length > 0 ? (
+        {!isSalesExecutive && !isAccountsManager && !isProductionManager && user?.role === 'super_admin' && branchPerformance.length > 0 ? (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
             <h3 className="text-base font-semibold text-gray-900 mb-3">Branch Performance Comparison</h3>
             <Chart
@@ -967,7 +1267,7 @@ const Dashboard = () => {
               height={280}
             />
           </div>
-        ) : !isSalesExecutive && isAdmin && adminBranchLeadsOrders.length > 0 ? (
+        ) : !isSalesExecutive && !isAccountsManager && !isProductionManager && isAdmin && adminBranchLeadsOrders.length > 0 ? (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
             <h3 className="text-base font-semibold text-gray-900 mb-3">Branch Leads & Orders</h3>
             <Chart
@@ -977,61 +1277,63 @@ const Dashboard = () => {
               height={280}
             />
           </div>
-        ) : !isSalesExecutive ? (
+        ) : !isSalesExecutive && !isAccountsManager && !isProductionManager ? (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex items-center justify-center">
             <div className="text-gray-500 text-sm">Branch performance data not available</div>
           </div>
         ) : null}
 
-        {/* Recent Leads */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-          <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-            <div>
-              <h3 className="text-base font-semibold text-gray-900">
-                {isSalesExecutive ? 'My Recent Leads' : 'Recent Leads'}
-                </h3>
-              <p className="text-xs text-gray-600 mt-0.5">
-                {isSalesExecutive ? 'Latest leads created by you' : 'Latest leads added to your system'}
-                </p>
+        {/* Recent Leads - Hide for accounts_manager and production_manager */}
+        {!isAccountsManager && !isProductionManager && (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+            <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-semibold text-gray-900">
+                  {isSalesExecutive ? 'My Recent Leads' : 'Recent Leads'}
+                  </h3>
+                <p className="text-xs text-gray-600 mt-0.5">
+                  {isSalesExecutive ? 'Latest leads created by you' : 'Latest leads added to your system'}
+                  </p>
+                </div>
+              <button
+                onClick={() => navigate('/leads')}
+                className="text-sm font-medium text-[#558b2f] hover:text-[#4a7c2a] px-3 py-1.5 border border-[#558b2f]/20 rounded-lg hover:bg-gradient-to-r hover:from-[#8bc34a] hover:to-[#558b2f] hover:text-white hover:border-transparent transition-all duration-200"
+              >
+                View All
+              </button>
               </div>
-            <button
-              onClick={() => navigate('/leads')}
-              className="text-sm font-medium text-[#558b2f] hover:text-[#4a7c2a] px-3 py-1.5 border border-[#558b2f]/20 rounded-lg hover:bg-gradient-to-r hover:from-[#8bc34a] hover:to-[#558b2f] hover:text-white hover:border-transparent transition-all duration-200"
-            >
-              View All
-            </button>
-            </div>
-          <div className="p-4">
-            {recentLeads.length > 0 ? (
-              <div className="space-y-2">
-                {recentLeads.map((lead) => (
-                  <div key={lead._id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors duration-200">
-                    <div className="flex items-center space-x-2 flex-1 min-w-0">
-                      <div className="h-8 w-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                        <span className="text-blue-600 font-semibold text-xs">
-                          {lead.customerName?.charAt(0) || lead.customerMobile?.charAt(0) || 'L'}
+            <div className="p-4">
+              {recentLeads.length > 0 ? (
+                <div className="space-y-2">
+                  {recentLeads.map((lead) => (
+                    <div key={lead._id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors duration-200">
+                      <div className="flex items-center space-x-2 flex-1 min-w-0">
+                        <div className="h-8 w-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                          <span className="text-blue-600 font-semibold text-xs">
+                            {lead.customerName?.charAt(0) || lead.customerMobile?.charAt(0) || 'L'}
+                          </span>
+              </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-medium text-gray-900 truncate">
+                            {lead.customerName || lead.customerMobile || 'Unknown'}
+                          </p>
+                          <p className="text-xs text-gray-500 truncate">{lead.customerMobile || lead.email || 'No contact'}</p>
+                  </div>
+                </div>
+                      <div className="flex items-center space-x-2 flex-shrink-0 ml-2">
+                        <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${getStatusColor(lead.leadStatus)}`}>
+                          {formatStatus(lead.leadStatus)}
                         </span>
-            </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs font-medium text-gray-900 truncate">
-                          {lead.customerName || lead.customerMobile || 'Unknown'}
-                        </p>
-                        <p className="text-xs text-gray-500 truncate">{lead.customerMobile || lead.email || 'No contact'}</p>
                 </div>
               </div>
-                    <div className="flex items-center space-x-2 flex-shrink-0 ml-2">
-                      <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${getStatusColor(lead.leadStatus)}`}>
-                        {formatStatus(lead.leadStatus)}
-                      </span>
+                  ))}
               </div>
-            </div>
-                ))}
-            </div>
-            ) : (
-              <div className="text-center py-6 text-gray-500 text-sm">No recent leads</div>
-            )}
+              ) : (
+                <div className="text-center py-6 text-gray-500 text-sm">No recent leads</div>
+              )}
+                  </div>
                 </div>
-              </div>
+        )}
 
         {/* Recent Orders (for Sales Executive) */}
         {isSalesExecutive && (
