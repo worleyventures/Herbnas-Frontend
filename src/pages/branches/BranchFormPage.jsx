@@ -5,6 +5,7 @@ import { HiArrowLeft, HiBuildingOffice2, HiMapPin, HiCog6Tooth, HiExclamationTri
 import { Button, Input, Select } from '../../components/common';
 import { createBranch, updateBranch, getBranchById, getAllBranches, getBranchStats } from '../../redux/actions/branchActions';
 import { clearError, clearBranchSuccess } from '../../redux/slices/branchSlice';
+import api from '../../lib/axiosInstance';
 
 const BranchFormPage = () => {
   const navigate = useNavigate();
@@ -151,7 +152,7 @@ const BranchFormPage = () => {
   // Handle success states - navigate away from form
   // Note: Success handling will be done in the form submission
 
-  // Pincode lookup function
+  // Pincode lookup function using backend API (India Post data)
   const handlePincodeLookup = async (pincode) => {
     if (!pincode || pincode.length !== 6) {
       return;
@@ -159,18 +160,17 @@ const BranchFormPage = () => {
 
     setPincodeLoading(true);
     try {
-      // Using postalpincode.in API (free, no API key required)
-      const response = await fetch(`https://api.postalpincode.in/pincode/${pincode}`);
-      const data = await response.json();
+      // Use backend API which uses India Post data
+      const response = await api.get(`/pincode/${pincode}`);
+      const pincodeData = response.data?.data;
       
-      if (data && data[0] && data[0].Status === 'Success' && data[0].PostOffice && data[0].PostOffice.length > 0) {
-        const postOffice = data[0].PostOffice[0];
+      if (pincodeData && pincodeData.city && pincodeData.state) {
         setFormData(prev => ({
           ...prev,
           branchAddress: {
             ...prev.branchAddress,
-            city: postOffice.Block || postOffice.District || '',
-            state: postOffice.State || '',
+            city: pincodeData.city || '',
+            state: pincodeData.state || '',
             pinCode: pincode
           }
         }));
@@ -695,7 +695,7 @@ const BranchFormPage = () => {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <Input
-                  label="Incentive Type (Count)"
+                  label="Incentive Type"
                   name="incentiveType"
                   type="number"
                   value={formData.incentiveType !== undefined && formData.incentiveType !== null ? formData.incentiveType : ''}
@@ -706,9 +706,6 @@ const BranchFormPage = () => {
                   step="1"
                   className="w-full"
                 />
-                <p className="text-xs text-gray-500 mt-1">
-                  Number of product units to sell before earning incentives (e.g., 100 means after selling 100 units, incentives apply)
-                </p>
               </div>
             </div>
 

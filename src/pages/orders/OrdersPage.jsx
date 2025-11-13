@@ -69,6 +69,7 @@ const OrdersPage = () => {
   // Local state
   const [searchTerm, setSearchTerm] = useState('');
   const [paymentStatusFilter, setPaymentStatusFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -106,6 +107,15 @@ const OrdersPage = () => {
     fetchBranchUsers();
   }, [isAdmin, user?.branch]);
 
+  // Check for status filter in URL on mount
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const statusFromUrl = searchParams.get('status');
+    if (statusFromUrl) {
+      setStatusFilter(statusFromUrl);
+    }
+  }, [location.search]);
+
   // Load data on component mount
   useEffect(() => {
     // For admin, fetch all orders (backend already filters by branch)
@@ -115,13 +125,14 @@ const OrdersPage = () => {
       page: isAdmin ? 1 : currentPage,
       limit: limit,
       search: searchTerm,
-      paymentStatus: paymentStatusFilter === 'all' ? '' : paymentStatusFilter
+      paymentStatus: paymentStatusFilter === 'all' ? '' : paymentStatusFilter,
+      status: statusFilter === 'all' ? '' : statusFilter
       // Note: Backend already filters by branch for admin automatically
     };
     
     dispatch(getAllOrders(orderParams));
     dispatch(getOrderStats());
-  }, [dispatch, currentPage, searchTerm, paymentStatusFilter, isSalesExecutive, isAdmin, user?._id]);
+  }, [dispatch, currentPage, searchTerm, paymentStatusFilter, statusFilter, isSalesExecutive, isAdmin, user?._id]);
 
   // Refresh orders when navigating to this page (e.g., returning from edit form)
   useEffect(() => {
@@ -131,12 +142,13 @@ const OrdersPage = () => {
         page: isAdmin ? 1 : currentPage,
         limit: limit,
         search: searchTerm,
-        paymentStatus: paymentStatusFilter
+        paymentStatus: paymentStatusFilter === 'all' ? '' : paymentStatusFilter,
+        status: statusFilter === 'all' ? '' : statusFilter
         // Note: Backend already filters by branch for admin
       }));
       dispatch(getOrderStats());
     }
-  }, [location.pathname, dispatch, isAdmin, currentPage, searchTerm, paymentStatusFilter]);
+  }, [location.pathname, dispatch, isAdmin, currentPage, searchTerm, paymentStatusFilter, statusFilter]);
 
   // Handle search
   const handleSearch = (e) => {
@@ -615,7 +627,7 @@ const OrdersPage = () => {
   // Handle update form submission
   const handleUpdateSubmit = async (e) => {
     if (e) {
-      e.preventDefault();
+    e.preventDefault();
       e.stopPropagation();
     }
     
@@ -642,7 +654,7 @@ const OrdersPage = () => {
     console.log('Order ID:', selectedOrderForUpdate._id);
     console.log('Status:', updateFormData.status);
     console.log('Courier Partner ID:', updateFormData.courierPartnerId);
-    
+
     setUpdating(true);
     
     try {
@@ -754,6 +766,7 @@ const OrdersPage = () => {
 
   // Order status options
   const orderStatusOptions = [
+    { value: 'all', label: 'All Statuses' },
     { value: 'draft', label: 'Draft' },
     { value: 'pending', label: 'Pending' },
     { value: 'confirmed', label: 'Confirmed' },
@@ -964,10 +977,20 @@ const OrdersPage = () => {
     { value: 'failed', label: 'Failed' }
   ];
 
-  // Filter orders by createdBy for sales executive and admin
+  // Filter orders by createdBy for sales executive and admin, and by status
   const filteredOrders = useMemo(() => {
+    let filtered = orders;
+    
+    // Filter by status if not 'all' (backend should handle this, but we filter on frontend too for consistency)
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(order => {
+        const orderStatus = (order.status || '').toLowerCase();
+        return orderStatus === statusFilter.toLowerCase();
+      });
+    }
+    
     if (isSalesExecutive && user?._id) {
-      return orders.filter(order => {
+      filtered = filtered.filter(order => {
         const orderCreatedBy = order.createdBy?._id || order.createdBy;
         const userId = user._id || user.id;
         return orderCreatedBy && userId && orderCreatedBy.toString() === userId.toString();
@@ -978,15 +1001,15 @@ const OrdersPage = () => {
     if (isAdmin && user?.branch) {
       const branchId = (user.branch._id || user.branch).toString();
       
-      return orders.filter(order => {
+      filtered = filtered.filter(order => {
         // Check if order is from admin's branch
         const orderBranchId = (order.branchId?._id || order.branchId)?.toString();
         return orderBranchId === branchId;
       });
     }
     
-    return orders;
-  }, [orders, isSalesExecutive, isAdmin, branchUserIds, user?._id, user?.branch]);
+    return filtered;
+  }, [orders, statusFilter, isSalesExecutive, isAdmin, branchUserIds, user?._id, user?.branch]);
 
   // Calculate stats from filtered orders array
   // Use pagination.totalOrders for accurate total count (respects filters)
@@ -1098,6 +1121,17 @@ const OrdersPage = () => {
                 value={paymentStatusFilter}
                 onChange={handlePaymentStatusFilter}
                 placeholder="Payment Status"
+              />
+            </div>
+            <div className="w-full sm:w-48">
+              <Select
+                options={orderStatusOptions}
+                value={statusFilter}
+                onChange={(e) => {
+                  setStatusFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
+                placeholder="Order Status"
               />
             </div>
           </div>
@@ -1424,17 +1458,17 @@ const OrdersPage = () => {
             />
             {!(selectedOrderForUpdate?.courierPartnerId && (selectedOrderForUpdate.courierPartnerId._id || selectedOrderForUpdate.courierPartnerId)) && (
               <>
-                <button
-                  type="button"
-                  onClick={() => setShowAddCourierModal(true)}
-                  className="text-xs text-blue-600 hover:text-blue-800 mt-1 flex items-center gap-1 self-start"
-                >
-                  <HiPlus className="w-3 h-3" />
-                  Add New Courier Partner
-                </button>
-                <p className="text-xs text-gray-500 mt-1">
-                  Leave empty to remove courier partner
-                </p>
+            <button
+              type="button"
+              onClick={() => setShowAddCourierModal(true)}
+              className="text-xs text-blue-600 hover:text-blue-800 mt-1 flex items-center gap-1 self-start"
+            >
+              <HiPlus className="w-3 h-3" />
+              Add New Courier Partner
+            </button>
+            <p className="text-xs text-gray-500 mt-1">
+              Leave empty to remove courier partner
+            </p>
               </>
             )}
           </div>
