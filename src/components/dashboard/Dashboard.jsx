@@ -52,6 +52,9 @@ const Dashboard = () => {
   
   // Check if user is admin
   const isAdmin = user?.role === 'admin';
+  
+  // Check if user is accounts manager
+  const isAccountsManager = user?.role === 'accounts_manager';
 
   // Format currency
   const formatCurrency = (amount) => {
@@ -253,46 +256,53 @@ const Dashboard = () => {
         
         // Default Dashboard (for other roles)
         // Fetch account stats for revenue and expenses
+        // Backend automatically filters by branch for accounts_manager
         const accountStatsResponse = await api.get('/accounts/stats');
         const accountStats = accountStatsResponse.data?.data;
         
-        // Fetch inventory stats
-        const inventoryStatsResponse = await api.get('/inventory/stats');
-        const inventoryStats = inventoryStatsResponse.data?.data?.stats;
+        // Fetch inventory stats (skip for accounts_manager)
+        let inventoryStats = null;
+        if (!isAccountsManager) {
+          const inventoryStatsResponse = await api.get('/inventory/stats');
+          inventoryStats = inventoryStatsResponse.data?.data?.stats;
+        }
         
-        // Fetch lead stats
-        const leadStatsResponse = await api.get('/leads/admin/stats');
-        const leadStats = leadStatsResponse.data?.data;
-        
-        // Fetch recent leads
+        // Fetch lead stats (skip for accounts_manager)
+        let leadStats = null;
         let leads = [];
-        if (isAdmin && user?.branch) {
-          const branchId = user.branch._id || user.branch;
+        if (!isAccountsManager) {
+          const leadStatsResponse = await api.get('/leads/admin/stats');
+          leadStats = leadStatsResponse.data?.data;
           
-          // First, fetch all users from the admin's branch
-          const usersResponse = await api.get(`/users?branch=${branchId}&limit=1000`);
-          const branchUsers = usersResponse.data?.data?.users || [];
-          const branchUserIds = branchUsers.map(u => u._id || u.id);
-          
-          // Fetch recent leads created by branch employees AND for the branch
-          if (branchUserIds.length > 0) {
-            const recentLeadsPromises = branchUserIds.map(userId => 
-              api.get(`/leads?createdBy=${userId}&dispatchedFrom=${branchId}&limit=10&sortBy=createdAt&sortOrder=desc`)
-            );
-            const recentLeadsResponses = await Promise.all(recentLeadsPromises);
-            const allRecentLeads = recentLeadsResponses.flatMap(response => response.data?.data?.leads || []);
+          // Fetch recent leads
+          if (isAdmin && user?.branch) {
+            const branchId = user.branch._id || user.branch;
             
-            // Remove duplicates and sort by createdAt, then take top 3
-            const uniqueRecentLeads = allRecentLeads.filter((lead, index, self) => 
-              index === self.findIndex(l => l._id === lead._id)
-            );
-            leads = uniqueRecentLeads
-              .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-              .slice(0, 3);
+            // First, fetch all users from the admin's branch
+            const usersResponse = await api.get(`/users?branch=${branchId}&limit=1000`);
+            const branchUsers = usersResponse.data?.data?.users || [];
+            const branchUserIds = branchUsers.map(u => u._id || u.id);
+            
+            // Fetch recent leads created by branch employees AND for the branch
+            if (branchUserIds.length > 0) {
+              const recentLeadsPromises = branchUserIds.map(userId => 
+                api.get(`/leads?createdBy=${userId}&dispatchedFrom=${branchId}&limit=10&sortBy=createdAt&sortOrder=desc`)
+              );
+              const recentLeadsResponses = await Promise.all(recentLeadsPromises);
+              const allRecentLeads = recentLeadsResponses.flatMap(response => response.data?.data?.leads || []);
+              
+              // Remove duplicates and sort by createdAt, then take top 3
+              const uniqueRecentLeads = allRecentLeads.filter((lead, index, self) => 
+                index === self.findIndex(l => l._id === lead._id)
+              );
+              leads = uniqueRecentLeads
+                .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                .slice(0, 3);
+            }
+          } else {
+            const recentLeadsResponse = await api.get('/leads?limit=3&sortBy=createdAt&sortOrder=desc');
+            leads = recentLeadsResponse.data?.data?.leads || [];
           }
-        } else {
-          const recentLeadsResponse = await api.get('/leads?limit=3&sortBy=createdAt&sortOrder=desc');
-          leads = recentLeadsResponse.data?.data?.leads || [];
         }
         
         // Fetch branch summary for branch performance
@@ -433,8 +443,8 @@ const Dashboard = () => {
         setStats({
           revenue: accountStats?.summary?.totalIncome || 0,
           expenses: accountStats?.summary?.totalExpense || 0,
-          inventory: inventoryStats?.rawMaterials?.totalItems || 0,
-          leads: leadStats?.overview?.totalLeads || 0
+          inventory: isAccountsManager ? 0 : (inventoryStats?.rawMaterials?.totalItems || 0),
+          leads: isAccountsManager ? 0 : (leadStats?.overview?.totalLeads || 0)
         });
         
         setMonthlyData(monthlyRevenueExpenses);
@@ -450,7 +460,7 @@ const Dashboard = () => {
     };
 
     fetchDashboardData();
-  }, [user?.role, user?._id, user?.branch, isSalesExecutive, isAdmin]);
+  }, [user?.role, user?._id, user?.branch, isSalesExecutive, isAdmin, isAccountsManager]);
 
   // Chart colors - Primary colors (blue, red, green)
   const COLORS = ['#2196F3', '#f44336', '#4caf50', '#1976D2', '#d32f2f', '#388e3c', '#ff9800', '#9c27b0'];
@@ -855,7 +865,7 @@ const Dashboard = () => {
               </div>
       ) : (
         // Default Dashboard Cards
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
+        <div className={`grid grid-cols-1 sm:grid-cols-2 ${isAccountsManager ? 'xl:grid-cols-2' : 'xl:grid-cols-4'} gap-3 sm:gap-4`}>
           <StatCard
             title="Revenue"
             value={formatCurrency(stats.revenue)}
@@ -870,20 +880,24 @@ const Dashboard = () => {
             gradient="red"
             loading={loading}
           />
-          <StatCard
-            title="Inventory"
-            value={formatNumber(stats.inventory)}
-            icon={HiCube}
-            gradient="blue"
-            loading={loading}
-          />
-          <StatCard
-            title="Leads"
-            value={formatNumber(stats.leads)}
-            icon={HiUsers}
-            gradient="blue"
-            loading={loading}
-          />
+          {!isAccountsManager && (
+            <>
+              <StatCard
+                title="Inventory"
+                value={formatNumber(stats.inventory)}
+                icon={HiCube}
+                gradient="blue"
+                loading={loading}
+              />
+              <StatCard
+                title="Leads"
+                value={formatNumber(stats.leads)}
+                icon={HiUsers}
+                gradient="blue"
+                loading={loading}
+              />
+            </>
+          )}
                 </div>
       )}
 
@@ -957,7 +971,7 @@ const Dashboard = () => {
       {/* Chart 2: Branch Performance Comparison & Recent Leads/Orders in Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Chart 2: Branch Performance Comparison / Admin Branch Leads & Orders */}
-        {!isSalesExecutive && user?.role === 'super_admin' && branchPerformance.length > 0 ? (
+        {!isSalesExecutive && !isAccountsManager && user?.role === 'super_admin' && branchPerformance.length > 0 ? (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
             <h3 className="text-base font-semibold text-gray-900 mb-3">Branch Performance Comparison</h3>
             <Chart
@@ -967,7 +981,7 @@ const Dashboard = () => {
               height={280}
             />
           </div>
-        ) : !isSalesExecutive && isAdmin && adminBranchLeadsOrders.length > 0 ? (
+        ) : !isSalesExecutive && !isAccountsManager && isAdmin && adminBranchLeadsOrders.length > 0 ? (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
             <h3 className="text-base font-semibold text-gray-900 mb-3">Branch Leads & Orders</h3>
             <Chart
@@ -977,61 +991,63 @@ const Dashboard = () => {
               height={280}
             />
           </div>
-        ) : !isSalesExecutive ? (
+        ) : !isSalesExecutive && !isAccountsManager ? (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex items-center justify-center">
             <div className="text-gray-500 text-sm">Branch performance data not available</div>
           </div>
         ) : null}
 
-        {/* Recent Leads */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-          <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-            <div>
-              <h3 className="text-base font-semibold text-gray-900">
-                {isSalesExecutive ? 'My Recent Leads' : 'Recent Leads'}
-                </h3>
-              <p className="text-xs text-gray-600 mt-0.5">
-                {isSalesExecutive ? 'Latest leads created by you' : 'Latest leads added to your system'}
-                </p>
+        {/* Recent Leads - Hide for accounts_manager */}
+        {!isAccountsManager && (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+            <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-semibold text-gray-900">
+                  {isSalesExecutive ? 'My Recent Leads' : 'Recent Leads'}
+                  </h3>
+                <p className="text-xs text-gray-600 mt-0.5">
+                  {isSalesExecutive ? 'Latest leads created by you' : 'Latest leads added to your system'}
+                  </p>
+                </div>
+              <button
+                onClick={() => navigate('/leads')}
+                className="text-sm font-medium text-[#558b2f] hover:text-[#4a7c2a] px-3 py-1.5 border border-[#558b2f]/20 rounded-lg hover:bg-gradient-to-r hover:from-[#8bc34a] hover:to-[#558b2f] hover:text-white hover:border-transparent transition-all duration-200"
+              >
+                View All
+              </button>
               </div>
-            <button
-              onClick={() => navigate('/leads')}
-              className="text-sm font-medium text-[#558b2f] hover:text-[#4a7c2a] px-3 py-1.5 border border-[#558b2f]/20 rounded-lg hover:bg-gradient-to-r hover:from-[#8bc34a] hover:to-[#558b2f] hover:text-white hover:border-transparent transition-all duration-200"
-            >
-              View All
-            </button>
-            </div>
-          <div className="p-4">
-            {recentLeads.length > 0 ? (
-              <div className="space-y-2">
-                {recentLeads.map((lead) => (
-                  <div key={lead._id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors duration-200">
-                    <div className="flex items-center space-x-2 flex-1 min-w-0">
-                      <div className="h-8 w-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                        <span className="text-blue-600 font-semibold text-xs">
-                          {lead.customerName?.charAt(0) || lead.customerMobile?.charAt(0) || 'L'}
+            <div className="p-4">
+              {recentLeads.length > 0 ? (
+                <div className="space-y-2">
+                  {recentLeads.map((lead) => (
+                    <div key={lead._id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors duration-200">
+                      <div className="flex items-center space-x-2 flex-1 min-w-0">
+                        <div className="h-8 w-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                          <span className="text-blue-600 font-semibold text-xs">
+                            {lead.customerName?.charAt(0) || lead.customerMobile?.charAt(0) || 'L'}
+                          </span>
+              </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-medium text-gray-900 truncate">
+                            {lead.customerName || lead.customerMobile || 'Unknown'}
+                          </p>
+                          <p className="text-xs text-gray-500 truncate">{lead.customerMobile || lead.email || 'No contact'}</p>
+                  </div>
+                </div>
+                      <div className="flex items-center space-x-2 flex-shrink-0 ml-2">
+                        <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${getStatusColor(lead.leadStatus)}`}>
+                          {formatStatus(lead.leadStatus)}
                         </span>
-            </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs font-medium text-gray-900 truncate">
-                          {lead.customerName || lead.customerMobile || 'Unknown'}
-                        </p>
-                        <p className="text-xs text-gray-500 truncate">{lead.customerMobile || lead.email || 'No contact'}</p>
                 </div>
               </div>
-                    <div className="flex items-center space-x-2 flex-shrink-0 ml-2">
-                      <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${getStatusColor(lead.leadStatus)}`}>
-                        {formatStatus(lead.leadStatus)}
-                      </span>
+                  ))}
               </div>
-            </div>
-                ))}
-            </div>
-            ) : (
-              <div className="text-center py-6 text-gray-500 text-sm">No recent leads</div>
-            )}
+              ) : (
+                <div className="text-center py-6 text-gray-500 text-sm">No recent leads</div>
+              )}
+                  </div>
                 </div>
-              </div>
+        )}
 
         {/* Recent Orders (for Sales Executive) */}
         {isSalesExecutive && (
