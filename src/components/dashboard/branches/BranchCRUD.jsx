@@ -35,7 +35,9 @@ const BranchCRUD = ({
   loading,
   createLoading,
   updateLoading,
-  deleteLoading
+  deleteLoading,
+  pagination,
+  onPageChange
 }) => {
   const navigate = useNavigate();
   const [showBranchModal, setShowBranchModal] = useState(false);
@@ -302,6 +304,11 @@ const BranchCRUD = ({
         loading={loading}
         emptyMessage="No branches found"
         className="w-full"
+        pagination={pagination ? {
+          ...pagination,
+          onPageChange: onPageChange,
+          itemName: 'branches'
+        } : null}
       />
 
 

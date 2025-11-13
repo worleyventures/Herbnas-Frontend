@@ -981,15 +981,19 @@ const OrdersPage = () => {
           loading={loading}
           error={error}
           pagination={isAdmin ? {
-            ...pagination,
-            totalPages: Math.ceil(filteredOrders.length / 10),
-            totalOrders: filteredOrders.length,
             currentPage: currentPage,
+            totalPages: Math.ceil(filteredOrders.length / 10),
+            totalItems: filteredOrders.length,
             itemsPerPage: 10,
             hasNextPage: currentPage < Math.ceil(filteredOrders.length / 10),
-            hasPrevPage: currentPage > 1
-          } : pagination}
-          onPageChange={handlePageChange}
+            hasPrevPage: currentPage > 1,
+            onPageChange: handlePageChange,
+            itemName: 'orders'
+          } : pagination ? {
+            ...pagination,
+            onPageChange: handlePageChange,
+            itemName: 'orders'
+          } : null}
           emptyMessage="No orders found"
           emptyIcon={HiClipboardDocumentList}
         />

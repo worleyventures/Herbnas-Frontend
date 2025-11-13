@@ -327,6 +327,13 @@ const ProductsDashboard = () => {
           showDeleteModal={showDeleteModal}
           selectedProduct={selectedProduct}
           setShowDeleteModal={setShowDeleteModal}
+          pagination={{
+            currentPage: currentPage,
+            totalPages: totalPages,
+            totalItems: filteredProducts.length,
+            itemsPerPage: itemsPerPage
+          }}
+          onPageChange={setCurrentPage}
         />
       </div>
 

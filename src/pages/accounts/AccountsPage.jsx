@@ -1123,8 +1123,11 @@ const AccountsPage = () => {
           columns={columns}
           loading={loading}
           error={error}
-          pagination={pagination}
-          onPageChange={handlePageChange}
+          pagination={{
+            ...pagination,
+            onPageChange: handlePageChange,
+            itemName: 'accounts'
+          }}
           emptyMessage="No accounts found"
           emptyIcon={HiClipboardDocumentList}
         />
@@ -1521,8 +1524,11 @@ const AccountsPage = () => {
                     columns={columns}
                     loading={loading}
                     error={error}
-                    pagination={pagination}
-                    onPageChange={handlePageChange}
+                    pagination={{
+                      ...pagination,
+                      onPageChange: handlePageChange,
+                      itemName: 'accounts'
+                    }}
                     emptyMessage="No accounts found"
                     emptyIcon={HiClipboardDocumentList}
                   />
@@ -1953,8 +1959,11 @@ const AccountsPage = () => {
                   columns={columns}
                   loading={loading}
                   error={error}
-                  pagination={pagination}
-                  onPageChange={handlePageChange}
+                  pagination={{
+                    ...pagination,
+                    onPageChange: handlePageChange,
+                    itemName: 'accounts'
+                  }}
                   emptyMessage="No accounts found"
                   emptyIcon={HiClipboardDocumentList}
                 />
@@ -2520,20 +2529,50 @@ const LedgerTabContent = ({
     const fetchVendors = async () => {
       setVendorsLoading(true);
       try {
-        // Fetch suppliers
-        const suppliersResult = await dispatch(getUniqueSuppliers()).unwrap();
-        const suppliersList = suppliersResult.data || [];
-        setSuppliers(suppliersList);
+        // Fetch suppliers (with pagination - fetch all pages)
+        let allSuppliers = [];
+        let supplierPage = 1;
+        let hasMoreSuppliers = true;
+        while (hasMoreSuppliers) {
+          const suppliersResult = await dispatch(getUniqueSuppliers({ page: supplierPage, limit: 10 })).unwrap();
+          const suppliersList = suppliersResult.data || [];
+          allSuppliers = [...allSuppliers, ...suppliersList];
+          const totalSupplierPages = suppliersResult.pagination?.totalPages || 1;
+          hasMoreSuppliers = supplierPage < totalSupplierPages && suppliersList.length > 0;
+          supplierPage++;
+          if (supplierPage > 100) break; // Safety limit
+        }
+        setSuppliers(allSuppliers);
 
-        // Fetch courier partners
-        const courierResult = await dispatch(getAllCourierPartners({ isActive: true })).unwrap();
-        const courierList = courierResult.data?.courierPartners || [];
-        setCourierPartners(courierList);
+        // Fetch courier partners (with pagination - fetch all pages)
+        let allCourierPartners = [];
+        let courierPage = 1;
+        let hasMoreCouriers = true;
+        while (hasMoreCouriers) {
+          const courierResult = await dispatch(getAllCourierPartners({ isActive: true, page: courierPage, limit: 10 })).unwrap();
+          const courierList = courierResult.data?.courierPartners || [];
+          allCourierPartners = [...allCourierPartners, ...courierList];
+          const totalCourierPages = courierResult.pagination?.totalPages || 1;
+          hasMoreCouriers = courierPage < totalCourierPages && courierList.length > 0;
+          courierPage++;
+          if (courierPage > 100) break; // Safety limit
+        }
+        setCourierPartners(allCourierPartners);
 
-        // Fetch expense vendors
-        const vendorsResult = await dispatch(getUniqueVendors()).unwrap();
-        const vendorsList = vendorsResult.data || [];
-        setExpenseVendors(vendorsList);
+        // Fetch expense vendors (with pagination - fetch all pages)
+        let allExpenseVendors = [];
+        let vendorPage = 1;
+        let hasMoreVendors = true;
+        while (hasMoreVendors) {
+          const vendorsResult = await dispatch(getUniqueVendors({ page: vendorPage, limit: 10 })).unwrap();
+          const vendorsList = vendorsResult.data || [];
+          allExpenseVendors = [...allExpenseVendors, ...vendorsList];
+          const totalVendorPages = vendorsResult.pagination?.totalPages || 1;
+          hasMoreVendors = vendorPage < totalVendorPages && vendorsList.length > 0;
+          vendorPage++;
+          if (vendorPage > 100) break; // Safety limit
+        }
+        setExpenseVendors(allExpenseVendors);
 
         // DO NOT fetch customers - ledger only tracks vendors
         // Customers are tracked separately in accounts section

@@ -408,6 +408,13 @@ const BranchesDashboard = ({ propActiveView = 'table' }) => {
             createLoading={loading}
             updateLoading={loading}
             deleteLoading={loading}
+            pagination={{
+              currentPage: currentPage,
+              totalPages: Math.ceil(allBranches.length / itemsPerPage),
+              totalItems: allBranches.length,
+              itemsPerPage: itemsPerPage
+            }}
+            onPageChange={setCurrentPage}
           />
         );
       default:

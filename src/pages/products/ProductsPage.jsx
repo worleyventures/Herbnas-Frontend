@@ -337,6 +337,18 @@ const ProductsPage = () => {
         setShowDeleteModal={setShowDeleteModal}
         setShowDisableModal={setShowDisableModal}
         setShowActivateModal={setShowActivateModal}
+        pagination={pagination ? {
+          ...pagination,
+          onPageChange: setCurrentPage,
+          itemName: 'products'
+        } : {
+          currentPage: currentPage,
+          totalPages: Math.ceil(filteredProducts.length / itemsPerPage),
+          totalItems: filteredProducts.length,
+          itemsPerPage: itemsPerPage,
+          onPageChange: setCurrentPage,
+          itemName: 'products'
+        }}
         loading={loading}
         createLoading={createLoading}
         updateLoading={updateLoading}
