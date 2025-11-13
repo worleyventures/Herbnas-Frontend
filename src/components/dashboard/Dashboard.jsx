@@ -40,6 +40,9 @@ const Dashboard = () => {
   const [monthlyLeadsData, setMonthlyLeadsData] = useState([]);
   // Admin branch performance data
   const [adminBranchLeadsOrders, setAdminBranchLeadsOrders] = useState([]);
+  // Production manager data
+  const [productionData, setProductionData] = useState([]);
+  const [sentGoodsData, setSentGoodsData] = useState([]);
   
   // Get current user
   const { user } = useSelector((state) => state.auth);
@@ -254,6 +257,94 @@ const Dashboard = () => {
           return;
         }
         
+        // Production Manager Dashboard
+        if (isProductionManager) {
+          // Get current month date range
+          const currentDate = new Date();
+          const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+          monthStart.setHours(0, 0, 0, 0);
+          const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+          monthEnd.setHours(23, 59, 59, 999);
+          
+          // Fetch finished goods (overall production) for this month
+          const finishedGoodsResponse = await api.get('/inventory/finished-goods', {
+            params: {
+              limit: 1000,
+              sortBy: 'createdAt',
+              sortOrder: 'desc'
+            }
+          });
+          const allFinishedGoods = finishedGoodsResponse.data?.data?.finishedGoods || [];
+          
+          // Filter finished goods created this month
+          const thisMonthFinishedGoods = allFinishedGoods.filter(fg => {
+            const createdAt = new Date(fg.createdAt || fg.production?.manufacturedDate);
+            return createdAt >= monthStart && createdAt <= monthEnd;
+          });
+          
+          // Group by product for overall production chart
+          const productionByProduct = {};
+          thisMonthFinishedGoods.forEach(fg => {
+            const productName = fg.product?.productName || 'Unknown';
+            if (!productionByProduct[productName]) {
+              productionByProduct[productName] = 0;
+            }
+            productionByProduct[productName] += (fg.availableQuantity || 0);
+          });
+          
+          const productionChartData = Object.entries(productionByProduct).map(([name, value]) => ({
+            name,
+            value
+          }));
+          
+          // Fetch sent goods (production sent to branches) for this month
+          const sentGoodsResponse = await api.get('/inventory/sent-goods', {
+            params: {
+              limit: 1000,
+              sortBy: 'sentAt',
+              sortOrder: 'desc'
+            }
+          });
+          const allSentGoods = sentGoodsResponse.data?.data?.sentGoods || [];
+          
+          // Filter sent goods sent this month
+          const thisMonthSentGoods = allSentGoods.filter(sg => {
+            const sentAt = new Date(sg.sentAt || sg.createdAt);
+            return sentAt >= monthStart && sentAt <= monthEnd;
+          });
+          
+          // Group by branch for sent goods chart
+          const sentGoodsByBranch = {};
+          thisMonthSentGoods.forEach(sg => {
+            const branchName = sg.branchId?.branchName || 'Unknown';
+            if (!sentGoodsByBranch[branchName]) {
+              sentGoodsByBranch[branchName] = 0;
+            }
+            // Sum up quantities from all items
+            if (sg.items && Array.isArray(sg.items)) {
+              sg.items.forEach(item => {
+                sentGoodsByBranch[branchName] += (item.quantity || 0);
+              });
+            }
+          });
+          
+          const sentGoodsChartData = Object.entries(sentGoodsByBranch).map(([name, value]) => ({
+            name,
+            value
+          }));
+          
+          setProductionData(productionChartData);
+          setSentGoodsData(sentGoodsChartData);
+          setStats({
+            revenue: 0,
+            expenses: 0,
+            inventory: productionChartData.reduce((sum, item) => sum + item.value, 0),
+            leads: 0
+          });
+          setLoading(false);
+          return;
+        }
+        
         // Default Dashboard (for other roles)
         // Fetch account stats for revenue and expenses
         // Backend automatically filters by branch for accounts_manager
@@ -461,7 +552,7 @@ const Dashboard = () => {
     };
 
     fetchDashboardData();
-  }, [user?.role, user?._id, user?.branch, isSalesExecutive, isAdmin, isAccountsManager]);
+  }, [user?.role, user?._id, user?.branch, isSalesExecutive, isAdmin, isAccountsManager, isProductionManager]);
 
   // Chart colors - Primary colors (blue, red, green)
   const COLORS = ['#2196F3', '#f44336', '#4caf50', '#1976D2', '#d32f2f', '#388e3c', '#ff9800', '#9c27b0'];
@@ -844,6 +935,117 @@ const Dashboard = () => {
 
   const orderStatusPieChartSeries = orderStatusBreakdown.map(e => e.value);
 
+  // Production Manager Charts
+  // Overall Production Chart (Bar Chart)
+  const productionBarChartOptions = {
+    chart: {
+      type: 'bar',
+      height: 280,
+      toolbar: { show: false }
+    },
+    plotOptions: {
+      bar: {
+        horizontal: false,
+        columnWidth: '55%',
+        endingShape: 'rounded'
+      }
+    },
+    dataLabels: {
+      enabled: false
+    },
+    xaxis: {
+      categories: productionData.map(d => d.name),
+      labels: {
+        style: {
+          fontSize: '12px'
+        },
+        rotate: -45,
+        rotateAlways: true
+      }
+    },
+    yaxis: {
+      labels: {
+        style: {
+          fontSize: '12px'
+        },
+        formatter: (value) => formatNumber(value)
+      }
+    },
+    tooltip: {
+      y: {
+        formatter: (value) => formatNumber(value)
+      }
+    },
+    legend: {
+      show: false
+    },
+    colors: ['#2196F3'],
+    grid: {
+      borderColor: '#e5e7eb',
+      strokeDashArray: 3
+    }
+  };
+
+  const productionBarChartSeries = [{
+    name: 'Production',
+    data: productionData.map(d => d.value)
+  }];
+
+  // Sent Goods to Branches Chart (Bar Chart)
+  const sentGoodsBarChartOptions = {
+    chart: {
+      type: 'bar',
+      height: 280,
+      toolbar: { show: false }
+    },
+    plotOptions: {
+      bar: {
+        horizontal: false,
+        columnWidth: '55%',
+        endingShape: 'rounded'
+      }
+    },
+    dataLabels: {
+      enabled: false
+    },
+    xaxis: {
+      categories: sentGoodsData.map(d => d.name),
+      labels: {
+        style: {
+          fontSize: '12px'
+        },
+        rotate: -45,
+        rotateAlways: true
+      }
+    },
+    yaxis: {
+      labels: {
+        style: {
+          fontSize: '12px'
+        },
+        formatter: (value) => formatNumber(value)
+      }
+    },
+    tooltip: {
+      y: {
+        formatter: (value) => formatNumber(value)
+      }
+    },
+    legend: {
+      show: false
+    },
+    colors: ['#4caf50'],
+    grid: {
+      borderColor: '#e5e7eb',
+      strokeDashArray: 3
+    }
+  };
+
+  const sentGoodsBarChartSeries = [{
+    name: 'Sent to Branches',
+    data: sentGoodsData.map(d => d.value)
+  }];
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -897,6 +1099,24 @@ const Dashboard = () => {
             loading={loading}
           />
               </div>
+      ) : isProductionManager ? (
+        // Production Manager Dashboard Cards
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-2 gap-3 sm:gap-4">
+          <StatCard
+            title="Total Production (This Month)"
+            value={formatNumber(stats.inventory)}
+            icon={HiCube}
+            gradient="blue"
+            loading={loading}
+          />
+          <StatCard
+            title="Sent to Branches (This Month)"
+            value={formatNumber(sentGoodsData.reduce((sum, item) => sum + item.value, 0))}
+            icon={HiShoppingBag}
+            gradient="green"
+            loading={loading}
+          />
+        </div>
       ) : (
         // Default Dashboard Cards
         <div className={`grid grid-cols-1 sm:grid-cols-2 ${isAccountsManager ? 'xl:grid-cols-2' : 'xl:grid-cols-4'} gap-3 sm:gap-4`}>
@@ -935,10 +1155,26 @@ const Dashboard = () => {
                 </div>
       )}
 
-      {/* Charts Grid: Monthly Revenue vs Expenses, Expense Breakdown / Order Status */}
+      {/* Charts Grid: Monthly Revenue vs Expenses, Expense Breakdown / Order Status / Production Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Chart 1: Monthly Revenue vs Expenses / Monthly Leads & Orders */}
-        {isSalesExecutive ? (
+        {/* Chart 1: Monthly Revenue vs Expenses / Monthly Leads & Orders / Overall Production */}
+        {isProductionManager ? (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+            <h3 className="text-base font-semibold text-gray-900 mb-3">Overall Production (This Month)</h3>
+            {productionData.length > 0 ? (
+              <Chart
+                options={productionBarChartOptions}
+                series={productionBarChartSeries}
+                type="bar"
+                height={280}
+              />
+            ) : (
+              <div className="flex items-center justify-center h-[280px]">
+                <div className="text-gray-500 text-sm">No production data available for this month</div>
+              </div>
+            )}
+          </div>
+        ) : isSalesExecutive ? (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
             <h3 className="text-base font-semibold text-gray-900 mb-3">Monthly Leads & Orders</h3>
             {monthlyLeadsData.length > 0 ? (
@@ -966,8 +1202,24 @@ const Dashboard = () => {
           </div>
         )}
 
-        {/* Chart 3: Expense Breakdown (Pie Chart) / Order Status Breakdown */}
-        {isSalesExecutive ? (
+        {/* Chart 3: Expense Breakdown (Pie Chart) / Order Status Breakdown / Sent Goods to Branches */}
+        {isProductionManager ? (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+            <h3 className="text-base font-semibold text-gray-900 mb-3">Production Sent to Branches (This Month)</h3>
+            {sentGoodsData.length > 0 ? (
+              <Chart
+                options={sentGoodsBarChartOptions}
+                series={sentGoodsBarChartSeries}
+                type="bar"
+                height={280}
+              />
+            ) : (
+              <div className="flex items-center justify-center h-[280px]">
+                <div className="text-gray-500 text-sm">No goods sent to branches this month</div>
+              </div>
+            )}
+          </div>
+        ) : isSalesExecutive ? (
           orderStatusBreakdown.length > 0 ? (
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
               <h3 className="text-base font-semibold text-gray-900 mb-3">Order Status</h3>
@@ -1005,7 +1257,7 @@ const Dashboard = () => {
       {/* Chart 2: Branch Performance Comparison & Recent Leads/Orders in Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Chart 2: Branch Performance Comparison / Admin Branch Leads & Orders */}
-        {!isSalesExecutive && !isAccountsManager && user?.role === 'super_admin' && branchPerformance.length > 0 ? (
+        {!isSalesExecutive && !isAccountsManager && !isProductionManager && user?.role === 'super_admin' && branchPerformance.length > 0 ? (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
             <h3 className="text-base font-semibold text-gray-900 mb-3">Branch Performance Comparison</h3>
             <Chart
@@ -1015,7 +1267,7 @@ const Dashboard = () => {
               height={280}
             />
           </div>
-        ) : !isSalesExecutive && !isAccountsManager && isAdmin && adminBranchLeadsOrders.length > 0 ? (
+        ) : !isSalesExecutive && !isAccountsManager && !isProductionManager && isAdmin && adminBranchLeadsOrders.length > 0 ? (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
             <h3 className="text-base font-semibold text-gray-900 mb-3">Branch Leads & Orders</h3>
             <Chart
@@ -1025,14 +1277,14 @@ const Dashboard = () => {
               height={280}
             />
           </div>
-        ) : !isSalesExecutive && !isAccountsManager ? (
+        ) : !isSalesExecutive && !isAccountsManager && !isProductionManager ? (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex items-center justify-center">
             <div className="text-gray-500 text-sm">Branch performance data not available</div>
           </div>
         ) : null}
 
-        {/* Recent Leads - Hide for accounts_manager */}
-        {!isAccountsManager && (
+        {/* Recent Leads - Hide for accounts_manager and production_manager */}
+        {!isAccountsManager && !isProductionManager && (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200">
             <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
               <div>
