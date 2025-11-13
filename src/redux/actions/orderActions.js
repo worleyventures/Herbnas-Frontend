@@ -74,9 +74,28 @@ export const updateOrder = createAsyncThunk(
   'orders/updateOrder',
   async ({ id, orderData }, { rejectWithValue }) => {
     try {
-      const response = await api.put(`/orders/${id}`, orderData);
+      // Add timestamp to prevent caching
+      const timestamp = Date.now();
+      const url = `/orders/${id}?_t=${timestamp}`;
+      
+      console.log('=== REDUX ACTION: Making PUT request ===');
+      console.log('URL:', url);
+      console.log('Data:', orderData);
+      console.log('Full URL:', `${api.defaults.baseURL}${url}`);
+      
+      // Make the request with cache-busting headers
+      const response = await api.put(url, orderData, {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
+      
+      console.log('=== REDUX ACTION: Response received ===', response);
       return response.data;
     } catch (error) {
+      console.error('=== REDUX ACTION: Error ===', error);
       return rejectWithValue(error.response?.data?.message || 'Failed to update order');
     }
   }

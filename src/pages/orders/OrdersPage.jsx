@@ -39,7 +39,8 @@ import {
   selectOrderError,
   selectOrderStats,
   selectOrderStatsLoading,
-  selectOrderPagination
+  selectOrderPagination,
+  updateOrderInState
 } from '../../redux/slices/orderSlice';
 
 const OrdersPage = () => {
@@ -571,35 +572,139 @@ const OrdersPage = () => {
   // Handle update courier partner and status
   const handleUpdateCourierAndStatus = (order) => {
     setSelectedOrderForUpdate(order);
+    
+    // Get courier partner ID - handle both populated object and string ID
+    const courierPartnerId = order.courierPartnerId?._id || order.courierPartnerId || '';
+    
     setUpdateFormData({
-      courierPartnerId: order.courierPartnerId?._id || order.courierPartnerId || '',
+      courierPartnerId: courierPartnerId,
       status: order.status || 'draft'
     });
     setShowUpdateModal(true);
-    // Fetch courier partners
+    // Fetch courier partners - handle permission errors gracefully
     dispatch(getAllCourierPartners({ isActive: true })).then((result) => {
       if (result.payload?.data?.courierPartners) {
-        setCourierPartners(result.payload.data.courierPartners);
+        const partners = result.payload.data.courierPartners;
+        setCourierPartners(partners);
+        
+        // If courier partner is selected but not in the list, add it
+        if (courierPartnerId && order.courierPartnerId?.name) {
+          const existingPartner = partners.find(p => p._id === courierPartnerId);
+          if (!existingPartner && order.courierPartnerId.name) {
+            // Add the current courier partner to the list if it's not there
+            setCourierPartners([...partners, {
+              _id: courierPartnerId,
+              name: order.courierPartnerId.name
+            }]);
+          }
+        }
       }
     }).catch((error) => {
+      // Silently handle permission errors - user can still update status without courier partners
       console.error('Error fetching courier partners:', error);
+      // If order has a courier partner, add it to the list anyway
+      if (courierPartnerId && order.courierPartnerId?.name) {
+        setCourierPartners([{
+          _id: courierPartnerId,
+          name: order.courierPartnerId.name
+        }]);
+      }
     });
   };
 
   // Handle update form submission
   const handleUpdateSubmit = async (e) => {
-    e.preventDefault();
-    if (!selectedOrderForUpdate) return;
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
+    console.log('handleUpdateSubmit called', { selectedOrderForUpdate, updateFormData });
+    
+    if (!selectedOrderForUpdate) {
+      dispatch(addNotification({
+        type: 'error',
+        message: 'No order selected for update'
+      }));
+      return;
+    }
 
+    // Validate that status is provided (required field)
+    if (!updateFormData.status) {
+      dispatch(addNotification({
+        type: 'error',
+        message: 'Order status is required'
+      }));
+      return;
+    }
+
+    console.log('=== STARTING UPDATE PROCESS ===');
+    console.log('Order ID:', selectedOrderForUpdate._id);
+    console.log('Status:', updateFormData.status);
+    console.log('Courier Partner ID:', updateFormData.courierPartnerId);
+    
     setUpdating(true);
+    
     try {
+      // Build update data - always include status (required), and courier partner if provided
       const updateData = {
-        courierPartnerId: updateFormData.courierPartnerId || undefined,
         status: updateFormData.status
       };
       
-      await dispatch(updateOrder({ id: selectedOrderForUpdate._id, orderData: updateData })).unwrap();
+      // Handle courier partner - send null if empty string, or the ID if provided
+      if (updateFormData.courierPartnerId !== undefined) {
+        if (updateFormData.courierPartnerId === '' || updateFormData.courierPartnerId === null) {
+          updateData.courierPartnerId = null;
+        } else {
+          updateData.courierPartnerId = updateFormData.courierPartnerId;
+        }
+      }
       
+      console.log('=== UPDATE DATA PREPARED ===', updateData);
+      
+      // Make sure we have valid data
+      if (!selectedOrderForUpdate._id) {
+        console.error('ERROR: Order ID is missing');
+        throw new Error('Order ID is missing');
+      }
+      
+      if (!updateData.status) {
+        console.error('ERROR: Status is required');
+        throw new Error('Status is required');
+      }
+      
+      // Make direct API call - this MUST show in network tab
+      console.log('=== MAKING API CALL ===');
+      console.log('URL:', `/orders/${selectedOrderForUpdate._id}`);
+      console.log('Method: PUT');
+      console.log('Data:', updateData);
+      
+      const directResponse = await api.put(`/orders/${selectedOrderForUpdate._id}`, updateData);
+      
+      console.log('=== API CALL SUCCESSFUL ===');
+      console.log('Response:', directResponse);
+      console.log('Response data:', directResponse.data);
+      
+      // Use the direct response
+      const result = directResponse.data;
+      console.log('=== PROCESSING RESPONSE ===', result);
+      
+      if (!result || !result.data || !result.data.order) {
+        console.error('ERROR: Invalid response from server', result);
+        throw new Error('Invalid response from server');
+      }
+      
+      // Update Redux state immediately
+      console.log('=== UPDATING REDUX STATE ===');
+      dispatch(updateOrderInState(result.data.order));
+      
+      // Also dispatch the action for Redux state management
+      dispatch(updateOrder({ 
+        id: selectedOrderForUpdate._id, 
+        orderData: updateData 
+      }));
+      
+      console.log('=== SHOWING SUCCESS NOTIFICATION ===');
       dispatch(addNotification({
         type: 'success',
         message: 'Order updated successfully!'
@@ -609,12 +714,38 @@ const OrdersPage = () => {
       setSelectedOrderForUpdate(null);
       setUpdateFormData({ courierPartnerId: '', status: '' });
       
-      // Refresh orders
-      handleRefresh();
+      // Refresh orders to ensure data is in sync with backend
+      console.log('Refreshing orders...', {
+        page: isAdmin ? 1 : currentPage,
+        limit: isAdmin ? 1000 : 10,
+        search: searchTerm,
+        paymentStatus: paymentStatusFilter === 'all' ? '' : paymentStatusFilter
+      });
+      
+      const limit = isAdmin ? 1000 : 10;
+      const refreshParams = {
+        page: isAdmin ? 1 : currentPage,
+        limit: limit,
+        search: searchTerm,
+        paymentStatus: paymentStatusFilter === 'all' ? '' : paymentStatusFilter
+      };
+      
+      console.log('Calling getAllOrders with params:', refreshParams);
+      const refreshResult = await dispatch(getAllOrders(refreshParams));
+      console.log('Refresh result:', refreshResult);
+      
+      console.log('Calling getOrderStats');
+      await dispatch(getOrderStats());
     } catch (error) {
+      console.error('Error updating order:', error);
+      console.error('Error details:', {
+        message: error?.message,
+        response: error?.response,
+        stack: error?.stack
+      });
       dispatch(addNotification({
         type: 'error',
-        message: error || 'Failed to update order'
+        message: error?.message || error || 'Failed to update order'
       }));
     } finally {
       setUpdating(false);
@@ -1083,6 +1214,7 @@ const OrdersPage = () => {
           <div className="flex space-x-2">
             <Button
               variant="outline"
+              type="button"
               onClick={() => {
                 setShowUpdateModal(false);
                 setSelectedOrderForUpdate(null);
@@ -1095,7 +1227,145 @@ const OrdersPage = () => {
             </Button>
             <Button
               variant="primary"
-              onClick={handleUpdateSubmit}
+              type="button"
+              onClick={async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                if (updating) {
+                  return;
+                }
+                
+                if (!selectedOrderForUpdate || !selectedOrderForUpdate._id) {
+                  dispatch(addNotification({
+                    type: 'error',
+                    message: 'No order selected for update'
+                  }));
+                  return;
+                }
+                
+                if (!updateFormData.status) {
+                  dispatch(addNotification({
+                    type: 'error',
+                    message: 'Order status is required'
+                  }));
+                  return;
+                }
+                
+                setUpdating(true);
+                
+                try {
+                  const updateData = {
+                    status: updateFormData.status
+                  };
+                  
+                  if (updateFormData.courierPartnerId !== undefined) {
+                    updateData.courierPartnerId = updateFormData.courierPartnerId === '' ? null : updateFormData.courierPartnerId;
+                  }
+                  
+                  console.log('=== MAKING API CALL VIA REDUX ACTION ===');
+                  console.log('Order ID:', selectedOrderForUpdate._id);
+                  console.log('Update Data:', JSON.stringify(updateData, null, 2));
+                  console.log('API Base URL:', api.defaults.baseURL);
+                  console.log('API instance:', api);
+                  console.log('API defaults:', api.defaults);
+                  
+                  // Verify axios is properly configured
+                  if (!api || typeof api.put !== 'function') {
+                    throw new Error('API instance is not properly configured');
+                  }
+                  
+                  // Make the API call using the Redux action which will make the actual network request
+                  // This should show up in the Network tab
+                  console.log('=== DISPATCHING REDUX ACTION ===');
+                  
+                  // Also make a direct fetch call to verify network request is made
+                  // This is just for debugging - will be removed later
+                  const directFetchTest = async () => {
+                    try {
+                      const token = localStorage.getItem('token') || document.cookie.match(/token=([^;]+)/)?.[1];
+                      const testUrl = `${api.defaults.baseURL}/orders/${selectedOrderForUpdate._id}?_test=${Date.now()}`;
+                      console.log('=== DIRECT FETCH TEST ===');
+                      console.log('Test URL:', testUrl);
+                      const testResponse = await fetch(testUrl, {
+                        method: 'PUT',
+                        headers: {
+                          'Content-Type': 'application/json',
+                          'Authorization': `Bearer ${token}`,
+                          'Cache-Control': 'no-cache'
+                        },
+                        body: JSON.stringify(updateData),
+                        cache: 'no-store'
+                      });
+                      console.log('=== DIRECT FETCH RESPONSE ===', testResponse);
+                    } catch (err) {
+                      console.error('Direct fetch test error:', err);
+                    }
+                  };
+                  
+                  // Run both in parallel to see which one shows in Network tab
+                  const [result] = await Promise.all([
+                    dispatch(updateOrder({ 
+                      id: selectedOrderForUpdate._id, 
+                      orderData: updateData 
+                    })).unwrap(),
+                    directFetchTest()
+                  ]);
+                  
+                  console.log('=== REDUX ACTION COMPLETED ===');
+                  
+                  console.log('=== API CALL RESULT ===', result);
+                  console.log('Result structure:', JSON.stringify(result, null, 2));
+                  
+                  // The result from updateOrder action is response.data from axios
+                  // Based on the action, it returns response.data, so result.data.order is the order
+                  const updatedOrder = result?.data?.order;
+                  
+                  if (!updatedOrder) {
+                    console.error('No order in result:', result);
+                    throw new Error('No order data in response');
+                  }
+                  
+                  console.log('=== UPDATED ORDER ===', updatedOrder);
+                  console.log('Updated order status:', updatedOrder.status);
+                  console.log('Updated courier partner:', updatedOrder.courierPartnerId);
+                  
+                  // Update Redux state immediately - this will update the table
+                  dispatch(updateOrderInState(updatedOrder));
+                  
+                  dispatch(addNotification({
+                    type: 'success',
+                    message: 'Order updated successfully!'
+                  }));
+                  
+                  setShowUpdateModal(false);
+                  setSelectedOrderForUpdate(null);
+                  setUpdateFormData({ courierPartnerId: '', status: '' });
+                  
+                  // Refresh orders to ensure table updates with latest data from backend
+                  const limit = isAdmin ? 1000 : 10;
+                  await dispatch(getAllOrders({
+                    page: isAdmin ? 1 : currentPage,
+                    limit: limit,
+                    search: searchTerm,
+                    paymentStatus: paymentStatusFilter === 'all' ? '' : paymentStatusFilter
+                  }));
+                  
+                  // After refresh, update the order again to ensure it has the latest data
+                  // This ensures the table shows the updated order even if refresh returned stale data
+                  dispatch(updateOrderInState(updatedOrder));
+                  
+                  await dispatch(getOrderStats());
+                } catch (error) {
+                  console.error('Error updating order:', error);
+                  dispatch(addNotification({
+                    type: 'error',
+                    message: error?.message || 'Failed to update order'
+                  }));
+                } finally {
+                  setUpdating(false);
+                }
+              }}
               size="sm"
               loading={updating}
               disabled={updating}
@@ -1105,7 +1375,13 @@ const OrdersPage = () => {
           </div>
         }
       >
-        <form onSubmit={handleUpdateSubmit} className="space-y-4">
+        <form id="update-order-form" onSubmit={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          console.log('=== FORM SUBMITTED (should not happen) ===');
+          alert('Form submitted - this should not happen!');
+          // Don't call handleUpdateSubmit - button handles it
+        }} className="space-y-4">
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label className="block text-sm font-medium text-gray-700">
@@ -1124,25 +1400,43 @@ const OrdersPage = () => {
               options={[
                 { value: '', label: 'Select Courier Partner' },
                 ...courierPartners.map(partner => ({
-                  value: partner._id,
-                  label: partner.name
-                }))
+                  value: partner._id || partner,
+                  label: partner.name || partner
+                })),
+                // Include current courier partner if it exists but not in the list
+                ...(selectedOrderForUpdate?.courierPartnerId && 
+                    selectedOrderForUpdate.courierPartnerId.name &&
+                    !courierPartners.find(p => {
+                      const partnerId = p._id || p;
+                      const currentId = selectedOrderForUpdate.courierPartnerId._id || selectedOrderForUpdate.courierPartnerId;
+                      return String(partnerId) === String(currentId);
+                    })
+                    ? [{
+                        value: selectedOrderForUpdate.courierPartnerId._id || selectedOrderForUpdate.courierPartnerId,
+                        label: selectedOrderForUpdate.courierPartnerId.name
+                      }]
+                    : [])
               ]}
-              value={updateFormData.courierPartnerId}
+              value={String(updateFormData.courierPartnerId || '')}
               onChange={(e) => setUpdateFormData(prev => ({ ...prev, courierPartnerId: e.target.value }))}
               placeholder="Select Courier Partner"
+              disabled={!!(selectedOrderForUpdate?.courierPartnerId && (selectedOrderForUpdate.courierPartnerId._id || selectedOrderForUpdate.courierPartnerId))}
             />
-            <button
-              type="button"
-              onClick={() => setShowAddCourierModal(true)}
-              className="text-xs text-blue-600 hover:text-blue-800 mt-1 flex items-center gap-1 self-start"
-            >
-              <HiPlus className="w-3 h-3" />
-              Add New Courier Partner
-            </button>
-            <p className="text-xs text-gray-500 mt-1">
-              Leave empty to remove courier partner
-            </p>
+            {!(selectedOrderForUpdate?.courierPartnerId && (selectedOrderForUpdate.courierPartnerId._id || selectedOrderForUpdate.courierPartnerId)) && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setShowAddCourierModal(true)}
+                  className="text-xs text-blue-600 hover:text-blue-800 mt-1 flex items-center gap-1 self-start"
+                >
+                  <HiPlus className="w-3 h-3" />
+                  Add New Courier Partner
+                </button>
+                <p className="text-xs text-gray-500 mt-1">
+                  Leave empty to remove courier partner
+                </p>
+              </>
+            )}
           </div>
 
           <div>

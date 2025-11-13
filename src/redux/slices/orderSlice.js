@@ -49,9 +49,25 @@ const orderSlice = createSlice({
     
     // Update order in state
     updateOrderInState: (state, action) => {
-      const index = state.orders.findIndex(order => order._id === action.payload._id);
+      const updatedOrder = action.payload;
+      console.log('updateOrderInState called with:', updatedOrder);
+      console.log('Current orders count:', state.orders.length);
+      
+      const index = state.orders.findIndex(order => {
+        const orderId = order._id?.toString() || order._id;
+        const payloadId = updatedOrder._id?.toString() || updatedOrder._id;
+        return orderId === payloadId;
+      });
+      
       if (index !== -1) {
-        state.orders[index] = action.payload;
+        console.log('Found order at index:', index, 'Order ID:', updatedOrder._id);
+        // Use Immer's draft state to ensure immutability
+        state.orders[index] = { ...updatedOrder };
+        console.log('Order updated in state');
+      } else {
+        // If order not found, add it (might be on a different page)
+        console.warn('Order not found in current orders array, adding it:', updatedOrder._id);
+        state.orders.push(updatedOrder);
       }
     },
     
@@ -115,7 +131,20 @@ const orderSlice = createSlice({
       })
       .addCase(getAllOrders.fulfilled, (state, action) => {
         state.loading = false;
-        state.orders = action.payload.data.orders || [];
+        const newOrders = action.payload.data.orders || [];
+        
+        // Merge with existing orders to preserve any updates that might not be in the new list
+        // Update existing orders if they're in the new list, otherwise keep them
+        const updatedOrderIds = new Set(newOrders.map(o => (o._id || o.id)?.toString()));
+        
+        // Keep orders that aren't in the new list (might be on different page)
+        const ordersToKeep = state.orders.filter(o => {
+          const orderId = (o._id || o.id)?.toString();
+          return !updatedOrderIds.has(orderId);
+        });
+        
+        // Combine kept orders with new orders
+        state.orders = [...ordersToKeep, ...newOrders];
         state.pagination = action.payload.data.pagination || state.pagination;
         state.error = null;
       })
@@ -164,12 +193,23 @@ const orderSlice = createSlice({
       .addCase(updateOrder.fulfilled, (state, action) => {
         state.loading = false;
         const updatedOrder = action.payload.data.order;
-        const index = state.orders.findIndex(order => order._id === updatedOrder._id);
+        const index = state.orders.findIndex(order => {
+          const orderId = order._id?.toString() || order._id;
+          const updatedId = updatedOrder._id?.toString() || updatedOrder._id;
+          return orderId === updatedId;
+        });
         if (index !== -1) {
           state.orders[index] = updatedOrder;
+        } else {
+          // If order not found, add it (might be on a different page)
+          state.orders.push(updatedOrder);
         }
-        if (state.currentOrder && state.currentOrder._id === updatedOrder._id) {
-          state.currentOrder = updatedOrder;
+        if (state.currentOrder) {
+          const currentId = state.currentOrder._id?.toString() || state.currentOrder._id;
+          const updatedId = updatedOrder._id?.toString() || updatedOrder._id;
+          if (currentId === updatedId) {
+            state.currentOrder = updatedOrder;
+          }
         }
         state.error = null;
       })

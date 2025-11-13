@@ -14,6 +14,16 @@ const api = axios.create({
 // Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
+    // Prevent caching for PUT/PATCH/DELETE requests
+    if (['put', 'patch', 'delete'].includes(config.method?.toLowerCase())) {
+      config.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
+      config.headers['Pragma'] = 'no-cache';
+      config.headers['Expires'] = '0';
+      // Add timestamp to URL to prevent caching
+      const separator = config.url.includes('?') ? '&' : '?';
+      config.url = `${config.url}${separator}_t=${Date.now()}`;
+    }
+    
     // Try to get token from cookies first, then localStorage as fallback
     let token = getCookie('token');
     let tokenSource = 'cookie';
@@ -26,6 +36,12 @@ api.interceptors.request.use(
     if (token && token !== 'undefined' && token !== 'null' && token.trim() !== '') {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    
+    console.log('=== AXIOS REQUEST INTERCEPTOR ===');
+    console.log('Method:', config.method?.toUpperCase());
+    console.log('URL:', config.url);
+    console.log('Full URL:', `${config.baseURL || ''}${config.url}`);
+    console.log('Data:', config.data);
     
     return config;
   },
