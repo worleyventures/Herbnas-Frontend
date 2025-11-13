@@ -33,7 +33,9 @@ const ProductCRUD = ({
   loading,
   createLoading,
   updateLoading,
-  deleteLoading
+  deleteLoading,
+  pagination,
+  onPageChange
 }) => {
   const navigate = useNavigate();
   const [showProductModal, setShowProductModal] = useState(false);
@@ -213,6 +215,11 @@ const ProductCRUD = ({
             emptyStateIcon={HiShoppingBag}
             emptyStateTitle="No Products"
             emptyStateDescription="No products have been created yet"
+            pagination={pagination ? {
+              ...pagination,
+              onPageChange: onPageChange,
+              itemName: 'products'
+            } : null}
           />
         </div>
       </div>

@@ -35,7 +35,9 @@ const InventoryCRUD = ({
   createLoading,
   updateLoading,
   deleteLoading,
-  isFinishedProduction = false
+  isFinishedProduction = false,
+  pagination,
+  onPageChange
 }) => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -728,6 +730,11 @@ const InventoryCRUD = ({
                 ? "No finished production products yet" 
                 : "No completed production products in inventory yet"
         }
+        pagination={pagination ? {
+          ...pagination,
+          onPageChange: onPageChange,
+          itemName: inventoryType === 'rawMaterials' ? 'raw materials' : inventoryType === 'sentGoods' ? 'sent goods' : 'finished goods'
+        } : null}
         emptySubMessage={
           inventoryType === 'rawMaterials'
             ? "Raw materials will appear here once they are added to the system"

@@ -727,6 +727,13 @@ const InventoryDashboard = ({ propActiveView = 'table' }) => {
           onSelectInventory={setSelectedInventory}
           onEditInventory={handleEditInventory}
           onDeleteInventory={handleDeleteInventory}
+          pagination={{
+            currentPage: currentPage,
+            totalPages: totalPages,
+            totalItems: filteredInventory.length,
+            itemsPerPage: itemsPerPage
+          }}
+          onPageChange={setCurrentPage}
           onCreateInventory={() => navigate(`/inventory/create?type=${activeTab}`)}
           onUpdateInventory={activeTab === 'sentGoods' ? handleRefreshSentGoods : handleUpdateInventory}
           onDeleteInventoryConfirm={handleDeleteInventoryConfirm}

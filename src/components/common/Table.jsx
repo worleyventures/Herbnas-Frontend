@@ -59,68 +59,72 @@ const Table = ({
   };
 
   const renderPagination = () => {
-    if (!pagination || pagination.totalPages <= 1) return null;
+    if (!pagination) return null;
 
-    const { currentPage, totalPages, onPageChange } = pagination;
+    // Support both formats: { currentPage, totalPages, onPageChange } and Redux format
+    const currentPage = pagination.currentPage || pagination.page || 1;
+    const totalPages = pagination.totalPages || 1;
+    const totalItems = pagination.totalItems || pagination.total || data.length;
+    const itemsPerPage = pagination.itemsPerPage || pagination.limit || 10;
+    const onPageChange = pagination.onPageChange;
+
+    if (totalPages <= 1) return null;
+
+    // Calculate start and end indices
+    const startIndex = (currentPage - 1) * itemsPerPage + 1;
+    const endIndex = Math.min(currentPage * itemsPerPage, totalItems);
 
     return (
-      <div className="bg-gradient-to-r from-gray-50 to-gray-100/50 px-6 py-6 flex items-center justify-between border-t border-gray-200/50">
-        <div className="flex-1 flex justify-between sm:hidden">
+      <div className="flex items-center justify-between bg-white rounded-lg border border-gray-200 px-4 py-3">
+        <div className="text-sm text-gray-700">
+          Showing <span className="font-medium">{startIndex}</span> to{' '}
+          <span className="font-medium">{endIndex}</span> of{' '}
+          <span className="font-medium">{totalItems}</span> {pagination.itemName || 'items'}
+        </div>
+        <div className="flex items-center gap-2">
           <button
-            onClick={() => onPageChange(currentPage - 1)}
+            onClick={() => onPageChange && onPageChange(currentPage - 1)}
             disabled={currentPage === 1}
-            className="relative inline-flex items-center px-6 py-3 border border-gray-300 text-sm font-semibold rounded-xl text-gray-700 bg-white hover:bg-gray-50 hover:shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+            className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Previous
           </button>
+          <div className="flex items-center gap-1">
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map(pageNum => {
+              if (
+                pageNum === 1 ||
+                pageNum === totalPages ||
+                (pageNum >= currentPage - 1 && pageNum <= currentPage + 1)
+              ) {
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => onPageChange && onPageChange(pageNum)}
+                    className={`px-3 py-1.5 text-sm font-medium rounded-lg ${
+                      currentPage === pageNum
+                        ? 'bg-[#8bc34a] text-white'
+                        : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              } else if (
+                pageNum === currentPage - 2 ||
+                pageNum === currentPage + 2
+              ) {
+                return <span key={pageNum} className="px-2 text-gray-500">...</span>;
+              }
+              return null;
+            })}
+          </div>
           <button
-            onClick={() => onPageChange(currentPage + 1)}
+            onClick={() => onPageChange && onPageChange(currentPage + 1)}
             disabled={currentPage === totalPages}
-            className="ml-3 relative inline-flex items-center px-6 py-3 border border-gray-300 text-sm font-semibold rounded-xl text-gray-700 bg-white hover:bg-gray-50 hover:shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+            className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Next
           </button>
-        </div>
-        <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-          <div>
-            <p className="text-sm font-medium text-gray-600">
-              Showing page <span className="font-bold text-blue-500">{currentPage}</span> of{' '}
-              <span className="font-bold text-gray-900">{totalPages}</span>
-            </p>
-          </div>
-          <div>
-            <nav className="relative z-0 inline-flex rounded-xl shadow-sm -space-x-px" aria-label="Pagination">
-              <button
-                onClick={() => onPageChange(currentPage - 1)}
-                disabled={currentPage === 1}
-                className="relative inline-flex items-center px-3 py-2 rounded-l-xl border border-gray-300 bg-white text-sm font-semibold text-gray-500 hover:bg-gray-50 hover:shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
-              >
-                <HiChevronLeft className="h-5 w-5" />
-              </button>
-              
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                <button
-                  key={page}
-                  onClick={() => onPageChange(page)}
-                  className={`relative inline-flex items-center px-4 py-2 border text-sm font-semibold transition-all duration-200 ${
-                    page === currentPage
-                      ? 'bg-blue-500 text-white border-blue-500 shadow-lg'
-                      : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50 hover:shadow-sm'
-                  }`}
-                >
-                  {page}
-                </button>
-              ))}
-              
-              <button
-                onClick={() => onPageChange(currentPage + 1)}
-                disabled={currentPage === totalPages}
-                className="relative inline-flex items-center px-3 py-2 rounded-r-xl border border-gray-300 bg-white text-sm font-semibold text-gray-500 hover:bg-gray-50 hover:shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
-              >
-                <HiChevronRight className="h-5 w-5" />
-              </button>
-            </nav>
-          </div>
         </div>
       </div>
     );

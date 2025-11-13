@@ -560,20 +560,20 @@ const ProfilePage = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* Left Column */}
                     <div className="space-y-4">
-                      <div className="space-y-2">
+                      <div className="space-y-1.5">
                         <label className="block text-sm font-medium text-gray-700">
                           Employee ID
                         </label>
                         <input
                           type="text"
-                          value={user?.employeeId || 'N/A'}
+                          value={user?.employeeId || 'Not Assigned'}
                           disabled
                           autoComplete="off"
                           className="block w-full px-4 py-2.5 border border-gray-200 bg-gray-50 rounded-lg text-gray-600 cursor-not-allowed uppercase"
                         />
                       </div>
 
-                      <div className="space-y-2">
+                      <div className="space-y-1.5">
                         <label className="block text-sm font-medium text-gray-700">
                           First Name <span className="text-red-500">*</span>
                         </label>
@@ -584,7 +584,7 @@ const ProfilePage = () => {
                           <input
                             type="text"
                             name="firstName"
-                            value={formData.firstName}
+                            value={formData.firstName || ''}
                             onChange={handleInputChange}
                             placeholder="Enter your first name"
                             disabled={!isEditing}
@@ -599,11 +599,11 @@ const ProfilePage = () => {
                           />
                         </div>
                         {errors.firstName && (
-                          <p className="text-sm text-red-600">{errors.firstName}</p>
+                          <p className="text-sm text-red-600 mt-1">{errors.firstName}</p>
                         )}
                       </div>
 
-                      <div className="space-y-2">
+                      <div className="space-y-1.5">
                         <label className="block text-sm font-medium text-gray-700">
                           Email Address <span className="text-red-500">*</span>
                         </label>
@@ -613,16 +613,16 @@ const ProfilePage = () => {
                           </div>
                           <input
                             type="email"
-                            value={formData.email}
+                            value={formData.email || user?.email || 'No email'}
                             disabled
                             autoComplete="email"
                             className="block w-full pl-10 pr-4 py-2.5 border border-gray-200 bg-gray-50 rounded-lg text-gray-600 cursor-not-allowed"
                           />
                         </div>
-                        <p className="text-xs text-amber-600 mt-1">Email cannot be changed</p>
+                        <p className="text-xs text-amber-600 mt-0.5">Email cannot be changed</p>
                       </div>
 
-                      <div className="space-y-2">
+                      <div className="space-y-1.5">
                         <label className="block text-sm font-medium text-gray-700">
                           Phone Number <span className="text-gray-400 text-xs">(optional)</span>
                         </label>
@@ -633,9 +633,9 @@ const ProfilePage = () => {
                           <input
                             type="tel"
                             name="phone"
-                            value={formData.phone}
+                            value={formData.phone || ''}
                             onChange={handleInputChange}
-                            placeholder="Enter your phone number (e.g., +1234567890)"
+                            placeholder={formData.phone ? formData.phone : "Enter your phone number (e.g., +1234567890)"}
                             disabled={!isEditing}
                             autoComplete="tel"
                             className={`block w-full pl-10 pr-4 py-2.5 border rounded-lg transition-all ${
@@ -648,47 +648,30 @@ const ProfilePage = () => {
                           />
                         </div>
                         {errors.phone && (
-                          <p className="text-sm text-red-600">{errors.phone}</p>
+                          <p className="text-sm text-red-600 mt-1">{errors.phone}</p>
                         )}
                         {!errors.phone && isEditing && (
-                          <p className="text-xs text-gray-500">Format: +1234567890 or 1234567890</p>
+                          <p className="text-xs text-gray-500 mt-0.5">Format: +1234567890 or 1234567890</p>
                         )}
                       </div>
 
-                      <div className="space-y-2">
+                      <div className="space-y-1.5">
                         <label className="block text-sm font-medium text-gray-700">
-                          Email Verified
+                          Member Since
                         </label>
-                        <div className="flex items-center space-x-2">
-                          <span className={`px-3 py-1.5 rounded-lg text-sm font-medium ${
-                            user?.emailVerified 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-red-100 text-red-800'
-                          }`}>
-                            {user?.emailVerified ? 'Verified' : 'Not Verified'}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700">
-                          Phone Verified
-                        </label>
-                        <div className="flex items-center space-x-2">
-                          <span className={`px-3 py-1.5 rounded-lg text-sm font-medium ${
-                            user?.phoneVerified 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-red-100 text-red-800'
-                          }`}>
-                            {user?.phoneVerified ? 'Verified' : 'Not Verified'}
-                          </span>
-                        </div>
+                        <input
+                          type="text"
+                          value={user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
+                          disabled
+                          autoComplete="off"
+                          className="block w-full px-4 py-2.5 border border-gray-200 bg-gray-50 rounded-lg text-gray-600 cursor-not-allowed"
+                        />
                       </div>
                     </div>
 
                     {/* Right Column */}
                     <div className="space-y-4">
-                      <div className="space-y-2">
+                      <div className="space-y-1.5">
                         <label className="block text-sm font-medium text-gray-700">
                           Last Name <span className="text-red-500">*</span>
                         </label>
@@ -699,7 +682,7 @@ const ProfilePage = () => {
                           <input
                             type="text"
                             name="lastName"
-                            value={formData.lastName}
+                            value={formData.lastName || ''}
                             onChange={handleInputChange}
                             placeholder="Enter your last name"
                             disabled={!isEditing}
@@ -714,56 +697,69 @@ const ProfilePage = () => {
                           />
                         </div>
                         {errors.lastName && (
-                          <p className="text-sm text-red-600">{errors.lastName}</p>
+                          <p className="text-sm text-red-600 mt-1">{errors.lastName}</p>
                         )}
                       </div>
 
-                      <div className="space-y-2">
+                      <div className="space-y-1.5">
                         <label className="block text-sm font-medium text-gray-700">
                           Role
                         </label>
                         <input
                           type="text"
-                          value={user?.role?.replace('_', ' ') || 'User'}
+                          value={user?.role ? user.role.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Not Assigned'}
                           disabled
                           autoComplete="off"
-                          className="block w-full px-4 py-2.5 border border-gray-200 bg-gray-50 rounded-lg text-gray-600 cursor-not-allowed capitalize"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700">
-                          Display Name Publicly as
-                        </label>
-                        <input
-                          type="text"
-                          value={user?.fullName || (user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.firstName || 'User')}
-                          disabled
-                          autoComplete="name"
                           className="block w-full px-4 py-2.5 border border-gray-200 bg-gray-50 rounded-lg text-gray-600 cursor-not-allowed"
                         />
                       </div>
 
-                      {user?.branch && (
-                        <div className="space-y-2">
+                      <div className="space-y-1.5">
+                        <label className="block text-sm font-medium text-gray-700">
+                          Branch
+                        </label>
+                        <input
+                          type="text"
+                          value={user?.branch ? (typeof user.branch === 'object' ? (user.branch.branchName || user.branch.branchCode || 'N/A') : user.branch) : 'Not Assigned'}
+                          disabled
+                          autoComplete="off"
+                          className="block w-full px-4 py-2.5 border border-gray-200 bg-gray-50 rounded-lg text-gray-600 cursor-not-allowed"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
                           <label className="block text-sm font-medium text-gray-700">
-                            Branch
+                            Last Login
                           </label>
                           <input
                             type="text"
-                            value={user.branch.branchName || user.branch}
+                            value={user?.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString() : 'Never'}
                             disabled
                             autoComplete="off"
                             className="block w-full px-4 py-2.5 border border-gray-200 bg-gray-50 rounded-lg text-gray-600 cursor-not-allowed"
                           />
                         </div>
-                      )}
 
-                      <div className="space-y-2">
+                        <div className="space-y-1.5">
+                          <label className="block text-sm font-medium text-gray-700">
+                            Last Updated
+                          </label>
+                          <input
+                            type="text"
+                            value={user?.updatedAt ? new Date(user.updatedAt).toLocaleString() : 'N/A'}
+                            disabled
+                            autoComplete="off"
+                            className="block w-full px-4 py-2.5 border border-gray-200 bg-gray-50 rounded-lg text-gray-600 cursor-not-allowed"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
                         <label className="block text-sm font-medium text-gray-700">
                           Account Status
                         </label>
-                        <div className="flex items-center space-x-2">
+                        <div className="flex items-center">
                           <span className={`px-3 py-1.5 rounded-lg text-sm font-medium ${
                             user?.isActive !== false
                               ? 'bg-green-100 text-green-800' 
@@ -773,42 +769,14 @@ const ProfilePage = () => {
                           </span>
                         </div>
                       </div>
-
-                      {user?.lastLoginAt && (
-                        <div className="space-y-2">
-                          <label className="block text-sm font-medium text-gray-700">
-                            Last Login
-                          </label>
-                          <input
-                            type="text"
-                            value={new Date(user.lastLoginAt).toLocaleString()}
-                            disabled
-                            autoComplete="off"
-                            className="block w-full px-4 py-2.5 border border-gray-200 bg-gray-50 rounded-lg text-gray-600 cursor-not-allowed"
-                          />
-                        </div>
-                      )}
-
-                      {user?.createdAt && (
-                        <div className="space-y-2">
-                          <label className="block text-sm font-medium text-gray-700">
-                            Member Since
-                          </label>
-                          <input
-                            type="text"
-                            value={new Date(user.createdAt).toLocaleDateString()}
-                            disabled
-                            autoComplete="off"
-                            className="block w-full px-4 py-2.5 border border-gray-200 bg-gray-50 rounded-lg text-gray-600 cursor-not-allowed"
-                          />
-                        </div>
-                      )}
                     </div>
                   </div>
+                </div>
 
-                  {/* Action Buttons */}
-                  {isEditing && (
-                    <div className="flex items-center justify-between pt-6 mt-6 border-t border-gray-200">
+                {/* Action Buttons */}
+                {isEditing && (
+                  <div className="px-6 pb-6 border-t border-gray-200 pt-6">
+                    <div className="flex items-center justify-between">
                       <p className="text-sm text-gray-500">
                         <span className="text-red-500">*</span> Required fields
                       </p>
@@ -840,8 +808,8 @@ const ProfilePage = () => {
                         </button>
                       </div>
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
               </form>
             </div>
           </div>

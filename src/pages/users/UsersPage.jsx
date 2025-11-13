@@ -547,6 +547,18 @@ const UsersPage = () => {
               columns={columns}
               loading={loading}
               emptyMessage="No users found"
+              pagination={pagination ? {
+                ...pagination,
+                onPageChange: setCurrentPage,
+                itemName: 'users'
+              } : {
+                currentPage: currentPage,
+                totalPages: Math.ceil(filteredUsers.length / itemsPerPage),
+                totalItems: filteredUsers.length,
+                itemsPerPage: itemsPerPage,
+                onPageChange: setCurrentPage,
+                itemName: 'users'
+              }}
             />
           )}
         </div>
