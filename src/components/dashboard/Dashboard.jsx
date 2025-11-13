@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -211,14 +211,24 @@ const Dashboard = () => {
           
           // Calculate order status breakdown from ALL orders (not just delivered)
           const orderStatusCounts = {};
+          const orderStatusRevenue = {}; // Track revenue per status
+          
           allOrders.forEach(order => {
             const status = order.status || 'draft';
             orderStatusCounts[status] = (orderStatusCounts[status] || 0) + 1;
+            // Calculate revenue for this status
+            if (!orderStatusRevenue[status]) {
+              orderStatusRevenue[status] = 0;
+            }
+            const orderTotal = order.totalAmount || 0;
+            orderStatusRevenue[status] += orderTotal;
           });
           
           const orderStatusBreakdown = Object.entries(orderStatusCounts).map(([status, count]) => ({
             name: status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-            value: count
+            value: count,
+            status: status, // Keep original status for navigation
+            revenue: orderStatusRevenue[status] || 0
           }));
           
           setSalesExecutiveStats({
@@ -715,10 +725,35 @@ const Dashboard = () => {
   };
 
   // Order Status Breakdown Pie Chart for Sales Executive
+  // Track last click time for double-click detection
+  const lastClickRef = useRef({ time: 0, index: -1 });
+  
   const orderStatusPieChartOptions = {
     chart: {
       type: 'pie',
-      height: 280
+      height: 280,
+      events: {
+        dataPointSelection: function(event, chartContext, config) {
+          // Handle click on pie slice - detect double-click
+          if (config.dataPointIndex !== undefined) {
+            const statusData = orderStatusBreakdown[config.dataPointIndex];
+            if (statusData && statusData.status) {
+              const now = Date.now();
+              const lastClick = lastClickRef.current;
+              
+              // Check if this is a double-click (same slice clicked within 300ms)
+              if (lastClick.index === config.dataPointIndex && (now - lastClick.time) < 300) {
+                // Double-click detected - navigate to orders page with status filter
+                navigate(`/orders?status=${statusData.status}`);
+                lastClickRef.current = { time: 0, index: -1 }; // Reset
+              } else {
+                // First click - record time and index
+                lastClickRef.current = { time: now, index: config.dataPointIndex };
+              }
+            }
+          }
+        }
+      }
     },
     labels: orderStatusBreakdown.map(e => e.name),
     colors: COLORS,
@@ -732,14 +767,22 @@ const Dashboard = () => {
         const value = series[seriesIndex];
         const total = series.reduce((a, b) => a + b, 0);
         const percentage = ((value / total) * 100).toFixed(1);
+        const statusData = orderStatusBreakdown[seriesIndex];
+        const revenue = statusData?.revenue || 0;
         return `
-          <div style="padding: 8px;">
-            <div style="font-weight: 600; margin-bottom: 4px; color: #fff;">${label}</div>
-            <div style="font-size: 12px; color: #fff;">
-              Orders: ${value}
+          <div style="padding: 10px; background: rgba(0, 0, 0, 0.8); border-radius: 6px;">
+            <div style="font-weight: 600; margin-bottom: 6px; color: #fff; font-size: 14px;">${label}</div>
+            <div style="font-size: 12px; color: #e5e7eb; margin-bottom: 4px;">
+              <strong>Orders:</strong> ${value}
             </div>
-            <div style="font-size: 12px; color: #fff;">
-              Percentage: ${percentage}%
+            <div style="font-size: 12px; color: #e5e7eb; margin-bottom: 4px;">
+              <strong>Percentage:</strong> ${percentage}%
+            </div>
+            <div style="font-size: 12px; color: #e5e7eb; margin-bottom: 4px;">
+              <strong>Revenue:</strong> ₹${revenue.toLocaleString('en-IN')}
+            </div>
+            <div style="font-size: 11px; color: #9ca3af; margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.2);">
+              Double-click to view orders
             </div>
           </div>
         `;
@@ -747,6 +790,11 @@ const Dashboard = () => {
     },
     dataLabels: {
       enabled: false
+    },
+    plotOptions: {
+      pie: {
+        expandOnClick: false
+      }
     }
   };
 

@@ -2745,6 +2745,8 @@ const LedgerTabContent = ({
         // Exclude:
         // 1. Lead incomes (accountId starting with "PI" or orderId.customerType === 'lead')
         // 2. Any income transactions from orders (orderId exists) - only show manually created income
+        // 3. For admin/supervisor/accounts_manager: Only show transactions with vendor AND branch
+        
         const filteredTransactions = transactions.filter(acc => {
           // Exclude lead incomes from ledger
           // Check 1: accountId starting with "PI" (lead income prefix)
@@ -2759,6 +2761,24 @@ const LedgerTabContent = ({
           // Ledger only shows income created manually via accounts form (no orderId)
           if (acc.transactionType === 'income' && acc.orderId) {
             return false;
+          }
+          
+          // For admin/supervisor/accounts_manager: Only show transactions with vendor AND branch
+          const isBranchSpecificUser = user && (user.role === 'admin' || user.role === 'accounts_manager' || user.role === 'supervisor');
+          if (isBranchSpecificUser) {
+            // Must have vendor information (vendorName for expenses, or supplierId for purchases)
+            const hasVendorInfo = acc.vendorName || acc.supplierId || 
+                                 (acc.rawMaterialId && typeof acc.rawMaterialId === 'object' && acc.rawMaterialId.supplierId) ||
+                                 (acc.orderId && typeof acc.orderId === 'object' && acc.orderId.courierPartnerId);
+            
+            // Must have branch information
+            const hasBranchInfo = acc.branchId && (
+              typeof acc.branchId === 'object' ? acc.branchId._id || acc.branchId : acc.branchId
+            );
+            
+            if (!hasVendorInfo || !hasBranchInfo) {
+              return false;
+            }
           }
           
           if (selectedVendor.type === 'vendor') {

@@ -695,7 +695,7 @@ const BranchFormPage = () => {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <Input
-                  label="Incentive Type (Count)"
+                  label="Incentive Type"
                   name="incentiveType"
                   type="number"
                   value={formData.incentiveType !== undefined && formData.incentiveType !== null ? formData.incentiveType : ''}
@@ -706,9 +706,6 @@ const BranchFormPage = () => {
                   step="1"
                   className="w-full"
                 />
-                <p className="text-xs text-gray-500 mt-1">
-                  Number of product units to sell before earning incentives (e.g., 100 means after selling 100 units, incentives apply)
-                </p>
               </div>
             </div>
 
