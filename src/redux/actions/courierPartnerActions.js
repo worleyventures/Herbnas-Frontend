@@ -6,9 +6,11 @@ export const getAllCourierPartners = createAsyncThunk(
   'courierPartners/getAllCourierPartners',
   async (params = {}, { rejectWithValue }) => {
     try {
-      const { isActive } = params;
+      const { isActive, page, limit } = params;
       const queryParams = new URLSearchParams();
       if (isActive !== undefined) queryParams.append('isActive', isActive);
+      if (page !== undefined) queryParams.append('page', page);
+      if (limit !== undefined) queryParams.append('limit', limit);
       
       const response = await api.get(`/courier-partners?${queryParams.toString()}`);
       return response.data;

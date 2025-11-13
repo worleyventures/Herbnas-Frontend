@@ -215,9 +215,14 @@ export const updateAccountPaymentStatus = createAsyncThunk(
 // Get unique vendors from accounts
 export const getUniqueVendors = createAsyncThunk(
   'accounts/getUniqueVendors',
-  async (_, { rejectWithValue }) => {
+  async (params = {}, { rejectWithValue }) => {
     try {
-      const response = await api.get('/accounts/vendors');
+      const { page, limit } = params;
+      const queryParams = new URLSearchParams();
+      if (page !== undefined) queryParams.append('page', page);
+      if (limit !== undefined) queryParams.append('limit', limit);
+      
+      const response = await api.get(`/accounts/vendors${queryParams.toString() ? `?${queryParams.toString()}` : ''}`);
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch vendors');
@@ -228,9 +233,14 @@ export const getUniqueVendors = createAsyncThunk(
 // Get unique customers from accounts
 export const getUniqueCustomers = createAsyncThunk(
   'accounts/getUniqueCustomers',
-  async (_, { rejectWithValue }) => {
+  async (params = {}, { rejectWithValue }) => {
     try {
-      const response = await api.get('/accounts/customers');
+      const { page, limit } = params;
+      const queryParams = new URLSearchParams();
+      if (page !== undefined) queryParams.append('page', page);
+      if (limit !== undefined) queryParams.append('limit', limit);
+      
+      const response = await api.get(`/accounts/customers${queryParams.toString() ? `?${queryParams.toString()}` : ''}`);
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch customers');

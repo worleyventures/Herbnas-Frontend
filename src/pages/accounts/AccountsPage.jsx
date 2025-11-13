@@ -123,6 +123,24 @@ const AccountsPage = () => {
   const isAdmin = user?.role === 'admin';
   const isSupervisor = user?.role === 'supervisor';
 
+  // Filter out lead incomes from accounts ledger
+  const filteredAccounts = useMemo(() => {
+    if (!accounts || accounts.length === 0) return [];
+    
+    return accounts.filter(acc => {
+      // Exclude lead incomes from ledger
+      // Check 1: accountId starting with "PI" (lead income prefix)
+      if (acc.accountId && acc.accountId.startsWith('PI')) {
+        return false;
+      }
+      // Check 2: orderId exists and customerType is 'lead' (backup check)
+      if (acc.orderId && typeof acc.orderId === 'object' && acc.orderId.customerType === 'lead') {
+        return false;
+      }
+      return true;
+    });
+  }, [accounts]);
+
   // Helper function to get date range based on filter selection
   const getDateRange = useCallback(() => {
     const today = new Date();
@@ -1101,7 +1119,7 @@ const AccountsPage = () => {
       {/* Accounts Table */}
       <div className="bg-white">
         <Table
-          data={accounts}
+          data={filteredAccounts}
           columns={columns}
           loading={loading}
           error={error}
@@ -1499,7 +1517,7 @@ const AccountsPage = () => {
                 {/* Accounts Table */}
                 <div className="bg-white">
                   <Table
-                    data={accounts}
+                    data={filteredAccounts}
                     columns={columns}
                     loading={loading}
                     error={error}
@@ -1931,7 +1949,7 @@ const AccountsPage = () => {
               {/* Accounts Table */}
               <div className="bg-white">
                 <Table
-                  data={accounts}
+                  data={filteredAccounts}
                   columns={columns}
                   loading={loading}
                   error={error}
@@ -2494,6 +2512,8 @@ const LedgerTabContent = ({
   const [vendorBalance, setVendorBalance] = useState({ total: 0, credit: 0, debit: 0 });
   const [selectedTransaction, setSelectedTransaction] = useState(null);
   const [showTransactionDetails, setShowTransactionDetails] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   // Fetch vendors on mount
   useEffect(() => {
@@ -2515,10 +2535,9 @@ const LedgerTabContent = ({
         const vendorsList = vendorsResult.data || [];
         setExpenseVendors(vendorsList);
 
-        // Fetch customers
-        const customersResult = await dispatch(getUniqueCustomers()).unwrap();
-        const customersList = customersResult.data || [];
-        setCustomers(customersList);
+        // DO NOT fetch customers - ledger only tracks vendors
+        // Customers are tracked separately in accounts section
+        setCustomers([]);
       } catch (error) {
         console.error('Error fetching vendors:', error);
       } finally {
@@ -2538,7 +2557,18 @@ const LedgerTabContent = ({
 
       setVendorLedgerLoading(true);
       try {
-        const dateRange = getDateRange();
+        // For super admin viewing vendor ledger, don't restrict by date range (or use a very wide range)
+        // This ensures all vendor transactions are shown
+        const isSuperAdminUser = user && user.role === 'super_admin';
+        let dateRange = getDateRange();
+        
+        // If super admin and no date range is set (or it's too restrictive), fetch all transactions
+        if (isSuperAdminUser && (!dateRange || dateRangeFilter === 'today')) {
+          // For super admin, if date filter is 'today' or not set, fetch all transactions
+          // Set a very wide date range (e.g., last 5 years) or null to fetch all
+          dateRange = null; // null means no date filter - fetch all transactions
+        }
+        
         let branchId = selectedBranch ? (selectedBranch.branchId || selectedBranch._id) : null;
 
         // For suppliers: Raw material purchases are typically for Head Office
@@ -2601,12 +2631,17 @@ const LedgerTabContent = ({
         // For suppliers, we need to get ALL accounts for the branch and filter by supplier
         // Don't use search query as it might miss some transactions that don't have vendorName set
         // If branchId is null/undefined and user is super admin, fetch from all branches
+        // For super admin, fetch all transactions (no limit or very high limit)
         const accountParams = {
           page: 1,
-          limit: 1000, // Get all transactions for ledger
-          startDate: dateRange?.startDate,
-          endDate: dateRange?.endDate
+          limit: isSuperAdminUser ? 10000 : 1000 // Higher limit for super admin to get all transactions
         };
+        
+        // Only add date filters if dateRange is provided
+        if (dateRange) {
+          accountParams.startDate = dateRange.startDate;
+          accountParams.endDate = dateRange.endDate;
+        }
         
         // Only add branchId if it's specified (for branch-specific view or Head Office for suppliers)
         if (branchId) {
@@ -2614,9 +2649,32 @@ const LedgerTabContent = ({
         }
         // If branchId is undefined/null, super admin will see all branches (no branchId filter)
         
-        const result = await dispatch(getAllAccounts(accountParams)).unwrap();
+        // Fetch all pages if needed for super admin
+        let allTransactions = [];
+        if (isSuperAdminUser && !branchId) {
+          // Fetch all transactions across all pages for super admin
+          let currentPage = 1;
+          let hasMore = true;
+          while (hasMore) {
+            const result = await dispatch(getAllAccounts({
+              ...accountParams,
+              page: currentPage,
+              limit: 1000
+            })).unwrap();
+            const pageTransactions = result.data?.accounts || [];
+            allTransactions = [...allTransactions, ...pageTransactions];
+            const totalPages = result.pagination?.totalPages || 1;
+            hasMore = currentPage < totalPages && pageTransactions.length > 0;
+            currentPage++;
+            // Safety limit to prevent infinite loops
+            if (currentPage > 100) break;
+          }
+        } else {
+          const result = await dispatch(getAllAccounts(accountParams)).unwrap();
+          allTransactions = result.data?.accounts || [];
+        }
 
-        const transactions = result.data?.accounts || [];
+        const transactions = allTransactions;
         
         // Debug logging
         console.log('[LedgerTabContent] Selected vendor:', selectedVendor);
@@ -2645,7 +2703,25 @@ const LedgerTabContent = ({
         }
         
         // Filter transactions by vendor name/supplier ID with better matching
+        // Exclude:
+        // 1. Lead incomes (accountId starting with "PI" or orderId.customerType === 'lead')
+        // 2. Any income transactions from orders (orderId exists) - only show manually created income
         const filteredTransactions = transactions.filter(acc => {
+          // Exclude lead incomes from ledger
+          // Check 1: accountId starting with "PI" (lead income prefix)
+          if (acc.accountId && acc.accountId.startsWith('PI')) {
+            return false;
+          }
+          // Check 2: orderId exists and customerType is 'lead' (backup check)
+          if (acc.orderId && typeof acc.orderId === 'object' && acc.orderId.customerType === 'lead') {
+            return false;
+          }
+          // Check 3: Exclude any income transactions that come from orders
+          // Ledger only shows income created manually via accounts form (no orderId)
+          if (acc.transactionType === 'income' && acc.orderId) {
+            return false;
+          }
+          
           if (selectedVendor.type === 'vendor') {
             // For expense vendors, match by vendorName and referenceNumber
             const normalize = (str) => (str || '').toString().trim().toLowerCase();
@@ -2659,25 +2735,6 @@ const LedgerTabContent = ({
               console.log('[LedgerTabContent] Matched vendor transaction:', {
                 accountId: acc.accountId,
                 vendorName: acc.vendorName,
-                referenceNumber: acc.referenceNumber,
-                transactionType: acc.transactionType,
-                category: acc.category
-              });
-            }
-            return match;
-          } else if (selectedVendor.type === 'customer') {
-            // For customers, match by customerName and referenceNumber
-            const normalize = (str) => (str || '').toString().trim().toLowerCase();
-            const customerNameMatch = acc.customerName && normalize(acc.customerName) === normalize(selectedVendor.customerName);
-            const referenceMatch = selectedVendor.referenceNumber 
-              ? (acc.referenceNumber && normalize(acc.referenceNumber) === normalize(selectedVendor.referenceNumber))
-              : true; // If no reference number in customer, match any reference number
-            
-            const match = customerNameMatch && referenceMatch;
-            if (match) {
-              console.log('[LedgerTabContent] Matched customer transaction:', {
-                accountId: acc.accountId,
-                customerName: acc.customerName,
                 referenceNumber: acc.referenceNumber,
                 transactionType: acc.transactionType,
                 category: acc.category
@@ -2750,18 +2807,24 @@ const LedgerTabContent = ({
         console.log('[LedgerTabContent] Filtered transactions count:', filteredTransactions.length);
         setVendorLedgerTransactions(filteredTransactions);
 
-        // Calculate balance - only include unpaid transactions
+        // Calculate balance - include ALL transactions for total credit/debit display
+        // But only unpaid transactions for balance calculation
         const balance = filteredTransactions.reduce((acc, txn) => {
           const amount = txn.amount || 0;
           const isPaid = txn.paymentStatus === 'completed';
           
+          // Count all transactions for total credit/debit
+          if (txn.transactionType === 'income') {
+            acc.credit += amount;
+          } else if (txn.transactionType === 'expense' || txn.transactionType === 'purchase') {
+            acc.debit += amount;
+          }
+          
           // Only count unpaid transactions in balance
           if (!isPaid) {
             if (txn.transactionType === 'income') {
-              acc.credit += amount;
               acc.total += amount;
             } else if (txn.transactionType === 'expense' || txn.transactionType === 'purchase') {
-              acc.debit += amount;
               acc.total -= amount;
             }
           }
@@ -2783,7 +2846,7 @@ const LedgerTabContent = ({
     fetchVendorLedger();
   }, [selectedVendor, selectedBranch, dateRangeFilter, fromDate, toDate, getDateRange, dispatch, getAllAccounts, getAllBranches]);
 
-  // Combine all vendors
+  // Combine all vendors (exclude customers - ledger only tracks vendors)
   const allVendors = useMemo(() => {
     const vendorList = [];
     
@@ -2828,48 +2891,101 @@ const LedgerTabContent = ({
       });
     });
 
-    // Add customers
-    customers.forEach(customer => {
-      const customerId = `${customer.customerName}_${customer.referenceNumber || 'no-ref'}`;
-      vendorList.push({
-        _id: customerId,
-        name: customer.customerName || 'Unknown Customer',
-        type: 'customer',
-        customerName: customer.customerName,
-        referenceNumber: customer.referenceNumber,
-        transactionCount: customer.transactionCount,
-        totalAmount: customer.totalAmount,
-        lastTransactionDate: customer.lastTransactionDate
-      });
-    });
+    // DO NOT add customers - ledger only tracks vendors
+    // Customers are tracked separately in accounts section
 
     return vendorList.sort((a, b) => a.name.localeCompare(b.name));
-  }, [suppliers, courierPartners, expenseVendors, customers]);
+  }, [suppliers, courierPartners, expenseVendors]);
+
+  // Paginate vendors
+  const paginatedVendors = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return allVendors.slice(startIndex, endIndex);
+  }, [allVendors, currentPage]);
+
+  // Calculate pagination info
+  const totalPages = Math.ceil(allVendors.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage + 1;
+  const endIndex = Math.min(currentPage * itemsPerPage, allVendors.length);
+
+  // Reset to page 1 when vendors change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [allVendors.length]);
 
   if (selectedVendor) {
+    // Calculate deposit amount for courier partners (sum of all credit transactions)
+    const depositAmount = selectedVendor.type === 'courier' 
+      ? vendorBalance.credit 
+      : 0;
+    
+    // Calculate balance payable for vendors (negative total means payable)
+    const balancePayable = selectedVendor.type !== 'courier' && vendorBalance.total < 0
+      ? Math.abs(vendorBalance.total)
+      : 0;
+    
     // Show vendor ledger as standalone dashboard
     return (
       <div className="space-y-6">
-        {/* Back Button */}
-        <div className="flex items-center justify-between">
-          <button
-            onClick={() => setSelectedVendor(null)}
-            className="inline-flex items-center justify-center w-10 h-10 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors"
-            title="Back to Vendors"
-          >
-            <HiArrowLeft className="h-5 w-5" />
-          </button>
-          <div className="text-right">
-            <h2 className="text-xl font-semibold text-gray-900">{selectedVendor.name}</h2>
-            <p className="text-sm text-gray-500">
-              {selectedVendor.type === 'supplier' ? 'Supplier' : 
-               selectedVendor.type === 'courier' ? 'Courier Partner' : 
-               selectedVendor.type === 'customer' ? 'Customer' : 
-               'Vendor'} Ledger
-              {selectedVendor.referenceNumber && (
-                <span className="ml-2 text-gray-400">({selectedVendor.referenceNumber})</span>
-              )}
-            </p>
+        {/* Header with Back Button, Title, and Mini Summary */}
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-center gap-3 flex-1">
+            <button
+              onClick={() => setSelectedVendor(null)}
+              className="inline-flex items-center justify-center w-10 h-10 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors"
+              title="Back to Vendors"
+            >
+              <HiArrowLeft className="h-5 w-5" />
+            </button>
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">{selectedVendor.name}</h2>
+              <p className="text-sm text-gray-500">
+                {selectedVendor.type === 'supplier' ? 'Supplier' : 
+                 selectedVendor.type === 'courier' ? 'Courier Partner' : 
+                 selectedVendor.type === 'customer' ? 'Customer' : 
+                 'Vendor'} Ledger
+                {selectedVendor.referenceNumber && (
+                  <span className="ml-2 text-gray-400">({selectedVendor.referenceNumber})</span>
+                )}
+              </p>
+            </div>
+          </div>
+          
+          {/* Mini Summary */}
+          <div className="flex flex-col gap-2 text-right min-w-[180px]">
+            {selectedVendor.type === 'courier' && (
+              <div className={`rounded-lg px-4 py-2.5 border ${
+                depositAmount > 0 
+                  ? 'bg-green-50 border-green-200' 
+                  : 'bg-gray-50 border-gray-200'
+              }`}>
+                <p className={`text-xs font-medium ${
+                  depositAmount > 0 ? 'text-green-700' : 'text-gray-600'
+                }`}>Deposit Amount</p>
+                <p className={`text-sm font-semibold mt-0.5 ${
+                  depositAmount > 0 ? 'text-green-900' : 'text-gray-700'
+                }`}>
+                  ₹{depositAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </p>
+              </div>
+            )}
+            {selectedVendor.type !== 'courier' && (
+              <div className={`rounded-lg px-4 py-2.5 border ${
+                balancePayable > 0 
+                  ? 'bg-red-50 border-red-200' 
+                  : 'bg-gray-50 border-gray-200'
+              }`}>
+                <p className={`text-xs font-medium ${
+                  balancePayable > 0 ? 'text-red-700' : 'text-gray-600'
+                }`}>Balance (Payable)</p>
+                <p className={`text-sm font-semibold mt-0.5 ${
+                  balancePayable > 0 ? 'text-red-900' : 'text-gray-700'
+                }`}>
+                  ₹{balancePayable.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -3130,7 +3246,7 @@ const LedgerTabContent = ({
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {allVendors.map((vendor) => (
+                {paginatedVendors.map((vendor) => (
                   <tr key={vendor._id} className="hover:bg-gray-50 cursor-pointer">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">
@@ -3199,6 +3315,62 @@ const LedgerTabContent = ({
           </div>
         )}
       </div>
+
+      {/* Pagination */}
+      {allVendors.length > 0 && (
+        <div className="flex items-center justify-between bg-white rounded-lg border border-gray-200 px-4 py-3">
+          <div className="text-sm text-gray-700">
+            Showing <span className="font-medium">{startIndex}</span> to{' '}
+            <span className="font-medium">{endIndex}</span> of{' '}
+            <span className="font-medium">{allVendors.length}</span> vendors
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Previous
+            </button>
+            <div className="flex items-center gap-1">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(pageNum => {
+                if (
+                  pageNum === 1 ||
+                  pageNum === totalPages ||
+                  (pageNum >= currentPage - 1 && pageNum <= currentPage + 1)
+                ) {
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setCurrentPage(pageNum)}
+                      className={`px-3 py-1.5 text-sm font-medium rounded-lg ${
+                        currentPage === pageNum
+                          ? 'bg-[#8bc34a] text-white'
+                          : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                } else if (
+                  pageNum === currentPage - 2 ||
+                  pageNum === currentPage + 2
+                ) {
+                  return <span key={pageNum} className="px-2 text-gray-500">...</span>;
+                }
+                return null;
+              })}
+            </div>
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
