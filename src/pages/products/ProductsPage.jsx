@@ -22,6 +22,7 @@ const ProductsPage = () => {
   const loading = productState?.loading || false;
   const error = productState?.error || null;
   const stats = productState?.stats || null;
+  const pagination = productState?.pagination || null;
 
   // Local state
   const [searchTerm, setSearchTerm] = useState('');
