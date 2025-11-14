@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { HiXMark } from 'react-icons/hi2';
 import { Button } from './index';
 
@@ -27,8 +28,8 @@ const CommonModal = ({
     full: 'max-w-full mx-4'
   };
 
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+  const modalContent = (
+    <div className="fixed inset-0 z-[9999] overflow-y-auto">
       <div className="flex min-h-screen items-center justify-center p-4 sm:p-6">
         {/* Backdrop */}
         <div
@@ -37,7 +38,10 @@ const CommonModal = ({
         ></div>
 
         {/* Modal */}
-        <div className={`relative w-full bg-white rounded-xl shadow-2xl transform transition-all ${sizeClasses[size]} ${className}`}>
+        <div 
+          className={`relative w-full bg-white rounded-xl shadow-2xl transform transition-all ${sizeClasses[size]} ${className}`}
+          onClick={(e) => e.stopPropagation()}
+        >
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
             <div className="flex items-center space-x-3">
@@ -82,6 +86,9 @@ const CommonModal = ({
       </div>
     </div>
   );
+
+  // Use portal to render modal at document.body level
+  return createPortal(modalContent, document.body);
 };
 
 export default CommonModal;

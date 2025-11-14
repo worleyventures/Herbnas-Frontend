@@ -3,7 +3,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button, Input, Select, TextArea, Loading } from '../../components/common';
 import { createAccount, updateAccount, getAccountById, getUniqueVendors, getUniqueCustomers } from '../../redux/actions/accountActions';
-import { getAllBranches } from '../../redux/actions/branchActions';
+import { getAllBranches, getBranchById } from '../../redux/actions/branchActions';
 import { getAllOrders } from '../../redux/actions/orderActions';
 import { addNotification } from '../../redux/slices/uiSlice';
 
@@ -43,8 +43,11 @@ const AccountFormPage = () => {
     transactionDate: new Date().toISOString().split('T')[0],
     referenceNumber: '',
     vendorName: '',
-    customerName: ''
+    customerName: '',
+    paymentSource: 'ready_cash', // 'bank_account' or 'ready_cash'
+    bankAccountIndex: '' // Index of bank account if paymentSource is 'bank_account'
   });
+  const [selectedBranchDetails, setSelectedBranchDetails] = useState(null);
   const [errors, setErrors] = useState({});
   const [vendors, setVendors] = useState([]);
   const [vendorsLoading, setVendorsLoading] = useState(false);
@@ -83,7 +86,9 @@ const AccountFormPage = () => {
         transactionDate: account.transactionDate ? new Date(account.transactionDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
         referenceNumber: account.referenceNumber || '',
         vendorName: account.vendorName || '',
-        customerName: account.customerName || ''
+        customerName: account.customerName || '',
+        paymentSource: account.paymentSource || 'ready_cash',
+        bankAccountIndex: account.bankAccountIndex || ''
       });
     } catch (error) {
       dispatch(addNotification({
@@ -165,6 +170,26 @@ const AccountFormPage = () => {
       }));
     }
   }, [isEdit, isAccountsManager, user?.branch, branches.length]);
+
+  // Fetch branch details when branchId changes to get bank accounts and ready cash
+  useEffect(() => {
+    const fetchBranchDetails = async () => {
+      if (formData.branchId) {
+        try {
+          const result = await dispatch(getBranchById(formData.branchId)).unwrap();
+          const branchData = result.data?.branch || result.data;
+          setSelectedBranchDetails(branchData);
+        } catch (error) {
+          console.error('Error fetching branch details:', error);
+          setSelectedBranchDetails(null);
+        }
+      } else {
+        setSelectedBranchDetails(null);
+      }
+    };
+    
+    fetchBranchDetails();
+  }, [formData.branchId, dispatch]);
 
   // Handle input changes
   const handleInputChange = (field, value) => {
@@ -298,6 +323,9 @@ const AccountFormPage = () => {
         ...formData,
         amount: parseFloat(formData.amount),
         orderId: orderIdMongo,
+        // Include paymentSource and bankAccountIndex only if paymentStatus is 'completed'
+        paymentSource: formData.paymentStatus === 'completed' ? formData.paymentSource : undefined,
+        bankAccountIndex: formData.paymentStatus === 'completed' && formData.paymentSource === 'bank_account' ? formData.bankAccountIndex : undefined
       };
       
       // Remove orderIdMongo from accountData as it's not a field in the model
@@ -553,12 +581,101 @@ const AccountFormPage = () => {
               <Select
                 options={paymentStatusOptions}
                 value={formData.paymentStatus}
-                onChange={(e) => handleInputChange('paymentStatus', e.target.value)}
+                onChange={(e) => {
+                  handleInputChange('paymentStatus', e.target.value);
+                  // Reset payment source when status changes away from completed
+                  if (e.target.value !== 'completed') {
+                    handleInputChange('paymentSource', 'ready_cash');
+                    handleInputChange('bankAccountIndex', '');
+                  }
+                }}
               />
             </div>
           </div>
 
-          
+          {/* Payment Source Selection - Only show when payment status is 'completed' */}
+          {formData.paymentStatus === 'completed' && formData.branchId && selectedBranchDetails && (() => {
+            const branch = selectedBranchDetails;
+            const bankAccounts = branch?.bankAccounts && Array.isArray(branch.bankAccounts) 
+              ? branch.bankAccounts 
+              : [];
+            // Ready cash amount (defaults to 0 if not set)
+            const readyCashAmount = branch?.readyCashAmount !== undefined && branch?.readyCashAmount !== null 
+              ? branch.readyCashAmount 
+              : 0;
+            const hasBankAccounts = bankAccounts.length > 0;
+            
+            // Check if branch has any payment options configured
+            // Show message only if readyCashAmount is not configured (undefined/null) AND no bank accounts exist
+            // Note: readyCashAmount can be 0, which is still a valid configuration
+            const hasReadyCashConfigured = branch?.readyCashAmount !== undefined && branch?.readyCashAmount !== null;
+            const hasPaymentOptions = hasReadyCashConfigured || hasBankAccounts;
+
+            if (!hasPaymentOptions) {
+              return (
+                <div className="border-t pt-6">
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
+                    <p className="text-sm text-yellow-800">
+                      Payment options are not available for this Branch
+                    </p>
+                    <p className="text-xs text-yellow-700 mt-1">
+                      Please configure Ready Cash amount or Bank Accounts for this branch.
+                    </p>
+                  </div>
+                </div>
+              );
+            }
+
+            const readyCashDisplayAmount = readyCashAmount;
+
+            const bankAccountOptions = bankAccounts.map((acc, index) => ({
+              value: String(index),
+              label: `${acc.bankName || 'Bank'} - ${acc.bankAccountNumber || 'N/A'} (Balance: ₹${(acc.accountBalance || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`
+            }));
+
+            return (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-t pt-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Payment Source *
+                  </label>
+                  <Select
+                    options={[
+                      { value: 'ready_cash', label: `Ready Cash (Balance: ₹${readyCashDisplayAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})` },
+                      ...(bankAccountOptions.length > 0 ? [{ value: 'bank_account', label: 'Bank Account' }] : [])
+                    ]}
+                    value={formData.paymentSource}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      handleInputChange('paymentSource', value);
+                      if (value !== 'bank_account') {
+                        handleInputChange('bankAccountIndex', '');
+                      }
+                    }}
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Select from which account the amount should be {formData.transactionType === 'expense' ? 'deducted' : 'added'}
+                  </p>
+                </div>
+
+                {formData.paymentSource === 'bank_account' && (() => {
+                  return bankAccountOptions.length > 0 ? (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Select Bank Account *
+                      </label>
+                      <Select
+                        options={bankAccountOptions}
+                        value={formData.bankAccountIndex}
+                        onChange={(e) => handleInputChange('bankAccountIndex', e.target.value)}
+                        placeholder="Select Bank Account"
+                      />
+                    </div>
+                  ) : null;
+                })()}
+              </div>
+            );
+          })()}
 
           {/* Reference Number and Vendor/Customer Name (single row) */}
           <div className={`grid grid-cols-1 md:grid-cols-2 gap-6`}>
