@@ -20,6 +20,7 @@ import {
 
 const AttendanceModal = ({ isOpen, onClose }) => {
   const dispatch = useDispatch();
+  const { user } = useSelector((state) => state.auth);
   const todayAttendance = useSelector(selectTodayAttendance);
   const loading = useSelector(selectAttendanceLoading);
   const error = useSelector(selectAttendanceError);
@@ -39,9 +40,16 @@ const AttendanceModal = ({ isOpen, onClose }) => {
     { value: 'training', label: 'Training' }
   ];
 
+  // Close modal if super_admin tries to access it
+  useEffect(() => {
+    if (isOpen && user?.role === 'super_admin') {
+      onClose();
+    }
+  }, [isOpen, user?.role, onClose]);
+
   // Load today's attendance when modal opens
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && user?.role !== 'super_admin') {
       dispatch(getTodayAttendance());
       // Set current time for manual input in 12-hour format
       const now = new Date();
@@ -52,7 +60,7 @@ const AttendanceModal = ({ isOpen, onClose }) => {
       }); // HH:MM AM/PM format
       setManualTime(timeString);
     }
-  }, [isOpen, dispatch]);
+  }, [isOpen, dispatch, user?.role]);
 
   // Clear messages after showing them
   useEffect(() => {
@@ -119,7 +127,8 @@ const AttendanceModal = ({ isOpen, onClose }) => {
 
   const status = getAttendanceStatus();
 
-  if (!isOpen) return null;
+  // Don't render modal for super_admin
+  if (!isOpen || user?.role === 'super_admin') return null;
 
   return (
     <div className="fixed inset-0 z-[9999] overflow-hidden">

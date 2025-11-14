@@ -502,41 +502,45 @@ const Header = ({ sidebarOpen, setSidebarOpen, showAttendanceModal, setShowAtten
 
                   <div className="border-t border-gray-100 my-1"></div>
 
-                  {/* Attendance Status */}
-                  <div className="px-4 py-2.5">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center">
+                  {/* Attendance Status - Hide for super_admin */}
+                  {user?.role !== 'super_admin' && (
+                    <>
+                      <div className="px-4 py-2.5">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center">
+                            <HiClock className="h-4 w-4 mr-3 text-gray-400" />
+                            <span className="text-sm text-gray-700">Attendance</span>
+                          </div>
+                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${getAttendanceStatusColor(attendanceStatus)}`}>
+                            {getAttendanceStatusText(attendanceStatus)}
+                          </span>
+                        </div>
+                        {todayAttendance?.checkIn?.time && (
+                          <div className="mt-1 text-xs text-gray-500">
+                            In: {new Date(todayAttendance.checkIn.time).toLocaleTimeString('en-IN', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              hour12: true
+                            })}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Mark Attendance Button - Hide for super_admin */}
+                      <button
+                        onClick={() => {
+                          setShowAttendanceModal(true);
+                          setProfileDropdownOpen(false);
+                        }}
+                        className="flex items-center w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-200"
+                      >
                         <HiClock className="h-4 w-4 mr-3 text-gray-400" />
-                        <span className="text-sm text-gray-700">Attendance</span>
-                      </div>
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getAttendanceStatusColor(attendanceStatus)}`}>
-                        {getAttendanceStatusText(attendanceStatus)}
-                      </span>
-                    </div>
-                    {todayAttendance?.checkIn?.time && (
-                      <div className="mt-1 text-xs text-gray-500">
-                        In: {new Date(todayAttendance.checkIn.time).toLocaleTimeString('en-IN', {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                          hour12: true
-                        })}
-                      </div>
-                    )}
-                  </div>
+                        Mark Attendance
+                      </button>
 
-                  {/* Mark Attendance Button */}
-                  <button
-                    onClick={() => {
-                      setShowAttendanceModal(true);
-                      setProfileDropdownOpen(false);
-                    }}
-                    className="flex items-center w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-200"
-                  >
-                    <HiClock className="h-4 w-4 mr-3 text-gray-400" />
-                    Mark Attendance
-                  </button>
-
-                  <div className="border-t border-gray-100 my-1"></div>
+                      <div className="border-t border-gray-100 my-1"></div>
+                    </>
+                  )}
 
                   {/* Profile Links */}
                   <Link
