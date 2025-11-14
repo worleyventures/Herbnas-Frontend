@@ -148,18 +148,32 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
   // Refresh leads when navigating to this page (e.g., returning from edit form)
   useEffect(() => {
     if ((location.pathname === '/leads' || location.pathname === '/leads/table' || location.pathname === '/leads/pipeline') && isAuthenticated && user) {
+      // Check if refresh was requested (e.g., after creating/updating a lead)
+      const refreshRequested = location.state?.refresh;
+      
+      if (refreshRequested) {
+        // Clear leads state to force fresh fetch
+        dispatch(clearAllLeadData());
+        // Reset to page 1 and clear search to show new lead
+        setCurrentPage(1);
+        setSearchTerm('');
+        // Clear the location state to prevent re-triggering on subsequent renders
+        window.history.replaceState({}, document.title, location.pathname);
+      }
+      
       // Use a small delay to ensure state is ready after navigation
       const timeoutId = setTimeout(() => {
         // For admin, fetch all leads to filter by branch employees on frontend
         const limit = isAdmin && branchUserIds.length > 0 ? 1000 : itemsPerPage;
         const leadParams = {
-          page: isAdmin && branchUserIds.length > 0 ? 1 : currentPage,
+          page: isAdmin && branchUserIds.length > 0 ? 1 : (refreshRequested ? 1 : currentPage),
           limit: limit,
-          search: searchTerm,
+          search: refreshRequested ? '' : searchTerm,
           leadStatus: filterStatus === 'all' ? '' : filterStatus,
           dispatchedFrom: isAdmin && user?.branch 
             ? (user.branch._id || user.branch) 
-            : (filterBranch === 'all' ? '' : filterBranch)
+            : (filterBranch === 'all' ? '' : filterBranch),
+          _t: Date.now() // Cache-busting timestamp
         };
         
         // For sales executive, only show leads created by them
@@ -169,17 +183,39 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
         
         dispatch(getAllLeads(leadParams));
         dispatch(getLeadStats());
-      }, 100);
+      }, refreshRequested ? 50 : 100);
       
       return () => clearTimeout(timeoutId);
     }
-  }, [location.pathname, dispatch, isAuthenticated, user, isSalesExecutive, isAdmin, branchUserIds.length, currentPage, itemsPerPage, searchTerm, filterStatus, filterBranch]);
+  }, [location.pathname, location.state, dispatch, isAuthenticated, user, isSalesExecutive, isAdmin, branchUserIds.length, currentPage, itemsPerPage, searchTerm, filterStatus, filterBranch]);
 
   // Clear success/error messages after a delay and close modals on success
   useEffect(() => {
     if (createSuccess || updateSuccess || deleteSuccess) {
       if (createSuccess) {
         setShowCreateModal(false);
+        // Reset to page 1 and clear search to show new lead
+        setCurrentPage(1);
+        setSearchTerm('');
+        // Clear leads state to force fresh fetch (prevents cache issues)
+        dispatch(clearAllLeadData());
+        // Refresh the leads list after creation with cache-busting
+        const limit = isAdmin && branchUserIds.length > 0 ? 1000 : itemsPerPage;
+        dispatch(getAllLeads({
+          page: 1, // Always go to page 1 to show new lead
+          limit: limit,
+          search: '', // Clear search to show new lead
+          leadStatus: filterStatus === 'all' ? '' : filterStatus,
+          dispatchedFrom: filterBranch === 'all' ? '' : filterBranch,
+          _t: Date.now() // Cache-busting timestamp
+        }));
+        dispatch(getLeadStats());
+        
+        // Show success notification
+        dispatch(addNotification({
+          type: 'success',
+          message: 'Lead created successfully!'
+        }));
       }
       if (updateSuccess) {
         setShowEditModal(false);
@@ -221,7 +257,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
       }, 5000);
       return () => clearTimeout(timer);
     }
-  }, [createSuccess, updateSuccess, deleteSuccess, dispatch, currentPage, itemsPerPage, searchTerm, filterStatus, filterBranch]);
+  }, [createSuccess, updateSuccess, deleteSuccess, dispatch, currentPage, itemsPerPage, searchTerm, filterStatus, filterBranch, isAdmin, branchUserIds.length]);
 
   useEffect(() => {
     if (createError || updateError || deleteError) {

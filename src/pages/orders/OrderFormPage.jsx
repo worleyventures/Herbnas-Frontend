@@ -910,16 +910,7 @@ const OrderFormPage = () => {
 
   const { subtotal, taxAmount, discountAmount, totalAmount } = calculateTotals();
 
-  // Watch paymentStatus and automatically set amountReceived to totalAmount when payment is "paid"
-  useEffect(() => {
-    if (formData.paymentStatus === 'paid') {
-      // Set amountReceived equal to totalAmount when payment status is "paid"
-      setFormData(prev => ({
-        ...prev,
-        amountReceived: totalAmount
-      }));
-    }
-  }, [formData.paymentStatus, totalAmount]);
+  // Removed auto-setting of amountReceived - it's now a manual field
 
   // Watch paymentStatus and amountReceived to update status logic.
   useEffect(() => {
@@ -1367,19 +1358,17 @@ const OrderFormPage = () => {
                     placeholder="₹0.00"
                     min="0"
                     step="0.01"
-                    disabled={formData.paymentStatus === 'paid' || (isEdit && formData.paymentStatus === 'partial')}
+                    disabled={isEdit && formData.paymentStatus === 'partial'}
                     error={!!errors.amountReceived}
                     errorMessage={errors.amountReceived}
                     helperText={
-                      formData.paymentStatus === 'paid' 
-                        ? "Amount automatically set to total amount for fully paid orders"
-                        : (isEdit && formData.paymentStatus === 'partial')
+                      (isEdit && formData.paymentStatus === 'partial')
                         ? "Original received amount (use 'Again Receive Amount' to add more)"
                         : formData.paymentMethod === 'cash'
                         ? "Cash payments will be added to branch's ready cash"
-                        : (errors.amountReceived ? "" : "Amount received for this order")
+                        : (errors.amountReceived ? "" : "Enter the amount received for this order")
                     }
-                    className={`w-full ${(formData.paymentStatus === 'paid' || (isEdit && formData.paymentStatus === 'partial')) ? 'opacity-60 cursor-not-allowed bg-gray-50' : ''}`}
+                    className={`w-full ${(isEdit && formData.paymentStatus === 'partial') ? 'opacity-60 cursor-not-allowed bg-gray-50' : ''}`}
                   />
                 </div>
                 {/* Again Receive Amount and Balance - Show only for partial payment in edit mode */}

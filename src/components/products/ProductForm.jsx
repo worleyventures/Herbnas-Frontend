@@ -25,7 +25,6 @@ const ProductForm = () => {
     productName: '',
     category: '',
     description: '',
-    quantity: '',
     UOM: 'kg',
     price: '',
     incentive: '',
@@ -62,7 +61,6 @@ const ProductForm = () => {
         productName: product.productName || '',
         category: product.category || '',
         description: product.description || '',
-        quantity: product.quantity?.toString() || '',
         UOM: product.UOM || 'kg',
         price: product.price?.toString() || '',
         incentive: product.incentive?.toString() || '',
@@ -109,12 +107,6 @@ const ProductForm = () => {
       newErrors.description = 'Description must be at least 10 characters';
     }
 
-    if (!formData.quantity.trim()) {
-      newErrors.quantity = 'Quantity is required';
-    } else if (isNaN(formData.quantity) || parseFloat(formData.quantity) <= 0) {
-      newErrors.quantity = 'Quantity must be a valid positive number';
-    }
-
     if (!formData.UOM) {
       newErrors.UOM = 'Unit of measure is required';
     }
@@ -152,7 +144,6 @@ const ProductForm = () => {
         ...formData,
         productName: formData.productName.trim(),
         description: formData.description.trim(),
-        quantity: parseFloat(formData.quantity),
         price: parseFloat(formData.price),
         incentive: formData.incentive ? parseFloat(formData.incentive) : 0,
         productId: formData.productId && formData.productId.trim() ? formData.productId.trim().replace(/\s+/g, '') : undefined // Remove spaces and let backend auto-generate if empty
@@ -277,25 +268,18 @@ const ProductForm = () => {
               />
             </div>
 
-            {/* Quantity with UOM */}
+            {/* UOM */}
             <div>
-              <InputWithDropdown
-                label="Quantity"
-                name="quantity"
-                value={formData.quantity}
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Unit of Measure (UOM) <span className="text-red-500">*</span>
+              </label>
+              <Select
+                name="UOM"
+                value={formData.UOM}
                 onChange={handleInputChange}
-                dropdownName="UOM"
-                dropdownValue={formData.UOM}
-                onDropdownChange={handleInputChange}
-                dropdownOptions={uomOptions}
-                dropdownPlaceholder="Select unit"
-                placeholder="Enter quantity"
-                type="number"
-                error={errors.quantity || errors.UOM}
-                errorMessage={errors.quantity || errors.UOM}
+                options={uomOptions}
+                error={errors.UOM}
                 disabled={isSubmitting}
-                required
-                size="sm"
                 className="focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a]"
               />
             </div>
