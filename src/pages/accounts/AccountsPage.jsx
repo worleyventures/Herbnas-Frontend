@@ -137,6 +137,8 @@ const AccountsPage = () => {
 
   // Filter out lead incomes from accounts ledger
   // Note: Category filtering is now handled by the backend
+  // IMPORTANT: This filter is for the ACCOUNTS view - it should show order incomes (only exclude lead orders)
+  // The LEDGER view has a separate filter that excludes all order incomes
   const filteredAccounts = useMemo(() => {
     console.log('[AccountsPage] Filtering accounts. Total accounts in Redux:', accounts?.length || 0, 'accounts:', accounts);
     if (!accounts || accounts.length === 0) {
@@ -145,21 +147,85 @@ const AccountsPage = () => {
     }
     
     const filtered = accounts.filter(acc => {
-      // Exclude lead incomes from ledger
-      // Check 1: accountId starting with "PI" (lead income prefix)
+      // IMPORTANT: Accounts view should show ALL order incomes (including lead orders)
+      // Only exclude manually created lead incomes (PI prefix) from accounts view
+      // Order incomes (even from lead orders) should be visible in accounts view
+      // The LEDGER view separately excludes all order incomes
+
+      // Check 1: Exclude accountId starting with "PI" ONLY if it doesn't have an orderId
+      // If it has an orderId, it's an order income (even if accountId starts with PI) and should be shown
+      // Only manually created lead incomes (PI prefix + no orderId) should be filtered out
+      // orderId can be an object (populated), string, ObjectId, or null/undefined
+      const hasOrderId = acc.orderId !== null && acc.orderId !== undefined && 
+                        (typeof acc.orderId === 'object' ? 
+                          (acc.orderId._id || Object.keys(acc.orderId).length > 0) : 
+                          (acc.orderId !== '' && acc.orderId !== 'null'));
+      
       if (acc.accountId && acc.accountId.startsWith('PI')) {
-        return false;
+        if (!hasOrderId) {
+          console.log('[AccountsPage] Filtered out manual lead income (PI prefix, no orderId):', acc.accountId, 'orderId:', acc.orderId);
+          return false;
+        } else {
+          console.log('[AccountsPage] Keeping order income with PI prefix (has orderId):', acc.accountId, 'orderId:', acc.orderId);
+        }
       }
-      // Check 2: orderId exists and customerType is 'lead' (backup check)
-      if (acc.orderId && typeof acc.orderId === 'object' && acc.orderId.customerType === 'lead') {
-        return false;
-      }
+
+      // IMPORTANT: Do NOT filter out order incomes based on customerType
+      // All order incomes (including lead orders) should be visible in accounts view
+      // The user wants to see order payments in accounts, even if they're from lead orders
+
+      // Include all other accounts (including all order incomes regardless of customerType or accountId prefix)
       return true;
     });
     
-    console.log('[AccountsPage] Filtered accounts count:', filtered.length);
+    console.log('[AccountsPage] Filtered accounts count:', filtered.length, 'out of', accounts.length);
+    // Log sample of filtered accounts for debugging
+    if (filtered.length > 0) {
+      console.log('[AccountsPage] Sample filtered accounts:', filtered.slice(0, 3).map(acc => ({
+        accountId: acc.accountId,
+        transactionType: acc.transactionType,
+        category: acc.category,
+        hasOrderId: !!acc.orderId,
+        orderCustomerType: acc.orderId && typeof acc.orderId === 'object' ? acc.orderId.customerType : 'N/A'
+      })));
+    }
     return filtered;
   }, [accounts]);
+
+  // Calculate stats from filtered accounts to match what's shown in the table
+  const filteredStats = useMemo(() => {
+    if (!filteredAccounts || filteredAccounts.length === 0) {
+      return {
+        totalIncome: 0,
+        totalExpense: 0,
+        netProfit: 0,
+        totalTransactions: 0
+      };
+    }
+
+    const income = filteredAccounts
+      .filter(acc => acc.transactionType === 'income')
+      .reduce((sum, acc) => sum + (parseFloat(acc.amount) || 0), 0);
+    
+    const expense = filteredAccounts
+      .filter(acc => acc.transactionType === 'expense')
+      .reduce((sum, acc) => sum + (parseFloat(acc.amount) || 0), 0);
+    
+    const purchase = filteredAccounts
+      .filter(acc => acc.transactionType === 'purchase')
+      .reduce((sum, acc) => sum + (parseFloat(acc.amount) || 0), 0);
+
+    // Expenses and purchases are both expenses
+    const totalExpense = expense + purchase;
+    const netProfit = income - totalExpense;
+
+    return {
+      totalIncome: income,
+      totalExpense: totalExpense,
+      netProfit: netProfit,
+      totalTransactions: filteredAccounts.length
+    };
+  }, [filteredAccounts]);
 
   // Helper function to get date range based on filter selection
   const getDateRange = useCallback(() => {
@@ -252,21 +318,7 @@ const AccountsPage = () => {
       return;
     }
     
-    console.log('[AccountsPage] Loading accounts with params:', {
-      page: currentPage,
-      branchId: branchId || 'ALL',
-      dateRange,
-      dateRangeFilter,
-      searchTerm,
-      paymentStatusFilter,
-      transactionTypeFilter,
-      categoryFilter,
-      isOnOverviewTab,
-      activeTab,
-      adminAccountsTab
-    });
-    
-    dispatch(getAllAccounts({
+    const accountParams = {
       page: currentPage,
       limit: 10,
       search: searchTerm,
@@ -276,7 +328,27 @@ const AccountsPage = () => {
       paymentStatus: paymentStatusFilter !== 'all' ? paymentStatusFilter : undefined,
       transactionType: transactionTypeFilter !== 'all' ? transactionTypeFilter : undefined,
       category: categoryFilter || undefined
-    }));
+    };
+    
+    console.log('[AccountsPage] Loading accounts with params:', {
+      ...accountParams,
+      dateRangeFilter,
+      isOnOverviewTab,
+      activeTab,
+      adminAccountsTab
+    });
+    
+    dispatch(getAllAccounts(accountParams)).then((result) => {
+      if (result.type === 'accounts/getAllAccounts/fulfilled') {
+        console.log('[AccountsPage] ✅ Accounts loaded successfully:', {
+          accountsCount: result.payload?.data?.accounts?.length || 0,
+          totalItems: result.payload?.data?.pagination?.totalItems || 0,
+          accounts: result.payload?.data?.accounts
+        });
+      } else if (result.type === 'accounts/getAllAccounts/rejected') {
+        console.error('[AccountsPage] ❌ Failed to load accounts:', result.payload || result.error);
+      }
+    });
     dispatch(getAccountStats({
       startDate: dateRange?.startDate,
       endDate: dateRange?.endDate,
@@ -1130,33 +1202,32 @@ const AccountsPage = () => {
         return (
           <div className="space-y-6">
             {/* Statistics Cards */}
-            {stats && (
+            {(stats || filteredStats) && (
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
                 <StatCard
                   title="Total Income"
-                  value={`₹${stats.summary?.totalIncome?.toLocaleString() || 0}`}
+                  value={`₹${filteredStats.totalIncome.toLocaleString()}`}
                   icon={HiArrowUp}
                   gradient="green"
                   loading={statsLoading}
-                  subtitle="Includes accounts + completed leads"
                 />
                 <StatCard
                   title="Total Expense"
-                  value={`₹${stats.summary?.totalExpense?.toLocaleString() || 0}`}
+                  value={`₹${filteredStats.totalExpense.toLocaleString()}`}
                   icon={HiArrowDown}
                   gradient="red"
                   loading={statsLoading}
                 />
                 <StatCard
                   title="Net Profit"
-                  value={`₹${stats.summary?.netProfit?.toLocaleString() || 0}`}
+                  value={`₹${filteredStats.netProfit.toLocaleString()}`}
                   icon={HiCurrencyDollar}
                   gradient="purple"
                   loading={statsLoading}
                 />
                 <StatCard
                   title="Total Transactions"
-                  value={stats.summary?.totalTransactions || 0}
+                  value={filteredStats.totalTransactions}
                   icon={HiClipboardDocumentList}
                   gradient="blue"
                   loading={statsLoading}
@@ -1227,6 +1298,14 @@ const AccountsPage = () => {
           error={error}
           pagination={{
             ...pagination,
+            // Adjust totalItems to reflect filtered accounts count
+            // If frontend filtering removed items, use filtered count
+            totalItems: filteredAccounts.length !== accounts?.length 
+              ? filteredAccounts.length 
+              : pagination.totalItems,
+            totalPages: filteredAccounts.length !== accounts?.length
+              ? Math.ceil(filteredAccounts.length / (pagination.itemsPerPage || 10))
+              : pagination.totalPages,
             onPageChange: handlePageChange,
             itemName: 'accounts'
           }}
@@ -1532,32 +1611,32 @@ const AccountsPage = () => {
               // Regular Branch Accounts View (No Tabs - Just Summary)
               <>
                 {/* Statistics Cards for Selected Branch */}
-                {stats && (
+                {(stats || filteredStats) && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
                     <StatCard
                       title="Total Income"
-                      value={`₹${stats.summary?.totalIncome?.toLocaleString() || 0}`}
+                      value={`₹${filteredStats.totalIncome.toLocaleString()}`}
                       icon={HiArrowUp}
                       gradient="green"
                       loading={statsLoading}
                     />
                     <StatCard
                       title="Total Expense"
-                      value={`₹${stats.summary?.totalExpense?.toLocaleString() || 0}`}
+                      value={`₹${filteredStats.totalExpense.toLocaleString()}`}
                       icon={HiArrowDown}
                       gradient="red"
                       loading={statsLoading}
                     />
                     <StatCard
                       title="Net Profit"
-                      value={`₹${stats.summary?.netProfit?.toLocaleString() || 0}`}
+                      value={`₹${filteredStats.netProfit.toLocaleString()}`}
                       icon={HiCurrencyDollar}
                       gradient="purple"
                       loading={statsLoading}
                     />
                     <StatCard
                       title="Total Transactions"
-                      value={stats.summary?.totalTransactions || 0}
+                      value={filteredStats.totalTransactions}
                       icon={HiClipboardDocumentList}
                       gradient="blue"
                       loading={statsLoading}
@@ -1628,6 +1707,14 @@ const AccountsPage = () => {
                     error={error}
                     pagination={{
                       ...pagination,
+                      // Adjust totalItems to reflect filtered accounts count
+                      // If frontend filtering removed items, use filtered count
+                      totalItems: filteredAccounts.length !== accounts?.length 
+                        ? filteredAccounts.length 
+                        : pagination.totalItems,
+                      totalPages: filteredAccounts.length !== accounts?.length
+                        ? Math.ceil(filteredAccounts.length / (pagination.itemsPerPage || 10))
+                        : pagination.totalPages,
                       onPageChange: handlePageChange,
                       itemName: 'accounts'
                     }}
@@ -1967,32 +2054,32 @@ const AccountsPage = () => {
           {adminAccountsTab === 'overview' ? (
             <>
               {/* Statistics Cards */}
-              {stats && (
+              {(stats || filteredStats) && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
                   <StatCard
                     title="Total Income"
-                    value={`₹${stats.summary?.totalIncome?.toLocaleString() || 0}`}
+                    value={`₹${filteredStats.totalIncome.toLocaleString()}`}
                     icon={HiArrowUp}
                     gradient="green"
                     loading={statsLoading}
                   />
                   <StatCard
                     title="Total Expense"
-                    value={`₹${stats.summary?.totalExpense?.toLocaleString() || 0}`}
+                    value={`₹${filteredStats.totalExpense.toLocaleString()}`}
                     icon={HiArrowDown}
                     gradient="red"
                     loading={statsLoading}
                   />
                   <StatCard
                     title="Net Profit"
-                    value={`₹${stats.summary?.netProfit?.toLocaleString() || 0}`}
+                    value={`₹${filteredStats.netProfit.toLocaleString()}`}
                     icon={HiCurrencyDollar}
                     gradient="purple"
                     loading={statsLoading}
                   />
                   <StatCard
                     title="Total Transactions"
-                    value={stats.summary?.totalTransactions || 0}
+                    value={filteredStats.totalTransactions}
                     icon={HiClipboardDocumentList}
                     gradient="blue"
                     loading={statsLoading}
@@ -2063,6 +2150,14 @@ const AccountsPage = () => {
                   error={error}
                   pagination={{
                     ...pagination,
+                    // Adjust totalItems to reflect filtered accounts count
+                    // If frontend filtering removed items, use filtered count
+                    totalItems: filteredAccounts.length !== accounts?.length 
+                      ? filteredAccounts.length 
+                      : pagination.totalItems,
+                    totalPages: filteredAccounts.length !== accounts?.length
+                      ? Math.ceil(filteredAccounts.length / (pagination.itemsPerPage || 10))
+                      : pagination.totalPages,
                     onPageChange: handlePageChange,
                     itemName: 'accounts'
                   }}

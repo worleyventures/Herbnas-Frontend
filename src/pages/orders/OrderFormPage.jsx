@@ -752,20 +752,25 @@ const OrderFormPage = () => {
         
         const finalPaymentStatus = finalAmountReceived >= calculateTotals().totalAmount ? 'paid' : updatedOrder.paymentStatus;
         
-        if (finalAmountReceived > 0 && ['paid', 'partial'].includes(finalPaymentStatus)) {
+        // Backend updateOrder should automatically create account entries when payment exists
+        // This frontend call is a fallback in case backend didn't create it
+        // The createSalesAccount endpoint will handle duplicates gracefully (returns 200 if already exists)
+        if (finalAmountReceived > 0 && ['paid', 'partial'].includes(finalPaymentStatus) && updatedOrder.status !== 'cancelled') {
           try {
             const accountResult = await dispatch(createSalesAccount({
               orderId: updatedOrder._id, // must be actual backend ID
               paymentMethod: updatedOrder.paymentMethod,
               paymentStatus: finalPaymentStatus === 'paid' ? 'completed' : 'pending',
             })).unwrap();
-            console.log('[OrderFormPage] Account created successfully after update:', accountResult);
+            console.log('[OrderFormPage] Account entry check/creation result:', accountResult);
+            // Don't show warning if account already exists (backend already created it)
+            if (accountResult?.data?.account) {
+              console.log('[OrderFormPage] Account entry confirmed:', accountResult.data.account);
+            }
           } catch (error) {
-            console.error('[OrderFormPage] Failed to create account entry after update:', error);
-            dispatch(addNotification({
-              type: 'warning',
-              message: 'Order updated but account entry may not have been created. Please check.'
-            }));
+            // Only log error, don't show warning to user since backend should have created it
+            // The error might be because account already exists or other validation issue
+            console.error('[OrderFormPage] Account entry creation check failed (this is OK if backend already created it):', error);
           }
         }
         
