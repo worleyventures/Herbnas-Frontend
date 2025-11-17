@@ -114,7 +114,7 @@ const OrdersPage = () => {
   const pendingVerificationCount = useSelector(selectPendingVerificationCount);
   const verificationStats = useSelector(selectPaymentVerificationStats);
   const verificationStatsLoading = useSelector(selectPaymentVerificationStatsLoading);
-  const [verificationStatusFilter, setVerificationStatusFilter] = useState('pending');
+  const [verificationStatusFilter, setVerificationStatusFilter] = useState('all');
   const [verificationPage, setVerificationPage] = useState(1);
   const [verificationSearchTerm, setVerificationSearchTerm] = useState('');
   const [selectedVerification, setSelectedVerification] = useState(null);
@@ -1095,6 +1095,39 @@ const OrdersPage = () => {
   
   const displayOrders = isSalesExecutive || isAdmin ? paginatedOrders : orders;
   
+  // Get payment destination display text
+  const getPaymentDestination = () => {
+    if (!selectedVerification?.orderId) return 'N/A';
+    
+    const paymentMethod = selectedVerification.orderId.paymentMethod;
+    const bankAccountId = selectedVerification.orderId.bankAccountId;
+    const branch = selectedVerification.branchId;
+    
+    if (paymentMethod === 'cash') {
+      return 'Ready Cash';
+    } else if (['card', 'netbanking'].includes(paymentMethod)) {
+      if (bankAccountId && branch?.bankAccounts && Array.isArray(branch.bankAccounts)) {
+        const bankAccount = branch.bankAccounts.find(
+          acc => (acc._id && acc._id.toString() === bankAccountId.toString()) ||
+                 (acc.bankAccountNumber === bankAccountId)
+        );
+        if (bankAccount) {
+          return `${bankAccount.bankName || 'Bank'} - ${bankAccount.bankAccountNumber || bankAccountId}`;
+        }
+      }
+      return bankAccountId ? `Bank Account (${bankAccountId})` : 'Bank Account (Not specified)';
+    } else if (paymentMethod === 'cod') {
+      const courierPartner = selectedVerification.orderId?.courierPartnerId;
+      if (courierPartner) {
+        const partnerName = typeof courierPartner === 'object' ? courierPartner.name : 'Courier Partner';
+        return `Courier Partner: ${partnerName}`;
+      }
+      return 'COD (Courier Partner - Not specified)';
+    }
+    
+    return paymentMethod || 'N/A';
+  };
+  
   // Payment verification handlers
   const handleApproveVerification = async () => {
     if (!selectedVerification) return;
@@ -1517,6 +1550,20 @@ const OrdersPage = () => {
                       {selectedVerification.requestedPaymentNotes && (
                         <div><span className="font-medium">Notes:</span> {selectedVerification.requestedPaymentNotes}</div>
                       )}
+                    </div>
+                  </div>
+                  <div className="border-t border-gray-200 pt-3">
+                    <h4 className="text-sm font-semibold text-blue-700 mb-2">Payment Destination</h4>
+                    <div className="space-y-1 text-sm">
+                      <div>
+                        <span className="font-medium">Payment Method:</span> {selectedVerification.orderId?.paymentMethod || 'N/A'}
+                      </div>
+                      <div>
+                        <span className="font-medium">Amount will be added to:</span>{' '}
+                        <span className="text-blue-700 font-semibold">
+                          {getPaymentDestination()}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>

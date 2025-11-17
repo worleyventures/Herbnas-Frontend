@@ -463,23 +463,52 @@ const OrderFormPage = () => {
     try {
       // Use backend API which uses India Post data
       const response = await api.get(`/pincode/${pincode}`);
-      const pincodeData = response.data?.data;
       
-      if (pincodeData && pincodeData.city && pincodeData.state) {
-        setFormData(prev => ({
-          ...prev,
-          shippingAddress: {
-            ...prev.shippingAddress,
-            city: pincodeData.city || '',
-            state: pincodeData.state || '',
-            pincode: pincode
+      // Check response structure - could be response.data.data or response.data
+      const pincodeData = response.data?.data || response.data;
+      
+      if (pincodeData) {
+        // Check if we have city and state
+        const city = pincodeData.city || pincodeData.district || '';
+        const state = pincodeData.state || '';
+        
+        if (city && state) {
+          setFormData(prev => ({
+            ...prev,
+            shippingAddress: {
+              ...prev.shippingAddress,
+              city: city,
+              state: state,
+              pincode: pincode
+            }
+          }));
+        } else {
+          // If city is missing but district exists, use district as city
+          if (!city && pincodeData.district) {
+            setFormData(prev => ({
+              ...prev,
+              shippingAddress: {
+                ...prev.shippingAddress,
+                city: pincodeData.district,
+                state: state || '',
+                pincode: pincode
+              }
+            }));
           }
-        }));
-      } else {
-        console.warn('Pincode not found or invalid');
+        }
       }
     } catch (error) {
-      console.error('Error fetching pincode data:', error);
+      // Log error for debugging
+      if (error.response) {
+        // Server responded with error
+        console.error('Pincode API error:', error.response.data?.message || error.response.statusText);
+      } else if (error.request) {
+        // Request made but no response
+        console.error('Pincode API: No response received');
+      } else {
+        // Error in request setup
+        console.error('Pincode API error:', error.message);
+      }
     } finally {
       setPincodeLoading(false);
     }
@@ -582,7 +611,13 @@ const OrderFormPage = () => {
     
     const totalAmount = subtotal + taxAmount + shippingAmount + codCharges - discountAmount;
     
-    return { subtotal, taxAmount, discountAmount, totalAmount };
+    // Round all values to whole numbers
+    return { 
+      subtotal: Math.round(subtotal), 
+      taxAmount: Math.round(taxAmount), 
+      discountAmount: Math.round(discountAmount), 
+      totalAmount: Math.round(totalAmount) 
+    };
   };
 
   // Validate form
@@ -745,9 +780,18 @@ const OrderFormPage = () => {
         if (updated?.data?.requiresVerification) {
           dispatch(addNotification({
             type: 'info',
-            message: 'Payment update request submitted for supervisor verification. The order will be updated after approval.'
+            message: 'Payment update request submitted for supervisor verification. The payment will be processed after approval.'
           }));
-          // Don't navigate - stay on the form to show pending status
+          // Refresh orders list
+          await dispatch(getAllOrders({
+            page: 1,
+            limit: 10,
+            search: '',
+            paymentStatus: ''
+          }));
+          dispatch(getOrderStats());
+          // Navigate to orders table
+          navigate('/orders');
           isSubmittingRef.current = false;
           setSubmitting(false);
           return;
@@ -793,6 +837,28 @@ const OrderFormPage = () => {
         }
       } else {
         const created = await dispatch(createOrder(orderData)).unwrap();
+        
+        // Check if verification is required
+        if (created?.data?.requiresVerification) {
+          dispatch(addNotification({
+            type: 'info',
+            message: created?.message || 'Order created successfully. Payment update request submitted for supervisor verification. The payment will be processed after approval.'
+          }));
+          // Refresh orders list
+          await dispatch(getAllOrders({
+            page: 1,
+            limit: 10,
+            search: '',
+            paymentStatus: ''
+          }));
+          dispatch(getOrderStats());
+          // Navigate to orders table
+          navigate('/orders');
+          isSubmittingRef.current = false;
+          setSubmitting(false);
+          return;
+        }
+        
         dispatch(addNotification({
           type: 'success',
           message: 'Order created successfully!'
@@ -927,6 +993,10 @@ const OrderFormPage = () => {
   ];
 
   const { subtotal, taxAmount, discountAmount, totalAmount } = calculateTotals();
+
+  // Check if order is fully paid
+  const isFullyPaid = formData.paymentStatus === 'paid' && 
+                      parseFloat(formData.amountReceived || 0) >= totalAmount;
 
   // Removed auto-setting of amountReceived - it's now a manual field
 
@@ -1260,7 +1330,7 @@ const OrderFormPage = () => {
                   <div className="flex flex-col">
                     <span className="text-sm font-medium text-gray-700">Tax (%)</span>
                     {taxAmount > 0 && (
-                      <span className="text-xs text-gray-500 mt-0.5">₹{taxAmount.toFixed(2)}</span>
+                      <span className="text-xs text-gray-500 mt-0.5">₹{Math.round(taxAmount).toLocaleString()}</span>
                     )}
                     <span className="text-xs text-gray-400 mt-0.5">(Included in price)</span>
                   </div>
@@ -1297,7 +1367,7 @@ const OrderFormPage = () => {
                   <div className="flex flex-col">
                     <span className="text-sm font-medium text-gray-700">Discount (%)</span>
                     {discountAmount > 0 && (
-                      <span className="text-xs text-gray-500 mt-0.5">₹{discountAmount.toFixed(2)}</span>
+                      <span className="text-xs text-gray-500 mt-0.5">₹{Math.round(discountAmount).toLocaleString()}</span>
                     )}
                   </div>
                   <div className="w-28">
@@ -1353,7 +1423,14 @@ const OrderFormPage = () => {
             {/* Payment Status and Notes */}
             <Card>
               <h3 className="text-lg font-semibold text-gray-900 mb-4 pb-3 border-b border-gray-200">Payment Information</h3>
-              <div className="space-y-4">
+              {isFullyPaid && (
+                <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <p className="text-sm text-green-800">
+                    <span className="font-semibold">✓ Order Fully Paid:</span> The full amount of ₹{Math.round(totalAmount).toLocaleString()} has been received. Payment information is locked.
+                  </p>
+                </div>
+              )}
+              <div className={`space-y-4 ${isFullyPaid ? 'opacity-60 pointer-events-none' : ''}`}>
                 <div className="w-full flex flex-col">
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">
                     Payment Status
@@ -1365,6 +1442,7 @@ const OrderFormPage = () => {
                     placeholder="Select payment status"
                     error={errors.paymentStatus}
                     className="w-full"
+                    disabled={isFullyPaid}
                   />
                 </div>
                 <div className="w-full flex flex-col">
@@ -1376,21 +1454,23 @@ const OrderFormPage = () => {
                     placeholder="₹0.00"
                     min="0"
                     step="0.01"
-                    disabled={isEdit && formData.paymentStatus === 'partial'}
+                    disabled={isFullyPaid || (isEdit && formData.paymentStatus === 'partial')}
                     error={!!errors.amountReceived}
                     errorMessage={errors.amountReceived}
                     helperText={
-                      (isEdit && formData.paymentStatus === 'partial')
+                      isFullyPaid
+                        ? "Order is fully paid - no further payments can be added"
+                        : (isEdit && formData.paymentStatus === 'partial')
                         ? "Original received amount (use 'Again Receive Amount' to add more)"
                         : formData.paymentMethod === 'cash'
                         ? "Cash payments will be added to branch's ready cash"
                         : (errors.amountReceived ? "" : "Enter the amount received for this order")
                     }
-                    className={`w-full ${(isEdit && formData.paymentStatus === 'partial') ? 'opacity-60 cursor-not-allowed bg-gray-50' : ''}`}
+                    className={`w-full ${(isFullyPaid || (isEdit && formData.paymentStatus === 'partial')) ? 'opacity-60 cursor-not-allowed bg-gray-50' : ''}`}
                   />
                 </div>
-                {/* Again Receive Amount and Balance - Show only for partial payment in edit mode */}
-                {isEdit && formData.paymentStatus === 'partial' && (
+                {/* Again Receive Amount and Balance - Show only for partial payment in edit mode and not fully paid */}
+                {isEdit && formData.paymentStatus === 'partial' && !isFullyPaid && (
                   <div className="w-full flex flex-col">
                     <Input
                       label="Again Receive Amount"
@@ -1435,8 +1515,9 @@ const OrderFormPage = () => {
                     placeholder="Add any payment-related notes..."
                     rows={3}
                     error={errors.paymentNotes}
-                    helperText="Optional: Add any payment-related notes or transaction IDs"
+                    helperText={isFullyPaid ? "Order is fully paid - notes are read-only" : "Optional: Add any payment-related notes or transaction IDs"}
                     className="w-full"
+                    disabled={isFullyPaid}
                   />
                 </div>
                 {/* Bank Account Selection - Show only for Card or Net Banking */}
@@ -1477,7 +1558,7 @@ const OrderFormPage = () => {
                             <label className="block text-sm font-medium text-gray-700 mb-1.5">
                               Bank Account
                             </label>
-                            <div className="text-sm text-gray-900 p-2 bg-gray-50 rounded border">
+                            <div className={`text-sm text-gray-900 p-2 bg-gray-50 rounded border ${isFullyPaid ? 'opacity-60' : ''}`}>
                               <div className="font-medium">{account.bankName || 'N/A'}</div>
                               <div className="text-xs text-gray-600 mt-1">
                                 Account: {account.bankAccountNumber || 'N/A'} | 
@@ -1508,6 +1589,7 @@ const OrderFormPage = () => {
                             placeholder="Select bank account"
                             error={errors.bankAccountId}
                             className="w-full"
+                            disabled={isFullyPaid}
                           />
                         </div>
                       );

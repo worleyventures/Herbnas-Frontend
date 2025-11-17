@@ -335,21 +335,52 @@ const LeadFormSingle = ({
     try {
       // Use backend API which uses India Post data
       const response = await api.get(`/pincode/${pincode}`);
-      const pincodeData = response.data?.data;
       
-      if (pincodeData && pincodeData.city && pincodeData.state) {
-        setFormData(prev => ({
-          ...prev,
-          address: {
-            ...prev.address,
-            city: pincodeData.city || '',
-            state: pincodeData.state || '',
-            pinCode: pincode
+      // Check response structure - could be response.data.data or response.data
+      const pincodeData = response.data?.data || response.data;
+      
+      if (pincodeData) {
+        // Check if we have city and state
+        const city = pincodeData.city || pincodeData.district || '';
+        const state = pincodeData.state || '';
+        
+        if (city && state) {
+          setFormData(prev => ({
+            ...prev,
+            address: {
+              ...prev.address,
+              city: city,
+              state: state,
+              pinCode: pincode
+            }
+          }));
+        } else {
+          // If city is missing but district exists, use district as city
+          if (!city && pincodeData.district) {
+            setFormData(prev => ({
+              ...prev,
+              address: {
+                ...prev.address,
+                city: pincodeData.district,
+                state: state || '',
+                pinCode: pincode
+              }
+            }));
           }
-        }));
-      } else {
+        }
       }
     } catch (error) {
+      // Log error for debugging
+      if (error.response) {
+        // Server responded with error
+        console.error('Pincode API error:', error.response.data?.message || error.response.statusText);
+      } else if (error.request) {
+        // Request made but no response
+        console.error('Pincode API: No response received');
+      } else {
+        // Error in request setup
+        console.error('Pincode API error:', error.message);
+      }
     } finally {
       setPincodeLoading(false);
     }
