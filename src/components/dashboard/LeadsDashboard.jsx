@@ -103,6 +103,13 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
 
   // Backend now handles role-based filtering automatically, no need to fetch branch users
 
+  // Load branches on mount
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      dispatch(getActiveBranches());
+    }
+  }, [dispatch, isAuthenticated, user]);
+
   // Fetch initial data on mount
   useEffect(() => {
     if (isAuthenticated && user) {
@@ -752,15 +759,16 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
               />
               <Select
                 value={filterBranch}
-                onChange={(e) => setFilterBranch(e.target.value)}
+                onChange={(e) => setFilterBranch(String(e.target.value))}
                 options={[
                   { value: 'all', label: 'All Branches' },
-                  ...(branches?.map(branch => ({
-                    value: branch.branchName || branch,
-                    label: branch.branchName || branch
+                  ...(branches?.filter(branch => branch && branch._id && branch.branchName).map(branch => ({
+                    value: String(branch._id),
+                    label: branch.branchName
                   })) || [])
                 ]}
                 className="w-full sm:w-48"
+                placeholder={branches.length === 0 ? 'Loading branches...' : 'Select branch'}
               />
             </div>
           </div>
@@ -1013,15 +1021,16 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
               />
               <Select
                   value={filterBranch}
-                  onChange={(e) => setFilterBranch(e.target.value)}
+                  onChange={(e) => setFilterBranch(String(e.target.value))}
                 options={[
                   { value: 'all', label: 'All Branches' },
-                  ...(branches?.map(branch => ({
-                    value: branch.branchName || branch,
-                    label: branch.branchName || branch
+                  ...(branches?.filter(branch => branch && branch._id && branch.branchName).map(branch => ({
+                    value: String(branch._id),
+                    label: branch.branchName
                   })) || [])
                 ]}
                 className="w-full sm:w-48"
+                placeholder={branches.length === 0 ? 'Loading branches...' : 'Select branch'}
               />
             </div>
           </div>
