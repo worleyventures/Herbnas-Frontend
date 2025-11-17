@@ -253,52 +253,31 @@ const LeadPipeline = ({
         })}
       </div>
 
-      {/* Pipeline Summary - Compact */}
+      {/* Overall Summary */}
       <div className="mt-6 bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-        <h3 className="text-base font-semibold text-gray-900 mb-4">Pipeline Summary</h3>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          {pipelineStages.map((stage) => {
-            const stageLeads = getLeadsByStatus(stage.id);
-            const percentage = leads.length > 0 ? Math.round((stageLeads.length / leads.length) * 100) : 0;
-            
-            return (
-              <div key={stage.id} className="text-center">
-                <div className={`inline-flex items-center justify-center w-8 h-8 rounded-full ${stage.color} text-white mb-2`}>
-                  {/* {getStatusIcon(stage.id)} */}
-                </div>
-                <p className="text-xl font-bold text-gray-900">{stageLeads.length}</p>
-                <p className={`text-xs font-medium ${stage.textColor}`}>{stage.title}</p>
-                <p className="text-xs text-gray-500">{percentage}%</p>
-              </div>
-            );
-          })}
-        </div>
-        
-        {/* Total Summary - Compact */}
-        <div className="mt-4 pt-4 border-t border-gray-200">
-          <div className="flex items-center justify-between text-sm">
-            <div className="text-center">
-              <p className="text-lg font-bold text-gray-900">{leads.length}</p>
-              <p className="text-xs text-gray-600">Total</p>
-            </div>
-            <div className="text-center">
-              <p className="text-lg font-bold text-[#22c55e]-600">
-                {leads.filter(lead => lead.leadStatus === 'order_completed').length}
-              </p>
-              <p className="text-xs text-gray-600">Completed</p>
-            </div>
-            <div className="text-center">
-              <p className="text-lg font-bold text-blue-600">
-                {leads.filter(lead => lead.leadStatus === 'new_lead').length}
-              </p>
-              <p className="text-xs text-gray-600">New</p>
-            </div>
-            <div className="text-center">
-              <p className="text-lg font-bold text-purple-600">
-                {leads.filter(lead => lead.leadStatus === 'qualified').length}
-              </p>
-              <p className="text-xs text-gray-600">Qualified</p>
-            </div>
+        <h3 className="text-base font-semibold text-gray-900 mb-4">Overall Summary</h3>
+        <div className="flex items-center justify-between text-sm">
+          <div className="text-center">
+            <p className="text-lg font-bold text-gray-900">{leads.length}</p>
+            <p className="text-xs text-gray-600">Total</p>
+          </div>
+          <div className="text-center">
+            <p className="text-lg font-bold text-green-600">
+              {leads.filter(lead => lead.leadStatus === 'order_completed').length}
+            </p>
+            <p className="text-xs text-gray-600">Completed</p>
+          </div>
+          <div className="text-center">
+            <p className="text-lg font-bold text-blue-600">
+              {leads.filter(lead => lead.leadStatus === 'new_lead').length}
+            </p>
+            <p className="text-xs text-gray-600">New</p>
+          </div>
+          <div className="text-center">
+            <p className="text-lg font-bold text-purple-600">
+              {leads.filter(lead => lead.leadStatus === 'qualified').length}
+            </p>
+            <p className="text-xs text-gray-600">Qualified</p>
           </div>
         </div>
       </div>
