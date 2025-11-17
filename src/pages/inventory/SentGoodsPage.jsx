@@ -6,6 +6,7 @@ import { Button, Input, Select, TextArea, Loading, EmptyState } from '../../comp
 import { getAllBranches } from '../../redux/actions/branchActions';
 import { getAllFinishedGoods } from '../../redux/actions/inventoryActions';
 import { createSentGoods, getAllSentGoods, getReceivedGoods, updateSentGoodsStatus, updateSentGoods } from '../../redux/actions/sentGoodsActions';
+import { getAllCourierPartners, createCourierPartner } from '../../redux/actions/courierPartnerActions';
 import { addNotification } from '../../redux/slices/uiSlice';
 
 const SentGoodsPage = () => {
@@ -23,9 +24,13 @@ const SentGoodsPage = () => {
   const [selectedBranch, setSelectedBranch] = useState('');
   const [trackingId, setTrackingId] = useState('');
   const [notes, setNotes] = useState('');
+  const [courierPartnerId, setCourierPartnerId] = useState('');
   const [status, setStatus] = useState('pending');
   const [selectedInventoryItems, setSelectedInventoryItems] = useState([]);
   const [formErrors, setFormErrors] = useState({});
+  const [courierPartners, setCourierPartners] = useState([]);
+  const [showAddCourierModal, setShowAddCourierModal] = useState(false);
+  const [newCourierName, setNewCourierName] = useState('');
   const [activeTab, setActiveTab] = useState('list'); // 'list' or 'create'
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -41,6 +46,11 @@ const SentGoodsPage = () => {
   useEffect(() => {
     dispatch(getAllBranches({ page: 1, limit: 1000 }));
     dispatch(getAllFinishedGoods({ page: 1, limit: 1000 }));
+    dispatch(getAllCourierPartners({ isActive: true })).then((result) => {
+      if (result.payload?.data?.courierPartners) {
+        setCourierPartners(result.payload.data.courierPartners);
+      }
+    });
     loadSentGoods();
   }, [dispatch]);
 
@@ -50,6 +60,7 @@ const SentGoodsPage = () => {
       setSelectedBranch(editData.branchId?._id || editData.branchId || '');
       setTrackingId(editData.trackingId || '');
       setNotes(editData.notes || '');
+      setCourierPartnerId(editData.courierPartnerId?._id || editData.courierPartnerId || '');
       setStatus(editData.status || 'pending');
       
       // Populate items
@@ -257,6 +268,7 @@ const SentGoodsPage = () => {
       branchId: selectedBranch,
       trackingId: trackingId.trim(),
       notes: notes.trim(),
+      courierPartnerId: courierPartnerId || null, // Send null if empty to allow removal
       ...(editMode && { status: status }), // Include status when editing
       items: selectedInventoryItems.map(item => ({
         inventoryId: item.inventoryId,
@@ -299,6 +311,7 @@ const SentGoodsPage = () => {
       setSelectedBranch('');
       setTrackingId('');
       setNotes('');
+      setCourierPartnerId('');
       setStatus('pending');
       setSelectedInventoryItems([]);
       setFormErrors({});
@@ -336,7 +349,7 @@ const SentGoodsPage = () => {
         </h2>
         
         <div className="space-y-6">
-              {/* Branch Selection, Tracking ID, and Status (for edit mode) */}
+              {/* Branch Selection, Tracking ID, Courier Partner, and Status (for edit mode) */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <Select
                   label="Select a branch"
@@ -356,6 +369,33 @@ const SentGoodsPage = () => {
                   error={!!formErrors.trackingId}
                   errorMessage={formErrors.trackingId}
                 />
+                <div>
+                  <Select
+                    label="Courier Partner (Optional)"
+                    value={courierPartnerId}
+                    onChange={(e) => setCourierPartnerId(e.target.value)}
+                    options={[
+                      { value: '', label: 'Select Courier Partner' },
+                      ...courierPartners.map(partner => ({
+                        value: partner._id || partner,
+                        label: partner.name || partner
+                      }))
+                    ]}
+                    placeholder="Select courier partner"
+                  />
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setShowAddCourierModal(true);
+                    }}
+                    className="text-xs text-blue-600 hover:text-blue-800 mt-2 flex items-center gap-1"
+                  >
+                    <HiPlus className="w-3 h-3" />
+                    Add New Courier Partner
+                  </button>
+                </div>
                 {editMode && (
                   <Select
                     label="Status"
@@ -498,6 +538,114 @@ const SentGoodsPage = () => {
               </div>
             </div>
       </div>
+
+      {/* Add Courier Partner Modal */}
+      {showAddCourierModal && (
+        <div className="fixed inset-0 z-[10000] overflow-y-auto">
+          <div className="flex min-h-full items-center justify-center p-4 text-center sm:p-0">
+            {/* Backdrop */}
+            <div
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity z-[9999]"
+              onClick={() => {
+                setShowAddCourierModal(false);
+                setNewCourierName('');
+              }}
+            ></div>
+
+            {/* Modal Content */}
+            <div className="relative z-[10000] transform overflow-hidden rounded-2xl bg-white text-left shadow-2xl transition-all w-full max-w-md mx-auto">
+              {/* Header */}
+              <div className="px-6 py-4 border-b border-gray-200 bg-gray-50/50">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Add New Courier Partner
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAddCourierModal(false);
+                      setNewCourierName('');
+                    }}
+                    className="text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#22c55e] focus:ring-offset-2 rounded-md p-1"
+                  >
+                    <HiXMark className="h-6 w-6" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Body */}
+              <div className="px-6 py-4 sm:p-6">
+                <div className="space-y-4">
+                  <Input
+                    label="Courier Partner Name *"
+                    value={newCourierName}
+                    onChange={(e) => setNewCourierName(e.target.value)}
+                    placeholder="Enter courier partner name (e.g., BlueDart, FedEx, etc.)"
+                    className="w-full"
+                  />
+                  <div className="flex gap-2 justify-end pt-2">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => {
+                        setShowAddCourierModal(false);
+                        setNewCourierName('');
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="primary"
+                      onClick={async () => {
+                        if (!newCourierName.trim()) {
+                          dispatch(addNotification({
+                            type: 'error',
+                            message: 'Please enter courier partner name'
+                          }));
+                          return;
+                        }
+                        try {
+                          const result = await dispatch(createCourierPartner({ name: newCourierName.trim() })).unwrap();
+                          const newPartner = result.data?.courierPartner;
+                          if (newPartner) {
+                            // Refresh the courier partners list
+                            const refreshResult = await dispatch(getAllCourierPartners({ isActive: true })).unwrap();
+                            if (refreshResult?.data?.courierPartners) {
+                              setCourierPartners(refreshResult.data.courierPartners);
+                            } else {
+                              // Fallback: add to existing list
+                              setCourierPartners(prev => [...prev, newPartner]);
+                            }
+                            // Set the newly created partner as selected
+                            setCourierPartnerId(newPartner._id);
+                            setShowAddCourierModal(false);
+                            setNewCourierName('');
+                            dispatch(addNotification({
+                              type: 'success',
+                              message: 'Courier partner added successfully'
+                            }));
+                          } else {
+                            throw new Error('Failed to create courier partner: Invalid response');
+                          }
+                        } catch (error) {
+                          console.error('Error creating courier partner:', error);
+                          dispatch(addNotification({
+                            type: 'error',
+                            message: error?.message || error?.data?.message || error?.toString() || 'Failed to create courier partner'
+                          }));
+                        }
+                      }}
+                    >
+                      Add
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

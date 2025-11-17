@@ -2011,19 +2011,9 @@ const OrdersPage = () => {
           // Don't call handleUpdateSubmit - button handles it
         }} className="space-y-4">
           <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-sm font-medium text-gray-700">
-                Courier Partner
-              </label>
-              <button
-                type="button"
-                onClick={() => setShowAddCourierModal(true)}
-                className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1"
-              >
-                <HiPlus className="w-3 h-3" />
-                Add New
-              </button>
-            </div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              Courier Partner
+            </label>
             <Select
               options={[
                 { value: '', label: 'Select Courier Partner' },
@@ -2050,12 +2040,14 @@ const OrdersPage = () => {
               placeholder="Select Courier Partner"
               disabled={!!(selectedOrderForUpdate?.courierPartnerId && (selectedOrderForUpdate.courierPartnerId._id || selectedOrderForUpdate.courierPartnerId))}
             />
-            {!(selectedOrderForUpdate?.courierPartnerId && (selectedOrderForUpdate.courierPartnerId._id || selectedOrderForUpdate.courierPartnerId)) && (
-              <>
             <button
               type="button"
-              onClick={() => setShowAddCourierModal(true)}
-              className="text-xs text-blue-600 hover:text-blue-800 mt-1 flex items-center gap-1 self-start"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setShowAddCourierModal(true);
+              }}
+              className="text-xs text-blue-600 hover:text-blue-800 mt-2 flex items-center gap-1"
             >
               <HiPlus className="w-3 h-3" />
               Add New Courier Partner
@@ -2063,8 +2055,6 @@ const OrdersPage = () => {
             <p className="text-xs text-gray-500 mt-1">
               Leave empty to remove courier partner
             </p>
-              </>
-            )}
           </div>
 
           <div>
@@ -2098,11 +2088,11 @@ const OrdersPage = () => {
 
       {/* Add Courier Partner Modal */}
       {showAddCourierModal && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
+        <div className="fixed inset-0 z-[10000] overflow-y-auto">
           <div className="flex min-h-full items-center justify-center p-4 text-center sm:p-0">
             {/* Backdrop */}
             <div
-              className="fixed inset-0 bg-black/20 backdrop-blur-sm transition-opacity"
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity z-[9999]"
               onClick={() => {
                 setShowAddCourierModal(false);
                 setNewCourierName('');
@@ -2110,7 +2100,7 @@ const OrdersPage = () => {
             ></div>
 
             {/* Modal Content */}
-            <div className="relative transform overflow-hidden rounded-2xl bg-white/95 backdrop-blur-md text-left shadow-2xl transition-all w-full max-w-md">
+            <div className="relative z-[10000] transform overflow-hidden rounded-2xl bg-white text-left shadow-2xl transition-all w-full max-w-md mx-auto">
               {/* Header */}
               <div className="px-6 py-4 border-b border-gray-200 bg-gray-50/50">
                 <div className="flex items-center justify-between">
@@ -2166,7 +2156,15 @@ const OrdersPage = () => {
                           const result = await dispatch(createCourierPartner({ name: newCourierName.trim() })).unwrap();
                           const newPartner = result.data?.courierPartner;
                           if (newPartner) {
-                            setCourierPartners(prev => [...prev, newPartner]);
+                            // Refresh the courier partners list
+                            const refreshResult = await dispatch(getAllCourierPartners({ isActive: true })).unwrap();
+                            if (refreshResult?.data?.courierPartners) {
+                              setCourierPartners(refreshResult.data.courierPartners);
+                            } else {
+                              // Fallback: add to existing list
+                              setCourierPartners(prev => [...prev, newPartner]);
+                            }
+                            // Set the newly created partner as selected
                             setUpdateFormData(prev => ({ ...prev, courierPartnerId: newPartner._id }));
                             setShowAddCourierModal(false);
                             setNewCourierName('');
@@ -2174,11 +2172,14 @@ const OrdersPage = () => {
                               type: 'success',
                               message: 'Courier partner added successfully'
                             }));
+                          } else {
+                            throw new Error('Failed to create courier partner: Invalid response');
                           }
                         } catch (error) {
+                          console.error('Error creating courier partner:', error);
                           dispatch(addNotification({
                             type: 'error',
-                            message: error?.message || error?.toString() || 'Failed to create courier partner'
+                            message: error?.message || error?.data?.message || error?.toString() || 'Failed to create courier partner'
                           }));
                         }
                       }}
