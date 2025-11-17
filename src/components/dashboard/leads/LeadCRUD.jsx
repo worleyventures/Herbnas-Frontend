@@ -160,6 +160,15 @@ const LeadCRUD = ({
       <Table
         columns={[
           {
+            key: 'leadId',
+            label: 'Lead ID',
+            render: (lead) => (
+              <div className="text-sm font-medium text-gray-900">
+                {lead.leadId || 'N/A'}
+              </div>
+            )
+          },
+          {
             key: 'customerName',
             label: 'Customer',
             render: (lead) => (
@@ -209,22 +218,6 @@ const LeadCRUD = ({
                 />
               );
             }
-          },
-          {
-            key: 'branch',
-            label: 'Branch',
-            hiddenOnMobile: true,
-            render: (lead) => (
-              <div className="text-sm text-gray-900">
-                {(() => {
-                  if (!lead.dispatchedFrom) return lead.branch || 'Unassigned';
-                  if (typeof lead.dispatchedFrom === 'string') return lead.dispatchedFrom;
-                  if (lead.dispatchedFrom.name) return lead.dispatchedFrom.name;
-                  if (lead.dispatchedFrom.branchName) return lead.dispatchedFrom.branchName;
-                  return lead.branch || 'Unassigned';
-                })()}
-              </div>
-            )
           },
           {
             key: 'paymentType',

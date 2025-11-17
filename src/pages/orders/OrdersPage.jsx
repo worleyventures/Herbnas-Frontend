@@ -817,20 +817,6 @@ const OrdersPage = () => {
       }
     },
     {
-      key: 'branch',
-      label: 'Branch',
-      render: (order) => (
-        <div>
-          <div className="font-medium text-gray-900">
-            {order.branchId?.branchName}
-          </div>
-          <div className="text-sm text-gray-500">
-            {order.branchId?.branchCode}
-          </div>
-        </div>
-      )
-    },
-    {
       key: 'totalAmount',
       label: 'Total Amount',
       render: (order) => {
