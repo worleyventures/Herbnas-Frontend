@@ -157,21 +157,6 @@ const LeadFormSingle = ({
     dispatch(getActiveHealthIssues());
   }, [dispatch]);
 
-  // Debug: Log branches state changes
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      const optionsCount = Array.isArray(branches) 
-        ? branches.filter(b => b && b._id && b.branchName).length 
-        : 0;
-      console.log('Branches state changed:', {
-        branches,
-        branchesCount: Array.isArray(branches) ? branches.length : 'not an array',
-        branchesLoading,
-        branchesError,
-        branchOptionsCount: optionsCount
-      });
-    }
-  }, [branches, branchesLoading, branchesError]);
 
   // Auto-assign branch for non-super_admin users
   useEffect(() => {
@@ -244,19 +229,8 @@ const LeadFormSingle = ({
     { value: 'Unmarried', label: 'Unmarried' }
   ];
 
-  // Branch options - with debugging
+  // Branch options
   const branchOptions = useMemo(() => {
-    // Debug: log branches state
-    if (process.env.NODE_ENV === 'development') {
-      console.log('Branches state:', { 
-        branches, 
-        isArray: Array.isArray(branches), 
-        length: branches?.length,
-        loading: branchesLoading,
-        error: branchesError
-      });
-    }
-    
     if (!Array.isArray(branches)) {
       return [];
     }
@@ -308,26 +282,13 @@ const LeadFormSingle = ({
     ? products.filter(product => product && product._id && product.productName)
     : [];
   
-  const filteredProducts = productSearch.trim() === ''
-    ? validProducts
-    : validProducts.filter(product =>
-        product.productName?.toLowerCase().includes(productSearch.toLowerCase())
-      );
-  
-  // Debug logging in development
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('Products state:', {
-        products,
-        productsType: typeof products,
-        isArray: Array.isArray(products),
-        productsLength: Array.isArray(products) ? products.length : 'not an array',
-        validProductsLength: validProducts.length,
-        productsLoading,
-        productsError
-      });
-    }
-  }, [products, productsLoading, productsError, validProducts.length]);
+  const filteredProducts = useMemo(() => {
+    return productSearch.trim() === ''
+      ? validProducts
+      : validProducts.filter(product =>
+          product.productName?.toLowerCase().includes(productSearch.toLowerCase())
+        );
+  }, [products, productsLoading, productsError, validProducts.length, productSearch]);
 
   // Handle input changes
   const handleInputChange = (e) => {
@@ -387,10 +348,8 @@ const LeadFormSingle = ({
           }
         }));
       } else {
-        console.warn('Pincode not found or invalid');
       }
     } catch (error) {
-      console.error('Error fetching pincode data:', error);
     } finally {
       setPincodeLoading(false);
     }
@@ -614,8 +573,8 @@ const LeadFormSingle = ({
               </div>
             </div>
 
-            {/* Age, Gender, Marital Status - Only in edit mode */}
-            {mode === 'edit' && (
+            {/* Age, Gender, Marital Status - Show in edit mode or when status is Order Completed */}
+            {(mode === 'edit' || formData.leadStatus === 'order_completed') && (
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -660,8 +619,8 @@ const LeadFormSingle = ({
               </div>
             )}
 
-            {/* Address - Only in edit mode */}
-            {mode === 'edit' && (
+            {/* Address - Show in edit mode or when status is Order Completed */}
+            {(mode === 'edit' || formData.leadStatus === 'order_completed') && (
             <div className="space-y-4">
               <div className="flex items-center space-x-3">
                 <div className="h-10 w-10 bg-teal-100 rounded-xl flex items-center justify-center">
@@ -999,8 +958,8 @@ const LeadFormSingle = ({
               </div>
             )}
 
-            {/* Health Issues and Products - Side by Side - Only in edit mode */}
-            {mode === 'edit' && (
+            {/* Health Issues and Products - Side by Side - Show in edit mode or when status is Order Completed */}
+            {(mode === 'edit' || formData.leadStatus === 'order_completed') && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Health Issues */}
               <div className="space-y-4">

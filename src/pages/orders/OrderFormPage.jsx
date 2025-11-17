@@ -740,6 +740,19 @@ const OrderFormPage = () => {
       
       if (isEdit) {
         const updated = await dispatch(updateOrder({ id, orderData })).unwrap();
+        
+        // Check if verification is required
+        if (updated?.data?.requiresVerification) {
+          dispatch(addNotification({
+            type: 'info',
+            message: 'Payment update request submitted for supervisor verification. The order will be updated after approval.'
+          }));
+          // Don't navigate - stay on the form to show pending status
+          isSubmittingRef.current = false;
+          setSubmitting(false);
+          return;
+        }
+        
         dispatch(addNotification({
           type: 'success',
           message: 'Order updated successfully!'

@@ -55,7 +55,6 @@ const LeadFormStepper = ({
           return JSON.parse(storedUser);
         }
       } catch (error) {
-        console.error('Error parsing user from localStorage:', error);
       }
     }
     return user;
@@ -211,19 +210,16 @@ const LeadFormStepper = ({
           dispatch(getActiveHealthIssues());
           return;
         } else {
-          console.error('❌ Profile fetch failed:', profileResult.payload);
           clearAuthAndRedirect();
           return;
         }
       } catch (error) {
-        console.error('❌ Error fetching profile:', error);
         clearAuthAndRedirect();
         return;
       }
     }
 
     if (!currentIsAuthenticated || !currentUser) {
-      console.log('User not authenticated, skipping data load');
       return;
     }
 
@@ -238,11 +234,9 @@ const LeadFormStepper = ({
         dispatch(getActiveProducts());
         dispatch(getActiveHealthIssues());
       } else {
-        console.error('User validation failed:', profileResult.payload);
         clearAuthAndRedirect();
       }
     } catch (error) {
-      console.error('Error validating user:', error);
       clearAuthAndRedirect();
     }
   };
@@ -339,13 +333,11 @@ const LeadFormStepper = ({
 
   // Handle branch selection
   const handleBranchSelect = (branch) => {
-    console.log('Branch selected:', branch);
     setFormData(prev => {
       const newData = {
         ...prev,
         dispatchedFrom: branch._id
       };
-      console.log('Updated form data:', newData);
       return newData;
     });
     setBranchSearch(branch.branchName);
@@ -445,7 +437,6 @@ const LeadFormStepper = ({
         break;
         
       case 'payment-assignment':
-        console.log('Validating payment-assignment - dispatchedFrom:', formData.dispatchedFrom);
         // Make branch assignment optional for now to test
         // if (!formData.dispatchedFrom) {
         //   newErrors.dispatchedFrom = 'Please assign a branch';
@@ -493,25 +484,8 @@ const LeadFormStepper = ({
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    console.log('🔐 Form submission - Auth check:', {
-      isAuthenticated,
-      user,
-      currentUser,
-      currentIsAuthenticated,
-      hasUser: !!currentUser,
-      userRole: currentUser?.role,
-      authState
-    });
-    
     // Check if user is authenticated
     if (!currentIsAuthenticated || !currentUser) {
-      console.error('❌ User not authenticated, cannot submit form:', {
-        isAuthenticated,
-        user,
-        currentUser,
-        currentIsAuthenticated,
-        authState
-      });
       return;
     }
 
@@ -519,12 +493,10 @@ const LeadFormStepper = ({
     try {
       const profileResult = await dispatch(getProfile());
       if (profileResult.type !== 'auth/getProfile/fulfilled') {
-        console.error('User validation failed before submission:', profileResult.payload);
         clearAuthAndRedirect();
         return;
       }
     } catch (error) {
-      console.error('Error validating user before submission:', error);
       clearAuthAndRedirect();
       return;
     }
@@ -544,14 +516,11 @@ const LeadFormStepper = ({
     }
     
     if (allValid) {
-      console.log('✅ Form validation passed, submitting data:', JSON.stringify(formData, null, 2));
       onSubmit(formData);
     } else {
-      console.log('❌ Form validation failed, errors:', errors);
       // Go to first step with errors
       for (let i = 1; i <= steps.length; i++) {
         if (!validateStep(i, false)) {
-          console.log(`❌ Validation failed at step ${i}`);
           setCurrentStep(i);
           break;
         }

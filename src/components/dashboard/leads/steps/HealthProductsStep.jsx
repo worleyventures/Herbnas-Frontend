@@ -30,7 +30,6 @@ const HealthProductsStep = ({
         'Skin Problems',
         'Joint Pain and Arthritis'
       ]; // Fallback health issues
-  console.log('HealthProductsStep - allHealthIssues:', allHealthIssues);
 
   // Function to filter health issues based on search
   const filteredHealthIssues = allHealthIssues.filter(issue =>

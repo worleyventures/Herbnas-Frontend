@@ -35,6 +35,10 @@ const LeadForm = ({
   const { branches = [], loading: branchesLoading = false, error: branchesError = null } = useSelector(state => state.branches || {});
   const { users = [], loading: usersLoading = false } = useSelector(state => state.user || {});
   const { products = [], loading: productsLoading = false } = useSelector(state => state.products || {});
+  
+  // Check if user can access users endpoint (admin, super_admin, accounts_manager, supervisor)
+  const canAccessUsers = user?.role === 'admin' || user?.role === 'super_admin' || 
+                         user?.role === 'accounts_manager' || user?.role === 'supervisor';
 
   const [formData, setFormData] = useState({
     // Basic Lead Information
@@ -108,10 +112,13 @@ const LeadForm = ({
       // Always try to load data, but don't wait for it
       dispatch(getAllBranches());
       dispatch(getActiveBranches());
-      dispatch(getAllUsers());
+      // Only fetch users if user has permission
+      if (canAccessUsers) {
+        dispatch(getAllUsers());
+      }
       dispatch(getActiveProducts());
     }
-  }, [dispatch, isAuthenticated, user]);
+  }, [dispatch, isAuthenticated, user, canAccessUsers]);
 
   // Filter branches based on search and user role
   const filteredBranches = useMemo(() => {
@@ -201,14 +208,12 @@ const LeadForm = ({
 
   // Handle branch selection
   const handleBranchSelect = (branch) => {
-    console.log('Branch selected:', branch);
     setFormData(prev => ({
       ...prev,
       dispatchedFrom: branch._id
     }));
     setBranchSearch(branch.branchName);
     setShowBranchDropdown(false);
-    console.log('Branch selection completed');
     // Clear user selection when branch changes
     setFormData(prev => ({
       ...prev,
@@ -244,21 +249,16 @@ const LeadForm = ({
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
-      console.log('Click outside detected, target:', event.target);
       if (showProductDropdown && !event.target.closest('.product-dropdown-container')) {
-        console.log('Closing product dropdown');
         setShowProductDropdown(false);
       }
       if (showHealthIssueDropdown && !event.target.closest('.health-issue-dropdown-container')) {
-        console.log('Closing health issue dropdown');
         setShowHealthIssueDropdown(false);
       }
       if (showBranchDropdown && !event.target.closest('.branch-dropdown-container')) {
-        console.log('Closing branch dropdown');
         setShowBranchDropdown(false);
       }
       if (showUserDropdown && !event.target.closest('.user-dropdown-container')) {
-        console.log('Closing user dropdown');
         setShowUserDropdown(false);
       }
     };
@@ -1441,7 +1441,6 @@ const LeadForm = ({
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
-                              console.log('Branch option clicked:', branch);
                               handleBranchSelect(branch);
                             }}
                             className="px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"

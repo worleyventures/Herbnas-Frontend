@@ -180,6 +180,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
         hoverBgColor: 'group-hover:bg-gray-50'
       });
     }
+    
 
     // Attendance is now part of Payroll dashboard, so removed from sidebar
     // if (stableUserRole === 'admin') {
