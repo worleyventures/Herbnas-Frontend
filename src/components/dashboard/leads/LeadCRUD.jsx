@@ -70,6 +70,12 @@ const LeadCRUD = ({
   const isAccountsManager = user?.role === 'accounts_manager';
   const isProductionManager = user?.role === 'production_manager';
   const isSalesExecutive = user?.role === 'sales_executive';
+  const isAdmin = user?.role === 'admin';
+  const isSuperAdmin = user?.role === 'super_admin';
+  const isSupervisor = user?.role === 'supervisor';
+  
+  // Check if user can access users endpoint (admin, super_admin, accounts_manager, supervisor)
+  const canAccessUsers = isAdmin || isSuperAdmin || isAccountsManager || isSupervisor;
   
   // Fetch branches and users data on component mount only if authenticated
   useEffect(() => {
@@ -78,14 +84,15 @@ const LeadCRUD = ({
         // Try to get active branches first (public route), then all branches if needed
         dispatch(getActiveBranches());
       }
-      if (users.length === 0 && !usersLoading) {
+      // Only fetch users if user has permission
+      if (canAccessUsers && users.length === 0 && !usersLoading) {
         dispatch(getAllUsers());
       }
       if (products.length === 0 && !productsLoading) {
         dispatch(getActiveProducts());
       }
     }
-  }, [dispatch, isAuthenticated, user, branches.length, users.length, products.length, branchesLoading, usersLoading, productsLoading]);
+  }, [dispatch, isAuthenticated, user, branches.length, users.length, products.length, branchesLoading, usersLoading, productsLoading, canAccessUsers]);
 
   const statusOptions = [
     { value: 'new_lead', label: 'New Lead', color: 'bg-blue-100 text-blue-800' },
@@ -160,6 +167,15 @@ const LeadCRUD = ({
       <Table
         columns={[
           {
+            key: 'leadId',
+            label: 'Lead ID',
+            render: (lead) => (
+              <div className="text-sm font-medium text-gray-900">
+                {lead.leadId || 'N/A'}
+              </div>
+            )
+          },
+          {
             key: 'customerName',
             label: 'Customer',
             render: (lead) => (
@@ -200,8 +216,6 @@ const LeadCRUD = ({
             label: 'Status',
             hiddenOnMobile: true,
             render: (lead) => {
-              // Debug: Log the lead status for debugging
-              console.log('Lead status:', lead.leadStatus, 'for lead:', lead.customerName);
               return (
                 <StatusBadge 
                   status={lead.leadStatus || 'unknown'} 
@@ -209,22 +223,6 @@ const LeadCRUD = ({
                 />
               );
             }
-          },
-          {
-            key: 'branch',
-            label: 'Branch',
-            hiddenOnMobile: true,
-            render: (lead) => (
-              <div className="text-sm text-gray-900">
-                {(() => {
-                  if (!lead.dispatchedFrom) return lead.branch || 'Unassigned';
-                  if (typeof lead.dispatchedFrom === 'string') return lead.dispatchedFrom;
-                  if (lead.dispatchedFrom.name) return lead.dispatchedFrom.name;
-                  if (lead.dispatchedFrom.branchName) return lead.dispatchedFrom.branchName;
-                  return lead.branch || 'Unassigned';
-                })()}
-              </div>
-            )
           },
           {
             key: 'paymentType',

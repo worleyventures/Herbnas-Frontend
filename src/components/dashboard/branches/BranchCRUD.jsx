@@ -13,11 +13,12 @@ import {
   HiCheckCircle,
   HiXCircle
 } from 'react-icons/hi2';
-import { Table, ActionButton, StatusBadge, ConfirmationModal, BranchDetailsModal } from '../../common';
+import { Table, ActionButton, StatusBadge, ConfirmationModal } from '../../common';
 
 const BranchCRUD = ({ 
   branches, 
-  onSelectBranch, 
+  onSelectBranch,
+  onViewBranch, 
   onEditBranch, 
   onDeleteBranch, 
   onCreateBranch, 
@@ -40,7 +41,6 @@ const BranchCRUD = ({
   onPageChange
 }) => {
   const navigate = useNavigate();
-  const [showBranchModal, setShowBranchModal] = useState(false);
   
   const dispatch = useDispatch();
   
@@ -63,8 +63,9 @@ const BranchCRUD = ({
   
   // Handler functions (defined before useMemo to avoid reference errors)
   const handleViewBranch = (branch) => {
-    onSelectBranch(branch);
-    setShowBranchModal(true);
+    if (onViewBranch) {
+      onViewBranch(branch);
+    }
   };
 
   const handleDisableBranch = (branch) => {
@@ -356,16 +357,6 @@ const BranchCRUD = ({
         loading={deleteLoading}
       />
 
-      {/* Branch Details Modal */}
-      <BranchDetailsModal
-        isOpen={showBranchModal}
-        onClose={() => setShowBranchModal(false)}
-        branch={selectedBranch}
-        onEdit={onEditBranch}
-        onDelete={handleDeleteBranch}
-        onActivate={onActivateBranch}
-        onDisable={onDisableBranch}
-      />
     </div>
   );
 };

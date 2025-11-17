@@ -11,7 +11,7 @@ import {
   HiCog6Tooth,
   HiCloudArrowUp
 } from 'react-icons/hi2';
-import { StatCard, Button, SearchInput, Select, Pagination, ImportModal } from '../common';
+import { StatCard, Button, SearchInput, Select, Pagination, ImportModal, BranchDetailsModal } from '../common';
 import { addNotification } from '../../redux/slices/uiSlice';
 import {
   getAllBranches,
@@ -35,6 +35,7 @@ const BranchesDashboard = ({ propActiveView = 'table' }) => {
   const [selectedBranch, setSelectedBranch] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showBranchModal, setShowBranchModal] = useState(false);
   const [showDisableModal, setShowDisableModal] = useState(false);
   const [showActivateModal, setShowActivateModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
@@ -204,9 +205,18 @@ const BranchesDashboard = ({ propActiveView = 'table' }) => {
     });
   };
 
-  const handleViewBranch = (branch) => {
-    setSelectedBranch(branch);
-    // You can implement a view modal here if needed
+  const handleViewBranch = async (branch) => {
+    // Fetch fresh branch data to ensure bank accounts and other info is up-to-date
+    try {
+      const result = await dispatch(getBranchById(branch._id || branch.id)).unwrap();
+      const freshBranchData = result?.data?.branch || result?.branch || result?.data || result;
+      setSelectedBranch(freshBranchData);
+    } catch (error) {
+      console.error('Error fetching fresh branch data:', error);
+      // If fetch fails, use the branch data we have
+      setSelectedBranch(branch);
+    }
+    setShowBranchModal(true);
   };
 
   const handleDeleteBranchConfirm = () => {
@@ -390,6 +400,7 @@ const BranchesDashboard = ({ propActiveView = 'table' }) => {
           <BranchCRUD
             branches={allBranches}
             onSelectBranch={setSelectedBranch}
+            onViewBranch={handleViewBranch}
             onEditBranch={handleEditBranch}
             onDeleteBranch={handleDeleteBranch}
             onCreateBranch={() => navigate('/branches/create')}
@@ -529,6 +540,17 @@ const BranchesDashboard = ({ propActiveView = 'table' }) => {
         isOpen={showImportModal}
         onClose={() => setShowImportModal(false)}
         onImportSuccess={handleImportSuccess}
+      />
+
+      {/* Branch Details Modal */}
+      <BranchDetailsModal
+        isOpen={showBranchModal}
+        onClose={() => setShowBranchModal(false)}
+        branch={selectedBranch}
+        onEdit={handleEditBranch}
+        onDelete={handleDeleteBranch}
+        onActivate={() => setShowActivateModal(true)}
+        onDisable={() => setShowDisableModal(true)}
       />
     </>
   );

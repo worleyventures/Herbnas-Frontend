@@ -52,7 +52,6 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
   const [filterBranch, setFilterBranch] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
-  const [branchUserIds, setBranchUserIds] = useState([]);
 
   const { user, isAuthenticated } = useSelector((state) => state.auth);
   const { branches = [] } = useSelector((state) => state.branches);
@@ -60,6 +59,10 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
   const isProductionManager = user?.role === 'production_manager';
   const isSalesExecutive = user?.role === 'sales_executive';
   const isAdmin = user?.role === 'admin';
+  const isSuperAdmin = user?.role === 'super_admin';
+  
+  // Check if user can access admin stats (admin or super_admin only)
+  const canAccessAdminStats = isAdmin || isSuperAdmin;
 
   const {
     leads = [],
@@ -98,88 +101,104 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
   // State for refresh indicator
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Fetch branch users for admin
-  useEffect(() => {
-    const fetchBranchUsers = async () => {
-      if (isAdmin && user?.branch) {
-        try {
-          const branchId = user.branch._id || user.branch;
-          const usersResponse = await api.get(`/users?branch=${branchId}&limit=1000`);
-          const branchUsers = usersResponse.data?.data?.users || [];
-          const userIds = branchUsers.map(u => (u._id || u.id).toString());
-          setBranchUserIds(userIds);
-        } catch (error) {
-          console.error('Error fetching branch users:', error);
-        }
-      }
-    };
-    
-    fetchBranchUsers();
-  }, [isAdmin, user?.branch]);
+  // Backend now handles role-based filtering automatically, no need to fetch branch users
 
   // Fetch initial data on mount
   useEffect(() => {
     if (isAuthenticated && user) {
-      // For admin, fetch all leads to filter by branch employees on frontend
-      const limit = isAdmin && branchUserIds.length > 0 ? 1000 : itemsPerPage;
-      // Fetch leads with current filters
+      // Backend now handles role-based filtering automatically:
+      // - Super-admin: sees all leads
+      // - Supervisor/Admin: sees only their branch's leads
+      // - Sales Executive: sees only leads they created
       const leadParams = {
-        page: isAdmin && branchUserIds.length > 0 ? 1 : currentPage,
-        limit: limit,
+        page: currentPage,
+        limit: itemsPerPage,
         search: searchTerm,
         leadStatus: filterStatus === 'all' ? '' : filterStatus,
-        dispatchedFrom: isAdmin && user?.branch 
-          ? (user.branch._id || user.branch) 
-          : (filterBranch === 'all' ? '' : filterBranch)
+        // Only super_admin can filter by branch (others are automatically filtered by backend)
+        dispatchedFrom: isSuperAdmin && filterBranch !== 'all' ? filterBranch : undefined
       };
-      
-      // For sales executive, only show leads created by them
-      if (isSalesExecutive && user?._id) {
-        leadParams.createdBy = user._id;
-      }
       
       dispatch(getAllLeads(leadParams));
       
-      // Fetch stats
-      dispatch(getLeadStats());
+      // Fetch stats only if user has permission (admin or super_admin)
+      if (canAccessAdminStats) {
+        dispatch(getLeadStats());
+      }
     }
-  }, [dispatch, isAuthenticated, user, isSalesExecutive, isAdmin, branchUserIds.length]);
+  }, [dispatch, isAuthenticated, user, canAccessAdminStats, currentPage, itemsPerPage, searchTerm, filterStatus, filterBranch, isSuperAdmin]);
 
   // Refresh leads when navigating to this page (e.g., returning from edit form)
   useEffect(() => {
     if ((location.pathname === '/leads' || location.pathname === '/leads/table' || location.pathname === '/leads/pipeline') && isAuthenticated && user) {
+      // Check if refresh was requested (e.g., after creating/updating a lead)
+      const refreshRequested = location.state?.refresh;
+      
+      if (refreshRequested) {
+        // Clear leads state to force fresh fetch
+        dispatch(clearAllLeadData());
+        // Reset to page 1 and clear search to show new lead
+        setCurrentPage(1);
+        setSearchTerm('');
+        // Clear the location state to prevent re-triggering on subsequent renders
+        window.history.replaceState({}, document.title, location.pathname);
+      }
+      
       // Use a small delay to ensure state is ready after navigation
       const timeoutId = setTimeout(() => {
-        // For admin, fetch all leads to filter by branch employees on frontend
-        const limit = isAdmin && branchUserIds.length > 0 ? 1000 : itemsPerPage;
+        // Backend now handles role-based filtering automatically
+        const limit = itemsPerPage;
         const leadParams = {
-          page: isAdmin && branchUserIds.length > 0 ? 1 : currentPage,
+          page: refreshRequested ? 1 : currentPage,
           limit: limit,
-          search: searchTerm,
+          search: refreshRequested ? '' : searchTerm,
           leadStatus: filterStatus === 'all' ? '' : filterStatus,
-          dispatchedFrom: isAdmin && user?.branch 
-            ? (user.branch._id || user.branch) 
-            : (filterBranch === 'all' ? '' : filterBranch)
+          // Only super_admin can filter by branch (others are automatically filtered by backend)
+          dispatchedFrom: isSuperAdmin && filterBranch !== 'all' ? filterBranch : undefined,
+          _t: Date.now() // Cache-busting timestamp
         };
         
-        // For sales executive, only show leads created by them
-        if (isSalesExecutive && user?._id) {
-          leadParams.createdBy = user._id;
-        }
-        
         dispatch(getAllLeads(leadParams));
-        dispatch(getLeadStats());
-      }, 100);
+        // Fetch stats only if user has permission (admin or super_admin)
+        if (canAccessAdminStats) {
+          dispatch(getLeadStats());
+        }
+      }, refreshRequested ? 50 : 100);
       
       return () => clearTimeout(timeoutId);
     }
-  }, [location.pathname, dispatch, isAuthenticated, user, isSalesExecutive, isAdmin, branchUserIds.length, currentPage, itemsPerPage, searchTerm, filterStatus, filterBranch]);
+  }, [location.pathname, location.state, dispatch, isAuthenticated, user, currentPage, itemsPerPage, searchTerm, filterStatus, filterBranch, isSuperAdmin, canAccessAdminStats]);
 
   // Clear success/error messages after a delay and close modals on success
   useEffect(() => {
     if (createSuccess || updateSuccess || deleteSuccess) {
       if (createSuccess) {
         setShowCreateModal(false);
+        // Reset to page 1 and clear search to show new lead
+        setCurrentPage(1);
+        setSearchTerm('');
+        // Clear leads state to force fresh fetch (prevents cache issues)
+        dispatch(clearAllLeadData());
+        // Refresh the leads list after creation with cache-busting
+        // Backend handles role-based filtering automatically
+        dispatch(getAllLeads({
+          page: 1, // Always go to page 1 to show new lead
+          limit: itemsPerPage,
+          search: '', // Clear search to show new lead
+          leadStatus: filterStatus === 'all' ? '' : filterStatus,
+          dispatchedFrom: isSuperAdmin && filterBranch !== 'all' ? filterBranch : undefined,
+          _t: Date.now() // Cache-busting timestamp
+        }));
+        // Fetch stats only if user has permission (admin or super_admin)
+        if (canAccessAdminStats) {
+          dispatch(getLeadStats());
+        }
+        
+        // Show success notification
+        dispatch(addNotification({
+          type: 'success',
+          message: 'Lead created successfully!'
+        }));
       }
       if (updateSuccess) {
         setShowEditModal(false);
@@ -187,16 +206,19 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
         // Clear leads state to force fresh fetch (prevents cache issues)
         dispatch(clearAllLeadData());
         // Refresh the leads list after update with cache-busting
-        const limit = isAdmin && branchUserIds.length > 0 ? 1000 : itemsPerPage;
+        // Backend handles role-based filtering automatically
         dispatch(getAllLeads({
-          page: isAdmin && branchUserIds.length > 0 ? 1 : currentPage,
-          limit: limit,
+          page: currentPage,
+          limit: itemsPerPage,
           search: searchTerm,
           leadStatus: filterStatus === 'all' ? '' : filterStatus,
-          dispatchedFrom: filterBranch === 'all' ? '' : filterBranch,
+          dispatchedFrom: isSuperAdmin && filterBranch !== 'all' ? filterBranch : undefined,
           _t: Date.now() // Cache-busting timestamp
         }));
-        dispatch(getLeadStats());
+        // Fetch stats only if user has permission (admin or super_admin)
+        if (canAccessAdminStats) {
+          dispatch(getLeadStats());
+        }
       }
       if (deleteSuccess) {
         setShowDeleteModal(false);
@@ -204,16 +226,19 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
         // Clear leads state to force fresh fetch (prevents cache issues)
         dispatch(clearAllLeadData());
         // Refresh the leads list after delete with cache-busting
-        const limit = isAdmin && branchUserIds.length > 0 ? 1000 : itemsPerPage;
+        // Backend handles role-based filtering automatically
         dispatch(getAllLeads({
-          page: isAdmin && branchUserIds.length > 0 ? 1 : currentPage,
-          limit: limit,
+          page: currentPage,
+          limit: itemsPerPage,
           search: searchTerm,
           leadStatus: filterStatus === 'all' ? '' : filterStatus,
-          dispatchedFrom: filterBranch === 'all' ? '' : filterBranch,
+          dispatchedFrom: isSuperAdmin && filterBranch !== 'all' ? filterBranch : undefined,
           _t: Date.now() // Cache-busting timestamp
         }));
-        dispatch(getLeadStats());
+        // Fetch stats only if user has permission (admin or super_admin)
+        if (canAccessAdminStats) {
+          dispatch(getLeadStats());
+        }
       }
       
       const timer = setTimeout(() => {
@@ -221,7 +246,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
       }, 5000);
       return () => clearTimeout(timer);
     }
-  }, [createSuccess, updateSuccess, deleteSuccess, dispatch, currentPage, itemsPerPage, searchTerm, filterStatus, filterBranch]);
+  }, [createSuccess, updateSuccess, deleteSuccess, dispatch, currentPage, itemsPerPage, searchTerm, filterStatus, filterBranch, isSuperAdmin, canAccessAdminStats]);
 
   useEffect(() => {
     if (createError || updateError || deleteError) {
@@ -236,21 +261,24 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
   const refreshDashboardData = useCallback(() => {
     setIsRefreshing(true);
     
-    // For admin, fetch all leads to filter by branch employees on frontend
-    const limit = isAdmin && branchUserIds.length > 0 ? 1000 : itemsPerPage;
+    // Backend handles role-based filtering automatically
     // Refresh current leads list and stats
     dispatch(getAllLeads({
-      page: isAdmin && branchUserIds.length > 0 ? 1 : currentPage,
-      limit: limit,
+      page: currentPage,
+      limit: itemsPerPage,
       search: searchTerm,
       leadStatus: filterStatus === 'all' ? '' : filterStatus,
-      dispatchedFrom: filterBranch === 'all' ? '' : filterBranch
+      dispatchedFrom: isSuperAdmin && filterBranch !== 'all' ? filterBranch : undefined
     }));
     
-    dispatch(getLeadStats()).finally(() => {
+    if (canAccessAdminStats) {
+      dispatch(getLeadStats()).finally(() => {
+        setIsRefreshing(false);
+      });
+    } else {
       setIsRefreshing(false);
-    });
-  }, [dispatch, currentPage, itemsPerPage, searchTerm, filterStatus, filterBranch, isAdmin, branchUserIds.length]);
+    }
+  }, [dispatch, currentPage, itemsPerPage, searchTerm, filterStatus, filterBranch, isSuperAdmin, canAccessAdminStats]);
 
   const viewOptions = [
     { id: 'pipeline', name: 'Pipeline View', icon: HiChartBar },
@@ -280,63 +308,29 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
 
 
   // Get pagination data from Redux state
+  // Backend now handles role-based filtering, so we use backend pagination directly
   const { pagination = {} } = useSelector((state) => state.leads || {});
   
-  // Filter leads for admin to only show those from their branch and created by branch employees
-  const filteredLeads = React.useMemo(() => {
-    if (isAdmin && branchUserIds.length > 0 && user?.branch) {
-      const branchId = (user.branch._id || user.branch).toString();
-      return leads.filter(lead => {
-        // Check if lead is from admin's branch
-        const leadBranchId = (lead.dispatchedFrom?._id || lead.dispatchedFrom)?.toString();
-        const isFromBranch = leadBranchId === branchId;
-        
-        // Check if lead is created by branch employee
-        const createdById = (lead.createdBy?._id || lead.createdBy)?.toString();
-        const isCreatedByBranchEmployee = createdById && branchUserIds.includes(createdById);
-        
-        return isFromBranch && isCreatedByBranchEmployee;
-      });
-    }
-    return leads;
-  }, [leads, isAdmin, branchUserIds, user?.branch]);
-  
-  // Adjust pagination for filtered leads
-  const totalPages = isAdmin && branchUserIds.length > 0 
-    ? Math.ceil(filteredLeads.length / itemsPerPage)
-    : pagination.totalPages || 1;
-  const totalLeads = isAdmin && branchUserIds.length > 0 
-    ? filteredLeads.length 
-    : pagination.totalLeads || 0;
+  const totalPages = pagination.totalPages || 1;
+  const totalLeads = pagination.totalLeads || 0;
   const startIndex = ((currentPage - 1) * itemsPerPage) + 1;
   const endIndex = Math.min(currentPage * itemsPerPage, totalLeads);
-  
-  // Paginate filtered leads for admin
-  const paginatedLeads = React.useMemo(() => {
-    if (isAdmin && branchUserIds.length > 0) {
-      const start = (currentPage - 1) * itemsPerPage;
-      const end = start + itemsPerPage;
-      return filteredLeads.slice(start, end);
-    }
-    return leads;
-  }, [filteredLeads, leads, isAdmin, branchUserIds, currentPage, itemsPerPage]);
 
   // Fetch data when filters change
   useEffect(() => {
     if (isAuthenticated && user) {
-      // For admin, fetch all leads to filter by branch employees on frontend
-      const limit = isAdmin && branchUserIds.length > 0 ? 1000 : itemsPerPage;
+      // Backend now handles role-based filtering automatically
+      const limit = itemsPerPage;
       dispatch(getAllLeads({
-        page: isAdmin && branchUserIds.length > 0 ? 1 : currentPage,
+        page: currentPage,
         limit: limit,
         search: searchTerm,
         leadStatus: filterStatus === 'all' ? '' : filterStatus,
-        dispatchedFrom: isAdmin && user?.branch 
-          ? (user.branch._id || user.branch) 
-          : (filterBranch === 'all' ? '' : filterBranch)
+        // Only super_admin can filter by branch (others are automatically filtered by backend)
+        dispatchedFrom: isSuperAdmin && filterBranch !== 'all' ? filterBranch : undefined
       }));
     }
-  }, [dispatch, isAuthenticated, user, currentPage, searchTerm, filterStatus, filterBranch, isAdmin, branchUserIds.length]);
+  }, [dispatch, isAuthenticated, user, currentPage, searchTerm, filterStatus, filterBranch, isSuperAdmin, itemsPerPage]);
 
   // Reset to first page when filters change
   useEffect(() => {
@@ -354,14 +348,12 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
         
         // Validate lead ID
         if (!selectedLead._id) {
-          console.error('Lead ID is missing from selected lead');
           return;
         }
         
         // Check if it's a valid MongoDB ObjectId format
         const objectIdRegex = /^[0-9a-fA-F]{24}$/;
         if (!objectIdRegex.test(selectedLead._id)) {
-          console.error('Invalid lead ID format:', selectedLead._id);
           return;
         }
         
@@ -375,16 +367,19 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
         dispatch(clearAllLeadData());
         
         // Refresh the leads list immediately with cache-busting
-        const limit = isAdmin && branchUserIds.length > 0 ? 1000 : itemsPerPage;
+        // Backend handles role-based filtering automatically
         dispatch(getAllLeads({
-          page: isAdmin && branchUserIds.length > 0 ? 1 : currentPage,
-          limit: limit,
+          page: currentPage,
+          limit: itemsPerPage,
           search: searchTerm,
           leadStatus: filterStatus === 'all' ? '' : filterStatus,
-          dispatchedFrom: filterBranch === 'all' ? '' : filterBranch,
+          dispatchedFrom: isSuperAdmin && filterBranch !== 'all' ? filterBranch : undefined,
           _t: Date.now() // Cache-busting timestamp
         }));
-        dispatch(getLeadStats());
+        // Fetch stats only if user has permission (admin or super_admin)
+        if (canAccessAdminStats) {
+          dispatch(getLeadStats());
+        }
         
         // Show success notification
         dispatch(addNotification({
@@ -392,10 +387,8 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
           message: 'Lead updated successfully!'
         }));
       } else {
-        console.error('No selected lead for update');
       }
     } catch (error) {
-      console.error('Error updating lead:', error);
       dispatch(addNotification({
         type: 'error',
         message: error?.message || 'Failed to update lead'
@@ -416,16 +409,19 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
         dispatch(clearAllLeadData());
         
         // Refresh the leads list immediately after deletion with cache-busting
-        const limit = isAdmin && branchUserIds.length > 0 ? 1000 : itemsPerPage;
+        // Backend handles role-based filtering automatically
         dispatch(getAllLeads({
-          page: isAdmin && branchUserIds.length > 0 ? 1 : currentPage,
-          limit: limit,
+          page: currentPage,
+          limit: itemsPerPage,
           search: searchTerm,
           leadStatus: filterStatus === 'all' ? '' : filterStatus,
-          dispatchedFrom: filterBranch === 'all' ? '' : filterBranch,
+          dispatchedFrom: isSuperAdmin && filterBranch !== 'all' ? filterBranch : undefined,
           _t: Date.now() // Cache-busting timestamp
         }));
-        dispatch(getLeadStats());
+        // Fetch stats only if user has permission (admin or super_admin)
+        if (canAccessAdminStats) {
+          dispatch(getLeadStats());
+        }
         
         // Show success notification
         dispatch(addNotification({
@@ -434,7 +430,6 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
         }));
       }
     } catch (error) {
-      console.error('Error deleting lead:', error);
       dispatch(addNotification({
         type: 'error',
         message: error?.message || 'Failed to delete lead'
@@ -450,16 +445,19 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
       dispatch(clearAllLeadData());
       
       // Refresh the leads list immediately after status update with cache-busting
-      const limit = isAdmin && branchUserIds.length > 0 ? 1000 : itemsPerPage;
+      // Backend handles role-based filtering automatically
       dispatch(getAllLeads({
-        page: isAdmin && branchUserIds.length > 0 ? 1 : currentPage,
-        limit: limit,
+        page: currentPage,
+        limit: itemsPerPage,
         search: searchTerm,
         leadStatus: filterStatus === 'all' ? '' : filterStatus,
-        dispatchedFrom: filterBranch === 'all' ? '' : filterBranch,
+        dispatchedFrom: isSuperAdmin && filterBranch !== 'all' ? filterBranch : undefined,
         _t: Date.now() // Cache-busting timestamp
       }));
-      dispatch(getLeadStats());
+      // Fetch stats only if user has permission (admin or super_admin)
+      if (canAccessAdminStats) {
+        dispatch(getLeadStats());
+      }
       
       // Show success notification
       dispatch(addNotification({
@@ -467,7 +465,6 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
         message: `Lead status updated to ${newStatus}`
       }));
     } catch (error) {
-      console.error('Error updating lead status:', error);
       dispatch(addNotification({
         type: 'error',
         message: error?.message || 'Failed to update lead status'
@@ -494,23 +491,25 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
     setShowImportModal(false);
     
     // Refresh leads and stats after successful import
-    const limit = isAdmin && branchUserIds.length > 0 ? 1000 : itemsPerPage;
+    // Backend handles role-based filtering automatically
     dispatch(getAllLeads({
-      page: isAdmin && branchUserIds.length > 0 ? 1 : currentPage,
-      limit: limit,
+      page: currentPage,
+      limit: itemsPerPage,
       search: searchTerm,
       leadStatus: filterStatus === 'all' ? '' : filterStatus,
-      dispatchedFrom: filterBranch === 'all' ? '' : filterBranch
+      dispatchedFrom: isSuperAdmin && filterBranch !== 'all' ? filterBranch : undefined
     }));
     
-    dispatch(getLeadStats());
+    // Fetch stats only if user has permission (admin or super_admin)
+    if (canAccessAdminStats) {
+      dispatch(getLeadStats());
+    }
   };
 
   // Calculate card counts from Redux state
   const getStatusCount = (status) => {
-    const leadsToCount = isAdmin && branchUserIds.length > 0 ? filteredLeads : leads;
-    if (Array.isArray(leadsToCount) && leadsToCount.length > 0) {
-      return leadsToCount.filter(lead => lead.leadStatus === status).length;
+    if (Array.isArray(leads) && leads.length > 0) {
+      return leads.filter(lead => lead.leadStatus === status).length;
     }
     
     // Fallback to API stats if no leads data available
@@ -522,9 +521,9 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
     return 0;
   };
 
-  // Calculate stats from filtered leads array (use pagination for total, filtered array for status counts)
+  // Calculate stats from leads array (backend handles filtering)
   const cardCounts = {
-    total: totalLeads || pagination?.totalLeads || (isAdmin && branchUserIds.length > 0 ? filteredLeads.length : leads.length) || 0,
+    total: totalLeads || pagination?.totalLeads || leads.length || 0,
     newLead: getStatusCount('new_lead'),
     qualified: getStatusCount('qualified'),
     unqualified: getStatusCount('unqualified'),
@@ -545,7 +544,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
         return (
           <>
             <LeadCRUD
-              leads={paginatedLeads}
+              leads={leads}
               onSelectLead={setSelectedLead}
               onEditLead={(lead) => {
                 setSelectedLead(lead);
@@ -583,7 +582,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
       case 'pipeline':
         return (
           <LeadPipeline
-            leads={isAdmin && branchUserIds.length > 0 ? filteredLeads : leads}
+            leads={leads}
             onStatusUpdate={handleStatusUpdate}
             onSelectLead={setSelectedLead}
             onEditLead={(lead) => {
@@ -617,8 +616,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
   }
 
   // Show empty state when no leads are available
-  const displayLeads = isAdmin && branchUserIds.length > 0 ? filteredLeads : leads;
-  if (!displayLeads || displayLeads.length === 0) {
+  if (!leads || leads.length === 0) {
     return (
       <div className="space-y-6">
           {/* Header */}
@@ -819,9 +817,11 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
             onClick={() => {
               try {
                 dispatch(getAllLeads());
-                dispatch(getLeadStats());
+                // Fetch stats only if user has permission (admin or super_admin)
+                if (canAccessAdminStats) {
+                  dispatch(getLeadStats());
+                }
               } catch (error) {
-                console.error('Error retrying:', error);
               }
             }}
             className="w-full text-white py-2 px-4 rounded-lg transition-colors duration-200"
@@ -909,7 +909,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
         )}
 
         {/* Stats Cards - Show for all tabs when there are leads */}
-        {displayLeads && displayLeads.length > 0 && (
+        {leads && leads.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
             <div
               onClick={() => handleCardFilter('all')}
@@ -986,7 +986,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
         )}
 
         {/* Search and Filter Section - Show for all tabs when there are leads */}
-        {displayLeads && displayLeads.length > 0 && (
+        {leads && leads.length > 0 && (
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">
             <div className="w-full sm:w-80">
               <SearchInput
@@ -1030,7 +1030,7 @@ const LeadsDashboard = ({ activeView: propActiveView, onViewChange }) => {
         {/* Content Area */}
         <div className="overflow-hidden">
           {/* Pagination info - only show for table view */}
-          {activeView === 'table' && displayLeads && displayLeads.length > 0 && (
+          {activeView === 'table' && leads && leads.length > 0 && (
             <div className="flex items-center justify-between mb-4">
               <div className="text-sm text-gray-500">
                 Showing {paginationData.startIndex}-{paginationData.endIndex} of {paginationData.totalLeads} leads

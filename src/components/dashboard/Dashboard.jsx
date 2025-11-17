@@ -151,7 +151,8 @@ const Dashboard = () => {
           
           // Calculate incentive based on product sales (same logic as backend)
           // Use delivered orders for incentive calculation
-          if (branchIncentiveType > 0 && deliveredOrders.length > 0) {
+          // If incentiveType is 0, count from 1st order. If > 0, count only above threshold
+          if (branchIncentiveType >= 0 && deliveredOrders.length > 0) {
             // Aggregate product quantities sold from delivered orders
             const productQuantities = {}; // { productId: { totalQuantity, incentive } }
             
@@ -178,7 +179,10 @@ const Dashboard = () => {
             // Calculate incentive for each product
             Object.values(productQuantities).forEach(product => {
               const { totalQuantity, incentive } = product;
-              if (totalQuantity > branchIncentiveType) {
+              if (branchIncentiveType === 0) {
+                // If incentiveType is 0, count all units from the 1st order
+                incentiveAmount += totalQuantity * incentive;
+              } else if (totalQuantity > branchIncentiveType) {
                 // Only count units above the threshold
                 const incentiveUnits = totalQuantity - branchIncentiveType;
                 incentiveAmount += incentiveUnits * incentive;

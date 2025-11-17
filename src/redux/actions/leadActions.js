@@ -81,17 +81,9 @@ export const createLead = createAsyncThunk(
   'leads/createLead',
   async (leadData, { rejectWithValue }) => {
     try {
-      console.log('🚀 Redux createLead: Sending data to API:', JSON.stringify(leadData, null, 2));
       const response = await api.post('/leads', leadData);
-      console.log('✅ Redux createLead: API response:', response.data);
       return response.data;
     } catch (err) {
-      console.error('❌ Redux createLead: API error:', err.response?.data || err.message);
-      console.error('❌ Redux createLead: Error details:', {
-        status: err.response?.status,
-        statusText: err.response?.statusText,
-        data: err.response?.data
-      });
       return rejectWithValue(err.response?.data?.message || err.message);
     }
   }

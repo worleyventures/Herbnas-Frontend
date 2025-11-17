@@ -38,17 +38,23 @@ const LeadFormPage = () => {
   // Handle success states - navigate away from form
   useEffect(() => {
     if (createSuccess) {
-      // Show success message and navigate to leads table
-      dispatch(clearLeadSuccess());
-      navigate('/leads/table');
+      // Navigate to leads table with refresh flag
+      navigate('/leads/table', { state: { refresh: true } });
+      // Clear success after a short delay to allow LeadsDashboard to react
+      setTimeout(() => {
+        dispatch(clearLeadSuccess());
+      }, 100);
     }
   }, [createSuccess, navigate, dispatch]);
 
   useEffect(() => {
     if (updateSuccess) {
-      // Show success message and navigate to leads table
-      dispatch(clearLeadSuccess());
-      navigate('/leads/table');
+      // Navigate to leads table with refresh flag
+      navigate('/leads/table', { state: { refresh: true } });
+      // Clear success after a short delay to allow LeadsDashboard to react
+      setTimeout(() => {
+        dispatch(clearLeadSuccess());
+      }, 100);
     }
   }, [updateSuccess, navigate, dispatch]);
 

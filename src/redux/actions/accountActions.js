@@ -6,9 +6,33 @@ export const getAllAccounts = createAsyncThunk(
   'accounts/getAllAccounts',
   async (params = {}, { rejectWithValue }) => {
     try {
+      console.log('[getAllAccounts] Request params:', params);
       const response = await api.get('/accounts', { params });
+      console.log('[getAllAccounts] Response received:', {
+        success: response.data?.success,
+        accountsCount: response.data?.data?.accounts?.length || 0,
+        totalItems: response.data?.data?.pagination?.totalItems || 0,
+        accounts: response.data?.data?.accounts,
+        pagination: response.data?.data?.pagination
+      });
+      
+      // Log first account details if any exist
+      if (response.data?.data?.accounts?.length > 0) {
+        console.log('[getAllAccounts] First account sample:', {
+          accountId: response.data.data.accounts[0].accountId,
+          transactionDate: response.data.data.accounts[0].transactionDate,
+          orderId: response.data.data.accounts[0].orderId,
+          amount: response.data.data.accounts[0].amount,
+          status: response.data.data.accounts[0].status
+        });
+      }
       return response.data;
     } catch (error) {
+      console.error('[getAllAccounts] Error:', {
+        message: error.response?.data?.message || error.message,
+        status: error.response?.status,
+        data: error.response?.data
+      });
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch accounts');
     }
   }

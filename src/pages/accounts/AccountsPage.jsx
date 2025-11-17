@@ -13,7 +13,11 @@ import {
   HiClipboardDocumentList,
   HiShoppingCart,
   HiChartBar,
-  HiArrowLeft
+  HiArrowLeft,
+  HiPhone,
+  HiEnvelope,
+  HiIdentification,
+  HiDocumentText
 } from 'react-icons/hi2';
 import { Button, Input, Select, Table, StatusBadge, Loading, StatCard, CommonModal, SearchInput, Card } from '../../components/common';
 import {
@@ -72,9 +76,15 @@ const AccountsPage = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [searchTerm, setSearchTerm] = useState('');
   // For accounts_manager, default to 'thisMonth' to show more data
-  const [dateRangeFilter, setDateRangeFilter] = useState(
-    user?.role === 'accounts_manager' ? 'thisMonth' : 'today'
-  );
+  // Initialize with 'today' and update when user loads
+  const [dateRangeFilter, setDateRangeFilter] = useState('today');
+  
+  // Update dateRangeFilter when user loads (for accounts_manager)
+  useEffect(() => {
+    if (user?.role === 'accounts_manager' && dateRangeFilter === 'today') {
+      setDateRangeFilter('thisMonth');
+    }
+  }, [user?.role, dateRangeFilter]);
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [branchFilter, setBranchFilter] = useState('all');
@@ -90,6 +100,7 @@ const AccountsPage = () => {
   const [loadingAccountDetails, setLoadingAccountDetails] = useState(false);
   const [transactionTypeFilter, setTransactionTypeFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('');
+  const [hasLoadedInitialData, setHasLoadedInitialData] = useState(false);
   
   // Drill-down state for Super Admin
   const [selectedBranch, setSelectedBranch] = useState(null);
@@ -126,22 +137,95 @@ const AccountsPage = () => {
 
   // Filter out lead incomes from accounts ledger
   // Note: Category filtering is now handled by the backend
+  // IMPORTANT: This filter is for the ACCOUNTS view - it should show order incomes (only exclude lead orders)
+  // The LEDGER view has a separate filter that excludes all order incomes
   const filteredAccounts = useMemo(() => {
-    if (!accounts || accounts.length === 0) return [];
+    console.log('[AccountsPage] Filtering accounts. Total accounts in Redux:', accounts?.length || 0, 'accounts:', accounts);
+    if (!accounts || accounts.length === 0) {
+      console.log('[AccountsPage] No accounts in Redux state');
+      return [];
+    }
     
-    return accounts.filter(acc => {
-      // Exclude lead incomes from ledger
-      // Check 1: accountId starting with "PI" (lead income prefix)
+    const filtered = accounts.filter(acc => {
+      // IMPORTANT: Accounts view should show ALL order incomes (including lead orders)
+      // Only exclude manually created lead incomes (PI prefix) from accounts view
+      // Order incomes (even from lead orders) should be visible in accounts view
+      // The LEDGER view separately excludes all order incomes
+
+      // Check 1: Exclude accountId starting with "PI" ONLY if it doesn't have an orderId
+      // If it has an orderId, it's an order income (even if accountId starts with PI) and should be shown
+      // Only manually created lead incomes (PI prefix + no orderId) should be filtered out
+      // orderId can be an object (populated), string, ObjectId, or null/undefined
+      const hasOrderId = acc.orderId !== null && acc.orderId !== undefined && 
+                        (typeof acc.orderId === 'object' ? 
+                          (acc.orderId._id || Object.keys(acc.orderId).length > 0) : 
+                          (acc.orderId !== '' && acc.orderId !== 'null'));
+      
       if (acc.accountId && acc.accountId.startsWith('PI')) {
-        return false;
+        if (!hasOrderId) {
+          console.log('[AccountsPage] Filtered out manual lead income (PI prefix, no orderId):', acc.accountId, 'orderId:', acc.orderId);
+          return false;
+        } else {
+          console.log('[AccountsPage] Keeping order income with PI prefix (has orderId):', acc.accountId, 'orderId:', acc.orderId);
+        }
       }
-      // Check 2: orderId exists and customerType is 'lead' (backup check)
-      if (acc.orderId && typeof acc.orderId === 'object' && acc.orderId.customerType === 'lead') {
-        return false;
-      }
+
+      // IMPORTANT: Do NOT filter out order incomes based on customerType
+      // All order incomes (including lead orders) should be visible in accounts view
+      // The user wants to see order payments in accounts, even if they're from lead orders
+
+      // Include all other accounts (including all order incomes regardless of customerType or accountId prefix)
       return true;
     });
+    
+    console.log('[AccountsPage] Filtered accounts count:', filtered.length, 'out of', accounts.length);
+    // Log sample of filtered accounts for debugging
+    if (filtered.length > 0) {
+      console.log('[AccountsPage] Sample filtered accounts:', filtered.slice(0, 3).map(acc => ({
+        accountId: acc.accountId,
+        transactionType: acc.transactionType,
+        category: acc.category,
+        hasOrderId: !!acc.orderId,
+        orderCustomerType: acc.orderId && typeof acc.orderId === 'object' ? acc.orderId.customerType : 'N/A'
+      })));
+    }
+    return filtered;
   }, [accounts]);
+
+  // Calculate stats from filtered accounts to match what's shown in the table
+  const filteredStats = useMemo(() => {
+    if (!filteredAccounts || filteredAccounts.length === 0) {
+      return {
+        totalIncome: 0,
+        totalExpense: 0,
+        netProfit: 0,
+        totalTransactions: 0
+      };
+    }
+
+    const income = filteredAccounts
+      .filter(acc => acc.transactionType === 'income')
+      .reduce((sum, acc) => sum + (parseFloat(acc.amount) || 0), 0);
+    
+    const expense = filteredAccounts
+      .filter(acc => acc.transactionType === 'expense')
+      .reduce((sum, acc) => sum + (parseFloat(acc.amount) || 0), 0);
+    
+    const purchase = filteredAccounts
+      .filter(acc => acc.transactionType === 'purchase')
+      .reduce((sum, acc) => sum + (parseFloat(acc.amount) || 0), 0);
+
+    // Expenses and purchases are both expenses
+    const totalExpense = expense + purchase;
+    const netProfit = income - totalExpense;
+
+    return {
+      totalIncome: income,
+      totalExpense: totalExpense,
+      netProfit: netProfit,
+      totalTransactions: filteredAccounts.length
+    };
+  }, [filteredAccounts]);
 
   // Helper function to get date range based on filter selection
   const getDateRange = useCallback(() => {
@@ -203,45 +287,118 @@ const AccountsPage = () => {
     }
   }, [location.search]);
 
-  // Load data on component mount
+  // Load data when filters change, user loads, or tab changes
   useEffect(() => {
-    if (activeTab === 'overview' || isAccountsManager || isAdmin || isSupervisor) {
-      // For accounts managers, admins, and supervisors, always filter by their branch
-      const branchId = (isAccountsManager || isAdmin || isSupervisor) ? (user?.branch?._id || user?.branch) : (branchFilter !== 'all' ? branchFilter : undefined);
-      const dateRange = getDateRange();
-      
-      // For custom date range, only fetch if both dates are provided
-      if (dateRangeFilter === 'custom' && (!fromDate || !toDate)) {
-        // Don't fetch if custom is selected but dates are not provided
-        return;
+    // Determine which tab is active based on user role
+    const isOnOverviewTab = isAccountsManager || isAdmin || isSupervisor 
+      ? (adminAccountsTab === 'overview') 
+      : (activeTab === 'overview');
+    
+    // Skip loading only if we're explicitly on purchases or reports tab (not overview/ledger)
+    // Always load for overview/ledger tab or when viewing branch details
+    const isOnOtherTab = (activeTab === 'purchases' || activeTab === 'reports');
+    const shouldSkip = isOnOtherTab && !showBranchDetails;
+    
+    if (shouldSkip) {
+      return;
+    }
+    
+    // Mark that we've attempted to load initial data
+    if (!hasLoadedInitialData) {
+      setHasLoadedInitialData(true);
+    }
+    
+    // For accounts managers, admins, and supervisors, always filter by their branch
+    const branchId = (isAccountsManager || isAdmin || isSupervisor) ? (user?.branch?._id || user?.branch) : (branchFilter !== 'all' ? branchFilter : undefined);
+    const dateRange = getDateRange();
+    
+    // For custom date range, only fetch if both dates are provided
+    if (dateRangeFilter === 'custom' && (!fromDate || !toDate)) {
+      // Don't fetch if custom is selected but dates are not provided
+      return;
+    }
+    
+    const accountParams = {
+      page: currentPage,
+      limit: 10,
+      search: searchTerm,
+      startDate: dateRange?.startDate,
+      endDate: dateRange?.endDate,
+      branchId: branchId,
+      paymentStatus: paymentStatusFilter !== 'all' ? paymentStatusFilter : undefined,
+      transactionType: transactionTypeFilter !== 'all' ? transactionTypeFilter : undefined,
+      category: categoryFilter || undefined
+    };
+    
+    console.log('[AccountsPage] Loading accounts with params:', {
+      ...accountParams,
+      dateRangeFilter,
+      isOnOverviewTab,
+      activeTab,
+      adminAccountsTab
+    });
+    
+    dispatch(getAllAccounts(accountParams)).then((result) => {
+      if (result.type === 'accounts/getAllAccounts/fulfilled') {
+        console.log('[AccountsPage] ✅ Accounts loaded successfully:', {
+          accountsCount: result.payload?.data?.accounts?.length || 0,
+          totalItems: result.payload?.data?.pagination?.totalItems || 0,
+          accounts: result.payload?.data?.accounts
+        });
+      } else if (result.type === 'accounts/getAllAccounts/rejected') {
+        console.error('[AccountsPage] ❌ Failed to load accounts:', result.payload || result.error);
       }
-      
-      dispatch(getAllAccounts({
-        page: currentPage,
-        limit: 10,
-        search: searchTerm,
+    });
+    dispatch(getAccountStats({
+      startDate: dateRange?.startDate,
+      endDate: dateRange?.endDate,
+      branchId: branchId
+    }));
+    
+    // Load branch summary for super admin
+    if (isSuperAdmin) {
+      dispatch(getBranchSummary({
         startDate: dateRange?.startDate,
-        endDate: dateRange?.endDate,
-        branchId: branchId,
-        paymentStatus: paymentStatusFilter !== 'all' ? paymentStatusFilter : undefined,
-        transactionType: transactionTypeFilter !== 'all' ? transactionTypeFilter : undefined,
-        category: categoryFilter || undefined
+        endDate: dateRange?.endDate
       }));
-      dispatch(getAccountStats({
-        startDate: dateRange?.startDate,
-        endDate: dateRange?.endDate,
-        branchId: branchId
-      }));
+    }
+  }, [activeTab, adminAccountsTab, currentPage, searchTerm, dateRangeFilter, fromDate, toDate, branchFilter, paymentStatusFilter, transactionTypeFilter, categoryFilter, dispatch, isSuperAdmin, isAccountsManager, isAdmin, isSupervisor, user, user?.branch?._id, user?.branch, getDateRange, showBranchDetails, hasLoadedInitialData]);
+
+  // Reload data when user loads (handles refresh case where user loads after component mount)
+  useEffect(() => {
+    // Only reload if user just loaded and we're on overview tab
+    if (user && hasLoadedInitialData) {
+      const isOnOverviewTab = isAccountsManager || isAdmin || isSupervisor 
+        ? (adminAccountsTab === 'overview') 
+        : (activeTab === 'overview');
       
-      // Load branch summary for super admin
-      if (isSuperAdmin) {
-        dispatch(getBranchSummary({
+      if (isOnOverviewTab || activeTab === 'overview' || adminAccountsTab === 'overview') {
+        const branchId = (isAccountsManager || isAdmin || isSupervisor) ? (user?.branch?._id || user?.branch) : (branchFilter !== 'all' ? branchFilter : undefined);
+        const dateRange = getDateRange();
+        
+        if (dateRangeFilter === 'custom' && (!fromDate || !toDate)) {
+          return;
+        }
+        
+        dispatch(getAllAccounts({
+          page: currentPage,
+          limit: 10,
+          search: searchTerm,
           startDate: dateRange?.startDate,
-          endDate: dateRange?.endDate
+          endDate: dateRange?.endDate,
+          branchId: branchId,
+          paymentStatus: paymentStatusFilter !== 'all' ? paymentStatusFilter : undefined,
+          transactionType: transactionTypeFilter !== 'all' ? transactionTypeFilter : undefined,
+          category: categoryFilter || undefined
+        }));
+        dispatch(getAccountStats({
+          startDate: dateRange?.startDate,
+          endDate: dateRange?.endDate,
+          branchId: branchId
         }));
       }
     }
-  }, [activeTab, currentPage, searchTerm, dateRangeFilter, fromDate, toDate, branchFilter, paymentStatusFilter, transactionTypeFilter, dispatch, isSuperAdmin, isAccountsManager, isAdmin, isSupervisor, user?.branch?._id, user?.branch, getDateRange]);
+  }, [user, hasLoadedInitialData, activeTab, adminAccountsTab, isAccountsManager, isAdmin, isSupervisor, user?.branch?._id, user?.branch, branchFilter, dateRangeFilter, fromDate, toDate, currentPage, searchTerm, paymentStatusFilter, transactionTypeFilter, categoryFilter, dispatch, getDateRange]);
 
   // Separate effect to reload branch summary when date range changes (for super admin)
   useEffect(() => {
@@ -1045,33 +1202,32 @@ const AccountsPage = () => {
         return (
           <div className="space-y-6">
             {/* Statistics Cards */}
-            {stats && (
+            {(stats || filteredStats) && (
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
                 <StatCard
                   title="Total Income"
-                  value={`₹${stats.summary?.totalIncome?.toLocaleString() || 0}`}
+                  value={`₹${filteredStats.totalIncome.toLocaleString()}`}
                   icon={HiArrowUp}
                   gradient="green"
                   loading={statsLoading}
-                  subtitle="Includes accounts + completed leads"
                 />
                 <StatCard
                   title="Total Expense"
-                  value={`₹${stats.summary?.totalExpense?.toLocaleString() || 0}`}
+                  value={`₹${filteredStats.totalExpense.toLocaleString()}`}
                   icon={HiArrowDown}
                   gradient="red"
                   loading={statsLoading}
                 />
                 <StatCard
                   title="Net Profit"
-                  value={`₹${stats.summary?.netProfit?.toLocaleString() || 0}`}
+                  value={`₹${filteredStats.netProfit.toLocaleString()}`}
                   icon={HiCurrencyDollar}
                   gradient="purple"
                   loading={statsLoading}
                 />
                 <StatCard
                   title="Total Transactions"
-                  value={stats.summary?.totalTransactions || 0}
+                  value={filteredStats.totalTransactions}
                   icon={HiClipboardDocumentList}
                   gradient="blue"
                   loading={statsLoading}
@@ -1142,6 +1298,14 @@ const AccountsPage = () => {
           error={error}
           pagination={{
             ...pagination,
+            // Adjust totalItems to reflect filtered accounts count
+            // If frontend filtering removed items, use filtered count
+            totalItems: filteredAccounts.length !== accounts?.length 
+              ? filteredAccounts.length 
+              : pagination.totalItems,
+            totalPages: filteredAccounts.length !== accounts?.length
+              ? Math.ceil(filteredAccounts.length / (pagination.itemsPerPage || 10))
+              : pagination.totalPages,
             onPageChange: handlePageChange,
             itemName: 'accounts'
           }}
@@ -1447,32 +1611,32 @@ const AccountsPage = () => {
               // Regular Branch Accounts View (No Tabs - Just Summary)
               <>
                 {/* Statistics Cards for Selected Branch */}
-                {stats && (
+                {(stats || filteredStats) && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
                     <StatCard
                       title="Total Income"
-                      value={`₹${stats.summary?.totalIncome?.toLocaleString() || 0}`}
+                      value={`₹${filteredStats.totalIncome.toLocaleString()}`}
                       icon={HiArrowUp}
                       gradient="green"
                       loading={statsLoading}
                     />
                     <StatCard
                       title="Total Expense"
-                      value={`₹${stats.summary?.totalExpense?.toLocaleString() || 0}`}
+                      value={`₹${filteredStats.totalExpense.toLocaleString()}`}
                       icon={HiArrowDown}
                       gradient="red"
                       loading={statsLoading}
                     />
                     <StatCard
                       title="Net Profit"
-                      value={`₹${stats.summary?.netProfit?.toLocaleString() || 0}`}
+                      value={`₹${filteredStats.netProfit.toLocaleString()}`}
                       icon={HiCurrencyDollar}
                       gradient="purple"
                       loading={statsLoading}
                     />
                     <StatCard
                       title="Total Transactions"
-                      value={stats.summary?.totalTransactions || 0}
+                      value={filteredStats.totalTransactions}
                       icon={HiClipboardDocumentList}
                       gradient="blue"
                       loading={statsLoading}
@@ -1543,6 +1707,14 @@ const AccountsPage = () => {
                     error={error}
                     pagination={{
                       ...pagination,
+                      // Adjust totalItems to reflect filtered accounts count
+                      // If frontend filtering removed items, use filtered count
+                      totalItems: filteredAccounts.length !== accounts?.length 
+                        ? filteredAccounts.length 
+                        : pagination.totalItems,
+                      totalPages: filteredAccounts.length !== accounts?.length
+                        ? Math.ceil(filteredAccounts.length / (pagination.itemsPerPage || 10))
+                        : pagination.totalPages,
                       onPageChange: handlePageChange,
                       itemName: 'accounts'
                     }}
@@ -1882,32 +2054,32 @@ const AccountsPage = () => {
           {adminAccountsTab === 'overview' ? (
             <>
               {/* Statistics Cards */}
-              {stats && (
+              {(stats || filteredStats) && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
                   <StatCard
                     title="Total Income"
-                    value={`₹${stats.summary?.totalIncome?.toLocaleString() || 0}`}
+                    value={`₹${filteredStats.totalIncome.toLocaleString()}`}
                     icon={HiArrowUp}
                     gradient="green"
                     loading={statsLoading}
                   />
                   <StatCard
                     title="Total Expense"
-                    value={`₹${stats.summary?.totalExpense?.toLocaleString() || 0}`}
+                    value={`₹${filteredStats.totalExpense.toLocaleString()}`}
                     icon={HiArrowDown}
                     gradient="red"
                     loading={statsLoading}
                   />
                   <StatCard
                     title="Net Profit"
-                    value={`₹${stats.summary?.netProfit?.toLocaleString() || 0}`}
+                    value={`₹${filteredStats.netProfit.toLocaleString()}`}
                     icon={HiCurrencyDollar}
                     gradient="purple"
                     loading={statsLoading}
                   />
                   <StatCard
                     title="Total Transactions"
-                    value={stats.summary?.totalTransactions || 0}
+                    value={filteredStats.totalTransactions}
                     icon={HiClipboardDocumentList}
                     gradient="blue"
                     loading={statsLoading}
@@ -1978,6 +2150,14 @@ const AccountsPage = () => {
                   error={error}
                   pagination={{
                     ...pagination,
+                    // Adjust totalItems to reflect filtered accounts count
+                    // If frontend filtering removed items, use filtered count
+                    totalItems: filteredAccounts.length !== accounts?.length 
+                      ? filteredAccounts.length 
+                      : pagination.totalItems,
+                    totalPages: filteredAccounts.length !== accounts?.length
+                      ? Math.ceil(filteredAccounts.length / (pagination.itemsPerPage || 10))
+                      : pagination.totalPages,
                     onPageChange: handlePageChange,
                     itemName: 'accounts'
                   }}
@@ -2540,6 +2720,72 @@ const LedgerTabContent = ({
   const [showTransactionDetails, setShowTransactionDetails] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  const [branchTransactions, setBranchTransactions] = useState([]);
+  const [branchTransactionsLoading, setBranchTransactionsLoading] = useState(false);
+
+  // Fetch transactions for the selected branch to filter vendors
+  useEffect(() => {
+    const fetchBranchTransactions = async () => {
+      if (!selectedBranch && user?.role !== 'super_admin') {
+        // For non-super-admin users, use their branch
+        const userBranchId = user?.branch?._id || user?.branch;
+        if (!userBranchId) {
+          setBranchTransactions([]);
+          return;
+        }
+      }
+
+      setBranchTransactionsLoading(true);
+      try {
+        let branchId = selectedBranch ? (selectedBranch.branchId || selectedBranch._id) : null;
+        
+        // For branch-specific users, let getAllAccounts handle branch filtering
+        const isBranchSpecificUser = user && (user.role === 'admin' || user.role === 'accounts_manager' || user.role === 'supervisor');
+        if (isBranchSpecificUser && !branchId) {
+          branchId = undefined; // Let getAllAccounts handle it
+        }
+
+        // Fetch all transactions for the branch to check which vendors have transactions
+        const accountParams = {
+          page: 1,
+          limit: 10000 // Fetch a large number to get all transactions
+        };
+        
+        if (branchId) {
+          accountParams.branchId = branchId;
+        }
+
+        // Fetch all pages
+        let allTransactions = [];
+        let currentPage = 1;
+        let hasMore = true;
+        while (hasMore) {
+          const result = await dispatch(getAllAccounts({
+            ...accountParams,
+            page: currentPage,
+            limit: 1000
+          })).unwrap();
+          const pageTransactions = result.data?.accounts || [];
+          allTransactions = [...allTransactions, ...pageTransactions];
+          const totalPages = result.pagination?.totalPages || 1;
+          hasMore = currentPage < totalPages && pageTransactions.length > 0;
+          currentPage++;
+          if (currentPage > 100) break; // Safety limit
+        }
+
+        setBranchTransactions(allTransactions);
+      } catch (error) {
+        console.error('Error fetching branch transactions for vendor filtering:', error);
+        setBranchTransactions([]);
+      } finally {
+        setBranchTransactionsLoading(false);
+      }
+    };
+
+    if (!selectedVendor) {
+      fetchBranchTransactions();
+    }
+  }, [selectedBranch, user, dispatch, getAllAccounts, selectedVendor]);
 
   // Fetch vendors on mount
   useEffect(() => {
@@ -2613,17 +2859,10 @@ const LedgerTabContent = ({
 
       setVendorLedgerLoading(true);
       try {
-        // For super admin viewing vendor ledger, don't restrict by date range (or use a very wide range)
-        // This ensures all vendor transactions are shown
+        // When viewing a specific vendor's ledger, always fetch ALL transactions
+        // Don't restrict by date range to show complete transaction history
         const isSuperAdminUser = user && user.role === 'super_admin';
-        let dateRange = getDateRange();
-        
-        // If super admin and no date range is set (or it's too restrictive), fetch all transactions
-        if (isSuperAdminUser && (!dateRange || dateRangeFilter === 'today')) {
-          // For super admin, if date filter is 'today' or not set, fetch all transactions
-          // Set a very wide date range (e.g., last 5 years) or null to fetch all
-          dateRange = null; // null means no date filter - fetch all transactions
-        }
+        let dateRange = null; // Always fetch all transactions for vendor detail view
         
         let branchId = selectedBranch ? (selectedBranch.branchId || selectedBranch._id) : null;
 
@@ -2688,16 +2927,14 @@ const LedgerTabContent = ({
         // Don't use search query as it might miss some transactions that don't have vendorName set
         // If branchId is null/undefined and user is super admin, fetch from all branches
         // For super admin, fetch all transactions (no limit or very high limit)
+        // When viewing vendor details, fetch ALL transactions regardless of date range
         const accountParams = {
           page: 1,
           limit: isSuperAdminUser ? 10000 : 1000 // Higher limit for super admin to get all transactions
         };
         
-        // Only add date filters if dateRange is provided
-        if (dateRange) {
-          accountParams.startDate = dateRange.startDate;
-          accountParams.endDate = dateRange.endDate;
-        }
+        // Don't add date filters when viewing vendor details - show all transactions
+        // dateRange is set to null above to ensure we fetch all transactions
         
         // Only add branchId if it's specified (for branch-specific view or Head Office for suppliers)
         if (branchId) {
@@ -2705,29 +2942,24 @@ const LedgerTabContent = ({
         }
         // If branchId is undefined/null, super admin will see all branches (no branchId filter)
         
-        // Fetch all pages if needed for super admin
+        // Fetch all pages when viewing vendor details to ensure we get all transactions
         let allTransactions = [];
-        if (isSuperAdminUser && !branchId) {
-          // Fetch all transactions across all pages for super admin
-          let currentPage = 1;
-          let hasMore = true;
-          while (hasMore) {
-            const result = await dispatch(getAllAccounts({
-              ...accountParams,
-              page: currentPage,
-              limit: 1000
-            })).unwrap();
-            const pageTransactions = result.data?.accounts || [];
-            allTransactions = [...allTransactions, ...pageTransactions];
-            const totalPages = result.pagination?.totalPages || 1;
-            hasMore = currentPage < totalPages && pageTransactions.length > 0;
-            currentPage++;
-            // Safety limit to prevent infinite loops
-            if (currentPage > 100) break;
-          }
-        } else {
-          const result = await dispatch(getAllAccounts(accountParams)).unwrap();
-          allTransactions = result.data?.accounts || [];
+        // For vendor detail view, always fetch all pages to get complete transaction history
+        let currentPage = 1;
+        let hasMore = true;
+        while (hasMore) {
+          const result = await dispatch(getAllAccounts({
+            ...accountParams,
+            page: currentPage,
+            limit: 1000
+          })).unwrap();
+          const pageTransactions = result.data?.accounts || [];
+          allTransactions = [...allTransactions, ...pageTransactions];
+          const totalPages = result.pagination?.totalPages || 1;
+          hasMore = currentPage < totalPages && pageTransactions.length > 0;
+          currentPage++;
+          // Safety limit to prevent infinite loops
+          if (currentPage > 100) break;
         }
 
         const transactions = allTransactions;
@@ -2801,10 +3033,20 @@ const LedgerTabContent = ({
           if (selectedVendor.type === 'vendor') {
             // For expense vendors, match by vendorName and referenceNumber
             const normalize = (str) => (str || '').toString().trim().toLowerCase();
+            
+            // Match vendorName (required)
             const vendorNameMatch = acc.vendorName && normalize(acc.vendorName) === normalize(selectedVendor.vendorName);
-            const referenceMatch = selectedVendor.referenceNumber 
-              ? (acc.referenceNumber && normalize(acc.referenceNumber) === normalize(selectedVendor.referenceNumber))
-              : true; // If no reference number in vendor, match any reference number
+            
+            // Match referenceNumber if both exist, otherwise match if both are missing
+            let referenceMatch = true;
+            if (selectedVendor.referenceNumber) {
+              // If vendor has referenceNumber, transaction must match it
+              referenceMatch = acc.referenceNumber && normalize(acc.referenceNumber) === normalize(selectedVendor.referenceNumber);
+            } else {
+              // If vendor has no referenceNumber, match transactions with no referenceNumber or any referenceNumber
+              // This allows matching vendors created without reference numbers
+              referenceMatch = !acc.referenceNumber || acc.referenceNumber === '';
+            }
             
             const match = vendorNameMatch && referenceMatch;
             if (match) {
@@ -2812,6 +3054,8 @@ const LedgerTabContent = ({
                 accountId: acc.accountId,
                 vendorName: acc.vendorName,
                 referenceNumber: acc.referenceNumber,
+                selectedVendorName: selectedVendor.vendorName,
+                selectedReferenceNumber: selectedVendor.referenceNumber,
                 transactionType: acc.transactionType,
                 category: acc.category
               });
@@ -2923,55 +3167,134 @@ const LedgerTabContent = ({
   }, [selectedVendor, selectedBranch, dateRangeFilter, fromDate, toDate, getDateRange, dispatch, getAllAccounts, getAllBranches]);
 
   // Combine all vendors (exclude customers - ledger only tracks vendors)
+  // Filter to only show vendors that have transactions with the selected branch
   const allVendors = useMemo(() => {
     const vendorList = [];
     
-    // Add suppliers
+    // Helper function to normalize strings for comparison
+    const normalize = (str) => (str || '').toString().trim().toLowerCase();
+    
+    // Create sets of vendor identifiers from transactions
+    const vendorNamesInTransactions = new Set();
+    const supplierIdsInTransactions = new Set();
+    const supplierNamesInTransactions = new Set();
+    const courierIdsInTransactions = new Set();
+    const vendorRefsInTransactions = new Map(); // Map of vendorName -> Set of referenceNumbers
+
+    branchTransactions.forEach(txn => {
+      // Track expense vendors (vendorName + referenceNumber)
+      if (txn.vendorName) {
+        const normalizedName = normalize(txn.vendorName);
+        vendorNamesInTransactions.add(normalizedName);
+        if (txn.referenceNumber) {
+          if (!vendorRefsInTransactions.has(normalizedName)) {
+            vendorRefsInTransactions.set(normalizedName, new Set());
+          }
+          vendorRefsInTransactions.get(normalizedName).add(normalize(txn.referenceNumber));
+        }
+      }
+
+      // Track suppliers (supplierId and supplierName)
+      if (txn.supplierId) {
+        supplierIdsInTransactions.add(normalize(txn.supplierId));
+      }
+      if (txn.vendorName && (txn.transactionType === 'purchase' || txn.category === 'raw_materials')) {
+        supplierNamesInTransactions.add(normalize(txn.vendorName));
+      }
+
+      // Track suppliers from rawMaterialId
+      if (txn.rawMaterialId && typeof txn.rawMaterialId === 'object') {
+        if (txn.rawMaterialId.supplierId) {
+          supplierIdsInTransactions.add(normalize(txn.rawMaterialId.supplierId));
+        }
+        if (txn.rawMaterialId.supplierName) {
+          supplierNamesInTransactions.add(normalize(txn.rawMaterialId.supplierName));
+        }
+      }
+
+      // Track courier partners (from orderId.courierPartnerId)
+      if (txn.orderId && typeof txn.orderId === 'object' && txn.orderId.courierPartnerId) {
+        const courierId = typeof txn.orderId.courierPartnerId === 'object'
+          ? (txn.orderId.courierPartnerId._id || txn.orderId.courierPartnerId)
+          : txn.orderId.courierPartnerId;
+        if (courierId) {
+          courierIdsInTransactions.add(courierId.toString());
+        }
+      }
+    });
+    
+    // Add suppliers that have transactions
     suppliers.forEach(supplier => {
-      vendorList.push({
-        _id: supplier.supplierId || supplier._id,
-        name: supplier.supplierName || 'Unknown Supplier',
-        type: 'supplier',
-        supplierId: supplier.supplierId,
-        supplierName: supplier.supplierName,
-        contactName: supplier.contactName,
-        phone: supplier.phone,
-        email: supplier.email
-      });
+      const supplierId = supplier.supplierId || supplier._id;
+      const supplierName = supplier.supplierName || '';
+      
+      const hasTransaction = 
+        (supplierId && supplierIdsInTransactions.has(normalize(supplierId))) ||
+        (supplierName && supplierNamesInTransactions.has(normalize(supplierName)));
+      
+      if (hasTransaction) {
+        vendorList.push({
+          _id: supplierId,
+          name: supplierName || 'Unknown Supplier',
+          type: 'supplier',
+          supplierId: supplier.supplierId,
+          supplierName: supplier.supplierName,
+          contactName: supplier.contactName,
+          phone: supplier.phone,
+          email: supplier.email
+        });
+      }
     });
 
-    // Add courier partners
+    // Add courier partners that have transactions
     courierPartners.forEach(courier => {
-      vendorList.push({
-        _id: courier._id,
-        name: courier.name || 'Unknown Courier',
-        type: 'courier',
-        contactName: courier.contactName,
-        phone: courier.phone,
-        email: courier.email
-      });
+      const courierId = courier._id?.toString();
+      if (courierId && courierIdsInTransactions.has(courierId)) {
+        vendorList.push({
+          _id: courier._id,
+          name: courier.name || 'Unknown Courier',
+          type: 'courier',
+          contactName: courier.contactName,
+          phone: courier.phone,
+          email: courier.email
+        });
+      }
     });
 
-    // Add expense vendors
+    // Add expense vendors that have transactions
     expenseVendors.forEach(vendor => {
-      const vendorId = `${vendor.vendorName}_${vendor.referenceNumber || 'no-ref'}`;
-      vendorList.push({
-        _id: vendorId,
-        name: vendor.vendorName || 'Unknown Vendor',
-        type: 'vendor',
-        vendorName: vendor.vendorName,
-        referenceNumber: vendor.referenceNumber,
-        transactionCount: vendor.transactionCount,
-        totalAmount: vendor.totalAmount,
-        lastTransactionDate: vendor.lastTransactionDate
-      });
+      const vendorName = vendor.vendorName || '';
+      const normalizedName = normalize(vendorName);
+      const referenceNumber = vendor.referenceNumber || '';
+      const normalizedRef = normalize(referenceNumber);
+      
+      // Check if vendor has transactions
+      const hasTransaction = vendorNamesInTransactions.has(normalizedName) && (
+        !referenceNumber || // If no reference number, any transaction with this vendor name matches
+        (vendorRefsInTransactions.has(normalizedName) && 
+         vendorRefsInTransactions.get(normalizedName).has(normalizedRef))
+      );
+      
+      if (hasTransaction) {
+        const vendorId = `${vendorName}_${referenceNumber || 'no-ref'}`;
+        vendorList.push({
+          _id: vendorId,
+          name: vendorName || 'Unknown Vendor',
+          type: 'vendor',
+          vendorName: vendorName,
+          referenceNumber: referenceNumber,
+          transactionCount: vendor.transactionCount,
+          totalAmount: vendor.totalAmount,
+          lastTransactionDate: vendor.lastTransactionDate
+        });
+      }
     });
 
     // DO NOT add customers - ledger only tracks vendors
     // Customers are tracked separately in accounts section
 
     return vendorList.sort((a, b) => a.name.localeCompare(b.name));
-  }, [suppliers, courierPartners, expenseVendors]);
+  }, [suppliers, courierPartners, expenseVendors, branchTransactions]);
 
   // Paginate vendors
   const paginatedVendors = useMemo(() => {
@@ -3001,6 +3324,18 @@ const LedgerTabContent = ({
       ? Math.abs(vendorBalance.total)
       : 0;
     
+    // Calculate total value (total debit - what we owe to vendor)
+    const totalValue = vendorBalance.debit;
+    
+    // Calculate last paid date (most recent completed payment)
+    const paidTransactions = vendorLedgerTransactions.filter(txn => 
+      txn.paymentStatus === 'completed' && 
+      (txn.transactionType === 'expense' || txn.transactionType === 'purchase')
+    );
+    const lastPaidDate = paidTransactions.length > 0
+      ? new Date(Math.max(...paidTransactions.map(txn => new Date(txn.transactionDate).getTime())))
+      : null;
+    
     // Show vendor ledger as standalone dashboard
     return (
       <div className="space-y-6">
@@ -3029,39 +3364,33 @@ const LedgerTabContent = ({
           </div>
           
           {/* Mini Summary */}
-          <div className="flex flex-col gap-2 text-right min-w-[180px]">
-            {selectedVendor.type === 'courier' && (
-              <div className={`rounded-lg px-4 py-2.5 border ${
-                depositAmount > 0 
-                  ? 'bg-green-50 border-green-200' 
-                  : 'bg-gray-50 border-gray-200'
-              }`}>
-                <p className={`text-xs font-medium ${
-                  depositAmount > 0 ? 'text-green-700' : 'text-gray-600'
-                }`}>Deposit Amount</p>
-                <p className={`text-sm font-semibold mt-0.5 ${
-                  depositAmount > 0 ? 'text-green-900' : 'text-gray-700'
-                }`}>
-                  ₹{depositAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          <div className="flex flex-col gap-2 text-right min-w-[200px]">
+            <div className="space-y-1.5">
+              <div>
+                <p className="text-xs font-medium text-gray-500">Total Value</p>
+                <p className="text-sm font-semibold text-gray-900">
+                  ₹{totalValue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </p>
               </div>
-            )}
-            {selectedVendor.type !== 'courier' && (
-              <div className={`rounded-lg px-4 py-2.5 border ${
-                balancePayable > 0 
-                  ? 'bg-red-50 border-red-200' 
-                  : 'bg-gray-50 border-gray-200'
-              }`}>
-                <p className={`text-xs font-medium ${
-                  balancePayable > 0 ? 'text-red-700' : 'text-gray-600'
-                }`}>Balance (Payable)</p>
-                <p className={`text-sm font-semibold mt-0.5 ${
-                  balancePayable > 0 ? 'text-red-900' : 'text-gray-700'
-                }`}>
+              <div>
+                <p className="text-xs font-medium text-gray-500">Last Paid</p>
+                <p className="text-sm font-semibold text-gray-900">
+                  {lastPaidDate 
+                    ? new Date(lastPaidDate).toLocaleDateString('en-IN', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric'
+                      })
+                    : 'N/A'}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-medium text-gray-500">Balance (Need to be Paid)</p>
+                <p className={`text-sm font-semibold ${balancePayable > 0 ? 'text-red-600' : 'text-gray-900'}`}>
                   ₹{balancePayable.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </p>
               </div>
-            )}
+            </div>
           </div>
         </div>
 
@@ -3305,39 +3634,54 @@ const LedgerTabContent = ({
         ) : allVendors.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+              <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Vendor Name
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                    Vendor Information
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                     Type
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Contact
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                    Transaction Summary
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {paginatedVendors.map((vendor) => (
-                  <tr key={vendor._id} className="hover:bg-gray-50 cursor-pointer">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">
-                        {vendor.name}
+                  <tr key={vendor._id} className="hover:bg-gray-50 transition-colors duration-150">
+                    <td className="px-6 py-4">
+                      <div className="flex items-start space-x-3">
+                        <div className="flex-shrink-0">
+                          <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-[#8bc34a] to-[#7cb342] flex items-center justify-center">
+                            <span className="text-white font-semibold text-sm">
+                              {vendor.name.charAt(0).toUpperCase()}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-semibold text-gray-900 truncate">
+                            {vendor.name}
+                          </div>
+                          <div className="mt-1 flex flex-col space-y-0.5">
+                            {vendor.supplierId && (
+                              <div className="flex items-center text-xs text-gray-500">
+                                <HiIdentification className="h-3 w-3 mr-1.5 flex-shrink-0" />
+                                <span className="truncate">ID: {vendor.supplierId}</span>
+                              </div>
+                            )}
+                            {vendor.referenceNumber && (
+                              <div className="flex items-center text-xs text-gray-500">
+                                <HiDocumentText className="h-3 w-3 mr-1.5 flex-shrink-0" />
+                                <span className="truncate">Ref: {vendor.referenceNumber}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                      {vendor.supplierId && (
-                        <div className="text-xs text-gray-500">
-                          ID: {vendor.supplierId}
-                        </div>
-                      )}
-                      {vendor.referenceNumber && (
-                        <div className="text-xs text-gray-500">
-                          Ref: {vendor.referenceNumber}
-                        </div>
-                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <StatusBadge
@@ -3351,30 +3695,38 @@ const LedgerTabContent = ({
                                  'primary'}
                       />
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <div className="space-y-1">
-                        {vendor.contactName && (
-                          <div className="text-gray-900 font-medium">{vendor.contactName}</div>
-                        )}
-                        {vendor.phone && (
-                          <div className="text-gray-600">{vendor.phone}</div>
-                        )}
-                        {vendor.email && (
-                          <div className="text-gray-600">{vendor.email}</div>
-                        )}
-                        {vendor.supplierId && !vendor.contactName && !vendor.phone && !vendor.email && (
-                          <div className="text-gray-600">ID: {vendor.supplierId}</div>
-                        )}
-                        {!vendor.contactName && !vendor.phone && !vendor.email && !vendor.supplierId && (
-                          <div className="text-gray-400 italic">No contact info</div>
-                        )}
-                      </div>
+                    <td className="px-6 py-4">
+                      {vendor.transactionCount !== undefined || vendor.totalAmount !== undefined ? (
+                        <div className="space-y-1">
+                          {vendor.transactionCount !== undefined && (
+                            <div className="text-sm">
+                              <span className="text-gray-500">Transactions: </span>
+                              <span className="font-semibold text-gray-900">{vendor.transactionCount}</span>
+                            </div>
+                          )}
+                          {vendor.totalAmount !== undefined && (
+                            <div className="text-sm">
+                              <span className="text-gray-500">Total: </span>
+                              <span className="font-semibold text-[#8bc34a]">
+                                ₹{vendor.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </span>
+                            </div>
+                          )}
+                          {vendor.lastTransactionDate && (
+                            <div className="text-xs text-gray-400 mt-1">
+                              Last: {new Date(vendor.lastTransactionDate).toLocaleDateString('en-IN')}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="text-sm text-gray-400 italic">No transactions yet</div>
+                      )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right">
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
                       <button
                         onClick={() => setSelectedVendor(vendor)}
-                        className="inline-flex items-center justify-center w-8 h-8 text-[#8bc34a] hover:text-[#7cb342] hover:bg-green-50 rounded-lg transition-colors"
-                        title="View Ledger"
+                        className="inline-flex items-center justify-center w-10 h-10 text-[#8bc34a] hover:text-white hover:bg-[#8bc34a] rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
+                        title="View Ledger Details"
                       >
                         <HiEye className="h-5 w-5" />
                       </button>

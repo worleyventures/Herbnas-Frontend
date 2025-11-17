@@ -14,6 +14,7 @@ import orderReducer from './slices/orderSlice';
 import accountReducer from './slices/accountSlice';
 import payrollReducer from './slices/payrollSlice';
 import attendanceReducer from './slices/attendanceSlice';
+import paymentVerificationReducer from './slices/paymentVerificationSlice';
 
 export const store = configureStore({
   reducer: {
@@ -32,6 +33,7 @@ export const store = configureStore({
     accounts: accountReducer,
     payrolls: payrollReducer,
     attendance: attendanceReducer,
+    paymentVerifications: paymentVerificationReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
