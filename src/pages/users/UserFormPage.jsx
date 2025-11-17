@@ -39,6 +39,7 @@ const UserFormPage = () => {
     confirmPassword: '',
     role: '',
     isActive: true,
+    allowWebLogin: true,
     branch: ''
   });
 
@@ -70,6 +71,7 @@ const UserFormPage = () => {
         confirmPassword: '',
         role: userData.role || '',
         isActive: userData.isActive !== undefined ? userData.isActive : true,
+        allowWebLogin: userData.allowWebLogin !== undefined ? userData.allowWebLogin : true,
         branch: userData.branch?._id || userData.branch || ''
       });
     } else if (mode === 'create') {
@@ -82,6 +84,7 @@ const UserFormPage = () => {
         confirmPassword: '',
         role: '',
         isActive: true,
+        allowWebLogin: true,
         branch: ''
       });
     }
@@ -136,6 +139,7 @@ const UserFormPage = () => {
       phone: formData.phone.trim(),
       role: formData.role,
       isActive: formData.isActive,
+      allowWebLogin: formData.allowWebLogin,
       branch: formData.branch
     };
 
@@ -431,18 +435,35 @@ const UserFormPage = () => {
                   required
                 />
               </div>
-              <div className="mt-2 flex items-center">
-                <input
-                  id="isActive"
-                  name="isActive"
-                  type="checkbox"
-                  checked={formData.isActive}
-                  onChange={handleInputChange}
-                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                />
-                <label htmlFor="isActive" className="ml-2 block text-sm text-gray-900">
-                  Active User
-                </label>
+              <div className="mt-2 space-y-2">
+                <div className="flex items-center">
+                  <input
+                    id="isActive"
+                    name="isActive"
+                    type="checkbox"
+                    checked={formData.isActive}
+                    onChange={handleInputChange}
+                    className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                  />
+                  <label htmlFor="isActive" className="ml-2 block text-sm text-gray-900">
+                    Active User
+                  </label>
+                </div>
+                {formData.role === 'sales_executive' && (
+                  <div className="flex items-center">
+                    <input
+                      id="allowWebLogin"
+                      name="allowWebLogin"
+                      type="checkbox"
+                      checked={formData.allowWebLogin}
+                      onChange={handleInputChange}
+                      className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                    />
+                    <label htmlFor="allowWebLogin" className="ml-2 block text-sm text-gray-900">
+                      Allow Web App Login
+                    </label>
+                  </div>
+                )}
               </div>
             </div>
 

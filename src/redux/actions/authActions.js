@@ -37,7 +37,11 @@ export const initiateLogin = createAsyncThunk(
   'auth/initiateLogin',
   async (loginData, { rejectWithValue }) => {
     try {
-      const response = await api.post('/auth/login/initiate', loginData);
+      const response = await api.post('/auth/login/initiate', loginData, {
+        headers: {
+          'X-Client-Type': 'web' // Web app identifier
+        }
+      });
       return response.data;
     } catch (err) {
       return rejectWithValue(err.message);
@@ -49,7 +53,11 @@ export const completeLogin = createAsyncThunk(
   'auth/completeLogin',
   async (verificationData, { rejectWithValue }) => {
     try {
-      const response = await api.post('/auth/login/complete', verificationData);
+      const response = await api.post('/auth/login/complete', verificationData, {
+        headers: {
+          'X-Client-Type': 'web' // Web app identifier
+        }
+      });
       
       // Store token and user data in both cookies and localStorage
       setCookie('token', response.data.data.token, 7); // 7 days
@@ -71,7 +79,11 @@ export const passwordLogin = createAsyncThunk(
       console.log('🌐 Making login API call to:', '/auth/login/password');
       console.log('🌐 Login credentials:', { identifier: credentials.identifier, password: '***' });
       
-      const response = await api.post('/auth/login/password', credentials);
+      const response = await api.post('/auth/login/password', credentials, {
+        headers: {
+          'X-Client-Type': 'web' // Web app identifier
+        }
+      });
       
       console.log('✅ Login API response:', response.data);
       console.log('🔍 Response structure:', {

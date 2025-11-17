@@ -10,7 +10,8 @@ import {
   HiChevronLeft, 
   HiChevronRight,
   HiEye,
-  HiEyeSlash
+  HiEyeSlash,
+  HiPlus
 } from 'react-icons/hi2';
 import { MaterialStepper, Select } from '../../components/common';
 import { createPayroll, updatePayroll, getPayrollById } from '../../redux/actions/payrollActions';
@@ -152,6 +153,7 @@ const PayrollFormPage = () => {
     firstName: '',
     lastName: '',
     employeeId: '',
+    uniqueId: '',
     designation: '',
     email: '',
     password: '',
@@ -165,6 +167,7 @@ const PayrollFormPage = () => {
       pinCode: '',
       country: 'India'
     },
+    assets: [],
     basicSalary: '',
     allowances: 0,
     deductions: {
@@ -215,7 +218,7 @@ const PayrollFormPage = () => {
 
   // Initialize form data when editing
   useEffect(() => {
-    if (isEdit && currentPayroll) {
+    if (isEdit && currentPayroll && currentPayroll._id) {
       console.log('📝 Initializing form with payroll data:', currentPayroll);
       
       // Handle address - could be string or object
@@ -243,24 +246,41 @@ const PayrollFormPage = () => {
         }
       }
       
-      // Handle employeeId - could be an object (populated) or string/ID
+      // Handle employeeId - it's a string in the Payroll model
       const employeeIdValue = typeof currentPayroll.employeeId === 'object' 
         ? (currentPayroll.employeeId._id || currentPayroll.employeeId.employeeId || currentPayroll.employeeId)
-        : currentPayroll.employeeId;
+        : (currentPayroll.employeeId || '');
       
-      // Get firstName and lastName from employeeId object if populated, or from payroll directly
-      const firstNameValue = typeof currentPayroll.employeeId === 'object' && currentPayroll.employeeId.firstName
-        ? currentPayroll.employeeId.firstName
-        : (currentPayroll.firstName || '');
+      // Get firstName and lastName from employeeName (split by space) or from payroll directly
+      let firstNameValue = '';
+      let lastNameValue = '';
       
-      const lastNameValue = typeof currentPayroll.employeeId === 'object' && currentPayroll.employeeId.lastName
-        ? currentPayroll.employeeId.lastName
-        : (currentPayroll.lastName || '');
+      if (currentPayroll.employeeName) {
+        // Split employeeName into firstName and lastName
+        const nameParts = currentPayroll.employeeName.trim().split(/\s+/);
+        firstNameValue = nameParts[0] || '';
+        lastNameValue = nameParts.slice(1).join(' ') || '';
+      } else if (currentPayroll.firstName || currentPayroll.lastName) {
+        // Fallback to firstName/lastName if they exist directly
+        firstNameValue = currentPayroll.firstName || '';
+        lastNameValue = currentPayroll.lastName || '';
+      } else if (typeof currentPayroll.employeeId === 'object' && currentPayroll.employeeId.firstName) {
+        // If employeeId is populated as User object
+        firstNameValue = currentPayroll.employeeId.firstName || '';
+        lastNameValue = currentPayroll.employeeId.lastName || '';
+      }
       
+      // Handle assets - format dates for input
+      const assetsData = (currentPayroll.assets || []).map(asset => ({
+        ...asset,
+        assignedDate: formatDateForInput(asset.assignedDate)
+      }));
+
       setFormData({
         firstName: firstNameValue,
         lastName: lastNameValue,
         employeeId: employeeIdValue || '',
+        uniqueId: currentPayroll.uniqueId || '',
         designation: currentPayroll.designation || '',
         email: currentPayroll.email || '',
         password: '', // Password should be empty for edit mode
@@ -268,7 +288,8 @@ const PayrollFormPage = () => {
         branchId: currentPayroll.branchId?._id || currentPayroll.branchId || '',
         dateOfBirth: formatDateForInput(currentPayroll.dateOfBirth),
         address: addressData,
-        basicSalary: currentPayroll.basicSalary || currentPayroll.basicSalary === 0 ? currentPayroll.basicSalary : '',
+        assets: assetsData,
+        basicSalary: currentPayroll.basicSalary !== undefined && currentPayroll.basicSalary !== null ? currentPayroll.basicSalary : '',
         allowances: currentPayroll.allowances || 0,
         deductions: {
           providentFund: currentPayroll.deductions?.providentFund || 0,
@@ -328,6 +349,36 @@ const PayrollFormPage = () => {
         [field]: null
       }));
     }
+  };
+
+  // Asset management handlers
+  const handleAddAsset = () => {
+    setFormData(prev => ({
+      ...prev,
+      assets: [...prev.assets, {
+        assetType: '',
+        assetName: '',
+        serialNumber: '',
+        assignedDate: '',
+        notes: ''
+      }]
+    }));
+  };
+
+  const handleRemoveAsset = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      assets: prev.assets.filter((_, i) => i !== index)
+    }));
+  };
+
+  const handleAssetChange = (index, field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      assets: prev.assets.map((asset, i) => 
+        i === index ? { ...asset, [field]: value } : asset
+      )
+    }));
   };
 
   const validateForm = () => {
@@ -444,10 +495,24 @@ const PayrollFormPage = () => {
         ? supervisorBranchId 
         : formData.branchId;
       
+      // Format assets data
+      const formattedAssets = (formData.assets || []).map(asset => ({
+        assetType: asset.assetType,
+        assetName: asset.assetName.trim(),
+        serialNumber: asset.serialNumber?.trim() || '',
+        assignedDate: asset.assignedDate || new Date(),
+        notes: asset.notes?.trim() || ''
+      }));
+
+      // Combine firstName and lastName into employeeName
+      const employeeName = `${formData.firstName.trim()} ${formData.lastName.trim()}`.trim();
+      
       const payrollData = {
+        employeeName,
         firstName: formData.firstName.trim(),
         lastName: formData.lastName.trim(),
         employeeId: formData.employeeId.trim(),
+        uniqueId: formData.uniqueId?.trim() || undefined,
         designation: formData.designation.trim(),
         email: formData.email.trim(),
         ...(isEdit && formData.password ? { password: formData.password } : {}),
@@ -461,6 +526,7 @@ const PayrollFormPage = () => {
           pinCode: formData.address.pinCode.trim(),
           country: formData.address.country.trim()
         },
+        assets: formattedAssets.length > 0 ? formattedAssets : undefined,
         basicSalary: parseFloat(formData.basicSalary),
         allowances: parseFloat(formData.allowances) || 0,
         deductions: {
@@ -638,6 +704,23 @@ const PayrollFormPage = () => {
                     />
                     {errors.employeeId && (
                       <p className="mt-1 text-sm text-red-600">{errors.employeeId}</p>
+                    )}
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Unique ID
+                    </label>
+                    <input
+                      type="text"
+                      name="uniqueId"
+                      value={formData.uniqueId}
+                      onChange={(e) => handleInputChange('uniqueId', e.target.value)}
+                      placeholder="Enter unique ID"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+                    />
+                    {errors.uniqueId && (
+                      <p className="mt-1 text-sm text-red-600">{errors.uniqueId}</p>
                     )}
                   </div>
                   
@@ -853,6 +936,119 @@ const PayrollFormPage = () => {
                       />
                     </div>
                   </div>
+                </div>
+
+                {/* Assets Section */}
+                <div className="mt-8">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-md font-semibold text-gray-800 border-b border-gray-200 pb-2 flex-1">Assets</h3>
+                    <button
+                      type="button"
+                      onClick={handleAddAsset}
+                      className="ml-4 px-3 py-1.5 text-white rounded-lg transition-all duration-200 flex items-center gap-1.5 bg-gradient-to-r from-[#8bc34a] to-[#558b2f] hover:from-[#558b2f] hover:to-[#4a7c2a] shadow-md hover:shadow-lg text-sm font-medium"
+                    >
+                      <HiPlus className="h-3.5 w-3.5" />
+                      Add Asset
+                    </button>
+                  </div>
+                  
+                  {formData.assets.length === 0 ? (
+                    <p className="text-sm text-gray-500 italic">No assets added. Click "Add Asset" to add one.</p>
+                  ) : (
+                    <div className="space-y-4">
+                      {formData.assets.map((asset, index) => (
+                        <div key={index} className="border border-gray-200 rounded-lg p-4">
+                          <div className="flex items-center justify-between mb-4">
+                            <h4 className="text-sm font-medium text-gray-700">Asset {index + 1}</h4>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveAsset(index)}
+                              className="text-red-600 hover:text-red-800 transition-colors"
+                            >
+                              <HiXMark className="h-5 w-5" />
+                            </button>
+                          </div>
+                          
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Asset Type *
+                              </label>
+                              <Select
+                                options={[
+                                  { value: '', label: 'Select asset type' },
+                                  { value: 'computer', label: 'Computer' },
+                                  { value: 'laptop', label: 'Laptop' },
+                                  { value: 'tablet', label: 'Tablet' },
+                                  { value: 'mobile', label: 'Mobile' },
+                                  { value: 'monitor', label: 'Monitor' },
+                                  { value: 'keyboard', label: 'Keyboard' },
+                                  { value: 'mouse', label: 'Mouse' },
+                                  { value: 'printer', label: 'Printer' },
+                                  { value: 'scanner', label: 'Scanner' },
+                                  { value: 'other', label: 'Other' }
+                                ]}
+                                value={asset.assetType}
+                                onChange={(e) => handleAssetChange(index, 'assetType', e.target.value)}
+                                placeholder="Select asset type"
+                              />
+                            </div>
+                            
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Asset Name *
+                              </label>
+                              <input
+                                type="text"
+                                value={asset.assetName}
+                                onChange={(e) => handleAssetChange(index, 'assetName', e.target.value)}
+                                placeholder="e.g., Dell Laptop, iPad Pro"
+                                className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white shadow-sm"
+                              />
+                            </div>
+                            
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Serial Number
+                              </label>
+                              <input
+                                type="text"
+                                value={asset.serialNumber}
+                                onChange={(e) => handleAssetChange(index, 'serialNumber', e.target.value)}
+                                placeholder="Enter serial number"
+                                className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white shadow-sm"
+                              />
+                            </div>
+                            
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Assigned Date
+                              </label>
+                              <input
+                                type="date"
+                                value={asset.assignedDate}
+                                onChange={(e) => handleAssetChange(index, 'assignedDate', e.target.value)}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white shadow-sm"
+                              />
+                            </div>
+                            
+                            <div className="lg:col-span-2">
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Notes
+                              </label>
+                              <textarea
+                                value={asset.notes}
+                                onChange={(e) => handleAssetChange(index, 'notes', e.target.value)}
+                                placeholder="Additional notes about this asset..."
+                                rows={2}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a] transition-all duration-200 bg-white shadow-sm"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
