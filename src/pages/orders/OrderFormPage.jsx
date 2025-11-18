@@ -473,16 +473,16 @@ const OrderFormPage = () => {
         const state = pincodeData.state || '';
         
         if (city && state) {
-          setFormData(prev => ({
-            ...prev,
-            shippingAddress: {
-              ...prev.shippingAddress,
+        setFormData(prev => ({
+          ...prev,
+          shippingAddress: {
+            ...prev.shippingAddress,
               city: city,
               state: state,
-              pincode: pincode
-            }
-          }));
-        } else {
+            pincode: pincode
+          }
+        }));
+      } else {
           // If city is missing but district exists, use district as city
           if (!city && pincodeData.district) {
             setFormData(prev => ({

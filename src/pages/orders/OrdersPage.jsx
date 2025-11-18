@@ -377,9 +377,9 @@ const OrdersPage = () => {
     return totalAmount;
   };
 
-  // Generate invoice for an order
-  const handleGenerateInvoice = (order) => {
-    if (!order) return;
+  // Generate invoice HTML for an order
+  const generateInvoiceHTML = (order) => {
+    if (!order) return '';
 
     const customerName = order.customerType === 'user'
       ? `${order.customerId?.firstName || ''} ${order.customerId?.lastName || ''}`.trim()
@@ -413,7 +413,7 @@ const OrdersPage = () => {
       day: 'numeric'
     });
 
-    const invoiceHTML = `
+    return `
       <!DOCTYPE html>
       <html>
       <head>
@@ -530,6 +530,33 @@ const OrdersPage = () => {
             color: #666;
             font-size: 12px;
           }
+          .download-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #8bc34a;
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            height: 44px;
+          }
+          .download-btn:hover {
+            background: #7cb342;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            transform: translateY(-2px);
+          }
+          .download-btn:active {
+            transform: translateY(0);
+          }
           @media print {
             body {
               background: white;
@@ -539,10 +566,20 @@ const OrdersPage = () => {
               box-shadow: none;
               padding: 20px;
             }
+            .download-btn {
+              display: none;
+            }
           }
         </style>
       </head>
       <body>
+        <button class="download-btn" onclick="downloadInvoice()" title="Download Invoice">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+        </button>
         <div class="invoice-container">
           <div class="header">
             <h1>INVOICE</h1>
@@ -631,9 +668,34 @@ const OrdersPage = () => {
             <p>This is a computer-generated invoice.</p>
           </div>
         </div>
+        <script>
+          function downloadInvoice() {
+            const invoiceHTML = document.documentElement.outerHTML;
+            const invoiceNumber = '${invoiceNumber}';
+            const fileName = 'Invoice-' + invoiceNumber + '.html';
+            
+            const blob = new Blob([invoiceHTML], { type: 'text/html;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = fileName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+          }
+        </script>
       </body>
       </html>
     `;
+  };
+
+  // Generate and view invoice for an order
+  const handleGenerateInvoice = (order) => {
+    if (!order) return;
+
+    const invoiceHTML = generateInvoiceHTML(order);
+    if (!invoiceHTML) return;
 
     // Open invoice in new window
     const invoiceWindow = window.open('', '_blank', 'width=900,height=700,scrollbars=yes,resizable=yes');
@@ -975,7 +1037,7 @@ const OrdersPage = () => {
           <button
             onClick={() => handleGenerateInvoice(order)}
             className="text-gray-500 hover:text-gray-700 transition-colors"
-            title="Generate Invoice"
+            title="View Invoice"
           >
             <HiDocumentArrowDown className="w-4 h-4" />
           </button>
