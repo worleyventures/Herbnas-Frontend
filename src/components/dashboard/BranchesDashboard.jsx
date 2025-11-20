@@ -184,15 +184,70 @@ const BranchesDashboard = ({ propActiveView = 'table' }) => {
     }
   };
 
-  const handleDeleteBranch = () => {
+  const handleDeleteBranch = async () => {
     try {
       if (selectedBranch) {
-        dispatch(deleteBranch(selectedBranch._id));
+        // Prevent deletion of active branches
+        if (selectedBranch.isActive) {
+          dispatch(addNotification({
+            type: 'error',
+            title: 'Cannot Delete Active Branch',
+            message: 'Active branches cannot be deleted. Please deactivate the branch first.',
+            duration: 5000
+          }));
+          setShowDeleteModal(false);
+          setSelectedBranch(null);
+          return;
+        }
+
+        const branchName = selectedBranch.branchName;
+        const branchId = selectedBranch._id;
+        
+        await dispatch(deleteBranch(branchId)).unwrap();
+        
+        // Show success notification
+        dispatch(addNotification({
+          type: 'success',
+          title: 'Branch Deleted',
+          message: `Branch ${branchName} has been deleted successfully.`,
+          duration: 3000
+        }));
+
+        // Close modal and clear selection
         setShowDeleteModal(false);
         setSelectedBranch(null);
+
+        // Refresh branches list
+        dispatch(getAllBranches({
+          page: currentPage,
+          limit: itemsPerPage,
+          search: searchTerm,
+          status: filterStatus === 'all' ? '' : filterStatus
+        }));
+
+        // Refresh stats
+        dispatch(getBranchStats());
       }
     } catch (error) {
       console.error('Error deleting branch:', error);
+      
+      // Extract error message from the error object
+      let errorMessage = 'Failed to delete branch. Please try again.';
+      
+      if (error?.message) {
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      }
+      
+      dispatch(addNotification({
+        type: 'error',
+        title: 'Error',
+        message: errorMessage,
+        duration: 5000
+      }));
+      
+      // Don't close modal on error - let user see the error and try again or cancel
     }
   };
 

@@ -150,6 +150,12 @@ const UserFormPage = () => {
     try {
       if (mode === 'create') {
         await dispatch(createUser(userData)).unwrap();
+        dispatch(addNotification({
+          type: 'success',
+          title: 'User Created',
+          message: 'User has been created successfully.',
+          duration: 3000
+        }));
         // Refresh users list after creation
         await dispatch(getAllUsers({ page: 1, limit: 1000 }));
       } else {
@@ -161,12 +167,24 @@ const UserFormPage = () => {
           })).unwrap();
         }
         await dispatch(updateUser({ userId, userData })).unwrap();
+        dispatch(addNotification({
+          type: 'success',
+          title: 'User Updated',
+          message: 'User has been updated successfully.',
+          duration: 3000
+        }));
         // Refresh users list after update
         await dispatch(getAllUsers({ page: 1, limit: 1000 }));
       }
       navigate('/users');
     } catch (error) {
       console.error('Error saving user:', error);
+      dispatch(addNotification({
+        type: 'error',
+        title: 'Error',
+        message: error?.message || 'Failed to save user. Please try again.',
+        duration: 5000
+      }));
     }
   };
 
