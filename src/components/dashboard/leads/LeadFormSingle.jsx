@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { getAllBranches, getActiveBranches } from '../../../redux/actions/branchActions';
+import { getActiveBranches } from '../../../redux/actions/branchActions';
 import { getActiveProducts } from '../../../redux/actions/productActions';
 import { getActiveHealthIssues } from '../../../redux/actions/healthActions';
 import { getProfile } from '../../../redux/actions/authActions';
@@ -158,9 +158,9 @@ const LeadFormSingle = ({
   }, [dispatch]);
 
 
-  // Auto-assign branch for non-super_admin users
+  // Auto-assign branch for all users based on their assigned branch
   useEffect(() => {
-    if (user?.role !== 'super_admin' && user?.branch && branches.length > 0) {
+    if (user?.branch && branches.length > 0 && !formData.branchId) {
       const userBranchId = user.branch?._id || user.branch;
       const branchExists = branches.some(b => (b._id || b).toString() === userBranchId.toString());
       if (branchExists) {
@@ -170,7 +170,7 @@ const LeadFormSingle = ({
         }));
       }
     }
-  }, [user, branches]);
+  }, [user, branches, formData.branchId]);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -229,34 +229,6 @@ const LeadFormSingle = ({
     { value: 'Unmarried', label: 'Unmarried' }
   ];
 
-  // Branch options
-  const branchOptions = useMemo(() => {
-    if (!Array.isArray(branches)) {
-      return [];
-    }
-    
-    if (branches.length === 0) {
-      return [];
-    }
-    
-    // For super_admin, show all branches
-    // For other roles, show only their branch
-    let filteredBranches = branches;
-    if (user?.role !== 'super_admin' && user?.branch) {
-      const userBranchId = user.branch?._id || user.branch;
-      filteredBranches = branches.filter(branch => {
-        const branchId = branch._id || branch;
-        return branchId.toString() === userBranchId.toString();
-      });
-    }
-    
-    return filteredBranches
-      .filter(branch => branch && branch._id && branch.branchName)
-      .map(branch => ({
-        value: branch._id,
-        label: `${branch.branchName} (${branch.branchCode || ''})`.trim()
-      }));
-  }, [branches, branchesLoading, user?.role, user?.branch]);
 
   // Health issues from API
   const allHealthIssues = activeHealthIssues.length > 0 
@@ -806,49 +778,6 @@ const LeadFormSingle = ({
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mt-6">
-                <div className="lg:col-span-1">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Branch
-                  </label>
-                  <Select
-                    name="branchId"
-                    value={formData.branchId}
-                    onChange={handleInputChange}
-                    options={branchOptions}
-                    placeholder={branchesLoading ? 'Loading branches...' : branchOptions.length === 0 ? 'No branches available' : 'Select branch'}
-                    disabled={user?.role !== 'super_admin' || branchesLoading}
-                    loading={branchesLoading}
-                    emptyMessage="No active branches available"
-                    className={user?.role !== 'super_admin' ? 'opacity-60 cursor-not-allowed' : ''}
-                  />
-                  {user?.role === 'super_admin' && branchesLoading && (
-                    <p className="mt-1 text-xs text-gray-500">Loading branches...</p>
-                  )}
-                  {user?.role === 'super_admin' && !branchesLoading && branchOptions.length === 0 && !branchesError && (
-                    <p className="mt-1 text-xs text-yellow-600">No active branches found. Please create a branch first.</p>
-                  )}
-                  {user?.role !== 'super_admin' && (
-                    <p className="mt-1 text-xs text-gray-500">Your assigned branch</p>
-                  )}
-                  {branchesError && (
-                    <div className="mt-1">
-                      <p className="text-xs text-red-600 mb-1">
-                        {branchesError}
-                      </p>
-                      <button 
-                        type="button"
-                        onClick={() => {
-                          dispatch(getActiveBranches());
-                        }}
-                        className="text-xs text-blue-600 hover:text-blue-800 underline hover:no-underline font-medium"
-                      >
-                        Click to Retry
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
 
               {/* Notes Field - Full Width */}
               <div>

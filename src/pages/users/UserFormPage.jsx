@@ -179,12 +179,43 @@ const UserFormPage = () => {
       navigate('/users');
     } catch (error) {
       console.error('Error saving user:', error);
-      dispatch(addNotification({
-        type: 'error',
-        title: 'Error',
-        message: error?.message || 'Failed to save user. Please try again.',
-        duration: 5000
-      }));
+      let errorMessage = 'Failed to save user. Please try again.';
+      
+      // Extract error message from Redux action error
+      if (typeof error === 'string') {
+        errorMessage = error;
+      } else if (error?.payload) {
+        errorMessage = error.payload;
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+      
+      // Check for duplicate errors and set form errors
+      if (errorMessage.toLowerCase().includes('email already exists')) {
+        setErrors(prev => ({ ...prev, email: 'This email is already registered' }));
+        dispatch(addNotification({
+          type: 'error',
+          title: 'Validation Error',
+          message: 'This email is already registered. Please use a different email address.',
+          duration: 5000
+        }));
+      } else if (errorMessage.toLowerCase().includes('phone number already exists') || errorMessage.toLowerCase().includes('phone already exists')) {
+        setErrors(prev => ({ ...prev, phone: 'This phone number is already registered' }));
+        dispatch(addNotification({
+          type: 'error',
+          title: 'Validation Error',
+          message: 'This phone number is already registered. Please use a different phone number.',
+          duration: 5000
+        }));
+      } else {
+        // Show generic error toast
+        dispatch(addNotification({
+          type: 'error',
+          title: mode === 'create' ? 'Creation Failed' : 'Update Failed',
+          message: errorMessage,
+          duration: 5000
+        }));
+      }
     }
   };
 

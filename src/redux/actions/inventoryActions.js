@@ -62,6 +62,24 @@ export const getUniqueSuppliers = createAsyncThunk(
   }
 );
 
+// Create supplier/vendor
+export const createSupplier = createAsyncThunk(
+  'inventory/createSupplier',
+  async (supplierData, { rejectWithValue }) => {
+    try {
+      const response = await api.post('/inventory/suppliers', supplierData);
+      return response.data;
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || 
+                          error.response?.data?.error ||
+                          error.message || 
+                          'Failed to create supplier';
+      console.error('Create supplier error:', error.response?.data);
+      return rejectWithValue(errorMessage);
+    }
+  }
+);
+
 // Create raw material
 export const createRawMaterial = createAsyncThunk(
   'inventory/createRawMaterial',

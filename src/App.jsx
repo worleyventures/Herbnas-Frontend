@@ -37,6 +37,8 @@ import OrderFormPage from './pages/orders/OrderFormPage';
 import OrderDetailsPage from './pages/orders/OrderDetailsPage';
 import AccountsPage from './pages/accounts/AccountsPage';
 import AccountFormPage from './pages/accounts/AccountFormPage';
+import VendorsPage from './pages/vendors/VendorsPage';
+import VendorFormPage from './pages/vendors/VendorFormPage';
 import PayrollPage from './pages/payroll/PayrollPage';
 import PayrollFormPage from './pages/payroll/PayrollFormPage';
 import SupervisorAttendancePage from './pages/attendance/SupervisorAttendancePage';
@@ -124,6 +126,16 @@ function App() {
             <Route path="/accounts/edit/:id" element={
               <RoleProtectedRoute allowedRoles={['super_admin', 'admin', 'accounts_manager']}>
                 <AccountFormPage />
+              </RoleProtectedRoute>
+            } />
+            <Route path="/vendors" element={
+              <RoleProtectedRoute allowedRoles={['super_admin']}>
+                <VendorsPage />
+              </RoleProtectedRoute>
+            } />
+            <Route path="/vendors/create" element={
+              <RoleProtectedRoute allowedRoles={['super_admin']}>
+                <VendorFormPage />
               </RoleProtectedRoute>
             } />
             <Route path="/payrolls" element={<PayrollPage />} />
