@@ -150,6 +150,12 @@ const UserFormPage = () => {
     try {
       if (mode === 'create') {
         await dispatch(createUser(userData)).unwrap();
+        dispatch(addNotification({
+          type: 'success',
+          title: 'User Created',
+          message: 'User has been created successfully.',
+          duration: 3000
+        }));
         // Refresh users list after creation
         await dispatch(getAllUsers({ page: 1, limit: 1000 }));
       } else {
@@ -161,12 +167,55 @@ const UserFormPage = () => {
           })).unwrap();
         }
         await dispatch(updateUser({ userId, userData })).unwrap();
+        dispatch(addNotification({
+          type: 'success',
+          title: 'User Updated',
+          message: 'User has been updated successfully.',
+          duration: 3000
+        }));
         // Refresh users list after update
         await dispatch(getAllUsers({ page: 1, limit: 1000 }));
       }
       navigate('/users');
     } catch (error) {
       console.error('Error saving user:', error);
+      let errorMessage = 'Failed to save user. Please try again.';
+      
+      // Extract error message from Redux action error
+      if (typeof error === 'string') {
+        errorMessage = error;
+      } else if (error?.payload) {
+        errorMessage = error.payload;
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+      
+      // Check for duplicate errors and set form errors
+      if (errorMessage.toLowerCase().includes('email already exists')) {
+        setErrors(prev => ({ ...prev, email: 'This email is already registered' }));
+        dispatch(addNotification({
+          type: 'error',
+          title: 'Validation Error',
+          message: 'This email is already registered. Please use a different email address.',
+          duration: 5000
+        }));
+      } else if (errorMessage.toLowerCase().includes('phone number already exists') || errorMessage.toLowerCase().includes('phone already exists')) {
+        setErrors(prev => ({ ...prev, phone: 'This phone number is already registered' }));
+        dispatch(addNotification({
+          type: 'error',
+          title: 'Validation Error',
+          message: 'This phone number is already registered. Please use a different phone number.',
+          duration: 5000
+        }));
+      } else {
+        // Show generic error toast
+        dispatch(addNotification({
+          type: 'error',
+          title: mode === 'create' ? 'Creation Failed' : 'Update Failed',
+          message: errorMessage,
+          duration: 5000
+        }));
+      }
     }
   };
 

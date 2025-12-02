@@ -19,6 +19,7 @@ import {
   HiShoppingBag,
   HiBanknotes,
   HiClock,
+  HiTruck,
 } from 'react-icons/hi2';
 
 const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
@@ -152,6 +153,19 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
 
     // Add admin-only navigation items using stable role
     const adminNavigation = [];
+    // Vendors - only for super_admin
+    if (stableUserRole === 'super_admin') {
+      adminNavigation.push({
+        name: 'Vendors',
+        href: '/vendors',
+        icon: HiTruck,
+        current: isActiveRoute('/vendors'),
+        color: 'text-gray-600',
+        bgColor: 'bg-gray-100',
+        hoverColor: 'group-hover:text-gray-600',
+        hoverBgColor: 'group-hover:bg-gray-50'
+      });
+    }
     if (stableUserRole === 'admin' || stableUserRole === 'super_admin') {
       adminNavigation.push(
         {

@@ -85,6 +85,10 @@ const BranchCRUD = ({
   };
 
   const handleDeleteBranch = (branch) => {
+    // Prevent deletion of active branches
+    if (branch.isActive) {
+      return;
+    }
     onSelectBranch(branch);
     setShowDeleteModal(true);
   };
@@ -244,7 +248,7 @@ const BranchCRUD = ({
                   />
                 )
               )}
-              {isSuperAdmin && (
+              {isSuperAdmin && !branch.isActive && (
                 <ActionButton
                   icon={HiTrash}
                   onClick={() => handleDeleteBranch(branch)}
@@ -354,6 +358,34 @@ const BranchCRUD = ({
         confirmText="Activate"
         cancelText="Cancel"
         variant="success"
+        loading={deleteLoading}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showDeleteModal && selectedBranch && !selectedBranch.isActive}
+        onClose={() => {
+          setShowDeleteModal(false);
+          onSelectBranch(null);
+        }}
+        onConfirm={() => {
+          if (onDeleteBranch && selectedBranch && !selectedBranch.isActive) {
+            onDeleteBranch();
+          }
+        }}
+        title="Delete Branch"
+        message={
+          selectedBranch ? (
+            <div className="text-left">
+              <p className="mb-2">Are you sure you want to delete the branch <strong>{selectedBranch.branchName}</strong>?</p>
+              <p className="text-sm text-red-600 font-medium">This action cannot be undone. All data associated with this branch will be permanently deleted.</p>
+              <p className="text-sm text-gray-600 mt-2">Note: Only inactive branches can be deleted. Please deactivate the branch first if it's currently active.</p>
+            </div>
+          ) : "Are you sure you want to delete this branch?"
+        }
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="danger"
         loading={deleteLoading}
       />
 

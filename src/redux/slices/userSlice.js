@@ -8,7 +8,8 @@ import {
   updateUser,
   deleteUser,
   createUser,
-  getUserStats
+  getUserStats,
+  assignUserToBranch
 } from '../actions/userActions';
 
 const initialState = {
@@ -176,16 +177,54 @@ const userSlice = createSlice({
       .addCase(updateUser.fulfilled, (state, action) => {
         state.userLoading = false;
         const updatedUser = action.payload.data.user || action.payload.data;
+        // Update in users array
         const index = state.users.findIndex(user => user._id === updatedUser._id);
         if (index !== -1) {
           state.users[index] = updatedUser;
         }
+        // Update in allUsers array
+        const allUsersIndex = state.allUsers.findIndex(user => user._id === updatedUser._id);
+        if (allUsersIndex !== -1) {
+          state.allUsers[allUsersIndex] = updatedUser;
+        }
+        // Update currentUser if it's the same user
         if (state.currentUser && state.currentUser._id === updatedUser._id) {
           state.currentUser = updatedUser;
         }
         state.userError = null;
       })
       .addCase(updateUser.rejected, (state, action) => {
+        state.userLoading = false;
+        state.userError = action.payload;
+      })
+      
+      // Assign user to branch
+      .addCase(assignUserToBranch.pending, (state) => {
+        state.userLoading = true;
+        state.userError = null;
+      })
+      .addCase(assignUserToBranch.fulfilled, (state, action) => {
+        state.userLoading = false;
+        const updatedUser = action.payload.data?.user || action.payload.data;
+        if (updatedUser) {
+          // Update in users array
+          const index = state.users.findIndex(user => user._id === updatedUser._id);
+          if (index !== -1) {
+            state.users[index] = updatedUser;
+          }
+          // Update in allUsers array
+          const allUsersIndex = state.allUsers.findIndex(user => user._id === updatedUser._id);
+          if (allUsersIndex !== -1) {
+            state.allUsers[allUsersIndex] = updatedUser;
+          }
+          // Update currentUser if it's the same user
+          if (state.currentUser && state.currentUser._id === updatedUser._id) {
+            state.currentUser = updatedUser;
+          }
+        }
+        state.userError = null;
+      })
+      .addCase(assignUserToBranch.rejected, (state, action) => {
         state.userLoading = false;
         state.userError = action.payload;
       })

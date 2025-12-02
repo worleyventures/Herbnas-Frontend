@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { 
   HiCheck, 
   HiXMark, 
@@ -22,6 +22,7 @@ import { addNotification } from '../../redux/slices/uiSlice';
 const ProductionForm = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
   const { id } = useParams();
   const isEdit = Boolean(id);
 
@@ -217,6 +218,12 @@ const ProductionForm = () => {
     }
   };
 
+  // Handle navigation to create product form
+  const handleAddProduct = () => {
+    const returnTo = location.pathname;
+    navigate('/products/create', { state: { returnTo } });
+  };
+
   // Validate form
   const validateForm = () => {
     const newErrors = {};
@@ -398,17 +405,27 @@ const ProductionForm = () => {
             />
 
             {/* Product */}
-            <Select
-              label="Product"
-              name="productId"
-              value={formData.productId}
-              onChange={handleChange}
-              options={productOptions}
-              placeholder="Select a product"
-              error={!!errors.productId}
-              errorMessage={errors.productId}
-              required={!isEdit}
-            />
+            <div>
+              <Select
+                label="Product"
+                name="productId"
+                value={formData.productId}
+                onChange={handleChange}
+                options={productOptions}
+                placeholder="Select a product"
+                error={!!errors.productId}
+                errorMessage={errors.productId}
+                required={!isEdit}
+              />
+              <button
+                type="button"
+                onClick={handleAddProduct}
+                className="mt-2 flex items-center space-x-1 text-sm text-green-600 hover:text-green-700 font-medium transition-colors"
+              >
+                <HiPlus className="h-4 w-4" />
+                <span>Add Products</span>
+              </button>
+            </div>
 
             {/* Manufactured Date */}
             <Input

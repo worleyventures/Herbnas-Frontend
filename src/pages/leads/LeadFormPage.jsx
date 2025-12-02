@@ -3,6 +3,7 @@ import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import LeadFormSingle from '../../components/dashboard/leads/LeadFormSingle';
 import { createLead, updateLead, getLeadById, clearLeadSuccess, clearLeadErrors } from '../../redux/actions/leadActions';
+import { addNotification } from '../../redux/slices/uiSlice';
 import { HiArrowLeft } from 'react-icons/hi2';
 
 const LeadFormPage = () => {
@@ -27,6 +28,9 @@ const LeadFormPage = () => {
     createError,
     updateError
   } = useSelector(state => state.leads || {});
+  
+  // Get user from auth state to auto-assign branch
+  const { user } = useSelector(state => state.auth || {});
   
   // Load lead data if editing and we have an ID
   useEffect(() => {
@@ -102,6 +106,12 @@ const LeadFormPage = () => {
         return;
       }
       
+      // Get user's branch ID for auto-assignment
+      const userBranchId = user?.branch?._id || user?.branch;
+      const branchId = formData.branchId && String(formData.branchId).trim() !== '' 
+        ? String(formData.branchId).trim() 
+        : (userBranchId ? String(userBranchId).trim() : null);
+      
       // Clean up the data before sending (same mapping as create)
       const cleanedData = {
         customerName: formData.customerName?.trim() || undefined,
@@ -117,7 +127,7 @@ const LeadFormPage = () => {
         notes: formData.notes?.trim() || undefined,
         healthIssues: formData.healthIssues || [],
         products: formData.products?.map(p => typeof p === 'object' ? p._id || p : p).filter(Boolean) || [],
-        dispatchedFrom: formData.branchId && String(formData.branchId).trim() !== '' ? String(formData.branchId).trim() : null,
+        dispatchedFrom: branchId,
         assignedTo: formData.assignedTo || undefined,
         address: formData.address || {},
         reminders: formData.reminders || []
@@ -129,6 +139,29 @@ const LeadFormPage = () => {
         // Navigate will happen via useEffect watching updateSuccess
       } catch (error) {
         console.error('Error updating lead:', error);
+        
+        // Extract error message from Redux action error
+        let errorMessage = 'Failed to update lead. Please try again.';
+        if (typeof error === 'string') {
+          errorMessage = error;
+        } else if (error?.payload) {
+          errorMessage = error.payload;
+        } else if (error?.message) {
+          errorMessage = error.message;
+        }
+        
+        // Show toast notification with appropriate title based on error type
+        const isValidationError = errorMessage.toLowerCase().includes('already exists') || 
+                                  errorMessage.toLowerCase().includes('duplicate') ||
+                                  errorMessage.toLowerCase().includes('mobile') ||
+                                  errorMessage.toLowerCase().includes('email');
+        
+        dispatch(addNotification({
+          type: 'error',
+          title: isValidationError ? 'Validation Error' : 'Update Failed',
+          message: errorMessage,
+          duration: 5000
+        }));
       }
     } else {
       console.log('Creating new lead with data:', JSON.stringify(formData, null, 2));
@@ -140,6 +173,12 @@ const LeadFormPage = () => {
         });
         return;
       }
+      
+      // Get user's branch ID for auto-assignment
+      const userBranchId = user?.branch?._id || user?.branch;
+      const branchId = formData.branchId && String(formData.branchId).trim() !== '' 
+        ? String(formData.branchId).trim() 
+        : (userBranchId ? String(userBranchId).trim() : null);
       
       // Clean up the data before sending
       const cleanedData = {
@@ -156,14 +195,42 @@ const LeadFormPage = () => {
         notes: formData.notes?.trim() || undefined,
         healthIssues: formData.healthIssues || [],
         products: formData.products?.map(p => typeof p === 'object' ? p._id || p : p).filter(Boolean) || [],
-        dispatchedFrom: formData.branchId && String(formData.branchId).trim() !== '' ? String(formData.branchId).trim() : null,
+        dispatchedFrom: branchId,
         assignedTo: formData.assignedTo || undefined,
         address: formData.address || {},
         reminders: formData.reminders || []
       };
       
       console.log('Cleaned data being sent:', JSON.stringify(cleanedData, null, 2));
-      dispatch(createLead(cleanedData));
+      try {
+        await dispatch(createLead(cleanedData)).unwrap();
+        // Navigate will happen via useEffect watching createSuccess
+      } catch (error) {
+        console.error('Error creating lead:', error);
+        
+        // Extract error message from Redux action error
+        let errorMessage = 'Failed to create lead. Please try again.';
+        if (typeof error === 'string') {
+          errorMessage = error;
+        } else if (error?.payload) {
+          errorMessage = error.payload;
+        } else if (error?.message) {
+          errorMessage = error.message;
+        }
+        
+        // Show toast notification with appropriate title based on error type
+        const isValidationError = errorMessage.toLowerCase().includes('already exists') || 
+                                  errorMessage.toLowerCase().includes('duplicate') ||
+                                  errorMessage.toLowerCase().includes('mobile') ||
+                                  errorMessage.toLowerCase().includes('email');
+        
+        dispatch(addNotification({
+          type: 'error',
+          title: isValidationError ? 'Validation Error' : 'Creation Failed',
+          message: errorMessage,
+          duration: 5000
+        }));
+      }
     }
   };
 

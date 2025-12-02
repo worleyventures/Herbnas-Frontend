@@ -100,9 +100,7 @@ const LeadForm = ({
     note: '' 
   });
   
-  // Search states for branch and user
-  const [branchSearch, setBranchSearch] = useState('');
-  const [showBranchDropdown, setShowBranchDropdown] = useState(false);
+  // Search states for user
   const [userSearch, setUserSearch] = useState('');
   const [showUserDropdown, setShowUserDropdown] = useState(false);
 
@@ -120,78 +118,45 @@ const LeadForm = ({
     }
   }, [dispatch, isAuthenticated, user, canAccessUsers]);
 
-  // Filter branches based on search and user role
-  const filteredBranches = useMemo(() => {
-    // For super_admin, show all branches
-    // For other roles, show only their branch
-    let availableBranches = branches;
-    if (user?.role !== 'super_admin' && user?.branch) {
-      const userBranchId = user.branch?._id || user.branch;
-      availableBranches = branches.filter(branch => {
-        const branchId = branch._id || branch;
-        return branchId.toString() === userBranchId.toString();
-      });
-    }
-    
-    if (!branchSearch) {
-      return availableBranches;
-    }
-    return availableBranches.filter(branch => 
-      branch.branchName.toLowerCase().includes(branchSearch.toLowerCase())
-    );
-  }, [branches, branchSearch, user?.role, user?.branch]);
 
-  // Get all users in the selected branch (for validation)
+  // Get all users in the user's branch (for validation)
   const branchUsers = useMemo(() => {
-    if (!formData.dispatchedFrom) {
+    if (!user?.branch) {
       return [];
     }
     
-    return users.filter(user => {
+    const userBranchId = user.branch?._id || user.branch;
+    return users.filter(u => {
       // Handle both populated branch object and branch ID
-      const userBranchId = user.branch?._id || user.branch;
-      return userBranchId === formData.dispatchedFrom;
+      const uBranchId = u.branch?._id || u.branch;
+      return uBranchId && uBranchId.toString() === userBranchId.toString();
     });
-  }, [users, formData.dispatchedFrom]);
+  }, [users, user?.branch]);
 
-  // Filter users based on selected branch and search
+  // Filter users based on user's branch and search
   const filteredUsers = useMemo(() => {
-    if (!formData.dispatchedFrom) {
+    if (!user?.branch) {
       return [];
     }
     
-    let branchUsers = users.filter(user => {
+    const userBranchId = user.branch?._id || user.branch;
+    let branchUsers = users.filter(u => {
       // Handle both populated branch object and branch ID
-      const userBranchId = user.branch?._id || user.branch;
-      return userBranchId === formData.dispatchedFrom;
+      const uBranchId = u.branch?._id || u.branch;
+      return uBranchId && uBranchId.toString() === userBranchId.toString();
     });
     
     // Apply search filter if user is searching
     if (userSearch) {
-      branchUsers = branchUsers.filter(user => 
-        `${user.firstName} ${user.lastName}`.toLowerCase().includes(userSearch.toLowerCase()) ||
-        user.role.toLowerCase().includes(userSearch.toLowerCase())
+      branchUsers = branchUsers.filter(u => 
+        `${u.firstName} ${u.lastName}`.toLowerCase().includes(userSearch.toLowerCase()) ||
+        u.role.toLowerCase().includes(userSearch.toLowerCase())
       );
     }
     
     return branchUsers;
-  }, [users, formData.dispatchedFrom, userSearch]);
+  }, [users, user?.branch, userSearch]);
 
-  // Clear assigned user when branch changes
-  useEffect(() => {
-    if (formData.dispatchedFrom && formData.assignedUser) {
-      const selectedUser = users.find(user => user._id === formData.assignedUser);
-      if (selectedUser) {
-        const userBranchId = selectedUser.branch?._id || selectedUser.branch;
-        if (userBranchId !== formData.dispatchedFrom) {
-          setFormData(prev => ({
-            ...prev,
-            assignedUser: ''
-          }));
-        }
-      }
-    }
-  }, [formData.dispatchedFrom, formData.assignedUser, users]);
 
   // Helper function to format role names
   const formatRoleName = (role) => {
@@ -206,21 +171,6 @@ const LeadForm = ({
     return roleMap[role] || role;
   };
 
-  // Handle branch selection
-  const handleBranchSelect = (branch) => {
-    setFormData(prev => ({
-      ...prev,
-      dispatchedFrom: branch._id
-    }));
-    setBranchSearch(branch.branchName);
-    setShowBranchDropdown(false);
-    // Clear user selection when branch changes
-    setFormData(prev => ({
-      ...prev,
-      assignedUser: ''
-    }));
-    setUserSearch('');
-  };
 
   // Handle user selection
   const handleUserSelect = (user) => {
@@ -232,12 +182,6 @@ const LeadForm = ({
     setShowUserDropdown(false);
   };
 
-  // Get selected branch name for display
-  const getSelectedBranchName = () => {
-    if (!formData.dispatchedFrom) return '';
-    const branch = branches.find(b => b._id === formData.dispatchedFrom);
-    return branch ? branch.branchName : '';
-  };
 
   // Get selected user name for display
   const getSelectedUserName = () => {
@@ -255,22 +199,19 @@ const LeadForm = ({
       if (showHealthIssueDropdown && !event.target.closest('.health-issue-dropdown-container')) {
         setShowHealthIssueDropdown(false);
       }
-      if (showBranchDropdown && !event.target.closest('.branch-dropdown-container')) {
-        setShowBranchDropdown(false);
-      }
       if (showUserDropdown && !event.target.closest('.user-dropdown-container')) {
         setShowUserDropdown(false);
       }
     };
 
-    if (showProductDropdown || showHealthIssueDropdown || showBranchDropdown || showUserDropdown) {
+    if (showProductDropdown || showHealthIssueDropdown || showUserDropdown) {
       // Use click event with capture phase to allow button clicks to complete first
       document.addEventListener('click', handleClickOutside, true);
       return () => {
         document.removeEventListener('click', handleClickOutside, true);
       };
     }
-  }, [showProductDropdown, showHealthIssueDropdown, showBranchDropdown, showUserDropdown]);
+  }, [showProductDropdown, showHealthIssueDropdown, showUserDropdown]);
 
   // Close product dropdown when pressing Escape
   useEffect(() => {
@@ -339,13 +280,6 @@ const LeadForm = ({
       });
       
       // Set search values for display
-      if (selectedLead.dispatchedFrom) {
-        const branch = branches.find(b => b._id === (selectedLead.dispatchedFrom?._id || selectedLead.dispatchedFrom));
-        if (branch) {
-          setBranchSearch(branch.branchName);
-        }
-      }
-      
       if (selectedLead.assignedUser) {
         const user = users.find(u => u._id === (selectedLead.assignedUser?._id || selectedLead.assignedUser));
         if (user) {
@@ -355,9 +289,9 @@ const LeadForm = ({
     }
   }, [selectedLead, mode, branches, users]);
 
-  // Auto-assign branch for non-super_admin users
+  // Auto-assign branch for all users based on their assigned branch
   useEffect(() => {
-    if (user?.role !== 'super_admin' && user?.branch && branches.length > 0 && !formData.dispatchedFrom) {
+    if (user?.branch && branches.length > 0 && !formData.dispatchedFrom) {
       const userBranchId = user.branch?._id || user.branch;
       const branchExists = branches.some(b => (b._id || b).toString() === userBranchId.toString());
       if (branchExists) {
@@ -367,8 +301,6 @@ const LeadForm = ({
             ...prev,
             dispatchedFrom: branch._id
           }));
-          setBranchSearch(branch.branchName);
-          setShowBranchDropdown(false);
         }
       }
     }
@@ -572,15 +504,9 @@ const LeadForm = ({
       newErrors.customerEmail = 'Please enter a valid email address';
     }
     
-    if (!formData.dispatchedFrom) {
-      newErrors.dispatchedFrom = 'Please assign a branch';
-    }
-    
     if (!formData.assignedUser) {
-      if (!formData.dispatchedFrom) {
-        newErrors.assignedUser = 'Please select a branch first';
-      } else if (branchUsers.length === 0) {
-        newErrors.assignedUser = 'No users available in the selected branch';
+      if (branchUsers.length === 0) {
+        newErrors.assignedUser = 'No users available in your branch';
       } else {
       newErrors.assignedUser = 'Please assign a user';
       }
@@ -633,9 +559,7 @@ const LeadForm = ({
     setProductSearch('');
     setHealthIssueSearch('');
     setNewReminder({ date: '', time: '', ampm: 'AM', note: '' });
-    setBranchSearch('');
     setUserSearch('');
-    setShowBranchDropdown(false);
     setShowUserDropdown(false);
   };
 
@@ -1398,74 +1322,6 @@ const LeadForm = ({
             </div>
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <div className="branch-dropdown-container">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Dispatched From Branch *
-                </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={branchSearch}
-                    onChange={(e) => {
-                      setBranchSearch(e.target.value);
-                      setShowBranchDropdown(true);
-                    }}
-                    onFocus={() => setShowBranchDropdown(true)}
-                    placeholder={branchesLoading ? 'Loading branches...' : 
-                               branchesError ? 'Error loading branches' :
-                               branches.length === 0 ? 'No branches available' :
-                               user?.role !== 'super_admin' ? 'Your assigned branch' :
-                               'Search branches...'}
-                    className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-[#22c55e] focus:border-[#22c55e] transition-all duration-200 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md ${
-                    errors.dispatchedFrom ? 'border-red-500' : 'border-gray-300/50'
-                  } ${user?.role !== 'super_admin' ? 'opacity-60 cursor-not-allowed' : ''}`}
-                    disabled={branchesLoading || user?.role !== 'super_admin'}
-                    readOnly={user?.role !== 'super_admin'}
-                  />
-                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                    <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-              </div>
-              
-                  {showBranchDropdown && user?.role === 'super_admin' && (
-                    <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-xl shadow-lg max-h-60 overflow-auto">
-                      {filteredBranches.length === 0 ? (
-                        <div className="px-4 py-3 text-sm text-gray-500">
-                          {branchSearch ? 'No branches found' : 'No branches available'}
-                        </div>
-                      ) : (
-                        filteredBranches.map(branch => (
-                          <div
-                            key={branch._id}
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              handleBranchSelect(branch);
-                            }}
-                            className="px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
-                          >
-                            <div className="flex items-center">
-                              <HiBuildingOffice2 className="h-4 w-4 text-gray-400 mr-3" />
-                              <span className="text-sm font-medium text-gray-900">{branch.branchName}</span>
-              </div>
-            </div>
-                        ))
-                      )}
-          </div>
-                  )}
-              </div>
-                {errors.dispatchedFrom && (
-                  <p className="mt-1 text-sm text-red-600">{errors.dispatchedFrom}</p>
-                )}
-                {branchesError && (
-                  <p className="mt-1 text-sm text-red-600">Failed to load branches: {branchesError}</p>
-                )}
-                {user?.role !== 'super_admin' && (
-                  <p className="mt-1 text-xs text-gray-500">Your assigned branch</p>
-                )}
-            </div>
-            
               <div className="user-dropdown-container">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                   Assign to User *
@@ -1479,18 +1335,15 @@ const LeadForm = ({
                       setShowUserDropdown(true);
                     }}
                     onFocus={() => {
-                      if (formData.dispatchedFrom) {
-                        setShowUserDropdown(true);
-                      }
+                      setShowUserDropdown(true);
                     }}
-                    placeholder={!formData.dispatchedFrom ? 'Select a branch first' :
-                               usersLoading ? 'Loading users...' :
-                               branchUsers.length === 0 ? 'No users in this branch' :
+                    placeholder={usersLoading ? 'Loading users...' :
+                               branchUsers.length === 0 ? 'No users in your branch' :
                                'Search users...'}
                     className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-[#22c55e] focus:border-[#22c55e] transition-all duration-200 bg-white/80 backdrop-blur-sm shadow-sm hover:shadow-md ${
                       errors.assignedUser ? 'border-red-500' : 'border-gray-300/50'
                     }`}
-                    disabled={!formData.dispatchedFrom || usersLoading}
+                    disabled={usersLoading}
                   />
                   <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
                     <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1498,7 +1351,7 @@ const LeadForm = ({
                     </svg>
                 </div>
                 
-                  {showUserDropdown && formData.dispatchedFrom && (
+                  {showUserDropdown && (
                     <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-xl shadow-lg max-h-60 overflow-auto">
                       {filteredUsers.length === 0 ? (
                         <div className="px-4 py-3 text-sm text-gray-500">
@@ -1531,9 +1384,9 @@ const LeadForm = ({
                 {errors.assignedUser && (
                   <p className="mt-1 text-sm text-red-600">{errors.assignedUser}</p>
                 )}
-                {formData.dispatchedFrom && branchUsers.length === 0 && !usersLoading && !formData.assignedUser && (
+                {branchUsers.length === 0 && !usersLoading && !formData.assignedUser && (
                   <p className="mt-1 text-sm text-amber-600">
-                    No users found in the selected branch. Please add users to this branch first.
+                    No users found in your branch. Please add users to this branch first.
                   </p>
                 )}
               </div>
