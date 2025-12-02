@@ -5,6 +5,7 @@ import { HiBuildingOffice2, HiCheckCircle } from 'react-icons/hi2';
 import { Button, Input } from '../../components/common';
 import { createSupplier } from '../../redux/actions/inventoryActions';
 import { addNotification } from '../../redux/slices/uiSlice';
+import api from '../../lib/axiosInstance';
 
 const VendorFormPage = () => {
   const navigate = useNavigate();
@@ -18,18 +19,87 @@ const VendorFormPage = () => {
     hsn: '',
     contactName: '',
     phone: '',
-    email: ''
+    email: '',
+    address: '',
+    city: '',
+    state: '',
+    pincode: '',
+    country: ''
   });
 
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [pincodeLoading, setPincodeLoading] = useState(false);
+
+  // Pincode lookup function using backend API (India Post data)
+  const handlePincodeLookup = async (pincode) => {
+    if (!pincode || pincode.length !== 6) {
+      return;
+    }
+
+    setPincodeLoading(true);
+    try {
+      // Use backend API which uses India Post data
+      const response = await api.get(`/pincode/${pincode}`);
+      const pincodeData = response.data?.data || response.data;
+      
+      if (pincodeData) {
+        // Check if we have city and state
+        const city = pincodeData.city || pincodeData.district || '';
+        const state = pincodeData.state || '';
+        const country = pincodeData.country || 'India'; // Default to India for Indian pincodes
+        
+        if (city && state) {
+          setFormData(prev => ({
+            ...prev,
+            city: city,
+            state: state,
+            country: country,
+            pincode: pincode
+          }));
+        } else {
+          // If city is missing but district exists, use district as city
+          if (!city && pincodeData.district) {
+            setFormData(prev => ({
+              ...prev,
+              city: pincodeData.district,
+              state: state || '',
+              country: country,
+              pincode: pincode
+            }));
+          }
+        }
+      }
+    } catch (error) {
+      // Log error for debugging
+      if (error.response) {
+        console.error('Pincode API error:', error.response.data?.message || error.response.statusText);
+      } else if (error.request) {
+        console.error('Pincode API: No response received');
+      } else {
+        console.error('Pincode API error:', error.message);
+      }
+    } finally {
+      setPincodeLoading(false);
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    
+    // For pincode, only allow digits and limit to 6 digits
+    const processedValue = name === 'pincode' ? value.replace(/\D/g, '').slice(0, 6) : value;
+    
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: processedValue
     }));
+    
+    // Auto-fetch city, state, and country when pincode is entered
+    if (name === 'pincode' && processedValue.length === 6) {
+      handlePincodeLookup(processedValue);
+    }
+    
     // Clear error when user starts typing
     if (errors[name]) {
       setErrors(prev => {
@@ -99,7 +169,12 @@ const VendorFormPage = () => {
         hsn: formData.hsn.trim(),
         contactName: formData.contactName?.trim() || undefined,
         phone: formData.phone?.trim() || undefined,
-        email: formData.email?.trim() || undefined
+        email: formData.email?.trim() || undefined,
+        address: formData.address?.trim() || undefined,
+        city: formData.city?.trim() || undefined,
+        state: formData.state?.trim() || undefined,
+        pincode: formData.pincode?.trim() || undefined,
+        country: formData.country?.trim() || undefined
       };
 
       await dispatch(createSupplier(supplierData)).unwrap();
@@ -201,7 +276,7 @@ const VendorFormPage = () => {
           <h2 className="text-lg font-semibold text-gray-900">Contact Information</h2>
           <p className="text-sm text-gray-500">Optional contact details for the vendor</p>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Input
               label="Contact Name"
               name="contactName"
@@ -232,6 +307,69 @@ const VendorFormPage = () => {
               error={!!errors.email}
               errorMessage={errors.email}
               inputClassName="border-0 border-b-2 border-gray-300 rounded-none shadow-none hover:shadow-none focus:border-[#8bc34a]"
+            />
+          </div>
+        </div>
+
+        {/* Address Information */}
+        <div className="space-y-4 border-t border-gray-200 pt-6">
+          <h2 className="text-lg font-semibold text-gray-900">Address Information</h2>
+          <p className="text-sm text-gray-500">Optional address details for the vendor</p>
+
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+            <Input
+              label="Street Address"
+              name="address"
+              value={formData.address}
+              onChange={handleChange}
+              placeholder="Enter street address"
+              inputClassName="border-0 border-b-2 border-gray-300 rounded-none shadow-none hover:shadow-none focus:border-[#8bc34a]"
+            />
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Pincode
+                {pincodeLoading && <span className="ml-2 text-xs text-blue-600">Fetching...</span>}
+              </label>
+              <Input
+                name="pincode"
+                value={formData.pincode}
+                onChange={handleChange}
+                placeholder="Enter 6-digit pincode"
+                maxLength="6"
+                helperText={pincodeLoading ? "Fetching city and state..." : "City, state, and country will be auto-filled"}
+                inputClassName="border-0 border-b-2 border-gray-300 rounded-none shadow-none hover:shadow-none focus:border-[#8bc34a]"
+              />
+            </div>
+
+            <Input
+              label="City"
+              name="city"
+              value={formData.city}
+              onChange={handleChange}
+              placeholder="City (auto-filled from pincode)"
+              readOnly={!!formData.pincode && formData.pincode.length === 6}
+              inputClassName={`border-0 border-b-2 border-gray-300 rounded-none shadow-none hover:shadow-none focus:border-[#8bc34a] ${formData.pincode && formData.pincode.length === 6 ? 'bg-gray-50' : ''}`}
+            />
+
+            <Input
+              label="State"
+              name="state"
+              value={formData.state}
+              onChange={handleChange}
+              placeholder="State (auto-filled from pincode)"
+              readOnly={!!formData.pincode && formData.pincode.length === 6}
+              inputClassName={`border-0 border-b-2 border-gray-300 rounded-none shadow-none hover:shadow-none focus:border-[#8bc34a] ${formData.pincode && formData.pincode.length === 6 ? 'bg-gray-50' : ''}`}
+            />
+
+            <Input
+              label="Country"
+              name="country"
+              value={formData.country}
+              onChange={handleChange}
+              placeholder="Country (auto-filled from pincode)"
+              readOnly={!!formData.pincode && formData.pincode.length === 6}
+              inputClassName={`border-0 border-b-2 border-gray-300 rounded-none shadow-none hover:shadow-none focus:border-[#8bc34a] ${formData.pincode && formData.pincode.length === 6 ? 'bg-gray-50' : ''}`}
             />
           </div>
         </div>

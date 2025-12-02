@@ -135,6 +135,54 @@ const AccountsPage = () => {
   const isAdmin = user?.role === 'admin';
   const isSupervisor = user?.role === 'supervisor';
 
+  // Handle vendor selection from navigation (e.g., from VendorsPage)
+  useEffect(() => {
+    if (location.state?.vendor) {
+      const vendorFromState = location.state.vendor;
+      
+      // For suppliers, ensure we're viewing from the right context
+      // Suppliers typically have transactions at Head Office
+      if (vendorFromState.type === 'supplier' && isSuperAdmin && !showBranchDetails) {
+        // For super admin, we need to find Head Office branch and set it
+        // This ensures transactions are fetched from the correct branch
+        dispatch(getAllBranches()).then((result) => {
+          const branches = result.payload?.data?.branches || [];
+          const headOfficeBranch = branches.find(b => 
+            b.branchName && b.branchName.toLowerCase() === 'head office'
+          );
+          if (headOfficeBranch) {
+            setSelectedBranch(headOfficeBranch);
+            setShowBranchDetails(true);
+            setIsHeadOffice(true);
+            setSelectedVendor(vendorFromState);
+            setBranchDetailsTab('ledger');
+          } else {
+            // If Head Office not found, still set vendor in summary view
+            setSummarySelectedVendor(vendorFromState);
+            setSummaryViewTab('ledger');
+          }
+        });
+      } else {
+        // Set the appropriate vendor based on user role
+        if (isSuperAdmin && !showBranchDetails) {
+          // Super admin in summary view
+          setSummarySelectedVendor(vendorFromState);
+          setSummaryViewTab('ledger');
+        } else if (isSuperAdmin && showBranchDetails) {
+          // Super admin in branch details view
+          setSelectedVendor(vendorFromState);
+          setBranchDetailsTab('ledger');
+        } else if (isAdmin || isAccountsManager || isSupervisor) {
+          // Admin/Accounts Manager/Supervisor
+          setAdminSelectedVendor(vendorFromState);
+          setAdminAccountsTab('ledger');
+        }
+      }
+      // Clear location state to prevent re-triggering on re-render
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state, isSuperAdmin, showBranchDetails, isAdmin, isAccountsManager, isSupervisor, dispatch]);
+
   // Filter out lead incomes from accounts ledger
   // Note: Category filtering is now handled by the backend
   // IMPORTANT: This filter is for the ACCOUNTS view - it should show order incomes (only exclude lead orders)
@@ -3065,22 +3113,41 @@ const LedgerTabContent = ({
             // Normalize strings for comparison (trim and lowercase)
             const normalize = (str) => (str || '').toString().trim().toLowerCase();
             
-            // Check direct vendorName match
-            const vendorNameMatch = acc.vendorName && normalize(acc.vendorName) === normalize(selectedVendor.supplierName);
+            // Get supplier identifiers from selected vendor
+            const selectedSupplierId = selectedVendor.supplierId ? normalize(selectedVendor.supplierId) : null;
+            const selectedSupplierName = selectedVendor.supplierName ? normalize(selectedVendor.supplierName) : null;
             
-            // Check direct supplierId match
-            const supplierIdMatch = acc.supplierId && normalize(acc.supplierId) === normalize(selectedVendor.supplierId);
+            // Check direct vendorName match (for expense transactions that might use vendorName)
+            const vendorNameMatch = acc.vendorName && selectedSupplierName && 
+                                   normalize(acc.vendorName) === selectedSupplierName;
             
-            // Check rawMaterialId if populated
+            // Check direct supplierId match (for purchase transactions)
+            const supplierIdMatch = acc.supplierId && selectedSupplierId && 
+                                  normalize(acc.supplierId) === selectedSupplierId;
+            
+            // Check rawMaterialId if populated (most common case for raw material purchases)
             let rawMaterialMatch = false;
-            if (acc.rawMaterialId && typeof acc.rawMaterialId === 'object') {
-              const rawMaterial = acc.rawMaterialId;
-              rawMaterialMatch = 
-                (rawMaterial.supplierName && normalize(rawMaterial.supplierName) === normalize(selectedVendor.supplierName)) ||
-                (rawMaterial.supplierId && normalize(rawMaterial.supplierId) === normalize(selectedVendor.supplierId));
+            if (acc.rawMaterialId) {
+              if (typeof acc.rawMaterialId === 'object') {
+                const rawMaterial = acc.rawMaterialId;
+                // Check both supplierId and supplierName from rawMaterial
+                if (selectedSupplierId && rawMaterial.supplierId) {
+                  rawMaterialMatch = normalize(rawMaterial.supplierId) === selectedSupplierId;
+                }
+                if (!rawMaterialMatch && selectedSupplierName && rawMaterial.supplierName) {
+                  rawMaterialMatch = normalize(rawMaterial.supplierName) === selectedSupplierName;
+                }
+              } else if (typeof acc.rawMaterialId === 'string' && selectedSupplierId) {
+                // If rawMaterialId is just an ID string, we can't match by supplier info
+                // This case is less common but handle it gracefully
+                rawMaterialMatch = false;
+              }
             }
             
+            // Also check if transaction is a purchase/expense related to this supplier
+            // Match if any of the conditions are true
             const match = vendorNameMatch || supplierIdMatch || rawMaterialMatch;
+            
             if (match) {
               console.log('[LedgerTabContent] Matched supplier transaction:', {
                 accountId: acc.accountId,
@@ -3089,8 +3156,28 @@ const LedgerTabContent = ({
                 rawMaterialSupplierName: acc.rawMaterialId?.supplierName,
                 rawMaterialSupplierId: acc.rawMaterialId?.supplierId,
                 transactionType: acc.transactionType,
-                category: acc.category
+                category: acc.category,
+                paymentStatus: acc.paymentStatus,
+                amount: acc.amount,
+                selectedSupplierId: selectedSupplierId,
+                selectedSupplierName: selectedSupplierName
               });
+            } else {
+              // Log why transaction didn't match for debugging
+              if (acc.transactionType === 'purchase' || acc.transactionType === 'expense') {
+                console.log('[LedgerTabContent] Supplier transaction NOT matched:', {
+                  accountId: acc.accountId,
+                  vendorName: acc.vendorName,
+                  supplierId: acc.supplierId,
+                  rawMaterialSupplierName: acc.rawMaterialId?.supplierName,
+                  rawMaterialSupplierId: acc.rawMaterialId?.supplierId,
+                  selectedSupplierId: selectedSupplierId,
+                  selectedSupplierName: selectedSupplierName,
+                  vendorNameMatch,
+                  supplierIdMatch,
+                  rawMaterialMatch
+                });
+              }
             }
             return match;
           } else if (selectedVendor.type === 'courier') {
@@ -3314,14 +3401,19 @@ const LedgerTabContent = ({
   }, [allVendors.length]);
 
   if (selectedVendor) {
+    // Get outstanding balance from vendor object if available (from VendorsPage)
+    const vendorOutstandingBalance = selectedVendor.outstandingBalance || 0;
+    
     // Calculate deposit amount for courier partners (sum of all credit transactions)
     const depositAmount = selectedVendor.type === 'courier' 
       ? vendorBalance.credit 
       : 0;
     
-    // Calculate balance payable for vendors (negative total means payable)
-    const balancePayable = selectedVendor.type !== 'courier' && vendorBalance.total < 0
-      ? Math.abs(vendorBalance.total)
+    // Calculate balance payable for vendors
+    // Use vendor's outstanding balance if available, otherwise use calculated balance
+    const calculatedBalance = vendorBalance.total < 0 ? Math.abs(vendorBalance.total) : 0;
+    const balancePayable = selectedVendor.type !== 'courier' 
+      ? (vendorOutstandingBalance > 0 ? vendorOutstandingBalance : calculatedBalance)
       : 0;
     
     // Calculate total value (total debit - what we owe to vendor)
@@ -3502,6 +3594,19 @@ const LedgerTabContent = ({
             <div className="text-center py-12">
               <HiClipboardDocumentList className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <p className="text-gray-600">No transactions found for this vendor</p>
+              {(selectedVendor.outstandingBalance > 0 || vendorBalance.total !== 0) && (
+                <p className="text-sm text-amber-600 mt-2">
+                  Note: There is an outstanding balance (₹{(selectedVendor.outstandingBalance || Math.abs(vendorBalance.total)).toLocaleString('en-IN', { 
+                    minimumFractionDigits: 2, 
+                    maximumFractionDigits: 2 
+                  })}), but no matching transactions were found. 
+                  This may indicate transactions exist in a different branch or with different supplier identifiers.
+                  <br />
+                  <span className="text-xs text-gray-500 mt-1 block">
+                    Please check that transactions have matching supplierId ({selectedVendor.supplierId}) or supplierName ({selectedVendor.supplierName}).
+                  </span>
+                </p>
+              )}
             </div>
           )}
         </Card>

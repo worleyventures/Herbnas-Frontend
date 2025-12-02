@@ -56,10 +56,10 @@ const VendorsPage = () => {
       supplierName: supplier.supplierName,
       gstNumber: supplier.gstNumber,
       hsn: supplier.hsn,
-      gstPercentage: supplier.gstPercentage,
       contactName: supplier.contactName,
       phone: supplier.phone,
-      email: supplier.email
+      email: supplier.email,
+      outstandingBalance: supplier.outstandingBalance || 0
     })).sort((a, b) => a.name.localeCompare(b.name));
   }, [suppliers]);
 
@@ -91,11 +91,13 @@ const VendorsPage = () => {
     const totalVendors = filteredVendors.length;
     const vendorsWithGST = filteredVendors.filter(v => v.gstNumber).length;
     const vendorsWithContact = filteredVendors.filter(v => v.phone || v.email).length;
+    const totalOutstandingBalance = filteredVendors.reduce((sum, v) => sum + (v.outstandingBalance || 0), 0);
 
     return {
       totalVendors,
       vendorsWithGST,
-      vendorsWithContact
+      vendorsWithContact,
+      totalOutstandingBalance
     };
   }, [filteredVendors]);
 
@@ -141,7 +143,7 @@ const VendorsPage = () => {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <StatCard
           title="Total Vendors"
           value={stats.totalVendors}
@@ -161,6 +163,16 @@ const VendorsPage = () => {
           value={stats.vendorsWithContact}
           icon={HiBuildingOffice2}
           gradient="purple"
+          loading={loading}
+        />
+        <StatCard
+          title="Total Outstanding"
+          value={`₹${stats.totalOutstandingBalance.toLocaleString('en-IN', { 
+            minimumFractionDigits: 2, 
+            maximumFractionDigits: 2 
+          })}`}
+          icon={HiBuildingOffice2}
+          gradient="red"
           loading={loading}
         />
       </div>
@@ -208,16 +220,39 @@ const VendorsPage = () => {
                       HSN Code
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      GST %
+                      Contact
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Contact
+                      Outstanding Balance
                     </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {paginatedVendors.map((vendor) => (
-                    <tr key={vendor._id} className="hover:bg-gray-50 transition-colors">
+                    <tr 
+                      key={vendor._id} 
+                      className="hover:bg-gray-50 transition-colors cursor-pointer"
+                      onClick={() => {
+                        // Navigate to accounts page with vendor information
+                        navigate('/accounts', {
+                          state: {
+                            vendor: {
+                              _id: vendor.supplierId || vendor._id,
+                              name: vendor.supplierName || vendor.name,
+                              type: 'supplier',
+                              supplierId: vendor.supplierId,
+                              supplierName: vendor.supplierName,
+                              gstNumber: vendor.gstNumber,
+                              hsn: vendor.hsn,
+                              contactName: vendor.contactName,
+                              phone: vendor.phone,
+                              email: vendor.email,
+                              outstandingBalance: vendor.outstandingBalance || 0
+                            }
+                          }
+                        });
+                      }}
+                    >
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900">{vendor.name}</div>
                         {vendor.supplierId && (
@@ -234,20 +269,40 @@ const VendorsPage = () => {
                           {vendor.hsn || 'N/A'}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
-                          {vendor.gstPercentage ? `${vendor.gstPercentage}%` : 'N/A'}
-                        </div>
+                      <td className="px-6 py-4">
+                        {vendor.contactName || vendor.phone || vendor.email ? (
+                          <div className="space-y-1">
+                            {vendor.contactName && (
+                              <div className="text-sm font-medium text-gray-900">
+                                {vendor.contactName}
+                              </div>
+                            )}
+                            {vendor.phone && (
+                              <div className="text-xs text-gray-600">
+                                📞 {vendor.phone}
+                              </div>
+                            )}
+                            {vendor.email && (
+                              <div className="text-xs text-gray-600">
+                                ✉️ {vendor.email}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="text-sm text-gray-400 italic">No contact details</div>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
-                          {vendor.contactName || 'N/A'}
-                        </div>
-                        {(vendor.phone || vendor.email) && (
-                          <div className="text-xs text-gray-500">
-                            {vendor.phone && `Phone: ${vendor.phone}`}
-                            {vendor.phone && vendor.email && ' • '}
-                            {vendor.email && `Email: ${vendor.email}`}
+                        {vendor.outstandingBalance > 0 ? (
+                          <div className="text-sm font-semibold text-red-600">
+                            ₹{vendor.outstandingBalance.toLocaleString('en-IN', { 
+                              minimumFractionDigits: 2, 
+                              maximumFractionDigits: 2 
+                            })}
+                          </div>
+                        ) : (
+                          <div className="text-sm text-gray-400">
+                            ₹0.00
                           </div>
                         )}
                       </td>
