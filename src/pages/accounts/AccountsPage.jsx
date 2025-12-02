@@ -17,9 +17,12 @@ import {
   HiPhone,
   HiEnvelope,
   HiIdentification,
-  HiDocumentText
+  HiDocumentText,
+  HiBookOpen,
+  HiTableCells,
+  HiChartPie
 } from 'react-icons/hi2';
-import { Button, Input, Select, Table, StatusBadge, Loading, StatCard, CommonModal, SearchInput, Card } from '../../components/common';
+import { Button, Input, Select, Table, StatusBadge, Loading, StatCard, CommonModal, SearchInput, Card, Pagination } from '../../components/common';
 import {
   getAllAccounts,
   getAccountStats,
@@ -62,6 +65,7 @@ const AccountsPage = () => {
   
   // Redux state
   const accounts = useSelector(selectAccounts);
+  const { branches: allBranches = [] } = useSelector((state) => state.branches || {});
   const loading = useSelector(selectAccountLoading);
   const error = useSelector(selectAccountError);
   const stats = useSelector(selectAccountStats);
@@ -90,6 +94,8 @@ const AccountsPage = () => {
   const [branchFilter, setBranchFilter] = useState('all');
   const [paymentStatusFilter, setPaymentStatusFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
+  const [transactionLedgerPage, setTransactionLedgerPage] = useState(1);
+  const [chartOfAccountsPage, setChartOfAccountsPage] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [accountToDelete, setAccountToDelete] = useState(null);
@@ -118,7 +124,7 @@ const AccountsPage = () => {
   const [vendorLedgerLoading, setVendorLedgerLoading] = useState(false);
   
   // Tab state for super admin branch summary view
-  const [summaryViewTab, setSummaryViewTab] = useState('summary'); // 'summary' or 'ledger'
+  const [summaryViewTab, setSummaryViewTab] = useState('summary'); // 'summary', 'ledger', 'transactionLedger', 'chartOfAccounts', or 'categoryAnalysis'
   const [summarySelectedVendor, setSummarySelectedVendor] = useState(null);
   const [summaryVendorLedgerTransactions, setSummaryVendorLedgerTransactions] = useState([]);
   const [summaryVendorLedgerLoading, setSummaryVendorLedgerLoading] = useState(false);
@@ -340,10 +346,12 @@ const AccountsPage = () => {
     // Determine which tab is active based on user role
     const isOnOverviewTab = isAccountsManager || isAdmin || isSupervisor 
       ? (adminAccountsTab === 'overview') 
-      : (activeTab === 'overview');
+      : isSuperAdmin
+      ? (summaryViewTab === 'summary' || summaryViewTab === 'transactionLedger')
+      : (activeTab === 'overview' || activeTab === 'transactionLedger');
     
-    // Skip loading only if we're explicitly on purchases or reports tab (not overview/ledger)
-    // Always load for overview/ledger tab or when viewing branch details
+    // Skip loading only if we're explicitly on purchases or reports tab (not overview/ledger/transactionLedger)
+    // Always load for overview/ledger/transactionLedger tab or when viewing branch details
     const isOnOtherTab = (activeTab === 'purchases' || activeTab === 'reports');
     const shouldSkip = isOnOtherTab && !showBranchDetails;
     
@@ -360,22 +368,31 @@ const AccountsPage = () => {
     const branchId = (isAccountsManager || isAdmin || isSupervisor) ? (user?.branch?._id || user?.branch) : (branchFilter !== 'all' ? branchFilter : undefined);
     const dateRange = getDateRange();
     
-    // For custom date range, only fetch if both dates are provided
-    if (dateRangeFilter === 'custom' && (!fromDate || !toDate)) {
-      // Don't fetch if custom is selected but dates are not provided
+    // For transaction ledger and category analysis tabs, fetch more records (no pagination limit, no date restrictions)
+    const isCategoryAnalysisTab = summaryViewTab === 'categoryAnalysis' || activeTab === 'categoryAnalysis';
+    const isTransactionLedgerTab = summaryViewTab === 'transactionLedger' || activeTab === 'transactionLedger';
+    const shouldFetchAllAccounts = isTransactionLedgerTab || isCategoryAnalysisTab;
+    
+    // For custom date range, only fetch if both dates are provided (unless on transaction ledger or category analysis tab)
+    if (dateRangeFilter === 'custom' && (!fromDate || !toDate) && !shouldFetchAllAccounts) {
+      // Don't fetch if custom is selected but dates are not provided (unless on transaction ledger or category analysis)
       return;
     }
     
     const accountParams = {
-      page: currentPage,
-      limit: 10,
+      page: shouldFetchAllAccounts ? 1 : currentPage,
+      limit: shouldFetchAllAccounts ? 10000 : 10, // Fetch all for transaction ledger and category analysis
       search: searchTerm,
-      startDate: dateRange?.startDate,
-      endDate: dateRange?.endDate,
+      // For transaction ledger and category analysis, don't apply date range filter - show all transactions
+      startDate: shouldFetchAllAccounts ? undefined : dateRange?.startDate,
+      endDate: shouldFetchAllAccounts ? undefined : dateRange?.endDate,
       branchId: branchId,
-      paymentStatus: paymentStatusFilter !== 'all' ? paymentStatusFilter : undefined,
-      transactionType: transactionTypeFilter !== 'all' ? transactionTypeFilter : undefined,
-      category: categoryFilter || undefined
+      // For transaction ledger and category analysis, don't apply payment status filter - show all
+      paymentStatus: shouldFetchAllAccounts ? undefined : (paymentStatusFilter !== 'all' ? paymentStatusFilter : undefined),
+      // For transaction ledger and category analysis, don't apply transaction type filter - show all
+      transactionType: shouldFetchAllAccounts ? undefined : (transactionTypeFilter !== 'all' ? transactionTypeFilter : undefined),
+      // For transaction ledger and category analysis, don't apply category filter - show all
+      category: shouldFetchAllAccounts ? undefined : (categoryFilter || undefined)
     };
     
     console.log('[AccountsPage] Loading accounts with params:', {
@@ -410,7 +427,7 @@ const AccountsPage = () => {
         endDate: dateRange?.endDate
       }));
     }
-  }, [activeTab, adminAccountsTab, currentPage, searchTerm, dateRangeFilter, fromDate, toDate, branchFilter, paymentStatusFilter, transactionTypeFilter, categoryFilter, dispatch, isSuperAdmin, isAccountsManager, isAdmin, isSupervisor, user, user?.branch?._id, user?.branch, getDateRange, showBranchDetails, hasLoadedInitialData]);
+  }, [activeTab, adminAccountsTab, summaryViewTab, currentPage, searchTerm, dateRangeFilter, fromDate, toDate, branchFilter, paymentStatusFilter, transactionTypeFilter, categoryFilter, dispatch, isSuperAdmin, isAccountsManager, isAdmin, isSupervisor, user, user?.branch?._id, user?.branch, getDateRange, showBranchDetails, hasLoadedInitialData]);
 
   // Reload data when user loads (handles refresh case where user loads after component mount)
   useEffect(() => {
@@ -450,7 +467,7 @@ const AccountsPage = () => {
 
   // Separate effect to reload branch summary when date range changes (for super admin)
   useEffect(() => {
-    if (isSuperAdmin && (activeTab === 'overview' || !showBranchDetails)) {
+    if (isSuperAdmin && ((activeTab === 'overview' || summaryViewTab === 'summary' || summaryViewTab === 'transactionLedger') || !showBranchDetails)) {
       // For custom date range, only fetch if both dates are provided
       if (dateRangeFilter === 'custom' && (!fromDate || !toDate)) {
         // Don't fetch if custom is selected but dates are not provided
@@ -1074,6 +1091,692 @@ const AccountsPage = () => {
     { value: 'expense', label: 'Expense' },
     { value: 'purchase', label: 'Purchase' }
   ];
+
+  // Filter accounts for transaction ledger - show ALL transactions including lead incomes
+  const ledgerAccounts = useMemo(() => {
+    console.log('[TransactionLedger] Accounts from Redux:', accounts?.length || 0, accounts);
+    if (!accounts || accounts.length === 0) {
+      console.log('[TransactionLedger] No accounts available in Redux state');
+      return [];
+    }
+    // Show all transactions - no filtering (include lead incomes, all types)
+    console.log('[TransactionLedger] Returning all accounts:', accounts.length);
+    return accounts;
+  }, [accounts]);
+
+  // Filter by search term for transaction ledger
+  const filteredLedgerAccounts = useMemo(() => {
+    if (!searchTerm) return ledgerAccounts;
+    const searchLower = searchTerm.toLowerCase();
+    return ledgerAccounts.filter(acc => 
+      acc.accountId?.toLowerCase().includes(searchLower) ||
+      acc.description?.toLowerCase().includes(searchLower) ||
+      acc.category?.toLowerCase().includes(searchLower) ||
+      acc.referenceNumber?.toLowerCase().includes(searchLower) ||
+      acc.vendorName?.toLowerCase().includes(searchLower) ||
+      acc.customerName?.toLowerCase().includes(searchLower)
+    );
+  }, [ledgerAccounts, searchTerm]);
+
+  // Paginate transaction ledger accounts (10 per page)
+  const itemsPerPage = 10;
+  const paginatedLedgerAccounts = useMemo(() => {
+    const startIndex = (transactionLedgerPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredLedgerAccounts.slice(startIndex, endIndex);
+  }, [filteredLedgerAccounts, transactionLedgerPage]);
+
+  const totalLedgerPages = Math.ceil(filteredLedgerAccounts.length / itemsPerPage);
+
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    if (summaryViewTab === 'transactionLedger' || activeTab === 'transactionLedger') {
+      setTransactionLedgerPage(1);
+    }
+  }, [searchTerm, summaryViewTab, activeTab]);
+
+  // Fetch all branches if not already loaded (for Chart of Accounts)
+  useEffect(() => {
+    if ((summaryViewTab === 'chartOfAccounts' || activeTab === 'chartOfAccounts') && allBranches.length === 0) {
+      dispatch(getAllBranches({ page: 1, limit: 100 }));
+    }
+  }, [dispatch, allBranches.length, summaryViewTab, activeTab]);
+
+  // Process accounts to create chart of accounts entries
+  const chartOfAccounts = useMemo(() => {
+      const accountMap = new Map();
+
+      // First, initialize all accounts from branch data with their current balances
+      allBranches.forEach(branch => {
+        const branchId = branch._id?.toString() || branch.branchId?.toString();
+        if (!branchId) return;
+
+        const branchName = branch.branchName || 'Unknown Branch';
+
+        // Add ready cash account with initial balance
+        const readyCashKey = `ready_cash_${branchId}`;
+        if (!accountMap.has(readyCashKey)) {
+          accountMap.set(readyCashKey, {
+            transactionId: 'N/A',
+            accountName: `Cash - ${branchName}`,
+            category: 'Current Assets',
+            branch: branchName,
+            balance: branch.readyCashAmount || 0,
+            status: 'active',
+            branchId: branchId
+          });
+        }
+
+        // Add bank accounts with initial balances
+        if (Array.isArray(branch.bankAccounts)) {
+          branch.bankAccounts.forEach((bankAccount, index) => {
+            const bankKey = `bank_${branchId}_${index}`;
+            if (!accountMap.has(bankKey)) {
+              accountMap.set(bankKey, {
+                transactionId: 'N/A',
+                accountName: `${bankAccount.bankName || 'Bank'} - ${branchName}`,
+                category: 'Current Assets',
+                branch: branchName,
+                balance: bankAccount.accountBalance || 0,
+                status: 'active',
+                branchId: branchId,
+                bankAccountIndex: index
+              });
+            }
+          });
+        }
+      });
+
+      // Now process all transactions to adjust balances and track transaction IDs
+      // Sort transactions by date (most recent first) to get the latest transaction ID
+      const sortedTransactions = accounts && accounts.length > 0 
+        ? [...accounts].sort((a, b) => {
+            const dateA = new Date(a.transactionDate || a.createdAt || 0);
+            const dateB = new Date(b.transactionDate || b.createdAt || 0);
+            return dateB - dateA; // Most recent first
+          })
+        : [];
+
+      sortedTransactions.forEach(transaction => {
+        if (!transaction.branchId) return;
+
+        const branchId = typeof transaction.branchId === 'object' 
+          ? transaction.branchId._id?.toString() 
+          : transaction.branchId?.toString();
+        
+        if (!branchId) return;
+
+        const branch = allBranches.find(b => 
+          (b._id?.toString() === branchId) || (b.branchId?.toString() === branchId)
+        );
+
+        if (!branch) return;
+
+        const amount = transaction.amount || 0;
+        const isIncome = transaction.transactionType === 'income';
+        const isExpense = transaction.transactionType === 'expense' || transaction.transactionType === 'purchase';
+        const paymentSource = transaction.paymentSource;
+        const bankAccountIndex = transaction.bankAccountIndex;
+        const paymentStatus = transaction.paymentStatus;
+        const transactionId = transaction.accountId || transaction._id?.toString() || 'N/A';
+
+        // Only process completed transactions that affect account balances
+        if (paymentStatus !== 'completed') return;
+
+        // Process ready cash transactions
+        if (paymentSource === 'ready_cash' || (!paymentSource && paymentStatus === 'completed')) {
+          const accountKey = `ready_cash_${branchId}`;
+          const account = accountMap.get(accountKey);
+          if (account) {
+            // Income increases balance, expense decreases balance
+            account.balance += isIncome ? amount : (isExpense ? -amount : 0);
+            // Update transaction ID with the most recent one
+            if (transactionId !== 'N/A' && account.transactionId === 'N/A') {
+              account.transactionId = transactionId;
+            } else if (transactionId !== 'N/A') {
+              account.transactionId = transactionId; // Always use the most recent (since we sorted)
+            }
+          }
+        }
+
+        // Process bank account transactions
+        if (paymentSource === 'bank_account' && bankAccountIndex !== undefined && bankAccountIndex !== null && bankAccountIndex !== '') {
+          const accountKey = `bank_${branchId}_${bankAccountIndex}`;
+          const account = accountMap.get(accountKey);
+          if (account) {
+            // Income increases balance, expense decreases balance
+            account.balance += isIncome ? amount : (isExpense ? -amount : 0);
+            // Update transaction ID with the most recent one
+            if (transactionId !== 'N/A' && account.transactionId === 'N/A') {
+              account.transactionId = transactionId;
+            } else if (transactionId !== 'N/A') {
+              account.transactionId = transactionId; // Always use the most recent (since we sorted)
+            }
+          }
+        }
+      });
+
+      return Array.from(accountMap.values()).sort((a, b) => {
+        // Sort by branch name, then by account name
+        if (a.branch !== b.branch) {
+          return a.branch.localeCompare(b.branch);
+        }
+        return a.accountName.localeCompare(b.accountName);
+      });
+    }, [accounts, allBranches]);
+
+  // Filter by search term for chart of accounts
+  const filteredChartAccounts = useMemo(() => {
+    if (!searchTerm) return chartOfAccounts;
+    const searchLower = searchTerm.toLowerCase();
+    return chartOfAccounts.filter(acc => 
+      acc.transactionId?.toLowerCase().includes(searchLower) ||
+      acc.accountName?.toLowerCase().includes(searchLower) ||
+      acc.branch?.toLowerCase().includes(searchLower) ||
+      acc.category?.toLowerCase().includes(searchLower)
+    );
+  }, [chartOfAccounts, searchTerm]);
+
+  // Paginate chart of accounts (10 per page)
+  const chartItemsPerPage = 10;
+  const paginatedChartAccounts = useMemo(() => {
+    const startIndex = (chartOfAccountsPage - 1) * chartItemsPerPage;
+    const endIndex = startIndex + chartItemsPerPage;
+    return filteredChartAccounts.slice(startIndex, endIndex);
+  }, [filteredChartAccounts, chartOfAccountsPage]);
+
+  const totalChartPages = Math.ceil(filteredChartAccounts.length / chartItemsPerPage);
+
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    if (summaryViewTab === 'chartOfAccounts' || activeTab === 'chartOfAccounts') {
+      setChartOfAccountsPage(1);
+    }
+  }, [searchTerm, summaryViewTab, activeTab]);
+
+  // Category name mapping for display
+  const getCategoryDisplayName = (category) => {
+    const categoryMap = {
+      // Income categories
+      'sales': 'Product Sales',
+      'service': 'Service Fees',
+      'commission': 'Commission',
+      'interest': 'Interest Income',
+      'investment': 'Investment Income',
+      'other_income': 'Other Income',
+      // Expense categories
+      'raw_materials': 'Raw Materials',
+      'labor': 'Labor',
+      'utilities': 'Utilities',
+      'eb': 'EB',
+      'rent': 'Rent',
+      'equipment': 'Equipment',
+      'marketing': 'Marketing',
+      'transportation': 'Transportation',
+      'maintenance': 'Maintenance',
+      'insurance': 'Insurance',
+      'taxes': 'Taxes',
+      'other_expense': 'Other Expense',
+      // Purchase categories (treated as expenses)
+      'centralized_purchase': 'Centralized Purchase',
+      'branch_purchase': 'Branch Purchase',
+      'raw_material_purchase': 'Raw Material Purchase',
+      'equipment_purchase': 'Equipment Purchase',
+      // Additional expense categories that might exist
+      'packaging': 'Packaging',
+      'courier_charges': 'Courier Charges',
+      'salaries_wages': 'Salaries & Wages'
+    };
+    return categoryMap[category] || category.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  };
+
+  // Process category analysis data
+  const categoryAnalysisData = useMemo(() => {
+    if (!accounts || accounts.length === 0) {
+      return { income: [], expenses: [], totalIncome: 0, totalExpenses: 0 };
+    }
+
+    const incomeMap = new Map();
+    const expenseMap = new Map();
+    let totalIncome = 0;
+    let totalExpenses = 0;
+
+    accounts.forEach(transaction => {
+      const amount = transaction.amount || 0;
+      const category = transaction.category;
+      const transactionType = transaction.transactionType;
+
+      if (!category) return;
+
+      // Process income transactions
+      if (transactionType === 'income') {
+        totalIncome += amount;
+        if (incomeMap.has(category)) {
+          incomeMap.set(category, incomeMap.get(category) + amount);
+        } else {
+          incomeMap.set(category, amount);
+        }
+      }
+      
+      // Process expense and purchase transactions
+      if (transactionType === 'expense' || transactionType === 'purchase') {
+        totalExpenses += amount;
+        // Map purchase categories to expense categories for better grouping
+        let expenseCategory = category;
+        if (transactionType === 'purchase') {
+          if (category === 'raw_material_purchase') {
+            expenseCategory = 'raw_materials';
+          } else if (category === 'equipment_purchase') {
+            expenseCategory = 'equipment';
+          } else if (category === 'centralized_purchase' || category === 'branch_purchase') {
+            expenseCategory = 'other_expense';
+          }
+        }
+        
+        if (expenseMap.has(expenseCategory)) {
+          expenseMap.set(expenseCategory, expenseMap.get(expenseCategory) + amount);
+        } else {
+          expenseMap.set(expenseCategory, amount);
+        }
+      }
+    });
+
+    // Convert maps to arrays with percentages
+    const incomeCategories = Array.from(incomeMap.entries())
+      .map(([category, amount]) => ({
+        category,
+        displayName: getCategoryDisplayName(category),
+        amount,
+        percentage: totalIncome > 0 ? (amount / totalIncome) * 100 : 0
+      }))
+      .sort((a, b) => b.amount - a.amount); // Sort by amount descending
+
+    const expenseCategories = Array.from(expenseMap.entries())
+      .map(([category, amount]) => ({
+        category,
+        displayName: getCategoryDisplayName(category),
+        amount,
+        percentage: totalExpenses > 0 ? (amount / totalExpenses) * 100 : 0
+      }))
+      .sort((a, b) => b.amount - a.amount); // Sort by amount descending
+
+    return {
+      income: incomeCategories,
+      expenses: expenseCategories,
+      totalIncome,
+      totalExpenses
+    };
+  }, [accounts]);
+
+  // Render Category Analysis content
+  const renderCategoryAnalysis = () => {
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Income by Category */}
+          <Card>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Income by Category</h3>
+            <div className="space-y-3">
+              {categoryAnalysisData.income.length > 0 ? (
+                <>
+                  {categoryAnalysisData.income.map((item, index) => (
+                    <div
+                      key={item.category}
+                      className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-gray-900">{item.displayName}</p>
+                          <p className="text-xs text-gray-500 mt-1">{item.percentage.toFixed(1)}% of total income</p>
+                        </div>
+                        <p className="text-lg font-semibold text-green-600">
+                          ₹{item.amount.toLocaleString('en-IN', {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                          })}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                  {/* Total Income */}
+                  <div className="bg-green-50 border-2 border-green-200 rounded-lg p-4 mt-4">
+                    <div className="flex justify-between items-center">
+                      <p className="text-base font-semibold text-green-900">Total Income</p>
+                      <p className="text-xl font-bold text-green-700">
+                        ₹{categoryAnalysisData.totalIncome.toLocaleString('en-IN', {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-sm text-gray-500">No income transactions found</p>
+                </div>
+              )}
+            </div>
+          </Card>
+
+          {/* Expenses by Category */}
+          <Card>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Expenses by Category</h3>
+            <div className="space-y-3">
+              {categoryAnalysisData.expenses.length > 0 ? (
+                <>
+                  {categoryAnalysisData.expenses.map((item, index) => (
+                    <div
+                      key={item.category}
+                      className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-gray-900">{item.displayName}</p>
+                          <p className="text-xs text-gray-500 mt-1">{item.percentage.toFixed(1)}% of total expenses</p>
+                        </div>
+                        <p className="text-lg font-semibold text-red-600">
+                          ₹{item.amount.toLocaleString('en-IN', {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                          })}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                  {/* Total Expenses */}
+                  <div className="bg-red-50 border-2 border-red-200 rounded-lg p-4 mt-4">
+                    <div className="flex justify-between items-center">
+                      <p className="text-base font-semibold text-red-900">Total Expenses</p>
+                      <p className="text-xl font-bold text-red-700">
+                        ₹{categoryAnalysisData.totalExpenses.toLocaleString('en-IN', {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-sm text-gray-500">No expense transactions found</p>
+                </div>
+              )}
+            </div>
+          </Card>
+        </div>
+      </div>
+    );
+  };
+
+  // Render Chart of Accounts content
+  const renderChartOfAccounts = () => {
+
+    return (
+      <div className="space-y-6">
+        {/* Search Bar */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+          <div className="flex-1 max-w-md">
+            <SearchInput
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search accounts..."
+              icon={HiMagnifyingGlass}
+            />
+          </div>
+        </div>
+
+        {/* Chart of Accounts Table */}
+        <Card>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Transaction ID
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Account Name
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Category
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Branch
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Balance
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {loading ? (
+                  <tr>
+                    <td colSpan="6" className="px-6 py-12 text-center">
+                      <Loading />
+                    </td>
+                  </tr>
+                ) : filteredChartAccounts.length === 0 ? (
+                  <tr>
+                    <td colSpan="6" className="px-6 py-12 text-center">
+                      <div className="flex flex-col items-center">
+                        <HiClipboardDocumentList className="h-12 w-12 text-gray-300 mb-2" />
+                        <p className="text-lg font-medium text-gray-900">No accounts found</p>
+                        <p className="text-sm text-gray-500">
+                          {searchTerm ? 'Try adjusting your search criteria' : 'No accounts available'}
+                        </p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : paginatedChartAccounts.length > 0 ? (
+                  paginatedChartAccounts.map((account, index) => (
+                    <tr 
+                      key={`${account.branchId}_${account.bankAccountIndex !== undefined ? `bank_${account.bankAccountIndex}` : 'cash'}_${index}`}
+                      className="hover:bg-gray-50 transition-colors"
+                    >
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {account.transactionId}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {account.accountName}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {account.category}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {account.branch}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium text-gray-900">
+                        ₹{account.balance.toLocaleString('en-IN', { 
+                          minimumFractionDigits: 2, 
+                          maximumFractionDigits: 2 
+                        })}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          {account.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                ) : null}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination */}
+          {filteredChartAccounts.length > 0 && totalChartPages > 1 && (
+            <div className="px-6 py-4 border-t border-gray-200">
+              <Pagination
+                currentPage={chartOfAccountsPage}
+                totalPages={totalChartPages}
+                onPageChange={setChartOfAccountsPage}
+                itemsPerPage={chartItemsPerPage}
+                totalItems={filteredChartAccounts.length}
+              />
+            </div>
+          )}
+        </Card>
+      </div>
+    );
+  };
+
+  // Render transaction ledger content
+  const renderTransactionLedger = () => {
+
+    return (
+      <div className="space-y-6">
+        {/* Search Bar */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+          <div className="flex-1 max-w-md">
+            <SearchInput
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search transactions..."
+              icon={HiMagnifyingGlass}
+            />
+          </div>
+        </div>
+
+        {/* Transaction Ledger Table */}
+        <Card>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Date
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Transaction ID
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Account
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Description
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Reference
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Type
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Amount
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {loading ? (
+                  <tr>
+                    <td colSpan="7" className="px-6 py-12 text-center">
+                      <Loading />
+                    </td>
+                  </tr>
+                ) : filteredLedgerAccounts.length === 0 ? (
+                  <tr>
+                    <td colSpan="7" className="px-6 py-12 text-center">
+                      <div className="flex flex-col items-center">
+                        <HiClipboardDocumentList className="h-12 w-12 text-gray-300 mb-2" />
+                        <p className="text-lg font-medium text-gray-900">No transactions found</p>
+                        <p className="text-sm text-gray-500">
+                          {accounts && accounts.length === 0 
+                            ? 'No accounts data available. Please check if accounts exist in the system.'
+                            : searchTerm 
+                            ? 'Try adjusting your search criteria' 
+                            : 'No transactions available'}
+                        </p>
+                        {accounts && accounts.length > 0 && (
+                          <p className="text-xs text-gray-400 mt-2">
+                            Total accounts in system: {accounts.length} | Filtered: {filteredLedgerAccounts.length}
+                          </p>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ) : paginatedLedgerAccounts.length > 0 ? (
+                  paginatedLedgerAccounts.map((transaction) => {
+                    const isCredit = transaction.transactionType === 'income';
+                    const isDebit = transaction.transactionType === 'expense' || transaction.transactionType === 'purchase';
+                    
+                    return (
+                      <tr 
+                        key={transaction._id} 
+                        className="hover:bg-gray-50 cursor-pointer transition-colors"
+                        onClick={() => handleViewAccount(transaction._id)}
+                      >
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {new Date(transaction.transactionDate).toLocaleDateString('en-IN', {
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit'
+                          })}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {transaction.accountId || 'N/A'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {transaction.category ? transaction.category.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'N/A'}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-900">
+                          <div className="max-w-xs truncate" title={transaction.description}>
+                            {transaction.description || 'N/A'}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {transaction.referenceNumber || 'N/A'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {isCredit ? (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                              Credit
+                            </span>
+                          ) : isDebit ? (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                              Debit
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                              N/A
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <span className={isCredit ? 'text-green-600' : isDebit ? 'text-red-600' : 'text-gray-900'}>
+                            ₹{transaction.amount?.toLocaleString('en-IN', { 
+                              minimumFractionDigits: 2, 
+                              maximumFractionDigits: 2 
+                            }) || '0.00'}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : null}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination */}
+          {filteredLedgerAccounts.length > 0 && totalLedgerPages > 1 && (
+            <div className="px-6 py-4 border-t border-gray-200">
+              <Pagination
+                currentPage={transactionLedgerPage}
+                totalPages={totalLedgerPages}
+                onPageChange={setTransactionLedgerPage}
+                itemsPerPage={itemsPerPage}
+                totalItems={filteredLedgerAccounts.length}
+              />
+            </div>
+          )}
+        </Card>
+      </div>
+    );
+  };
 
   // Render overview content
   const renderOverviewContent = () => {
@@ -1806,12 +2509,66 @@ const AccountsPage = () => {
                 >
                   Ledger
                 </button>
+                <button
+                  onClick={() => {
+                    setSummaryViewTab('transactionLedger');
+                    setSummarySelectedVendor(null);
+                  }}
+                  className={`${
+                    summaryViewTab === 'transactionLedger'
+                      ? 'border-[#8bc34a] text-[#8bc34a]'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}
+                >
+                  <div className="flex items-center space-x-2">
+                    <HiBookOpen className="h-4 w-4" />
+                    <span>Transaction Ledger</span>
+                  </div>
+                </button>
+                <button
+                  onClick={() => {
+                    setSummaryViewTab('chartOfAccounts');
+                    setSummarySelectedVendor(null);
+                  }}
+                  className={`${
+                    summaryViewTab === 'chartOfAccounts'
+                      ? 'border-[#8bc34a] text-[#8bc34a]'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}
+                >
+                  <div className="flex items-center space-x-2">
+                    <HiTableCells className="h-4 w-4" />
+                    <span>Chart of Accounts</span>
+                  </div>
+                </button>
+                <button
+                  onClick={() => {
+                    setSummaryViewTab('categoryAnalysis');
+                    setSummarySelectedVendor(null);
+                  }}
+                  className={`${
+                    summaryViewTab === 'categoryAnalysis'
+                      ? 'border-[#8bc34a] text-[#8bc34a]'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}
+                >
+                  <div className="flex items-center space-x-2">
+                    <HiChartPie className="h-4 w-4" />
+                    <span>Category Analysis</span>
+                  </div>
+                </button>
               </nav>
             </div>
           )}
 
           {/* Tab Content */}
-          {summaryViewTab === 'summary' ? (
+          {summaryViewTab === 'categoryAnalysis' ? (
+            renderCategoryAnalysis()
+          ) : summaryViewTab === 'chartOfAccounts' ? (
+            renderChartOfAccounts()
+          ) : summaryViewTab === 'transactionLedger' ? (
+            renderTransactionLedger()
+          ) : summaryViewTab === 'summary' ? (
             <>
               {/* Statistics Cards - Use branchSummary totals when available, otherwise fall back to stats */}
               {(branchSummary?.totals || stats) && (
@@ -2284,6 +3041,19 @@ const AccountsPage = () => {
                   <span>Reports</span>
                 </div>
               </button>
+              <button
+                onClick={() => setActiveTab('transactionLedger')}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'transactionLedger'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <div className="flex items-center space-x-2">
+                  <HiBookOpen className="h-5 w-5" />
+                  <span>Transaction Ledger</span>
+                </div>
+              </button>
             </nav>
           </div>
 
@@ -2291,6 +3061,7 @@ const AccountsPage = () => {
           {activeTab === 'overview' && renderOverviewContent()}
           {activeTab === 'purchases' && <PurchaseManagement />}
           {activeTab === 'reports' && <FinancialReports />}
+          {activeTab === 'transactionLedger' && renderTransactionLedger()}
         </>
       )}
 
