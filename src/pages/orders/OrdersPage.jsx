@@ -156,11 +156,11 @@ const OrdersPage = () => {
 
   // Load data on component mount
   useEffect(() => {
-    // For admin, fetch all orders (backend already filters by branch)
+    // For admin and super_admin, fetch all orders (backend already filters by branch)
     // We'll filter by branch employees on frontend
-    const limit = isAdmin ? 1000 : 10;
+    const limit = (isAdmin || isSuperAdmin) ? 1000 : 10;
     const orderParams = {
-      page: isAdmin ? 1 : currentPage,
+      page: (isAdmin || isSuperAdmin) ? 1 : currentPage,
       limit: limit,
       search: searchTerm,
       paymentStatus: paymentStatusFilter === 'all' ? '' : paymentStatusFilter,
@@ -198,9 +198,9 @@ const OrdersPage = () => {
   // Refresh orders when navigating to this page (e.g., returning from edit form)
   useEffect(() => {
     if (location.pathname === '/orders') {
-      const limit = isAdmin ? 1000 : 10;
+      const limit = (isAdmin || isSuperAdmin) ? 1000 : 10;
       dispatch(getAllOrders({
-        page: isAdmin ? 1 : currentPage,
+        page: (isAdmin || isSuperAdmin) ? 1 : currentPage,
         limit: limit,
         search: searchTerm,
         paymentStatus: paymentStatusFilter === 'all' ? '' : paymentStatusFilter,
@@ -225,9 +225,9 @@ const OrdersPage = () => {
 
   // Handle refresh
   const handleRefresh = () => {
-    const limit = isAdmin ? 1000 : 10;
+    const limit = (isAdmin || isSuperAdmin) ? 1000 : 10;
     dispatch(getAllOrders({
-      page: isAdmin ? 1 : currentPage,
+      page: (isAdmin || isSuperAdmin) ? 1 : currentPage,
       limit: limit,
       search: searchTerm,
       paymentStatus: paymentStatusFilter
@@ -296,9 +296,9 @@ const OrdersPage = () => {
         message: `Order status updated to ${newStatus}`
       }));
       // Refresh the list immediately
-      const limit = isAdmin ? 1000 : 10;
+      const limit = (isAdmin || isSuperAdmin) ? 1000 : 10;
       await dispatch(getAllOrders({
-        page: isAdmin ? 1 : currentPage,
+        page: (isAdmin || isSuperAdmin) ? 1 : currentPage,
         limit: limit,
         search: searchTerm,
         paymentStatus: paymentStatusFilter
@@ -322,9 +322,9 @@ const OrdersPage = () => {
         message: `Payment status updated to ${newPaymentStatus}`
       }));
       // Refresh the list immediately
-      const limit = isAdmin ? 1000 : 10;
+      const limit = (isAdmin || isSuperAdmin) ? 1000 : 10;
       await dispatch(getAllOrders({
-        page: isAdmin ? 1 : currentPage,
+        page: (isAdmin || isSuperAdmin) ? 1 : currentPage,
         limit: limit,
         search: searchTerm,
         paymentStatus: paymentStatusFilter
@@ -851,15 +851,15 @@ const OrdersPage = () => {
       
       // Refresh orders to ensure data is in sync with backend
       console.log('Refreshing orders...', {
-        page: isAdmin ? 1 : currentPage,
-        limit: isAdmin ? 1000 : 10,
+        page: (isAdmin || isSuperAdmin) ? 1 : currentPage,
+        limit: (isAdmin || isSuperAdmin) ? 1000 : 10,
         search: searchTerm,
         paymentStatus: paymentStatusFilter === 'all' ? '' : paymentStatusFilter
       });
       
-      const limit = isAdmin ? 1000 : 10;
+      const limit = (isAdmin || isSuperAdmin) ? 1000 : 10;
       const refreshParams = {
-        page: isAdmin ? 1 : currentPage,
+        page: (isAdmin || isSuperAdmin) ? 1 : currentPage,
         limit: limit,
         search: searchTerm,
         paymentStatus: paymentStatusFilter === 'all' ? '' : paymentStatusFilter
@@ -1145,17 +1145,17 @@ const OrdersPage = () => {
   // If we have pagination data and want accurate status counts, we'd need to fetch all matching orders
   // For now, we'll use visible orders which is better than showing unfiltered stats
 
-  // Paginate filtered orders for admin
+  // Paginate filtered orders for admin, super_admin, and sales executive (frontend pagination)
   const paginatedOrders = React.useMemo(() => {
-    if (isAdmin) {
+    if (isAdmin || isSuperAdmin || isSalesExecutive) {
       const start = (currentPage - 1) * 10;
       const end = start + 10;
       return filteredOrders.slice(start, end);
     }
     return filteredOrders;
-  }, [filteredOrders, isAdmin, currentPage]);
+  }, [filteredOrders, isAdmin, isSuperAdmin, isSalesExecutive, currentPage]);
   
-  const displayOrders = isSalesExecutive || isAdmin ? paginatedOrders : orders;
+  const displayOrders = (isSalesExecutive || isAdmin || isSuperAdmin) ? paginatedOrders : orders;
   
   // Get payment destination display text
   const getPaymentDestination = () => {
@@ -1801,7 +1801,7 @@ const OrdersPage = () => {
           columns={columns}
           loading={loading}
           error={error}
-          pagination={isAdmin ? {
+          pagination={(isAdmin || isSuperAdmin) ? {
             currentPage: currentPage,
             totalPages: Math.ceil(filteredOrders.length / 10),
             totalItems: filteredOrders.length,
@@ -2033,9 +2033,9 @@ const OrdersPage = () => {
                   setUpdateFormData({ courierPartnerId: '', status: '' });
                   
                   // Refresh orders to ensure table updates with latest data from backend
-                  const limit = isAdmin ? 1000 : 10;
+                  const limit = (isAdmin || isSuperAdmin) ? 1000 : 10;
                   await dispatch(getAllOrders({
-                    page: isAdmin ? 1 : currentPage,
+                    page: (isAdmin || isSuperAdmin) ? 1 : currentPage,
                     limit: limit,
                     search: searchTerm,
                     paymentStatus: paymentStatusFilter === 'all' ? '' : paymentStatusFilter

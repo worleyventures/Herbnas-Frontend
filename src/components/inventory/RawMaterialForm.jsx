@@ -272,10 +272,12 @@ const RawMaterialForm = () => {
         const newData = {
           ...prev,
           supplierId: selectedSupplier.supplierId,
-          supplierName: selectedSupplier.supplierName,
-          gstNumber: selectedSupplier.gstNumber,
-          hsn: selectedSupplier.hsn,
-          gstPercentage: selectedSupplier.gstPercentage.toString()
+          supplierName: selectedSupplier.supplierName || '',
+          gstNumber: selectedSupplier.gstNumber || '',
+          hsn: selectedSupplier.hsn || '',
+          gstPercentage: selectedSupplier.gstPercentage !== undefined && selectedSupplier.gstPercentage !== null 
+            ? selectedSupplier.gstPercentage.toString() 
+            : ''
         };
         console.log('Updated form data with supplier info:', newData);
         return newData;

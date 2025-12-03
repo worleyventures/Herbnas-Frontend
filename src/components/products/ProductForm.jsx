@@ -24,6 +24,7 @@ const ProductForm = () => {
     productId: '',
     productName: '',
     category: '',
+    customCategoryName: '',
     description: '',
     UOM: 'kg',
     price: '',
@@ -36,14 +37,8 @@ const ProductForm = () => {
 
   // Category options
   const categoryOptions = [
-    { value: 'Herbal Medicine', label: 'Herbal Medicine' },
-    { value: 'Ayurvedic', label: 'Ayurvedic' },
-    { value: 'Supplements', label: 'Supplements' },
-    { value: 'Cosmetics', label: 'Cosmetics' },
-    { value: 'Health Products', label: 'Health Products' },
-    { value: 'Organic', label: 'Organic' },
-    { value: 'Traditional Medicine', label: 'Traditional Medicine' },
-    { value: 'Wellness', label: 'Wellness' },
+    { value: 'Powders', label: 'Powders' },
+    { value: 'Tablets', label: 'Tablets' },
     { value: 'Other', label: 'Other' }
   ];
 
@@ -56,10 +51,15 @@ const ProductForm = () => {
   // Initialize form data for editing
   useEffect(() => {
     if (isEditing && product) {
+      // Check if category is one of the standard options, otherwise it's a custom category
+      const standardCategories = ['Powders', 'Tablets', 'Other'];
+      const isStandardCategory = standardCategories.includes(product.category);
+      
       setFormData({
         productId: product.productId || '',
         productName: product.productName || '',
-        category: product.category || '',
+        category: isStandardCategory ? product.category : 'Other',
+        customCategoryName: isStandardCategory ? '' : product.category,
         description: product.description || '',
         UOM: product.UOM || 'kg',
         price: product.price?.toString() || '',
@@ -75,7 +75,9 @@ const ProductForm = () => {
     
     setFormData(prev => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: type === 'checkbox' ? checked : value,
+      // Clear customCategoryName when category changes away from "Other"
+      ...(name === 'category' && value !== 'Other' ? { customCategoryName: '' } : {})
     }));
 
     // Clear error for this field
@@ -83,6 +85,14 @@ const ProductForm = () => {
       setErrors(prev => ({
         ...prev,
         [name]: ''
+      }));
+    }
+    
+    // Clear customCategoryName error when category changes away from "Other"
+    if (name === 'category' && value !== 'Other' && errors.customCategoryName) {
+      setErrors(prev => ({
+        ...prev,
+        customCategoryName: ''
       }));
     }
   };
@@ -99,6 +109,15 @@ const ProductForm = () => {
 
     if (!formData.category) {
       newErrors.category = 'Category is required';
+    }
+
+    // If "Other" is selected, require custom category name
+    if (formData.category === 'Other') {
+      if (!formData.customCategoryName.trim()) {
+        newErrors.customCategoryName = 'Please enter a category name';
+      } else if (formData.customCategoryName.trim().length < 2) {
+        newErrors.customCategoryName = 'Category name must be at least 2 characters';
+      }
     }
 
     if (!formData.description.trim()) {
@@ -143,11 +162,20 @@ const ProductForm = () => {
       const productData = {
         ...formData,
         productName: formData.productName.trim(),
+        category: formData.category, // Send 'Powders', 'Tablets', or 'Other'
         description: formData.description.trim(),
         price: parseFloat(formData.price),
         incentive: formData.incentive ? parseFloat(formData.incentive) : 0,
         productId: formData.productId && formData.productId.trim() ? formData.productId.trim().replace(/\s+/g, '') : undefined // Remove spaces and let backend auto-generate if empty
       };
+      
+      // If "Other" is selected, include customCategoryName in the request
+      if (formData.category === 'Other') {
+        productData.customCategoryName = formData.customCategoryName.trim();
+      } else {
+        // Remove customCategoryName if not "Other"
+        delete productData.customCategoryName;
+      }
 
       if (isEditing) {
         await dispatch(updateProduct({ productId: product._id, productData })).unwrap();
@@ -192,7 +220,7 @@ const ProductForm = () => {
   };
 
   return (
-    <div className="max-w-3xl mx-auto p-6">
+    <div className="w-full p-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-3">
@@ -215,7 +243,7 @@ const ProductForm = () => {
         <div className="bg-white p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-6">Product Information</h2>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Product ID */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
@@ -267,6 +295,26 @@ const ProductForm = () => {
                 className="focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a]"
               />
             </div>
+
+            {/* Custom Category Name - Show only when "Other" is selected */}
+            {formData.category === 'Other' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Category Name <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  type="text"
+                  name="customCategoryName"
+                  value={formData.customCategoryName}
+                  onChange={handleInputChange}
+                  placeholder="Enter category name"
+                  error={errors.customCategoryName}
+                  disabled={isSubmitting}
+                  size="sm"
+                  className="focus:ring-2 focus:ring-[#8bc34a] focus:border-[#8bc34a]"
+                />
+              </div>
+            )}
 
             {/* UOM */}
             <div>

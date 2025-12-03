@@ -54,9 +54,28 @@ export const getActiveBranches = createAsyncThunk(
 // Get branch by ID
 export const getBranchById = createAsyncThunk(
   'branches/getBranchById',
-  async (branchId, { rejectWithValue }) => {
+  async (arg, { rejectWithValue }) => {
     try {
-      const response = await api.get(`/branches/${branchId}`);
+      // Handle both string (branchId) and object ({ branchId, options }) formats
+      let branchId;
+      let options = {};
+      
+      if (typeof arg === 'string') {
+        branchId = arg;
+      } else if (typeof arg === 'object' && arg.branchId) {
+        branchId = arg.branchId;
+        options = arg.options || {};
+      } else {
+        return rejectWithValue('Invalid argument: branchId is required');
+      }
+      
+      // Build query string with options
+      const queryParams = new URLSearchParams();
+      if (options._t) queryParams.append('_t', options._t);
+      
+      const queryString = queryParams.toString();
+      const url = queryString ? `/branches/${branchId}?${queryString}` : `/branches/${branchId}`;
+      const response = await api.get(url);
       return response.data;
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || err.message);

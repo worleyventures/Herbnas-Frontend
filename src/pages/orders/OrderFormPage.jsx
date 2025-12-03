@@ -211,7 +211,8 @@ const OrderFormPage = () => {
     const fetchBranchDetails = async () => {
       if (formData.branchId) {
         try {
-          const result = await dispatch(getBranchById(formData.branchId)).unwrap();
+          // Add timestamp to bypass cache and get fresh data
+          const result = await dispatch(getBranchById({ branchId: formData.branchId, options: { _t: Date.now() } })).unwrap();
           const branchData = result.data?.branch || result.data;
           setSelectedBranchDetails(branchData);
           // If only one bank account and payment method requires it, auto-select (cash goes to ready cash, not bank account)
