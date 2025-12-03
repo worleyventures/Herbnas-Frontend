@@ -1852,10 +1852,10 @@ const AccountsPage = () => {
                             Expense
                           </th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Purchase
+                            Net Profit
                           </th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Net Amount
+                            Margin
                           </th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Transactions
@@ -1896,21 +1896,33 @@ const AccountsPage = () => {
                               </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm font-medium text-blue-600">
-                                ₹{branch.purchase?.toLocaleString() || 0}
-                              </div>
-                              <div className="text-xs text-gray-500">
-                                {branch.purchaseCount || 0} transactions
+                              <div className={`text-sm font-medium ${(() => {
+                                const netProfit = branch.netProfit !== null && branch.netProfit !== undefined 
+                                  ? branch.netProfit 
+                                  : (branch.income || 0) - (branch.expense || 0);
+                                return netProfit >= 0 ? 'text-green-600' : 'text-red-600';
+                              })()}`}>
+                                ₹{(() => {
+                                  const netProfit = branch.netProfit !== null && branch.netProfit !== undefined 
+                                    ? branch.netProfit 
+                                    : (branch.income || 0) - (branch.expense || 0);
+                                  return netProfit.toLocaleString();
+                                })()}
                               </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
-                              <div className={`text-sm font-medium ${branch.netAmount >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                ₹{branch.netAmount?.toLocaleString() || 0}
+                              <div className={`text-sm font-medium ${(branch.margin || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                {(() => {
+                                  const margin = branch.margin !== null && branch.margin !== undefined 
+                                    ? Math.min(branch.margin, 100) // Cap positive at 100%, but allow negative to show actual value
+                                    : 0;
+                                  return margin.toFixed(2) + '%';
+                                })()}
                               </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="text-sm text-gray-900">
-                                {(branch.incomeCount || 0) + (branch.expenseCount || 0) + (branch.purchaseCount || 0)}
+                                {(branch.incomeCount || 0) + (branch.expenseCount || 0)}
                               </div>
                             </td>
                           </tr>
@@ -1928,14 +1940,19 @@ const AccountsPage = () => {
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-red-600">
                               ₹{branchSummary.totals.totalExpense?.toLocaleString() || 0}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-blue-600">
-                              ₹{branchSummary.totals.totalPurchase?.toLocaleString() || 0}
+                            <td className={`px-6 py-4 whitespace-nowrap text-sm font-bold ${(branchSummary.totals.totalNetProfit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              ₹{branchSummary.totals.totalNetProfit?.toLocaleString() || 0}
+                            </td>
+                            <td className={`px-6 py-4 whitespace-nowrap text-sm font-bold ${(branchSummary.totals.totalMargin || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              {(() => {
+                                const totalMargin = branchSummary.totals.totalMargin !== null && branchSummary.totals.totalMargin !== undefined 
+                                  ? Math.min(branchSummary.totals.totalMargin, 100) // Cap positive at 100%, but allow negative to show actual value
+                                  : 0;
+                                return totalMargin.toFixed(2) + '%';
+                              })()}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
-                              ₹{branchSummary.totals.totalNetAmount?.toLocaleString() || 0}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
-                              {(branchSummary.totals.totalIncomeCount || 0) + (branchSummary.totals.totalExpenseCount || 0) + (branchSummary.totals.totalPurchaseCount || 0)}
+                              {(branchSummary.totals.totalIncomeCount || 0) + (branchSummary.totals.totalExpenseCount || 0)}
                             </td>
                           </tr>
                         </tfoot>
@@ -2673,10 +2690,10 @@ const AccountsPage = () => {
                             Expense
                           </th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Purchase
+                            Net Profit
                           </th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Net Amount
+                            Margin
                           </th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Transactions
@@ -2723,21 +2740,23 @@ const AccountsPage = () => {
                                 </div>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap">
-                                <div className="text-sm font-medium text-blue-600">
-                                  ₹{branch.purchase?.toLocaleString() || 0}
-                                </div>
-                                <div className="text-xs text-gray-500">
-                                  {branch.purchaseCount || 0} transactions
+                                <div className={`text-sm font-medium ${(branch.netProfit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                  ₹{branch.netProfit?.toLocaleString() || 0}
                                 </div>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap">
-                                <div className={`text-sm font-medium ${branch.netAmount >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                  ₹{branch.netAmount?.toLocaleString() || 0}
+                                <div className={`text-sm font-medium ${(branch.margin || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                  {(() => {
+                                    const margin = branch.margin !== null && branch.margin !== undefined 
+                                      ? Math.min(branch.margin, 100) // Cap positive at 100%, but allow negative to show actual value
+                                      : 0;
+                                    return margin.toFixed(2) + '%';
+                                  })()}
                                 </div>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap">
                                 <div className="text-sm text-gray-900">
-                                  {(branch.incomeCount || 0) + (branch.expenseCount || 0) + (branch.purchaseCount || 0)}
+                                  {(branch.incomeCount || 0) + (branch.expenseCount || 0)}
                                 </div>
                               </td>
                             </tr>
@@ -2773,14 +2792,19 @@ const AccountsPage = () => {
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-red-600">
                               ₹{branchSummary.totals.totalExpense?.toLocaleString() || 0}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-blue-600">
-                              ₹{branchSummary.totals.totalPurchase?.toLocaleString() || 0}
+                            <td className={`px-6 py-4 whitespace-nowrap text-sm font-bold ${(branchSummary.totals.totalNetProfit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              ₹{branchSummary.totals.totalNetProfit?.toLocaleString() || 0}
+                            </td>
+                            <td className={`px-6 py-4 whitespace-nowrap text-sm font-bold ${(branchSummary.totals.totalMargin || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              {(() => {
+                                const totalMargin = branchSummary.totals.totalMargin !== null && branchSummary.totals.totalMargin !== undefined 
+                                  ? Math.min(branchSummary.totals.totalMargin, 100) // Cap positive at 100%, but allow negative to show actual value
+                                  : 0;
+                                return totalMargin.toFixed(2) + '%';
+                              })()}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
-                              ₹{branchSummary.totals.totalNetAmount?.toLocaleString() || 0}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
-                              {(branchSummary.totals.totalIncomeCount || 0) + (branchSummary.totals.totalExpenseCount || 0) + (branchSummary.totals.totalPurchaseCount || 0)}
+                              {(branchSummary.totals.totalIncomeCount || 0) + (branchSummary.totals.totalExpenseCount || 0)}
                             </td>
                           </tr>
                         </tfoot>
