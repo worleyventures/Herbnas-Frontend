@@ -1913,10 +1913,9 @@ const AccountsPage = () => {
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className={`text-sm font-medium ${(branch.margin || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                                 {(() => {
-                                  const margin = branch.margin !== null && branch.margin !== undefined 
-                                    ? Math.min(branch.margin, 100) // Cap positive at 100%, but allow negative to show actual value
-                                    : 0;
-                                  return margin.toFixed(2) + '%';
+                                  const margin = branch.margin !== null && branch.margin !== undefined ? branch.margin : 0;
+                                  const sign = margin >= 0 ? '+' : '';
+                                  return sign + margin.toFixed(2) + '%';
                                 })()}
                               </div>
                             </td>
@@ -1945,10 +1944,9 @@ const AccountsPage = () => {
                             </td>
                             <td className={`px-6 py-4 whitespace-nowrap text-sm font-bold ${(branchSummary.totals.totalMargin || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                               {(() => {
-                                const totalMargin = branchSummary.totals.totalMargin !== null && branchSummary.totals.totalMargin !== undefined 
-                                  ? Math.min(branchSummary.totals.totalMargin, 100) // Cap positive at 100%, but allow negative to show actual value
-                                  : 0;
-                                return totalMargin.toFixed(2) + '%';
+                                const totalMargin = branchSummary.totals.totalMargin !== null && branchSummary.totals.totalMargin !== undefined ? branchSummary.totals.totalMargin : 0;
+                                const sign = totalMargin >= 0 ? '+' : '';
+                                return sign + totalMargin.toFixed(2) + '%';
                               })()}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
@@ -2738,10 +2736,9 @@ const AccountsPage = () => {
                               <td className="px-6 py-4 whitespace-nowrap">
                                 <div className={`text-sm font-medium ${(branch.margin || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                                   {(() => {
-                                    const margin = branch.margin !== null && branch.margin !== undefined 
-                                      ? Math.min(branch.margin, 100) // Cap positive at 100%, but allow negative to show actual value
-                                      : 0;
-                                    return margin.toFixed(2) + '%';
+                                    const margin = branch.margin !== null && branch.margin !== undefined ? branch.margin : 0;
+                                    const sign = margin >= 0 ? '+' : '';
+                                    return sign + margin.toFixed(2) + '%';
                                   })()}
                                 </div>
                               </td>
@@ -2788,10 +2785,9 @@ const AccountsPage = () => {
                             </td>
                             <td className={`px-6 py-4 whitespace-nowrap text-sm font-bold ${(branchSummary.totals.totalMargin || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                               {(() => {
-                                const totalMargin = branchSummary.totals.totalMargin !== null && branchSummary.totals.totalMargin !== undefined 
-                                  ? Math.min(branchSummary.totals.totalMargin, 100) // Cap positive at 100%, but allow negative to show actual value
-                                  : 0;
-                                return totalMargin.toFixed(2) + '%';
+                                const totalMargin = branchSummary.totals.totalMargin !== null && branchSummary.totals.totalMargin !== undefined ? branchSummary.totals.totalMargin : 0;
+                                const sign = totalMargin >= 0 ? '+' : '';
+                                return sign + totalMargin.toFixed(2) + '%';
                               })()}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">

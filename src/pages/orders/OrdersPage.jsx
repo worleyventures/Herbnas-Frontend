@@ -19,7 +19,8 @@ import {
   HiDocumentArrowDown,
   HiCog6Tooth,
   HiXMark,
-  HiShieldCheck
+  HiShieldCheck,
+  HiArrowLeft
 } from 'react-icons/hi2';
 import { Button, Input, Select, Table, StatusBadge, Loading, StatCard, CommonModal } from '../../components/common';
 import OrderDetailsModal from '../../components/common/OrderDetailsModal';
@@ -98,7 +99,8 @@ const OrdersPage = () => {
   const [courierPartners, setCourierPartners] = useState([]);
   const [updateFormData, setUpdateFormData] = useState({
     courierPartnerId: '',
-    status: ''
+    status: '',
+    trackingNumber: ''
   });
   const [updating, setUpdating] = useState(false);
   const [showAddCourierModal, setShowAddCourierModal] = useState(false);
@@ -123,6 +125,7 @@ const OrdersPage = () => {
   const [approveNotes, setApproveNotes] = useState('');
   const [rejectionReason, setRejectionReason] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
+  const [selectedCourierForCOD, setSelectedCourierForCOD] = useState(null);
   
   const canViewVerifications = isSupervisor || isSuperAdmin;
 
@@ -713,7 +716,8 @@ const OrdersPage = () => {
     
     setUpdateFormData({
       courierPartnerId: courierPartnerId,
-      status: order.status || 'draft'
+      status: order.status || 'draft',
+      trackingNumber: order.trackingNumber || ''
     });
     setShowUpdateModal(true);
     // Fetch courier partners - handle permission errors gracefully
@@ -795,6 +799,11 @@ const OrdersPage = () => {
         }
       }
       
+      // Handle tracking number (AWB Number) - send null if empty string
+      if (updateFormData.trackingNumber !== undefined) {
+        updateData.trackingNumber = updateFormData.trackingNumber?.trim() || null;
+      }
+      
       console.log('=== UPDATE DATA PREPARED ===', updateData);
       
       // Make sure we have valid data
@@ -847,7 +856,7 @@ const OrdersPage = () => {
       
       setShowUpdateModal(false);
       setSelectedOrderForUpdate(null);
-      setUpdateFormData({ courierPartnerId: '', status: '' });
+      setUpdateFormData({ courierPartnerId: '', status: '', trackingNumber: '' });
       
       // Refresh orders to ensure data is in sync with backend
       console.log('Refreshing orders...', {
@@ -1145,6 +1154,72 @@ const OrdersPage = () => {
   // If we have pagination data and want accurate status counts, we'd need to fetch all matching orders
   // For now, we'll use visible orders which is better than showing unfiltered stats
 
+  // Filter and group COD orders by courier partner
+  const codOrdersByCourier = useMemo(() => {
+    // Filter COD orders
+    let codOrders = orders.filter(order => 
+      order.paymentMethod === 'cod' && order.isActive !== false
+    );
+    
+    // Apply same role-based filtering as regular orders
+    if (isSalesExecutive && user?._id) {
+      codOrders = codOrders.filter(order => {
+        const orderCreatedBy = order.createdBy?._id || order.createdBy;
+        const userId = user._id || user.id;
+        return orderCreatedBy && userId && orderCreatedBy.toString() === userId.toString();
+      });
+    }
+    
+    if (isAdmin && user?.branch) {
+      const branchId = (user.branch._id || user.branch).toString();
+      codOrders = codOrders.filter(order => {
+        const orderBranchId = (order.branchId?._id || order.branchId)?.toString();
+        return orderBranchId === branchId;
+      });
+    }
+    
+    // Group by courier partner
+    const grouped = {};
+    codOrders.forEach(order => {
+      const courierId = order.courierPartnerId?._id || order.courierPartnerId || 'unassigned';
+      const courierName = order.courierPartnerId?.name || 'Unassigned Courier';
+      
+      if (!grouped[courierId]) {
+        grouped[courierId] = {
+          courierId: courierId === 'unassigned' ? null : courierId,
+          courierName,
+          orders: [],
+          totalAmount: 0,
+          totalOrders: 0,
+          pendingCOD: 0,
+          collectedCOD: 0
+        };
+      }
+      
+      const orderTotal = calculateOrderTotal(order);
+      grouped[courierId].orders.push(order);
+      grouped[courierId].totalAmount += orderTotal;
+      grouped[courierId].totalOrders += 1;
+      
+      // Calculate pending COD (orders not delivered or not fully paid)
+      // Pending: status is not 'delivered' OR paymentStatus is 'pending' or 'partial'
+      const isPending = order.status !== 'delivered' || 
+                       (order.paymentStatus === 'pending' || order.paymentStatus === 'partial');
+      
+      if (isPending) {
+        grouped[courierId].pendingCOD += orderTotal;
+      } else {
+        // Collected: delivered and fully paid
+        grouped[courierId].collectedCOD += orderTotal;
+      }
+    });
+    
+    // Convert to array and sort by courier name
+    return Object.values(grouped).sort((a, b) => 
+      a.courierName.localeCompare(b.courierName)
+    );
+  }, [orders, isSalesExecutive, isAdmin, user?._id, user?.branch]);
+
   // Paginate filtered orders for admin, super_admin, and sales executive (frontend pagination)
   const paginatedOrders = React.useMemo(() => {
     if (isAdmin || isSuperAdmin || isSalesExecutive) {
@@ -1431,21 +1506,21 @@ const OrdersPage = () => {
         )}
       </div>
       
-      {/* Tabs - Only show for supervisors and super_admin */}
-      {canViewVerifications && (
-        <div className="border-b border-gray-200">
-          <nav className="-mb-px flex space-x-8">
-            <button
-              onClick={() => setActiveTab('orders')}
-              className={`${
-                activeTab === 'orders'
-                  ? 'border-[#8bc34a] text-[#8bc34a]'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors flex items-center space-x-2`}
-            >
-              <HiClipboardDocumentList className="w-5 h-5" />
-              <span>Orders</span>
-            </button>
+      {/* Tabs */}
+      <div className="border-b border-gray-200">
+        <nav className="-mb-px flex space-x-8">
+          <button
+            onClick={() => setActiveTab('orders')}
+            className={`${
+              activeTab === 'orders'
+                ? 'border-[#8bc34a] text-[#8bc34a]'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors flex items-center space-x-2`}
+          >
+            <HiClipboardDocumentList className="w-5 h-5" />
+            <span>Orders</span>
+          </button>
+          {canViewVerifications && (
             <button
               onClick={() => setActiveTab('verifications')}
               className={`${
@@ -1462,9 +1537,20 @@ const OrdersPage = () => {
                 </span>
               )}
             </button>
-          </nav>
-        </div>
-      )}
+          )}
+          <button
+            onClick={() => setActiveTab('cod-reconciliation')}
+            className={`${
+              activeTab === 'cod-reconciliation'
+                ? 'border-[#8bc34a] text-[#8bc34a]'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors flex items-center space-x-2`}
+          >
+            <HiTruck className="w-5 h-5" />
+            <span>COD Reconciliation</span>
+          </button>
+        </nav>
+      </div>
       
       {/* Tab Content */}
       {activeTab === 'verifications' && canViewVerifications ? (
@@ -1725,6 +1811,221 @@ const OrdersPage = () => {
             )}
           </CommonModal>
         </div>
+      ) : activeTab === 'cod-reconciliation' ? (
+        <div className="space-y-6">
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+            <StatCard
+              title="Total COD Orders"
+              value={codOrdersByCourier.reduce((sum, group) => sum + group.totalOrders, 0)}
+              icon={HiTruck}
+              gradient="blue"
+            />
+            <StatCard
+              title="Total Amount"
+              value={`₹${codOrdersByCourier.reduce((sum, group) => sum + group.totalAmount, 0).toLocaleString()}`}
+              icon={HiCurrencyDollar}
+              gradient="green"
+            />
+            <StatCard
+              title="Courier Partners"
+              value={codOrdersByCourier.length}
+              icon={HiTruck}
+              gradient="purple"
+            />
+          </div>
+
+          {/* COD Orders by Courier Partner */}
+          <div className="bg-white rounded-lg shadow-sm">
+            <div className="p-6">
+              {!selectedCourierForCOD ? (
+                <>
+                  <h2 className="text-lg font-semibold text-gray-900 mb-4">COD Orders by Courier Partner</h2>
+                  
+                  {codOrdersByCourier.length === 0 ? (
+                    <div className="text-center py-12">
+                      <HiTruck className="mx-auto h-12 w-12 text-gray-400" />
+                      <h3 className="mt-2 text-sm font-medium text-gray-900">No COD Orders</h3>
+                      <p className="mt-1 text-sm text-gray-500">No cash on delivery orders found.</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Courier Partner
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Transactions
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Total Amount
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Pending COD
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Collected COD
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {codOrdersByCourier.map((courierGroup) => (
+                            <tr 
+                              key={courierGroup.courierId || 'unassigned'} 
+                              onClick={() => setSelectedCourierForCOD(courierGroup)}
+                              className="hover:bg-gray-50 cursor-pointer"
+                            >
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="text-sm font-medium text-gray-900">{courierGroup.courierName}</div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="text-sm text-gray-900">
+                                  {courierGroup.totalOrders} {courierGroup.totalOrders === 1 ? 'transaction' : 'transactions'}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="text-sm font-medium text-gray-900">
+                                  ₹{courierGroup.totalAmount.toLocaleString()}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="text-sm font-medium text-orange-600">
+                                  ₹{courierGroup.pendingCOD.toLocaleString()}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="text-sm font-medium text-green-600">
+                                  ₹{courierGroup.collectedCOD.toLocaleString()}
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  {/* Back button and selected courier header */}
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center space-x-3">
+                      <button
+                        onClick={() => setSelectedCourierForCOD(null)}
+                        className="text-gray-600 hover:text-gray-900 flex items-center space-x-1"
+                      >
+                        <HiArrowLeft className="w-5 h-5" />
+                        <span>Back</span>
+                      </button>
+                      <div className="h-6 w-px bg-gray-300"></div>
+                      <div>
+                        <h2 className="text-lg font-semibold text-gray-900">{selectedCourierForCOD.courierName}</h2>
+                        <p className="text-sm text-gray-500">
+                          {selectedCourierForCOD.totalOrders} {selectedCourierForCOD.totalOrders === 1 ? 'transaction' : 'transactions'} • 
+                          Total: ₹{selectedCourierForCOD.totalAmount.toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Orders Table for Selected Courier */}
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            AWB Number
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Order #
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Customer
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Destination
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Amount
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Status
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Order Date
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {selectedCourierForCOD.orders.map((order) => {
+                          const orderTotal = calculateOrderTotal(order);
+                          const customerName = order.customerId 
+                            ? `${order.customerId.firstName || ''} ${order.customerId.lastName || ''}`.trim() 
+                            : order.leadId?.customerName 
+                            ? order.leadId.customerName 
+                            : order.shippingAddress?.name || 'N/A';
+                          const customerPhone = order.customerId?.phone || order.leadId?.customerMobile || order.shippingAddress?.phone || 'N/A';
+                          const awbNumber = order.trackingNumber?.trim() || null;
+                          const destination = order.shippingAddress 
+                            ? `${order.shippingAddress.city || ''}, ${order.shippingAddress.state || ''}`.trim().replace(/^,\s*|,\s*$/g, '') || 'N/A'
+                            : 'N/A';
+                          
+                          return (
+                            <tr key={order._id} className="hover:bg-gray-50">
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                {awbNumber ? (
+                                  <div className="flex items-center space-x-2">
+                                    <span className="text-sm font-semibold text-blue-600 bg-blue-50 px-2 py-1 rounded border border-blue-200">
+                                      {awbNumber}
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <span className="text-sm text-gray-400 italic">Not assigned</span>
+                                )}
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+                                {order.orderId || order.orderNumber || 'N/A'}
+                              </td>
+                              <td className="px-4 py-3 text-sm text-gray-900">
+                                <div>
+                                  <div className="font-medium">{customerName}</div>
+                                  <div className="text-gray-500">{customerPhone}</div>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 text-sm text-gray-900">
+                                {destination}
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+                                ₹{orderTotal.toLocaleString()}
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                <StatusBadge
+                                  status={order.status}
+                                  variant="status"
+                                />
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                                {order.createdAt 
+                                  ? new Date(order.createdAt).toLocaleDateString('en-GB', {
+                                      day: '2-digit',
+                                      month: '2-digit',
+                                      year: 'numeric'
+                                    })
+                                  : 'N/A'}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
       ) : (
         <>
       {/* Stats Cards */}
@@ -1892,7 +2193,7 @@ const OrdersPage = () => {
         onClose={() => {
           setShowUpdateModal(false);
           setSelectedOrderForUpdate(null);
-          setUpdateFormData({ courierPartnerId: '', status: '' });
+          setUpdateFormData({ courierPartnerId: '', status: '', trackingNumber: '' });
         }}
         title="Update Courier Partner & Order Status"
         subtitle={selectedOrderForUpdate ? `Order: ${selectedOrderForUpdate.orderId}` : ''}
@@ -1908,7 +2209,7 @@ const OrdersPage = () => {
               onClick={() => {
                 setShowUpdateModal(false);
                 setSelectedOrderForUpdate(null);
-                setUpdateFormData({ courierPartnerId: '', status: '' });
+                setUpdateFormData({ courierPartnerId: '', status: '', trackingNumber: '' });
               }}
               size="sm"
               disabled={updating}
@@ -1951,6 +2252,11 @@ const OrdersPage = () => {
                   
                   if (updateFormData.courierPartnerId !== undefined) {
                     updateData.courierPartnerId = updateFormData.courierPartnerId === '' ? null : updateFormData.courierPartnerId;
+                  }
+                  
+                  // Handle tracking number (AWB Number) - send null if empty string
+                  if (updateFormData.trackingNumber !== undefined) {
+                    updateData.trackingNumber = updateFormData.trackingNumber?.trim() || null;
                   }
                   
                   console.log('=== MAKING API CALL VIA REDUX ACTION ===');
@@ -2030,7 +2336,7 @@ const OrdersPage = () => {
                   
                   setShowUpdateModal(false);
                   setSelectedOrderForUpdate(null);
-                  setUpdateFormData({ courierPartnerId: '', status: '' });
+                  setUpdateFormData({ courierPartnerId: '', status: '', trackingNumber: '' });
                   
                   // Refresh orders to ensure table updates with latest data from backend
                   const limit = (isAdmin || isSuperAdmin) ? 1000 : 10;
@@ -2121,6 +2427,22 @@ const OrdersPage = () => {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              AWB Number
+            </label>
+            <Input
+              type="text"
+              value={updateFormData.trackingNumber || ''}
+              onChange={(e) => setUpdateFormData(prev => ({ ...prev, trackingNumber: e.target.value }))}
+              placeholder="Enter AWB/Tracking Number"
+              maxLength={100}
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Enter the Air Waybill Number assigned by the courier partner
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
               Order Status *
             </label>
             <Select
@@ -2142,6 +2464,9 @@ const OrdersPage = () => {
                   selectedOrderForUpdate.courierPartnerId?.name || 
                   (selectedOrderForUpdate.courierPartnerId ? 'Selected' : 'None')
                 }
+              </p>
+              <p className="text-gray-600">
+                <strong>Current AWB Number:</strong> {selectedOrderForUpdate.trackingNumber || 'Not set'}
               </p>
             </div>
           )}
