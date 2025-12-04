@@ -101,6 +101,7 @@ const OrderFormPage = () => {
     status: 'draft', // Add status field
     bankAccountId: '', // Selected bank account for the order
     returnReason: '', // Reason for cancellation/return
+    dispatchedImage: '', // Image URL when status is dispatched
   });
   
   const [errors, setErrors] = useState({});
@@ -111,6 +112,9 @@ const OrderFormPage = () => {
   const [pincodeLoading, setPincodeLoading] = useState(false);
   const [againReceiveAmount, setAgainReceiveAmount] = useState(0);
   const notesTextareaRef = useRef(null);
+  const [dispatchedImageFile, setDispatchedImageFile] = useState(null);
+  const [dispatchedImagePreview, setDispatchedImagePreview] = useState(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   // Load data on component mount
   useEffect(() => {
@@ -199,7 +203,13 @@ const OrderFormPage = () => {
         status: order.paymentMethod === 'cod' ? 'confirmed' : (order.status || 'draft'),
         bankAccountId: order.bankAccountId || '',
         returnReason: order.returnReason || '',
+        dispatchedImage: order.dispatchedImage || '',
       });
+      
+      // Set image preview if dispatched image exists
+      if (order.dispatchedImage) {
+        setDispatchedImagePreview(order.dispatchedImage);
+      }
       
       // Reset again receive amount when loading order
       setAgainReceiveAmount(0);
@@ -718,6 +728,70 @@ const OrderFormPage = () => {
     return Object.keys(newErrors).length === 0;
   };
 
+  // Handle dispatched image upload
+  const handleImageUpload = async (file) => {
+    if (!file) return null;
+    
+    setUploadingImage(true);
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+      
+      const response = await api.post('/upload/image', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      
+      if (response.data?.success && response.data?.data?.url) {
+        return response.data.data.url;
+      }
+      throw new Error('Image upload failed');
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      dispatch(addNotification({
+        type: 'error',
+        message: error?.response?.data?.message || 'Failed to upload image'
+      }));
+      throw error;
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  // Handle image file change
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        dispatch(addNotification({
+          type: 'error',
+          message: 'Please select an image file'
+        }));
+        return;
+      }
+      
+      // Validate file size (5MB max)
+      if (file.size > 5 * 1024 * 1024) {
+        dispatch(addNotification({
+          type: 'error',
+          message: 'Image size must be less than 5MB'
+        }));
+        return;
+      }
+      
+      setDispatchedImageFile(file);
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setDispatchedImagePreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -736,6 +810,13 @@ const OrderFormPage = () => {
     setSubmitting(true);
     
     try {
+      // Upload image if status is dispatched and image file is selected
+      let dispatchedImageUrl = formData.dispatchedImage;
+      if (formData.status === 'dispatched' && dispatchedImageFile) {
+        dispatchedImageUrl = await handleImageUpload(dispatchedImageFile);
+        setFormData(prev => ({ ...prev, dispatchedImage: dispatchedImageUrl }));
+      }
+      
       // Prepare order data based on customer type
       const orderData = {
         customerType: formData.customerType,
@@ -772,6 +853,7 @@ const OrderFormPage = () => {
         status: (formData.amountReceived > 0 && formData.status === 'draft') ? undefined : formData.status,
         bankAccountId: formData.bankAccountId || undefined, // Include bank account ID if selected
         returnReason: formData.status === 'returned' ? formData.returnReason : undefined, // Include return reason if status is returned
+        dispatchedImage: dispatchedImageUrl || formData.dispatchedImage || undefined, // Include dispatched image if status is dispatched
       };
       
       if (isEdit) {
@@ -991,6 +1073,17 @@ const OrderFormPage = () => {
     { value: 'partial', label: 'Partial' },
     { value: 'refunded', label: 'Refunded' },
     { value: 'failed', label: 'Failed' }
+  ];
+
+  const orderStatusOptions = [
+    { value: 'draft', label: 'Draft' },
+    { value: 'pending', label: 'Pending' },
+    { value: 'confirmed', label: 'Confirmed' },
+    { value: 'picked', label: 'Picked' },
+    { value: 'dispatched', label: 'Dispatched' },
+    { value: 'delivered', label: 'Delivered' },
+    { value: 'closed', label: 'Closed' },
+    { value: 'returned', label: 'Returned' }
   ];
 
   const { subtotal, taxAmount, discountAmount, totalAmount } = calculateTotals();
@@ -1418,6 +1511,80 @@ const OrderFormPage = () => {
                     <span className="text-lg font-bold text-gray-900">₹{totalAmount.toLocaleString()}</span>
                   </div>
                 </div>
+              </div>
+            </Card>
+
+            {/* Order Status */}
+            <Card>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 pb-3 border-b border-gray-200">Order Status</h3>
+              <div className="space-y-4">
+                <div className="w-full flex flex-col">
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Status *
+                  </label>
+                  <Select
+                    options={orderStatusOptions}
+                    value={formData.status}
+                    onChange={handleSelectChange('status')}
+                    placeholder="Select order status"
+                    error={errors.status}
+                    className="w-full"
+                  />
+                </div>
+                
+                {/* Dispatched Image Upload - Show only when status is dispatched */}
+                {formData.status === 'dispatched' && (
+                  <div className="w-full flex flex-col">
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      Dispatch Image
+                    </label>
+                    <div className="space-y-3">
+                      {dispatchedImagePreview || formData.dispatchedImage ? (
+                        <div className="relative">
+                          <img
+                            src={dispatchedImagePreview || formData.dispatchedImage}
+                            alt="Dispatch preview"
+                            className="w-full h-48 object-cover rounded-lg border border-gray-300"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setDispatchedImageFile(null);
+                              setDispatchedImagePreview(null);
+                              setFormData(prev => ({ ...prev, dispatchedImage: '' }));
+                            }}
+                            className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1.5 hover:bg-red-600 transition-colors"
+                          >
+                            <HiXMark className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ) : null}
+                      <div className="flex items-center">
+                        <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors">
+                          <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                            <svg className="w-8 h-8 mb-2 text-gray-500" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 16">
+                              <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021c.255.1.545.3.777.518l.975.975a3 3 0 0 0 4.24.024L15 10.5a5.478 5.478 0 0 1-.236.97H13ZM11 15H1a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1Z"/>
+                            </svg>
+                            <p className="mb-2 text-sm text-gray-500">
+                              <span className="font-semibold">Click to upload</span> or drag and drop
+                            </p>
+                            <p className="text-xs text-gray-500">PNG, JPG, GIF (MAX. 5MB)</p>
+                          </div>
+                          <input
+                            type="file"
+                            className="hidden"
+                            accept="image/*"
+                            onChange={handleImageChange}
+                            disabled={uploadingImage}
+                          />
+                        </label>
+                      </div>
+                      {uploadingImage && (
+                        <p className="text-sm text-blue-600">Uploading image...</p>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </Card>
 

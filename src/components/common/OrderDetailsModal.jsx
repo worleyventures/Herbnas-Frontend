@@ -647,9 +647,25 @@ const OrderDetailsModal = ({ isOpen, onClose, orderId, onEdit, onDelete, onRefre
         {
           label: 'Courier Name',
           value: order.courierPartnerId?.name || 'N/A'
-        }
+        },
+        ...(order.trackingNumber ? [{
+          label: 'Tracking Number',
+          value: order.trackingNumber
+        }] : [])
       ]
     };
+
+    // Dispatch Information - Show if status is dispatched
+    const dispatchInfo = order.status === 'dispatched' && order.dispatchedImage ? {
+      title: 'Dispatch Information',
+      fields: [
+        {
+          label: 'Dispatch Image',
+          value: order.dispatchedImage,
+          type: 'image'
+        }
+      ]
+    } : null;
 
     const notesInfo = {
       title: 'Notes',
@@ -672,6 +688,7 @@ const OrderDetailsModal = ({ isOpen, onClose, orderId, onEdit, onDelete, onRefre
       shippingInfo, 
       financialInfo,
       ...(order.courierPartnerId ? [courierPartnerInfo] : []),
+      ...(dispatchInfo ? [dispatchInfo] : []),
       notesInfo
     ];
     
@@ -727,6 +744,26 @@ const OrderDetailsModal = ({ isOpen, onClose, orderId, onEdit, onDelete, onRefre
                 />
               </div>
             </div>
+
+            {/* Dispatch Image - Show prominently if order is dispatched and has image */}
+            {order.status === 'dispatched' && order.dispatchedImage && (
+              <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                  <HiTruck className="w-5 h-5 text-blue-600" />
+                  Dispatch Image
+                </h4>
+                <div className="relative rounded-lg overflow-hidden border border-gray-300 bg-white">
+                  <img
+                    src={order.dispatchedImage}
+                    alt="Dispatch Image"
+                    className="w-full h-auto max-h-96 object-contain"
+                    onError={(e) => {
+                      e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2YzZjRmNiIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM5Y2EzYWYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5JbWFnZSBub3QgZm91bmQ8L3RleHQ+PC9zdmc+';
+                    }}
+                  />
+                </div>
+              </div>
+            )}
 
             {/* Details Sections - 3 sections per column */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

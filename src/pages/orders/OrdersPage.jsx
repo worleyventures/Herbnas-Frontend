@@ -103,6 +103,9 @@ const OrdersPage = () => {
     trackingNumber: ''
   });
   const [updating, setUpdating] = useState(false);
+  const [dispatchedImageFile, setDispatchedImageFile] = useState(null);
+  const [dispatchedImagePreview, setDispatchedImagePreview] = useState(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [showAddCourierModal, setShowAddCourierModal] = useState(false);
   const [newCourierName, setNewCourierName] = useState('');
   const [branchUserIds, setBranchUserIds] = useState([]);
@@ -707,6 +710,81 @@ const OrdersPage = () => {
     invoiceWindow.focus();
   };
 
+  // Handle image upload
+  const handleImageUpload = async (file) => {
+    if (!file) return null;
+    
+    setUploadingImage(true);
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+      
+      const response = await api.post('/upload/image', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      
+      console.log('=== IMAGE UPLOAD RESPONSE ===', response.data);
+      
+      if (response.data?.success && response.data?.data?.url) {
+        const imageUrl = response.data.data.url;
+        console.log('=== IMAGE UPLOAD SUCCESS, URL ===', imageUrl);
+        return imageUrl;
+      }
+      
+      console.error('=== IMAGE UPLOAD FAILED - INVALID RESPONSE ===', response.data);
+      throw new Error('Image upload failed - invalid response');
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      dispatch(addNotification({
+        type: 'error',
+        message: error?.response?.data?.message || 'Failed to upload image'
+      }));
+      throw error;
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  // Handle image file change
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    console.log('=== IMAGE FILE SELECTED ===', file);
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        dispatch(addNotification({
+          type: 'error',
+          message: 'Please select an image file'
+        }));
+        return;
+      }
+      
+      // Validate file size (5MB max)
+      if (file.size > 5 * 1024 * 1024) {
+        dispatch(addNotification({
+          type: 'error',
+          message: 'Image size must be less than 5MB'
+        }));
+        return;
+      }
+      
+      setDispatchedImageFile(file);
+      console.log('=== DISPATCHED IMAGE FILE SET ===', file.name, file.size);
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setDispatchedImagePreview(reader.result);
+        console.log('=== IMAGE PREVIEW CREATED ===');
+      };
+      reader.readAsDataURL(file);
+    } else {
+      console.log('=== NO FILE SELECTED ===');
+    }
+  };
+
   // Handle update courier partner and status
   const handleUpdateCourierAndStatus = (order) => {
     setSelectedOrderForUpdate(order);
@@ -719,6 +797,15 @@ const OrdersPage = () => {
       status: order.status || 'draft',
       trackingNumber: order.trackingNumber || ''
     });
+    
+    // Initialize image preview if order has dispatched image
+    if (order.dispatchedImage) {
+      setDispatchedImagePreview(order.dispatchedImage);
+    } else {
+      setDispatchedImagePreview(null);
+    }
+    setDispatchedImageFile(null);
+    
     setShowUpdateModal(true);
     // Fetch courier partners - handle permission errors gracefully
     dispatch(getAllCourierPartners({ isActive: true })).then((result) => {
@@ -754,11 +841,15 @@ const OrdersPage = () => {
   // Handle update form submission
   const handleUpdateSubmit = async (e) => {
     if (e) {
-    e.preventDefault();
+      e.preventDefault();
       e.stopPropagation();
     }
     
-    console.log('handleUpdateSubmit called', { selectedOrderForUpdate, updateFormData });
+    console.log('🚀 === HANDLE UPDATE SUBMIT CALLED ===');
+    console.log('Selected Order:', selectedOrderForUpdate);
+    console.log('Update Form Data:', updateFormData);
+    console.log('Dispatched Image File:', dispatchedImageFile);
+    console.log('Dispatched Image Preview:', dispatchedImagePreview);
     
     if (!selectedOrderForUpdate) {
       dispatch(addNotification({
@@ -781,10 +872,52 @@ const OrdersPage = () => {
     console.log('Order ID:', selectedOrderForUpdate._id);
     console.log('Status:', updateFormData.status);
     console.log('Courier Partner ID:', updateFormData.courierPartnerId);
+    console.log('Has Image File:', !!dispatchedImageFile);
+    console.log('Image File Name:', dispatchedImageFile?.name);
 
     setUpdating(true);
     
     try {
+      // Initialize dispatchedImageUrl with existing image if any
+      let dispatchedImageUrl = selectedOrderForUpdate?.dispatchedImage || null;
+      
+      console.log('=== IMAGE UPLOAD CHECK ===', {
+        status: updateFormData.status,
+        statusIsDispatched: updateFormData.status === 'dispatched',
+        hasImageFile: !!dispatchedImageFile,
+        imageFileName: dispatchedImageFile?.name,
+        existingImage: dispatchedImageUrl,
+        imagePreview: dispatchedImagePreview,
+        selectedOrderImage: selectedOrderForUpdate?.dispatchedImage
+      });
+      
+      if (updateFormData.status === 'dispatched') {
+        if (dispatchedImageFile) {
+          // Upload new image if file is selected
+          console.log('=== UPLOADING IMAGE ===');
+          try {
+            dispatchedImageUrl = await handleImageUpload(dispatchedImageFile);
+            console.log('=== IMAGE UPLOADED SUCCESSFULLY ===', dispatchedImageUrl);
+          } catch (uploadError) {
+            console.error('=== IMAGE UPLOAD FAILED ===', uploadError);
+            dispatch(addNotification({
+              type: 'error',
+              message: 'Failed to upload image. Please try again.'
+            }));
+            setUpdating(false);
+            return;
+          }
+        } else {
+          console.log('=== NO NEW IMAGE FILE, KEEPING EXISTING ===', dispatchedImageUrl);
+        }
+        // If no new file and no existing image, keep it as null
+        // If existing image exists and no new file, keep the existing one
+      } else {
+        // Clear dispatched image if status is not dispatched
+        dispatchedImageUrl = null;
+        console.log('=== STATUS NOT DISPATCHED, CLEARING IMAGE ===');
+      }
+      
       // Build update data - always include status (required), and courier partner if provided
       const updateData = {
         status: updateFormData.status
@@ -804,7 +937,48 @@ const OrdersPage = () => {
         updateData.trackingNumber = updateFormData.trackingNumber?.trim() || null;
       }
       
+      // CRITICAL: Handle dispatched image - MUST ALWAYS be included if status is dispatched
+      // This is a REQUIRED field when status is dispatched (even if null)
+      if (updateFormData.status === 'dispatched') {
+        // Determine the final image URL to use - simplified logic
+        let finalImageUrl = null;
+        
+        // If user explicitly removed the image (preview is empty string), clear it
+        if (dispatchedImagePreview === '') {
+          finalImageUrl = null;
+          console.log('=== CLEARING DISPATCHED IMAGE (USER REMOVED) ===');
+        } 
+        // If we have a newly uploaded image URL, use it
+        else if (dispatchedImageUrl) {
+          finalImageUrl = dispatchedImageUrl;
+          console.log('=== USING IMAGE URL ===', finalImageUrl);
+        } 
+        // If there's an existing image, keep it
+        else if (selectedOrderForUpdate?.dispatchedImage) {
+          finalImageUrl = selectedOrderForUpdate.dispatchedImage;
+          console.log('=== KEEPING EXISTING IMAGE ===', finalImageUrl);
+        } 
+        // No image - set to null (but field must still be included)
+        else {
+          finalImageUrl = null;
+          console.log('=== NO IMAGE (SETTING TO NULL) ===');
+        }
+        
+        // CRITICAL: ALWAYS set this field when status is dispatched
+        // This ensures the field is ALWAYS present in the request, even if null
+        updateData.dispatchedImage = finalImageUrl;
+        console.log('✅ dispatchedImage field SET:', updateData.dispatchedImage);
+        console.log('✅ Field exists in updateData:', 'dispatchedImage' in updateData);
+      } else {
+        // Clear dispatched image if status is not dispatched
+        updateData.dispatchedImage = null;
+        console.log('=== CLEARING DISPATCHED IMAGE (STATUS NOT DISPATCHED) ===');
+      }
+      
       console.log('=== UPDATE DATA PREPARED ===', updateData);
+      console.log('=== UPDATE DATA KEYS ===', Object.keys(updateData));
+      console.log('=== DISPATCHED IMAGE IN UPDATE DATA ===', updateData.dispatchedImage);
+      console.log('=== UPDATE DATA AS JSON ===', JSON.stringify(updateData, null, 2));
       
       // Make sure we have valid data
       if (!selectedOrderForUpdate._id) {
@@ -817,11 +991,40 @@ const OrdersPage = () => {
         throw new Error('Status is required');
       }
       
+      // CRITICAL CHECK: Verify dispatchedImage is included when status is dispatched
+      // This is a final safeguard to ensure the field is NEVER missing
+      if (updateData.status === 'dispatched') {
+        if (!updateData.hasOwnProperty('dispatchedImage')) {
+          console.error('❌ CRITICAL ERROR: dispatchedImage field is MISSING for dispatched status!');
+          console.error('This should never happen - adding it now as a safeguard');
+          // Force add it if it's missing (this should never happen, but just in case)
+          const fallbackImageUrl = dispatchedImageUrl || selectedOrderForUpdate?.dispatchedImage || null;
+          updateData.dispatchedImage = fallbackImageUrl;
+          console.error('✅ Safeguard: Added dispatchedImage with value:', fallbackImageUrl);
+        } else {
+          console.log('✅ dispatchedImage field is present:', updateData.dispatchedImage);
+        }
+        
+        // Double-check: Ensure the field is actually set (not undefined)
+        if (updateData.dispatchedImage === undefined) {
+          console.error('❌ CRITICAL: dispatchedImage is undefined! Setting to null');
+          updateData.dispatchedImage = null;
+        }
+      }
+      
+      // Final verification before sending
+      console.log('=== FINAL VERIFICATION BEFORE API CALL ===');
+      console.log('Update Data Object:', updateData);
+      console.log('Update Data Keys:', Object.keys(updateData));
+      console.log('dispatchedImage value:', updateData.dispatchedImage);
+      console.log('dispatchedImage type:', typeof updateData.dispatchedImage);
+      console.log('Has dispatchedImage property:', updateData.hasOwnProperty('dispatchedImage'));
+      
       // Make direct API call - this MUST show in network tab
       console.log('=== MAKING API CALL ===');
       console.log('URL:', `/orders/${selectedOrderForUpdate._id}`);
       console.log('Method: PUT');
-      console.log('Data:', updateData);
+      console.log('Final Update Data (JSON):', JSON.stringify(updateData, null, 2));
       
       const directResponse = await api.put(`/orders/${selectedOrderForUpdate._id}`, updateData);
       
@@ -857,6 +1060,8 @@ const OrdersPage = () => {
       setShowUpdateModal(false);
       setSelectedOrderForUpdate(null);
       setUpdateFormData({ courierPartnerId: '', status: '', trackingNumber: '' });
+      setDispatchedImageFile(null);
+      setDispatchedImagePreview(null);
       
       // Refresh orders to ensure data is in sync with backend
       console.log('Refreshing orders...', {
@@ -2194,6 +2399,8 @@ const OrdersPage = () => {
           setShowUpdateModal(false);
           setSelectedOrderForUpdate(null);
           setUpdateFormData({ courierPartnerId: '', status: '', trackingNumber: '' });
+          setDispatchedImageFile(null);
+          setDispatchedImagePreview(null);
         }}
         title="Update Courier Partner & Order Status"
         subtitle={selectedOrderForUpdate ? `Order: ${selectedOrderForUpdate.orderId}` : ''}
@@ -2219,149 +2426,7 @@ const OrdersPage = () => {
             <Button
               variant="primary"
               type="button"
-              onClick={async (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                
-                if (updating) {
-                  return;
-                }
-                
-                if (!selectedOrderForUpdate || !selectedOrderForUpdate._id) {
-                  dispatch(addNotification({
-                    type: 'error',
-                    message: 'No order selected for update'
-                  }));
-                  return;
-                }
-                
-                if (!updateFormData.status) {
-                  dispatch(addNotification({
-                    type: 'error',
-                    message: 'Order status is required'
-                  }));
-                  return;
-                }
-                
-                setUpdating(true);
-                
-                try {
-                  const updateData = {
-                    status: updateFormData.status
-                  };
-                  
-                  if (updateFormData.courierPartnerId !== undefined) {
-                    updateData.courierPartnerId = updateFormData.courierPartnerId === '' ? null : updateFormData.courierPartnerId;
-                  }
-                  
-                  // Handle tracking number (AWB Number) - send null if empty string
-                  if (updateFormData.trackingNumber !== undefined) {
-                    updateData.trackingNumber = updateFormData.trackingNumber?.trim() || null;
-                  }
-                  
-                  console.log('=== MAKING API CALL VIA REDUX ACTION ===');
-                  console.log('Order ID:', selectedOrderForUpdate._id);
-                  console.log('Update Data:', JSON.stringify(updateData, null, 2));
-                  console.log('API Base URL:', api.defaults.baseURL);
-                  console.log('API instance:', api);
-                  console.log('API defaults:', api.defaults);
-                  
-                  // Verify axios is properly configured
-                  if (!api || typeof api.put !== 'function') {
-                    throw new Error('API instance is not properly configured');
-                  }
-                  
-                  // Make the API call using the Redux action which will make the actual network request
-                  // This should show up in the Network tab
-                  console.log('=== DISPATCHING REDUX ACTION ===');
-                  
-                  // Also make a direct fetch call to verify network request is made
-                  // This is just for debugging - will be removed later
-                  const directFetchTest = async () => {
-                    try {
-                      const token = localStorage.getItem('token') || document.cookie.match(/token=([^;]+)/)?.[1];
-                      const testUrl = `${api.defaults.baseURL}/orders/${selectedOrderForUpdate._id}?_test=${Date.now()}`;
-                      console.log('=== DIRECT FETCH TEST ===');
-                      console.log('Test URL:', testUrl);
-                      const testResponse = await fetch(testUrl, {
-                        method: 'PUT',
-                        headers: {
-                          'Content-Type': 'application/json',
-                          'Authorization': `Bearer ${token}`,
-                          'Cache-Control': 'no-cache'
-                        },
-                        body: JSON.stringify(updateData),
-                        cache: 'no-store'
-                      });
-                      console.log('=== DIRECT FETCH RESPONSE ===', testResponse);
-                    } catch (err) {
-                      console.error('Direct fetch test error:', err);
-                    }
-                  };
-                  
-                  // Run both in parallel to see which one shows in Network tab
-                  const [result] = await Promise.all([
-                    dispatch(updateOrder({ 
-                      id: selectedOrderForUpdate._id, 
-                      orderData: updateData 
-                    })).unwrap(),
-                    directFetchTest()
-                  ]);
-                  
-                  console.log('=== REDUX ACTION COMPLETED ===');
-                  
-                  console.log('=== API CALL RESULT ===', result);
-                  console.log('Result structure:', JSON.stringify(result, null, 2));
-                  
-                  // The result from updateOrder action is response.data from axios
-                  // Based on the action, it returns response.data, so result.data.order is the order
-                  const updatedOrder = result?.data?.order;
-                  
-                  if (!updatedOrder) {
-                    console.error('No order in result:', result);
-                    throw new Error('No order data in response');
-                  }
-                  
-                  console.log('=== UPDATED ORDER ===', updatedOrder);
-                  console.log('Updated order status:', updatedOrder.status);
-                  console.log('Updated courier partner:', updatedOrder.courierPartnerId);
-                  
-                  // Update Redux state immediately - this will update the table
-                  dispatch(updateOrderInState(updatedOrder));
-                  
-                  dispatch(addNotification({
-                    type: 'success',
-                    message: 'Order updated successfully!'
-                  }));
-                  
-                  setShowUpdateModal(false);
-                  setSelectedOrderForUpdate(null);
-                  setUpdateFormData({ courierPartnerId: '', status: '', trackingNumber: '' });
-                  
-                  // Refresh orders to ensure table updates with latest data from backend
-                  const limit = (isAdmin || isSuperAdmin) ? 1000 : 10;
-                  await dispatch(getAllOrders({
-                    page: (isAdmin || isSuperAdmin) ? 1 : currentPage,
-                    limit: limit,
-                    search: searchTerm,
-                    paymentStatus: paymentStatusFilter === 'all' ? '' : paymentStatusFilter
-                  }));
-                  
-                  // After refresh, update the order again to ensure it has the latest data
-                  // This ensures the table shows the updated order even if refresh returned stale data
-                  dispatch(updateOrderInState(updatedOrder));
-                  
-                  await dispatch(getOrderStats());
-                } catch (error) {
-                  console.error('Error updating order:', error);
-                  dispatch(addNotification({
-                    type: 'error',
-                    message: error?.message || 'Failed to update order'
-                  }));
-                } finally {
-                  setUpdating(false);
-                }
-              }}
+              onClick={handleUpdateSubmit}
               size="sm"
               loading={updating}
               disabled={updating}
@@ -2453,6 +2518,61 @@ const OrdersPage = () => {
               required
             />
           </div>
+
+          {/* Dispatched Image Upload - Show only when status is dispatched */}
+          {updateFormData.status === 'dispatched' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Dispatch Image
+              </label>
+              <div className="space-y-3">
+                {dispatchedImagePreview && dispatchedImagePreview !== '' ? (
+                  <div className="relative">
+                    <img
+                      src={dispatchedImagePreview}
+                      alt="Dispatch preview"
+                      className="w-full h-48 object-cover rounded-lg border border-gray-300"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDispatchedImageFile(null);
+                        // Set preview to empty string to indicate user wants to clear the image
+                        // Use empty string instead of null to differentiate from "no action"
+                        setDispatchedImagePreview('');
+                      }}
+                      className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1.5 hover:bg-red-600 transition-colors"
+                    >
+                      <HiXMark className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : null}
+                <div className="flex items-center">
+                  <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors">
+                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                      <svg className="w-8 h-8 mb-2 text-gray-500" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 16">
+                        <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021c.255.1.545.3.777.518l.975.975a3 3 0 0 0 4.24.024L15 10.5a5.478 5.478 0 0 1-.236.97H13ZM11 15H1a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1Z"/>
+                      </svg>
+                      <p className="mb-2 text-sm text-gray-500">
+                        <span className="font-semibold">Click to upload</span> or drag and drop
+                      </p>
+                      <p className="text-xs text-gray-500">PNG, JPG, GIF (MAX. 5MB)</p>
+                    </div>
+                    <input
+                      type="file"
+                      className="hidden"
+                      accept="image/*"
+                      onChange={handleImageChange}
+                      disabled={uploadingImage}
+                    />
+                  </label>
+                </div>
+                {uploadingImage && (
+                  <p className="text-sm text-blue-600">Uploading image...</p>
+                )}
+              </div>
+            </div>
+          )}
 
           {selectedOrderForUpdate && (
             <div className="bg-gray-50 rounded-lg p-3 text-sm">
