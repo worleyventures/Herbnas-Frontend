@@ -8,6 +8,27 @@ const DetailsView = ({
   const renderField = (field, index) => {
     const { label, value, type = 'text', className: fieldClassName = '' } = field;
     
+    // Handle image type
+    if (type === 'image' && value) {
+      return (
+        <div key={index} className={`py-1 ${fieldClassName}`}>
+          <div className="flex flex-col">
+            <p className="text-xs font-medium text-gray-500 mb-2">{label}</p>
+            <div className="relative rounded-lg overflow-hidden border border-gray-200">
+              <img
+                src={value}
+                alt={label}
+                className="w-full h-auto max-h-64 object-contain bg-gray-50"
+                onError={(e) => {
+                  e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2YzZjRmNiIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM5Y2EzYWYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5JbWFnZSBub3QgZm91bmQ8L3RleHQ+PC9zdmc+';
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      );
+    }
+    
     return (
       <div key={index} className={`py-1 ${fieldClassName}`}>
         <div className="flex justify-between items-start">
